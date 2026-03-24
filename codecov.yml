@@ -1,0 +1,34 @@
+coverage:
+  status:
+    project:
+      fileencryption:
+        target: 80%
+        threshold: 5%
+        flags:
+          - fileencryption
+      passwordmanager:
+        target: 80%
+        threshold: 5%
+        flags:
+          - passwordmanager
+
+flags:
+  fileencryption:
+    paths:
+      - Projects/FileEncryption/src/
+    carryforward: true
+  passwordmanager:
+    paths:
+      - Projects/PasswordManager/src/
+    carryforward: true
+
+ignore:
+  - "Projects/FileEncryption/src/Benchmark/Benchmark.cpp"
+  - "Projects/FileEncryption/src/Common/main.cpp"
+  - "Projects/FileEncryption/src/Core/Worker.cpp"
+  - "Projects/FileEncryption/src/Core/Worker.h"
+  - "Projects/FileEncryption/src/GUI/"
+  - "Projects/FileEncryption/src/Tests/"
+  - "Projects/PasswordManager/src/Common/main.cpp"
+  - "Projects/PasswordManager/src/GUI/"
+  - "Projects/PasswordManager/src/Tests/"
