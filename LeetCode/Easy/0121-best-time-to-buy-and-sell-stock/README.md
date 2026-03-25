@@ -14,13 +14,13 @@
 
 ## Result
 
-**Submission:** https://leetcode.com/problems/two-sum/submissions/1774620704/
+**Submission:** https://leetcode.com/problems/best-time-to-buy-and-sell-stock/submissions/1774654779/
 
 **Language:** C++
 
 **Runtime:** 0 ms (Beats 100%)
 
-**Memory Usage:** 97.28 MB (Beats 86.67%)
+**Memory Usage:** 97.28 MB (Beats 86.43%)
 
 **Time Complexity:** O(n)
 
