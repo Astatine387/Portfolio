@@ -190,6 +190,22 @@ cmake --build build
 
 ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=passwordmanager)
 
+| File                 | Tracked Lines | Covered | Partial | Missed | Coverage % |
+| -------------------- | ------------- | ------- | ------- | ------ | ---------- |
+| Core/AES_GCM.cpp     | 22            | 18      | 0       | 4      | 81.82%     |
+| Core/AES_GCM.h       | 2             | 2       | 0       | 0      | 100.00%    |
+| Core/AES_GCM_dec.cpp | 38            | 38      | 0       | 0      | 100.00%    |
+| Core/AES_GCM_enc.cpp | 38            | 38      | 0       | 0      | 100.00%    |
+| Core/Entry.cpp       | 41            | 41      | 0       | 0      | 100.00%    |
+| Core/Entry.h         | 3             | 3       | 0       | 0      | 100.00%    |
+| Core/Vault.cpp       | 28            | 28      | 0       | 0      | 100.00%    |
+| Core/Vault.h         | 2             | 2       | 0       | 0      | 100.00%    |
+| Core/Vault_entry.cpp | 32            | 30      | 0       | 2      | 93.75%     |
+| Core/Vault_file.cpp  | 101           | 95      | 0       | 6      | 94.06%     |
+| Utils/Password.cpp   | 33            | 33      | 0       | 0      | 100.00%    |
+| Utils/Password.h     | 21            | 21      | 0       | 0      | 100.00%    |
+| Utils/library.cpp    | 53            | 51      | 0       | 2      | 96.23%     |
+
 | Module   | Test File            | Test Cases                                                                 |
 | -------- | -------------------- | -------------------------------------------------------------------------- |
 | AES_GCM  | `AES_GCM_Test.cpp`   | Encrypt/Decrypt, Integrity Check, Edge Cases, Callbacks                    |
