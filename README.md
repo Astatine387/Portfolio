@@ -15,6 +15,8 @@ I'm Astatine387, C/C++ software engineer. I mainly build desktop applications wi
 ## 3. Projects
 ### 3-1. [FileEncryption](./Projects/FileEncryption)
 
+![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-fileencryption.yml/badge.svg) ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=fileencryption)
+
 GUI, password-based file encryption/decryption tool.
 
 **Features:**
@@ -25,6 +27,8 @@ GUI, password-based file encryption/decryption tool.
 * Cross-platform support for Windows and Linux
 
 ### 3-2. [PasswordManager](./Projects/PasswordManager)
+
+![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-passwordmanager.yml/badge.svg) ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=passwordmanager)
 
 GUI-based password manager tool.
 
