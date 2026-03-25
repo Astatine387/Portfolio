@@ -2,8 +2,6 @@
 
 I'm Astatine387, C/C++ software engineer. I mainly build desktop applications with a focus on security and practicality. I value simple, efficient design with minimal but necessary features.
 
-![Build Test](https://github.com/Astatine387/Portfolio/actions/workflows/build.yml/badge.svg) ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg)
-
 ## 2. Tech Stack
 
 * **IDE:** Microsoft Visual Studio 2026
