@@ -1,11 +1,11 @@
-name: Build Test
+name: FileEncryption Build Test
 
 on: [push, workflow_dispatch]
 
 jobs:
 
   # ============================================================
-  # FileEncryption
+  # Windows
   # ============================================================
 
   build-windows-fileencryption:
@@ -69,7 +69,11 @@ jobs:
           name: FileEncryption-Windows-x64
           path: Projects/FileEncryption/deploy/
           retention-days: 90
-  
+
+  # ============================================================
+  # Linux
+  # ============================================================
+
   build-linux-fileencryption:
     runs-on: ubuntu-latest
     steps:
@@ -132,6 +136,10 @@ jobs:
           name: fileencryption-coverage
           fail_ci_if_error: false
 
+  # ============================================================
+  # Sanitizer
+  # ============================================================
+
   sanitize-linux-fileencryption:
     runs-on: ubuntu-latest
     steps:
@@ -151,154 +159,4 @@ jobs:
       - name: Test
         run: |
           cd Projects/FileEncryption
-          ctest --test-dir build --output-on-failure
-
-
-  # ============================================================
-  # PasswordManager
-  # ============================================================
-
-  build-windows-passwordmanager:
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.7.0'
-          host: 'windows'
-          target: 'desktop'
-          arch: 'win64_msvc2019_64'
-
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: '0a434205c521ca43d66921271ae2a1d051e718a5'
-
-      - name: Install dependencies
-        run: vcpkg install openssl:x64-windows argon2:x64-windows gtest:x64-windows
-
-      - name: Build
-        run: |
-          cd Projects/PasswordManager
-          cmake -B build `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
-          cmake --build build --config Release
-
-      - name: Test
-        run: |
-          cd Projects/PasswordManager
-          ctest --test-dir build -C Release --output-on-failure
-
-      - name: Deploy
-        run: |
-          cd Projects/PasswordManager
-          mkdir deploy
-
-          copy build\Release\PasswordManager.exe deploy\
-
-          & "$env:QT_ROOT_DIR\bin\windeployqt.exe" `
-            --no-translations `
-            --no-system-d3d-compiler `
-            --no-opengl-sw `
-            deploy\PasswordManager.exe
-
-          copy "$env:VCPKG_ROOT\installed\x64-windows\bin\libcrypto-3-x64.dll" deploy\
-          copy "$env:VCPKG_ROOT\installed\x64-windows\bin\libssl-3-x64.dll" deploy\
-          copy "$env:VCPKG_ROOT\installed\x64-windows\bin\argon2.dll" deploy\
-
-          Get-ChildItem deploy -Recurse | Format-Table Name, Length
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: PasswordManager-Windows-x64
-          path: Projects/PasswordManager/deploy/
-          retention-days: 90
-
-  build-linux-passwordmanager:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qt6-base-dev libssl-dev libargon2-dev libgtest-dev cppcheck lcov
-
-      - name: Run cppcheck
-        run: |
-          cppcheck \
-            --library=qt \
-            --suppress=unknownMacro \
-            --suppress=useStlAlgorithm \
-            --enable=warning,style,performance,portability \
-            --error-exitcode=1 \
-            --suppress=arithOperationsOnVoidPointer \
-            --suppress=missingIncludeSystem \
-            --inline-suppr \
-            -I Projects/PasswordManager/src \
-            Projects/PasswordManager/src/Core \
-            Projects/PasswordManager/src/GUI \
-            Projects/PasswordManager/src/Utils \
-            Projects/PasswordManager/src/Common
-
-      - name: Build with Coverage (Debug)
-        run: |
-          cd Projects/PasswordManager
-          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE=ON
-          cmake --build build
-
-      - name: Test
-        run: |
-          cd Projects/PasswordManager
-          ctest --test-dir build --output-on-failure
-
-      - name: Generate Coverage Report
-        run: |
-          cd Projects/PasswordManager
-          lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch
-          lcov --remove coverage.info \
-            '/usr/*' \
-            '*/gtest/*' \
-            '*/Tests/*' \
-            '*/PasswordManager/Common/main.cpp' \
-            '*/PasswordManager/GUI/*' \
-            --output-file coverage.info --ignore-errors mismatch,unused
-          echo "=== Files in coverage report ==="
-          lcov --list coverage.info
-
-      - name: Upload to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: Projects/PasswordManager/coverage.info
-          flags: passwordmanager
-          name: passwordmanager-coverage
-          fail_ci_if_error: false
-
-  sanitize-linux-passwordmanager:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qt6-base-dev libssl-dev libargon2-dev libgtest-dev
-
-      - name: Build with AddressSanitizer (Debug)
-        run: |
-          cd Projects/PasswordManager
-          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DSANITIZE=ON
-          cmake --build build
-
-      - name: Test
-        run: |
-          cd Projects/PasswordManager
           ctest --test-dir build --output-on-failure
