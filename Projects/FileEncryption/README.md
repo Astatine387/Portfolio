@@ -162,7 +162,7 @@ cmake --build build
 | Core/AES_GCM_enc.cpp | 74            | 72      | 0       | 2      | 97.30%     |
 | Utils/Password.cpp   | 23            | 23      | 0       | 0      | 100.00%    |
 | Utils/Password.h     | 21            | 21      | 0       | 0      | 100.00%    |
-| Utils/library.h      | 80            | 78      | 0       | 2      | 94.44%     |
+| Utils/library.h      | 36            | 34      | 0       | 2      | 94.44%     |
 
 | Module   | Test File          | Test Cases                                                             |
 | -------- | ------------------ | ---------------------------------------------------------------------- |
