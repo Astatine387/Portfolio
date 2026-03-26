@@ -1,16 +1,17 @@
 ## 1. Introduction
 
-I'm Astatine387, C/C++ software engineer. I mainly build desktop applications with a focus on security and practicality. I value simple, efficient design with minimal but necessary features.
+I'm Astatine387, a C/C++ software engineer. I mainly build cross-platform desktop applications involving security. I value simple, practical design with minimal but necessary features. I'm currently open to software engineering opportunities in the United States.
 
 ## 2. Tech Stack
 
-* **IDE:** Microsoft Visual Studio 2026
-* **Languages:** C, C++ 20
-* **Libraries & Frameworks:** C++ STL, Argon2, OpenSSL, Qt6
-* **Build & Package:** CMake, vcpkg
-* **Testing:** Codecov, Google Benchmark, Google Test, cppcheck, lcov
-* **CI/CD:** GitHub Actions
-* **Platforms:** Windows, Linux
+| Category                   | Tools                                                  |
+| -------------------------- | ------------------------------------------------------ |
+| **Languages**              | C, C++20                                               |
+| **Libraries & Frameworks** | C++ STL, Argon2, OpenSSL, Qt6                          |
+| **Build & Package**        | CMake, vcpkg                                           |
+| **Testing & Quality**      | Google Test, Google Benchmark, cppcheck, Codecov, lcov |
+| **CI/CD**                  | GitHub Actions                                         |
+| **Platforms**              | Windows, Linux                                         |
 
 ## 3. Projects
 ### 3-1. [FileEncryption](./Projects/FileEncryption)
@@ -30,7 +31,7 @@ GUI, password-based file encryption/decryption tool.
 
 ![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-passwordmanager.yml/badge.svg) ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=passwordmanager)
 
-GUI-based password manager tool.
+GUI-based, encrypted password file manager tool.
 
 **Features:**
 * AES-256-GCM for encryption and integrity check
@@ -50,7 +51,7 @@ GUI-based password manager tool.
 **Badges:** </br>
 ![LeetCode Badges](https://leetcode-badge-showcase.vercel.app/api?username=Astatine387)
 
-**Curated Problems:** </br>
+**Curated Problems:** 
 
 | Title                                                                                                                      | Difficulty                                            | Topics                                   | Time             | Space       | Runtime        | Memory             | Submission                                                                                                                                                                                                                                                                   |
 | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------- | ---------------- | ----------- | -------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
