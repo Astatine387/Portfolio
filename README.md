@@ -31,7 +31,7 @@ GUI, password-based file encryption/decryption tool.
 
 ![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-passwordmanager.yml/badge.svg) ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=passwordmanager)
 
-GUI-based, encrypted password file manager tool.
+GUI, file-based, encrypted password manager tool.
 
 **Features:**
 * AES-256-GCM for encryption and integrity check
