@@ -14,6 +14,14 @@ I'm Astatine387, a C/C++ software engineer. I mainly build cross-platform deskto
 | **Platforms**              | Windows, Linux                                         |
 
 ## 3. Projects
+
+**All projects feature:**
+* Cross-platform support for Windows and Linux
+* CI/CD pipeline via GitHub Actions, including:
+	* Static analysis using cppcheck
+	* Unit tests using Google Test
+	* Coverage report using Codecov
+
 ### 3-1. [FileEncryption](./Projects/FileEncryption)
 
 ![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-fileencryption.yml/badge.svg) ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=fileencryption)
@@ -21,11 +29,10 @@ I'm Astatine387, a C/C++ software engineer. I mainly build cross-platform deskto
 GUI, password-based file encryption/decryption tool.
 
 **Features:**
-* 2 GB/s throughput
+* 2 GB/s throughput in Google Benchmark
 * AES-256-GCM for encryption and integrity check
 * Argon2id memory hard and data independent key derivation
 * Real-time progress tracking and cancellation support
-* Cross-platform support for Windows and Linux
 
 ### 3-2. [PasswordManager](./Projects/PasswordManager)
 
@@ -39,7 +46,6 @@ GUI, file-based, encrypted password manager tool.
 * Random password generator with customizable length and special characters
 * Automatic clipboard clear after password copy
 * Search and filter entries by keyword
-* Cross-platform support for Windows and Linux
 
 ## 4. LeetCode
 
