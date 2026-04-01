@@ -81,4 +81,3 @@ GUI, file-based, encrypted password manager tool.
 ## 5. Contact
 
 **Email:** astatine387@outlook.com
-**LinkedIn:** https://www.linkedin.com/in/astatine387/
