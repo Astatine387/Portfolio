@@ -53,13 +53,13 @@ GUI-based encrypted password file manager tool.
 
 **Features**
 * AES-256-GCM for vault encryption and integrity check
-* Argon2id for key derivation from master password
 * Qt library for graphical user interface
 * Random password generator with customizable length and special characters
 * Search and filter entries by keyword
 
 **Security Considerations**
-* AES-GCM tag checks integrity; corrupted or tampered vault files are rejected before decryption starts
+* Argon2id memory hard and data independent key derivation, resistant to both brute force attacks and side channel attacks
+* GCM tag checks integrity; corrupted or tampered vault files are rejected before decryption starts
 * Automatic clipboard clear after 30 seconds of password copy
 * Constant time password comparison
 * Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
