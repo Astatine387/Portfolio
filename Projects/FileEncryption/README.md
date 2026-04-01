@@ -8,7 +8,7 @@ This is a GUI, password-based file encryption/decryption tool.
 
 ## 2. Features
 
-* AES-256-GCM algorithm for file encryption and integrity check
+* AES-256-GCM for file encryption and integrity check
 * Argon2id for key derivation from password
 * Qt library for graphical user interface
 * Double buffering and asynchronous write for better performance 
@@ -37,7 +37,7 @@ This is a GUI, password-based file encryption/decryption tool.
 
 ### 2-2. Security Considerations
 
-* AES-GCM tag provides integrity check; corrupted or tampered ciphertext files are rejected before decryption starts
+* GCM tag provides integrity check; corrupted or tampered ciphertext files are rejected before decryption starts
 * Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
 * Keys are locked in memory using `VirtualLock`/`mlock` to prevent them from being swapped to disk
 * Newly and randomly generated salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)

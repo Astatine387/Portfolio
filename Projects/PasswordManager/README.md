@@ -8,7 +8,7 @@ This is a GUI-based, encrypted password file manager tool.
 
 ## 2. Features
 
-* AES-256-GCM algorithm for vault encryption and integrity check
+* AES-256-GCM for vault encryption and integrity check
 * Argon2id for key derivation from master password
 * Qt library for graphical user interface
 * Random password generator with customizable length and special characters
@@ -36,7 +36,7 @@ This is a GUI-based, encrypted password file manager tool.
 
 ### 2-2. Security Considerations
 
-* AES-GCM tag checks integrity; corrupted or tampered vault files are rejected before decryption starts
+* GCM tag checks integrity; corrupted or tampered vault files are rejected before decryption starts
 * Automatic clipboard clear after 30 seconds of password copy
 * Constant time password comparison
 * Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
