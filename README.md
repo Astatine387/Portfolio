@@ -28,24 +28,45 @@ I'm Astatine387, a C/C++ software engineer. I mainly build cross-platform deskto
 
 GUI, password-based file encryption/decryption tool.
 
-**Features:**
-* 2 GB/s throughput in Google Benchmark
-* AES-256-GCM for encryption and integrity check
-* Argon2id memory hard and data independent key derivation
+**Features**
+* 2 GB/s throughput with Google Benchmark
+* AES-256-GCM for file encryption and integrity check
+* Argon2id for key derivation from password
+* Qt library for graphical user interface
+* Double buffering and asynchronous write for better performance 
+* Asynchronous, multithread processing for non-blocking UI
 * Real-time progress tracking and cancellation support
+* Error report and automatic stop when error occurs
+
+**Security Considerations**
+* Argon2id memory hard and data independent key derivation, resistant to both brute force attacks and side channel attacks
+* GCM tag provides integrity check; corrupted or tampered ciphertext files are rejected before decryption starts
+* Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
+* Keys are locked in memory using `VirtualLock`/`mlock` to prevent them from being swapped to disk
+* Newly and randomly generated salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 
 ### 3-2. [PasswordManager](./Projects/PasswordManager)
 
 ![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-passwordmanager.yml/badge.svg) ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=passwordmanager)
 
-GUI, file-based, encrypted password manager tool.
+GUI-based encrypted password file manager tool.
 
-**Features:**
-* AES-256-GCM for encryption and integrity check
-* Argon2id memory hard and data independent key derivation
+**Features**
+* AES-256-GCM for vault encryption and integrity check
+* Argon2id for key derivation from master password
+* Qt library for graphical user interface
 * Random password generator with customizable length and special characters
-* Automatic clipboard clear after password copy
 * Search and filter entries by keyword
+
+**Security Considerations**
+* AES-GCM tag checks integrity; corrupted or tampered vault files are rejected before decryption starts
+* Automatic clipboard clear after 30 seconds of password copy
+* Constant time password comparison
+* Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
+* Keys are locked in memory using `VirtualLock`/`mlock` to prevent them from being swapped to disk
+* Newly and randomly generated salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
+* Password generator guarantees at least one each of uppercase, lowercase, digit, and special character
+* Vault files are re-encrypted with new salt and initial vector for each save or master password change
 
 ## 4. LeetCode
 
