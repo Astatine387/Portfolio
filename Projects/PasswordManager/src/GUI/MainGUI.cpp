@@ -263,6 +263,20 @@ void MainGUI::onChangePWRequested() {
 	}
 }
 
+void MainGUI::closeEvent(QCloseEvent *event) {
+	if (timer) {
+		timer->stop();
+		timer->disconnect();
+		timer->deleteLater();
+		timer = nullptr;
+
+		QClipboard *board = QGuiApplication::clipboard();
+		board->clear();
+	}
+
+	QWidget::closeEvent(event);
+}
+
 void MainGUI::refreshList() {
 	std::vector<std::pair<std::string, std::string>> entryVec;
 	const auto &entrySet = vault.getEntries();

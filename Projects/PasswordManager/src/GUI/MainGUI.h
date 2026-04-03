@@ -140,6 +140,11 @@ private:
 	ErrorCallback ecb = nullptr;
 
 	/**
+	 * @brief	Clean timer and clipboard when GUI is closed
+	 */
+	void closeEvent(QCloseEvent *event);
+
+	/**
 	 * @brief	Refresh list GUI
 	 */
 	void refreshList();
