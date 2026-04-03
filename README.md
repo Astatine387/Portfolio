@@ -1,6 +1,6 @@
 ## 1. Introduction
 
-I'm Astatine387, a C/C++ software engineer. I mainly build cross-platform desktop applications involving security. I value simple, practical design with minimal but necessary features. I'm currently open to software engineering opportunities in the United States.
+I'm Astatine387, a C/C++ software engineer building cross-platform desktop applications with a focus on security and memory handling. I value efficient, practical design with minimal but necessary features. I'm open to find opportunities in the United States.
 
 ## 2. Tech Stack
 
@@ -102,3 +102,4 @@ GUI-based encrypted password file manager tool.
 ## 5. Contact
 
 **Email:** astatine387@outlook.com
+**LinkedIn:** https://www.linkedin.com/in/astatine387/
