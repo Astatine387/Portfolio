@@ -101,5 +101,5 @@ GUI-based encrypted password file manager tool.
 
 ## 5. Contact
 
-**Email:** astatine387@outlook.com
+**Email:** astatine387@outlook.com</br>
 **LinkedIn:** https://www.linkedin.com/in/astatine387/
