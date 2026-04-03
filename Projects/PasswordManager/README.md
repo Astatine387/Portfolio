@@ -10,7 +10,7 @@ This is a GUI-based, encrypted password file manager tool.
 
 * AES-256-GCM for vault encryption and integrity check
 * Argon2id for key derivation from master password
-* Qt library for graphical user interface
+* Qt6 graphical user interface
 * Random password generator with customizable length and special characters
 * Automatic clipboard clear after 30 seconds of password copy
 * Search and filter entries by keyword

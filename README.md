@@ -15,12 +15,12 @@ I'm Astatine387, a C/C++ software engineer. I mainly build cross-platform deskto
 
 ## 3. Projects
 
-**All projects feature:**
-* Cross-platform support for Windows and Linux
-* CI/CD pipeline via GitHub Actions, including:
-	* Static analysis using cppcheck
-	* Unit tests using Google Test
-	* Coverage report using Codecov
+**All Projects Feature:**
+* Cross-platform support (Windows, Linux)
+* CI/CD via GitHub Actions
+	* Static analysis (cppcheck)
+	* Unit tests (Google Test)
+	* Coverage report (Codecov)
 
 ### 3-1. [FileEncryption](./Projects/FileEncryption)
 
@@ -32,7 +32,7 @@ GUI, password-based file encryption/decryption tool.
 * 2 GB/s throughput with Google Benchmark
 * AES-256-GCM for file encryption and integrity check
 * Argon2id for key derivation from password
-* Qt library for graphical user interface
+* Qt6 graphical user interface
 * Double buffering and asynchronous write for better performance 
 * Asynchronous, multithread processing for non-blocking UI
 * Real-time progress tracking and cancellation support
@@ -53,7 +53,7 @@ GUI-based encrypted password file manager tool.
 
 **Features**
 * AES-256-GCM for vault encryption and integrity check
-* Qt library for graphical user interface
+* Qt6 graphical user interface
 * Random password generator with customizable length and special characters
 * Search and filter entries by keyword
 

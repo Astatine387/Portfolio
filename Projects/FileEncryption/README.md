@@ -10,7 +10,7 @@ This is a GUI, password-based file encryption/decryption tool.
 
 * AES-256-GCM for file encryption and integrity check
 * Argon2id for key derivation from password
-* Qt library for graphical user interface
+* Qt6 graphical user interface
 * Double buffering and asynchronous write for better performance 
 * Asynchronous, multithread processing for non-blocking UI
 * Real-time progress tracking and cancellation support
