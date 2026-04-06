@@ -1,6 +1,6 @@
 ## 1. Introduction
 
-I'm Astatine387, a C/C++ software engineer building cross-platform desktop applications with a focus on security and memory handling. I value efficient, practical design with minimal but necessary features. I'm open to find opportunities in the United States.
+I'm Astatine387, a C/C++ software engineer building cross-platform desktop applications with a focus on security and memory safety. I value efficient, practical design with minimal but necessary features. I'm open to find opportunities in the United States.
 
 ## 2. Tech Stack
 
@@ -26,10 +26,10 @@ I'm Astatine387, a C/C++ software engineer building cross-platform desktop appli
 
 ![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-fileencryption.yml/badge.svg) ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=fileencryption)
 
-GUI, password-based file encryption/decryption tool.
+Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2id, and Qt6.
 
 **Features**
-* 2 GB/s throughput with Google Benchmark
+* 2 GiB/s Google Benchmark throughput
 * AES-256-GCM for file encryption and integrity check
 * Argon2id for key derivation from password
 * Qt6 graphical user interface
@@ -43,13 +43,13 @@ GUI, password-based file encryption/decryption tool.
 * GCM tag provides integrity check; corrupted or tampered ciphertext files are rejected before decryption starts
 * Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
 * Keys are locked in memory using `VirtualLock`/`mlock` to prevent them from being swapped to disk
-* Newly and randomly generated salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
+* Randomized salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 
 ### 3-2. [PasswordManager](./Projects/PasswordManager)
 
 ![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-passwordmanager.yml/badge.svg) ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=passwordmanager)
 
-GUI-based encrypted password file manager tool.
+GUI encrypted password file manager using AES-256-GCM and Argon2id.
 
 **Features**
 * AES-256-GCM for vault encryption and integrity check
@@ -64,9 +64,9 @@ GUI-based encrypted password file manager tool.
 * Constant time password comparison
 * Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
 * Keys are locked in memory using `VirtualLock`/`mlock` to prevent them from being swapped to disk
-* Newly and randomly generated salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * Password generator guarantees at least one each of uppercase, lowercase, digit, and special character
-* Vault files are re-encrypted with new salt and initial vector for each save or master password change
+* Randomized salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
+* Vault files are re-encrypted with new salt and IV for each save or master password change
 
 ## 4. LeetCode
 

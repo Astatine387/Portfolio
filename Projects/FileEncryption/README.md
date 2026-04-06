@@ -1,6 +1,6 @@
 ## 1. Introduction
 
-This is a GUI, password-based file encryption/decryption tool.
+Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2id, and Qt6.
 
 ![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white) ![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)</br>
 ![C++](https://img.shields.io/badge/C++-20-00599C?logo=cplusplus) ![OpenSSL](https://img.shields.io/badge/OpenSSL-3.0-721412?logo=openssl&logoColor=white) ![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt&logoColor=white)</br>
@@ -94,7 +94,7 @@ Source
 * Maximum 64 GiB file
 * No batch encryption (Single file only)
 * No CLI mode (GUI only)
-* No key file support (Password-based key only)
+* No key file support (Password only)
 * No log file (GUI message and progress bar only)
 * No original file removal
 
@@ -205,13 +205,13 @@ ctest --test-dir build --output-on-failure
 	* **File Size:** 4 GiB
 
 * **Results** (on cold start)
-	* **Encryption:** 1.1~1.3GB/s
-	* **Decryption:** 1.2~1.3GB/s
+	* **Encryption:** 1.1 ~ 1.3 GiB/s
+	* **Decryption:** 1.2 ~ 1.3 GiB/s
 	* **Argon2id Key Derivation:** 430ms
 
 * **Results** (after warm-up)
-	* **Encryption:** 1.9~2.1GB/s
-	* **Decryption:** 2.0~2.1GB/s
+	* **Encryption:** 1.9 ~ 2.1 GiB/s
+	* **Decryption:** 2.0 ~ 2.1 GiB/s
 	* **Argon2id Key Derivation:** 310ms
 
 **Running Benchmarks Locally:** 

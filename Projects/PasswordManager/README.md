@@ -1,6 +1,6 @@
 ## 1. Introduction
 
-This is a GUI-based, encrypted password file manager tool.
+GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 
 ![Windows](https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white) ![Linux|57](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)</br>
 ![C++](https://img.shields.io/badge/C++-20-00599C?logo=cplusplus) ![OpenSSL](https://img.shields.io/badge/OpenSSL-3.0-721412?logo=openssl&logoColor=white) ![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt&logoColor=white)</br>
@@ -125,7 +125,7 @@ Source
 ### 3-3. Limitations
 
 * No CLI mode (GUI only)
-* No key file support (Password-based key only)
+* No key file support (Password only)
 * No cloud sync (Local vault file only)
 * No auto-lock on idle
 
