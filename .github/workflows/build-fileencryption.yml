@@ -1,6 +1,17 @@
 name: FileEncryption Build Test
 
-on: [workflow_dispatch]
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Projects/FileEncryption/**'
+      - '.github/workflows/build-fileencryption.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Projects/FileEncryption/**'
+      - '.github/workflows/build-fileencryption.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
