@@ -20,6 +20,7 @@ I'm Astatine387, a C/C++ software engineer building cross-platform desktop appli
 * CI/CD via GitHub Actions
 	* Static analysis (cppcheck)
 	* Unit tests (Google Test)
+	* Runtime memory safety validation (AddressSanitizer)
 	* Coverage report (Codecov)
 
 ### 3-1. [FileEncryption](./Projects/FileEncryption)
