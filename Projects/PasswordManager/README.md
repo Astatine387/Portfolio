@@ -1,4 +1,4 @@
-## 1. Introduction
+# 1. Introduction
 
 GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 
@@ -6,7 +6,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 ![C++](https://img.shields.io/badge/C++-20-00599C?logo=cplusplus) ![OpenSSL](https://img.shields.io/badge/OpenSSL-3.0-721412?logo=openssl&logoColor=white) ![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt&logoColor=white)</br>
 ![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-passwordmanager.yml/badge.svg)
 
-## 2. Features
+# 2. Features
 
 * AES-256-GCM for vault encryption and integrity check
 * Argon2id for key derivation from master password
@@ -16,7 +16,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 * Search and filter entries by keyword
 * Cross-platform support for Windows and Linux
 
-### 2-1. Why use this?
+## 2-1. Why use this?
 
 * **AES-GCM**
 	* **AES**
@@ -34,7 +34,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 		* Argon2i: Data independent memory access, resistant to side channel attack
 		* Argon2d: Memory hard function, resistant to brute force attack using GPU or ASIC
 
-### 2-2. Security Considerations
+## 2-2. Security Considerations
 
 * GCM tag checks integrity; corrupted or tampered vault files are rejected before decryption starts
 * Automatic clipboard clear after 30 seconds of password copy
@@ -45,7 +45,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 * Password generator guarantees at least one each of uppercase, lowercase, digit, and special character
 * Vault files are re-encrypted with new salt and initial vector for each save or master password change
 
-## 3. Specifications
+# 3. Specifications
 
 * **AES-256-GCM**
 	* **IV Size:** 96 bits (recommended for AES-256-GCM)
@@ -68,7 +68,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 	* **Maximum Vault File Size:** 2 GiB
 	* **Maximum Master Password Length:** 256 Characters
 
-### 3-1. Vault File Format
+## 3-1. Vault File Format
 
 **Vault Format:** 
 ```
@@ -94,7 +94,7 @@ Site Name Length (4 Bytes) | Site Name | Account Length (4 Bytes) | Account | Pa
 }
 ```
 
-### 3-2. Source Code Architecture
+## 3-2. Source Code Architecture
 
 ```
 Source
@@ -122,15 +122,15 @@ Source
     └── library.h/cpp        # Utility functions
 ```
 
-### 3-3. Limitations
+## 3-3. Limitations
 
 * No CLI mode (GUI only)
 * No key file support (Password only)
 * No cloud sync (Local vault file only)
 * No auto-lock on idle
 
-## 4. Build and Usage
-### 4-1. Prerequisites
+# 4. Build and Usage
+## 4-1. Prerequisites
 
 **Windows:**
 * Visual Studio 2022+ with C++ workload
@@ -143,7 +143,7 @@ Source
 * CMake 3.16+
 * Qt6 development packages
 
-### 4-2. Build
+## 4-2. Build
 
 **Windows:**
 ```cmd
@@ -167,7 +167,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-### 4-3. Usage
+## 4-3. Usage
 
 ![LoginGUI](LoginGUI.png)
 
@@ -185,8 +185,8 @@ cmake --build build
 4. Add, edit, or delete password entries
 5. Click Save to encrypt and store the vault
 
-## 5. Testing
-### 5-1. Coverage
+# 5. Testing
+## 5-1. Coverage
 
 ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=passwordmanager)
 
@@ -217,7 +217,7 @@ cmake --build build
 
 **Note:** GUI files, error messages for external libraries and system calls are excluded from tests.
 
-### 5-2. Running Tests
+## 5-2. Running Tests
 
 **Windows:**
 ```cmd
@@ -231,7 +231,7 @@ cd Projects/PasswordManager
 ctest --test-dir build --output-on-failure
 ```
 
-### 5-3. Continuous Integration
+## 5-3. Continuous Integration
 
 | Check | Windows | Linux |
 |-------|---------|-------|
@@ -240,7 +240,7 @@ ctest --test-dir build --output-on-failure
 | Static Analysis (cppcheck) | - | ✅ |
 | Coverage Report | - | ✅ Codecov |
 
-## 6. License
+# 6. License
 
 * This project is licensed under the MIT License. See [LICENSE.md](LICENSE.md) for more details.
 * This project uses the following third-party libraries. See [LICENSES-THIRD-PARTY.md](LICENSES-THIRD-PARTY.md) for more details.

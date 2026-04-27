@@ -1,4 +1,4 @@
-## 1. Introduction
+# 1. Introduction
 
 Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2id, and Qt6.
 
@@ -6,7 +6,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 ![C++](https://img.shields.io/badge/C++-20-00599C?logo=cplusplus) ![OpenSSL](https://img.shields.io/badge/OpenSSL-3.0-721412?logo=openssl&logoColor=white) ![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt&logoColor=white)</br>
 ![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-fileencryption.yml/badge.svg)
 
-## 2. Features
+# 2. Features
 
 * AES-256-GCM for file encryption and integrity check
 * Argon2id for key derivation from password
@@ -17,7 +17,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * Error report and automatic stop when error occurs
 * Cross-platform support for Windows and Linux
 
-### 2-1. Why use this?
+## 2-1. Why use this?
 
 * **AES-GCM**
 	* **AES**
@@ -31,18 +31,19 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 
 * **Argon2id**
 	* Winner of 2015 Password Hashing Competition
+	* Recommendation of OWASP and RFC 9106
 	* Hybrid of Argon2i and Argon2d, balances strength of both algorithms
 		* Argon2i: Data independent memory access, resistant to side channel attack
 		* Argon2d: Memory hard function, resistant to brute force attack using GPU or ASIC
 
-### 2-2. Security Considerations
+## 2-2. Security Considerations
 
 * GCM tag provides integrity check; corrupted or tampered ciphertext files are rejected before decryption starts
 * Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
 * Keys are locked in memory using `VirtualLock`/`mlock` to prevent them from being swapped to disk
 * Newly and randomly generated salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 
-## 3. Specifications
+# 3. Specifications
 
 * **Maximum File Size:** 64 GiB (2 ^ 32 blocks, limitation of 32-bit counter)
 
@@ -60,13 +61,13 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 
 * **Buffer Size:** 4096 blocks (64 KiB)
 
-### 3-1. Encrypted File Format
+## 3-1. Encrypted File Format
 
 ```
 Salt (16 Bytes) │ IV (12 Bytes) │ Encrypted Data │ Tag (16 Bytes)
 ```
 
-### 3-2. Source Code Architecture
+## 3-2. Source Code Architecture
 
 ```
 Source
@@ -89,7 +90,7 @@ Source
     └── library.h.cpp      # Utility functions
 ```
 
-### 3-3. Limitations
+## 3-3. Limitations
 
 * Maximum 64 GiB file
 * No batch encryption (Single file only)
@@ -98,8 +99,8 @@ Source
 * No log file (GUI message and progress bar only)
 * No original file removal
 
-## 4. Build and Usage
-### 4-1. Prerequisites
+# 4. Build and Usage
+## 4-1. Prerequisites
 
 **Windows:**
 * Visual Studio 2022+ with C++ workload
@@ -112,7 +113,7 @@ Source
 * CMake 3.16+
 * Qt6 development packages
 
-### 4-2. Build
+## 4-2. Build
 
 **Windows:**
 ```cmd
@@ -136,7 +137,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-### 4-3. Usage
+## 4-3. Usage
 
 ![InputGUI](InputGUI.png)
 
@@ -149,8 +150,8 @@ cmake --build build
 5. Enter password
 6. Click Start
 
-## 5. Testing
-### 5-1. Coverage
+# 5. Testing
+## 5-1. Coverage
 
 ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=fileencryption)
 
@@ -172,7 +173,7 @@ cmake --build build
 
 **Note:** GUI files, error messages for external libraries and system calls are excluded from tests.
 
-### 5-2. Running Tests
+## 5-2. Running Tests
 
 **Windows:**
 ```cmd
@@ -186,7 +187,7 @@ cd Projects/FileEncryption
 ctest --test-dir build --output-on-failure
 ```
 
-### 5-3. Continuous Integration
+## 5-3. Continuous Integration
 
 | Check | Windows | Linux |
 |-------|---------|-------|
@@ -195,7 +196,7 @@ ctest --test-dir build --output-on-failure
 | Static Analysis (cppcheck) | - | ✅ |
 | Coverage Report | - | ✅ Codecov |
 
-## 6. Benchmark
+# 6. Benchmark
 
 * **Test Environment** (Local)
 	* **OS:** Windows 11 Pro
@@ -222,7 +223,7 @@ cmake --build build --config Release --target FileEncryption-bench
 .\build\Release\FileEncryption-bench.exe
 ```
 
-## 7. License
+# 7. License
 
 * This project is licensed under the MIT License. See [LICENSE.md](LICENSE.md) for more details.
 * This project uses the following third-party libraries. See [LICENSES-THIRD-PARTY.md](LICENSES-THIRD-PARTY.md) for more details.

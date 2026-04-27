@@ -1,8 +1,8 @@
-## 1. Introduction
+# 1. Introduction
 
 I'm Astatine387, a C/C++ software engineer building cross-platform desktop applications with a focus on security and memory safety. I value efficient, practical design with minimal but necessary features. I'm open to find opportunities in the United States.
 
-## 2. Tech Stack
+# 2. Tech Stack
 
 | Category                   | Tools                                                  |
 | -------------------------- | ------------------------------------------------------ |
@@ -13,7 +13,7 @@ I'm Astatine387, a C/C++ software engineer building cross-platform desktop appli
 | **CI/CD**                  | GitHub Actions                                         |
 | **Platforms**              | Windows, Linux                                         |
 
-## 3. Projects
+# 3. Projects
 
 **All Projects Feature:**
 * Cross-platform support (Windows, Linux)
@@ -23,7 +23,7 @@ I'm Astatine387, a C/C++ software engineer building cross-platform desktop appli
 	* Runtime memory safety validation (AddressSanitizer)
 	* Coverage report (Codecov)
 
-### 3-1. [FileEncryption](./Projects/FileEncryption)
+## 3-1. [FileEncryption](./Projects/FileEncryption)
 
 ![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-fileencryption.yml/badge.svg) ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=fileencryption)
 
@@ -46,7 +46,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * Keys are locked in memory using `VirtualLock`/`mlock` to prevent them from being swapped to disk
 * Randomized salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 
-### 3-2. [PasswordManager](./Projects/PasswordManager)
+## 3-2. [PasswordManager](./Projects/PasswordManager)
 
 ![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-passwordmanager.yml/badge.svg) ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=passwordmanager)
 
@@ -69,7 +69,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id.
 * Randomized salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * Vault files are re-encrypted with new salt and IV for each save or master password change
 
-## 4. LeetCode
+# 4. LeetCode
 
 **Profile:** https://leetcode.com/u/Astatine387/
 
