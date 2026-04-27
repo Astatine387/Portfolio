@@ -108,4 +108,12 @@ target_link_libraries(PasswordManager-tests PRIVATE
 )
 
 include(GoogleTest)
-gtest_discover_tests(PasswordManager-tests)
+
+if(WIN32)
+    gtest_discover_tests(PasswordManager-tests
+        PROPERTIES ENVIRONMENT "PATH=$<TARGET_FILE_DIR:Qt6::Core>;$ENV{PATH}"
+        DISCOVERY_MODE PRE_TEST
+    )
+else()
+    gtest_discover_tests(PasswordManager-tests)
+endif()

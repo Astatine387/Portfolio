@@ -97,7 +97,15 @@ target_link_libraries(FileEncryption-tests PRIVATE
 )
 
 include(GoogleTest)
-gtest_discover_tests(FileEncryption-tests)
+
+if(WIN32)
+    gtest_discover_tests(FileEncryption-tests
+        PROPERTIES ENVIRONMENT "PATH=$<TARGET_FILE_DIR:Qt6::Core>;$ENV{PATH}"
+        DISCOVERY_MODE PRE_TEST
+    )
+else()
+    gtest_discover_tests(FileEncryption-tests)
+endif()
 
 find_package(benchmark CONFIG QUIET)
 
