@@ -16,22 +16,22 @@
  * @brief   Encryption/decryption mode selection widget
  */
 class ModeButton : public QWidget {
-public:
-    /**
-     * @brief   Constructor of ModeButton class
-     * @param   parent  Parent widget
-     */
-    explicit ModeButton(QWidget *parent = nullptr);
+ public:
+  /**
+   * @brief   Constructor of ModeButton class
+   * @param   parent  Parent widget
+   */
+  explicit ModeButton(QWidget* parent = nullptr);
 
-    /**
-     * @brief   Get the currently selected mode
-     * @return  0 for encrypt, 1 for decrypt, -1 if neither is selected
-     */
-    int getMode();
+  /**
+   * @brief   Get the currently selected mode
+   * @return  0 for encrypt, 1 for decrypt, -1 if neither is selected
+   */
+  int getMode();
 
-private:
-    QButtonGroup *btnGrp;
-    QHBoxLayout *hBox;
-    QRadioButton *encBtn;
-    QRadioButton *decBtn;
+ private:
+  QButtonGroup* btnGrp;
+  QHBoxLayout* hBox;
+  QRadioButton* encBtn;
+  QRadioButton* decBtn;
 };

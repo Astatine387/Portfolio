@@ -6,8 +6,9 @@
 
 #pragma once
 
-#include "Common/constants.h"
 #include <cstdio>
+
+#include "Common/constants.h"
 
 class QString;
 
@@ -16,7 +17,7 @@ class QString;
  * @param	file	File pointer in read binary mode
  * @return	File size in bytes on success, -1 on failure
  */
-int64_t GetFileSize(FILE *file);
+int64_t GetFileSize(FILE* file);
 
 /**
  * @brief	Generate CSPRN in given range
@@ -31,7 +32,7 @@ uint32_t RandomRange(uint32_t min, uint32_t max);
  * @param	path	File path
  * @return	1 if file exists, 0 if file not exists
  */
-bool FileExists(const QString &path);
+bool FileExists(const QString& path);
 
 /**
  * @brief	Derive a key using Argon2id
@@ -55,14 +56,14 @@ int GetProcNum();
  * @param	size	Output buffer size
  * @return	0 on success, non-zero on failure
  */
-int Random(uint8_t *dst, size_t size);
+int Random(uint8_t* dst, size_t size);
 
 /**
  * @brief	Delete a file
  * @param	path	File path
  * @return	0 on success, non-zero on failure
  */
-int RemoveFile(const QString &path);
+int RemoveFile(const QString& path);
 
 /**
  * @brief	Rename (move) a file, replacing destination if it exists
@@ -70,21 +71,21 @@ int RemoveFile(const QString &path);
  * @param	dst		Destination file path
  * @return	0 on success, non-zero on failure
  */
-int RenameFile(const QString &src, const QString &dst);
+int RenameFile(const QString& src, const QString& dst);
 
 /**
  * @brief	Flush and sync file data to disk
  * @param	file	File pointer
  * @return	0 on success, non-zero on failure
  */
-int SyncFile(FILE *file);
+int SyncFile(FILE* file);
 
 /**
  * @brief	Lock memory space so that it cannot be swapped
  * @param	buff	Buffer to lock
  * @param	size	Buffer size in bytes
  */
-void Lock(void *ptr, size_t size);
+void Lock(void* ptr, size_t size);
 
 /**
  * @brief	Open a file
@@ -92,32 +93,32 @@ void Lock(void *ptr, size_t size);
  * @param	path	File path
  * @param	mode	Mode
  */
-void OpenFile(FILE **file, const QString &path, const char *mode);
+void OpenFile(FILE** file, const QString& path, const char* mode);
 
 /**
  * @brief	Shuffle an array
  * @param	arr		Array to shuffle
  * @param	size	Array size
  */
-void Shuffle(uint8_t *arr, int size);
+void Shuffle(uint8_t* arr, int size);
 
 /**
  * @brief	Swap two data
  * @param	a	First datum
  * @param	b	Second datum
  */
-void Swap(uint8_t *a, uint8_t *b);
+void Swap(uint8_t* a, uint8_t* b);
 
 /**
  * @brief	Unlock memory space so that it can be swapped
  * @param	buff	Buffer to unlock
  * @param	size	Buffer size in bytes
  */
-void Unlock(void *ptr, size_t size);
+void Unlock(void* ptr, size_t size);
 
 /**
  * @brief	Securely wipe data in memory
  * @param	buff	Buffer to wipe
  * @param	size	Buffer size in bytes
  */
-void Wipe(void *buff, size_t size);
+void Wipe(void* buff, size_t size);

@@ -123,3 +123,31 @@ if(benchmark_FOUND)
     )
 
 endif()
+
+file(GLOB_RECURSE ALL_CXX_SOURCE_FILES
+     CONFIGURE_DEPENDS
+     ${CMAKE_SOURCE_DIR}/src/*.cpp
+     ${CMAKE_SOURCE_DIR}/src/*.h)
+
+find_program(CLANG_FORMAT_EXE clang-format)
+find_program(CLANG_TIDY_EXE clang-tidy)
+
+if(CLANG_FORMAT_EXE)
+    add_custom_target(format
+        COMMAND ${CLANG_FORMAT_EXE} -i --style=file ${ALL_CXX_SOURCE_FILES}
+        COMMENT "Running clang-format on all source files"
+        VERBATIM)
+
+    add_custom_target(format-check
+        COMMAND ${CLANG_FORMAT_EXE} --dry-run --Werror --style=file ${ALL_CXX_SOURCE_FILES}
+        COMMENT "Checking clang-format compliance"
+        VERBATIM)
+else()
+    message(WARNING "clang-format not found")
+endif()
+
+if(CLANG_TIDY_EXE)
+    message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
+else()
+    message(WARNING "clang-tidy not found")
+endif()

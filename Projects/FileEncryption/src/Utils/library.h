@@ -6,8 +6,9 @@
 
 #pragma once
 
-#include "Common/constants.h"
 #include <cstdio>
+
+#include "Common/constants.h"
 
 class QString;
 
@@ -16,14 +17,14 @@ class QString;
  * @param	file	File pointer in read binary mode
  * @return	file size in bytes on success, -1 on failure
  */
-int64_t GetFileSize(FILE *file);
+int64_t GetFileSize(FILE* file);
 
 /**
  * @brief	Check a file exists
  * @param	path	File path
  * @return	1 if file exists, 0 if file not exists
  */
-bool FileExists(const QString &path);
+bool FileExists(const QString& path);
 
 /**
  * @brief	Derive a key using Argon2id
@@ -33,7 +34,7 @@ bool FileExists(const QString &path);
  * @param	key		Output buffer for key
  * @return	0 on success, non-zero on failure
  */
-int Argon2id(uint8_t *salt, const char *pw, size_t plen, uint8_t *key);
+int Argon2id(uint8_t* salt, const char* pw, size_t plen, uint8_t* key);
 
 /**
  * @brief	Get the number of processors available
@@ -47,14 +48,14 @@ int GetProcNum();
  * @param	size	Output buffer size
  * @return	0 on success, non-zero on failure
  */
-int Random(uint8_t *dst, size_t size);
+int Random(uint8_t* dst, size_t size);
 
 /**
  * @brief	Delete a file
  * @param	path	File path
  * @return	0 on success, non-zero on failure
  */
-int RemoveFile(const QString &path);
+int RemoveFile(const QString& path);
 
 /**
  * @brief	Move file pointer to specific position
@@ -63,14 +64,14 @@ int RemoveFile(const QString &path);
  * @param	ref		Reference point
  * @return	0 on success, non-zero on failure
  */
-int Seek(FILE *file, int64_t dist, int ref);
+int Seek(FILE* file, int64_t dist, int ref);
 
 /**
  * @brief	Lock memory space so that it cannot be swapped
  * @param	buff	Buffer to lock
  * @param	size	Buffer size in bytes
  */
-void Lock(void *ptr, size_t size);
+void Lock(void* ptr, size_t size);
 
 /**
  * @brief	Open a file
@@ -78,18 +79,18 @@ void Lock(void *ptr, size_t size);
  * @param	path	File path
  * @param	mode	Mode
  */
-void OpenFile(FILE **file, const QString &path, const char *mode);
+void OpenFile(FILE** file, const QString& path, const char* mode);
 
 /**
  * @brief	Unlock memory space so that it can be swapped
  * @param	buff	Buffer to unlock
  * @param	size	Buffer size in bytes
  */
-void Unlock(void *ptr, size_t size);
+void Unlock(void* ptr, size_t size);
 
 /**
  * @brief	Securely wipe data in memory
  * @param	buff	Buffer to wipe
  * @param	size	Buffer size in bytes
  */
-void Wipe(void *buff, size_t size);
+void Wipe(void* buff, size_t size);

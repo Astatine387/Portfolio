@@ -6,85 +6,81 @@
 
 #include "InputGUI.h"
 
-InputGUI::InputGUI(QWidget *parent) : QWidget(parent) {
-    /* Create layouts and components */
+InputGUI::InputGUI(QWidget* parent) : QWidget(parent) {
+  /* Create layouts and components */
 
-    modeBtn = new ModeButton;
-    srcLine = new QLineEdit;
-    dstLine = new QLineEdit;
-    pwLine = new PWLineEdit;
-    startBtn = new QPushButton("Start");
-    errMsg = new QLabel;
-    hBox = new QHBoxLayout;
-    vBox = new QVBoxLayout;
+  modeBtn = new ModeButton;
+  srcLine = new QLineEdit;
+  dstLine = new QLineEdit;
+  pwLine = new PWLineEdit;
+  startBtn = new QPushButton("Start");
+  errMsg = new QLabel;
+  hBox = new QHBoxLayout;
+  vBox = new QVBoxLayout;
 
+  /* Set placeholder text that indicates each field */
 
-    /* Set placeholder text that indicates each field */
+  srcLine->setPlaceholderText("Source File");
+  dstLine->setPlaceholderText("Destination File");
 
-    srcLine->setPlaceholderText("Source File");
-    dstLine->setPlaceholderText("Destination File");
+  /* Put start button and error message in the same line */
 
+  hBox->addWidget(startBtn);
+  hBox->addWidget(errMsg);
+  hBox->addStretch();
+  hBox->setSpacing(10);
+  hBox->setContentsMargins(0, 0, 0, 0);
 
-    /* Put start button and error message in the same line */
+  /* Configure main layout */
 
-    hBox->addWidget(startBtn);
-    hBox->addWidget(errMsg);
-    hBox->addStretch();
-    hBox->setSpacing(10);
-    hBox->setContentsMargins(0, 0, 0, 0);
+  vBox->addWidget(modeBtn);
+  vBox->addWidget(srcLine);
+  vBox->addWidget(dstLine);
+  vBox->addWidget(pwLine);
+  vBox->addLayout(hBox);
+  vBox->addStretch();
+  vBox->setSpacing(10);
+  vBox->setContentsMargins(10, 10, 10, 10);
 
+  setLayout(vBox);
 
-    /* Configure main layout */
+  /* Connect encryption/decryption start function to button */
 
-    vBox->addWidget(modeBtn);
-    vBox->addWidget(srcLine);
-    vBox->addWidget(dstLine);
-    vBox->addWidget(pwLine);
-    vBox->addLayout(hBox);
-    vBox->addStretch();
-    vBox->setSpacing(10);
-    vBox->setContentsMargins(10, 10, 10, 10);
-
-    setLayout(vBox);
-
-
-    /* Connect encryption/decryption start function to button */
-
-    connect(startBtn, &QPushButton::clicked, this, &InputGUI::onStartClicked);
+  connect(startBtn, &QPushButton::clicked, this, &InputGUI::onStartClicked);
 }
 
-void InputGUI::setErrMsg(const QString &msg) {
-    errMsg->setText(msg);
+void InputGUI::setErrMsg(const QString& msg) {
+  errMsg->setText(msg);
 }
 
 void InputGUI::onStartClicked() {
-    UserInput input;
+  UserInput input;
 
-    if ((input.mode = modeBtn->getMode()) == -1) {
-        errMsg->setText("Mode is not selected");
-        return;
-    }
+  if ((input.mode = modeBtn->getMode()) == -1) {
+    errMsg->setText("Mode is not selected");
+    return;
+  }
 
-    if ((input.src = srcLine->text()).isEmpty()) {
-        errMsg->setText("Source file is not input");
-        return;
-    }
+  if ((input.src = srcLine->text()).isEmpty()) {
+    errMsg->setText("Source file is not input");
+    return;
+  }
 
-    if ((input.dst = dstLine->text()).isEmpty()) {
-        errMsg->setText("Destination file is not input");
-        return;
-    }
+  if ((input.dst = dstLine->text()).isEmpty()) {
+    errMsg->setText("Destination file is not input");
+    return;
+  }
 
-    pwLine->extract(input.pw);
+  pwLine->extract(input.pw);
 
-    if (input.pw.isEmpty()) {
-        errMsg->setText("Password is not input");
-        return;
-    }
+  if (input.pw.isEmpty()) {
+    errMsg->setText("Password is not input");
+    return;
+  }
 
-    pwLine->clear();
+  pwLine->clear();
 
-    input.valid = true;
+  input.valid = true;
 
-    emit startRequested(input);
+  emit startRequested(input);
 }

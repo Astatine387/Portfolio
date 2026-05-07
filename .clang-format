@@ -23,16 +23,19 @@ AccessModifierOffset: -1
 IncludeBlocks: Regroup
 SortIncludes: CaseSensitive
 IncludeCategories:
-  - Regex:           '^"[^/]+\.h"$'         # same-directory project headers
+  - Regex:           '^<windows\.h>$'
     Priority:        1
-  - Regex:           '^"(Core|GUI|Utils)/'  # your project's subdirectories
+    SortPriority:    0
+  - Regex:           '^"[^/]+\.h"$'         # same-directory project headers
     Priority:        2
-  - Regex:           '^<Q[A-Z]'             # Qt headers
+  - Regex:           '^"(Core|GUI|Utils)/'  # your project's subdirectories
     Priority:        3
-  - Regex:           '^<.*\.h>$'            # C system headers
+  - Regex:           '^<Q[A-Z]'             # Qt headers
     Priority:        4
-  - Regex:           '^<.*>$'               # C++ standard library
+  - Regex:           '^<.*\.h>$'            # C system headers
     Priority:        5
+  - Regex:           '^<.*>$'               # C++ standard library
+    Priority:        6
 
 # Miscellaneous
 AllowShortFunctionsOnASingleLine: Inline    # Allow single line implementation for inline function only

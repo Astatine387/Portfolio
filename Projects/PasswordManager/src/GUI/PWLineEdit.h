@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Utils/Password.h"
+
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QPushButton>
@@ -17,41 +18,41 @@
  * @brief   Password input window with show/hide toggle
  */
 class PWLineEdit : public QWidget {
-    Q_OBJECT
+  Q_OBJECT
 
-public:
-    /**
-     * @brief   Constructor of PWLineEdit class
-     * @param   parent  Parent widget
-     */
-    explicit PWLineEdit(QWidget *parent = nullptr);
+ public:
+  /**
+   * @brief   Constructor of PWLineEdit class
+   * @param   parent  Parent widget
+   */
+  explicit PWLineEdit(QWidget* parent = nullptr);
 
-    /**
-     * @brief   Extract data from the input line to Password class
-     * @param   pw  Destination
-     * @return  0 on success, 1 on failure (exceeds MAX_SIZE)
-     */
-    int extract(Password &pw);
+  /**
+   * @brief   Extract data from the input line to Password class
+   * @param   pw  Destination
+   * @return  0 on success, 1 on failure (exceeds MAX_SIZE)
+   */
+  int extract(Password& pw);
 
-    /**
-     * @brief   Clear the input field
-     */
-    void clear();
+  /**
+   * @brief   Clear the input field
+   */
+  void clear();
 
-    /**
-     * @brief	Set password data to the input field
-     * @param	pw	Source password
-     */
-    void setPassword(const Password &pw);
+  /**
+   * @brief	Set password data to the input field
+   * @param	pw	Source password
+   */
+  void setPassword(const Password& pw);
 
-private slots:
-    /**
-     * @brief   Signal when toggle masking button clicked
-     */
-    void toggleMask();
+ private slots:
+  /**
+   * @brief   Signal when toggle masking button clicked
+   */
+  void toggleMask();
 
-private:
-    QHBoxLayout *hBox;
-    QLineEdit *pwLine;
-    QPushButton *maskBtn;
+ private:
+  QHBoxLayout* hBox;
+  QLineEdit* pwLine;
+  QPushButton* maskBtn;
 };

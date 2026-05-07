@@ -5,46 +5,43 @@
  */
 
 #include "GUI/MainGUI.h"
+
 #include <QApplication>
 #include <QFont>
 #include <QRect>
 #include <QScreen>
 #include <QSize>
 
-int ShowGUI(int argc, char *argv[]) {
-    QApplication app(argc, argv);
-    MainGUI *gui = new MainGUI;
+int ShowGUI(int argc, char* argv[]) {
+  QApplication app(argc, argv);
+  MainGUI* gui = new MainGUI;
 
+  /* Configure font size */
 
-    /* Configure font size */
+  QFont font;
+  font.setPointSizeF(font.pointSizeF() * kFontScale);
+  QApplication::setFont(font);
 
-    QFont font;
-    font.setPointSizeF(font.pointSizeF() * kFontScale);
-    QApplication::setFont(font);
+  /* Configure window size */
 
+  QSize qsize(300, 150);
+  gui->resize(qsize);
 
-    /* Configure window size */
+  /* Configure window position */
 
-    QSize qsize(300, 150);
-    gui->resize(qsize);
+  QScreen* screen = QGuiApplication::primaryScreen();
+  QRect rect = screen->availableGeometry();
 
+  int x = (rect.width() - gui->width()) / 2;
+  int y = (rect.height() - gui->height()) / 2 - 50;
 
-    /* Configure window position */
+  gui->move(x, y);
 
-    QScreen *screen = QGuiApplication::primaryScreen();
-    QRect rect = screen->availableGeometry();
+  gui->show();
 
-    int x = (rect.width() - gui->width()) / 2;
-    int y = (rect.height() - gui->height()) / 2 - 50;
-
-    gui->move(x, y);
-
-    gui->show();
-
-
-    return app.exec();
+  return app.exec();
 }
 
-int main(int argc, char *argv[]) {
-    return ShowGUI(argc, argv);
+int main(int argc, char* argv[]) {
+  return ShowGUI(argc, argv);
 }

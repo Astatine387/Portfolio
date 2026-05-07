@@ -6,164 +6,159 @@
 
 #pragma once
 
-#include "Common/constants.h"
-#include <functional>
-#include <future>
 #include <openssl/evp.h>
 
+#include <functional>
+#include <future>
+
+#include "Common/constants.h"
+
 class AES_GCM {
-public:
-	/* ==================================================
-	 * Constructor, destructor, operators
-	 * ================================================== */
+ public:
+  /* ==================================================
+   * Constructor, destructor, operators
+   * ================================================== */
 
-	/**
-	 * @brief	Default constructor of AES_GCM class
-	 */
-	AES_GCM();
+  /**
+   * @brief	Default constructor of AES_GCM class
+   */
+  AES_GCM();
 
-	/**
-	 * @brief	Destructor of AES_GCM class
-	 */
-	~AES_GCM();
+  /**
+   * @brief	Destructor of AES_GCM class
+   */
+  ~AES_GCM();
 
-	AES_GCM(const AES_GCM &) = delete;				// Delete copy constructor
-	AES_GCM &operator=(const AES_GCM &) = delete;	// Delete copy assignment operator
-	AES_GCM(AES_GCM &&) = delete;					// Delete move constructor
-	AES_GCM &operator=(AES_GCM &&) = delete;		// Delete move assignment operator
+  AES_GCM(const AES_GCM&) = delete;             // Delete copy constructor
+  AES_GCM& operator=(const AES_GCM&) = delete;  // Delete copy assignment operator
+  AES_GCM(AES_GCM&&) = delete;                  // Delete move constructor
+  AES_GCM& operator=(AES_GCM&&) = delete;       // Delete move assignment operator
 
+  /* ==================================================
+   * Interface functions
+   * ================================================== */
 
-	/* ==================================================
-	 * Interface functions
-	 * ================================================== */
+  /**
+   * @brief		Decrypt a buffer
+   * @param		src		Source buffer
+   * @param		dst		Destination buffer
+   * @param		size	Source buffer size
+   * @param		pw		Password
+   * @param		plen	Password length
+   * @return		0 on success, 1 on failure
+   */
+  int decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
 
-	/**
-	  * @brief		Decrypt a buffer
-	  * @param		src		Source buffer
-	  * @param		dst		Destination buffer
-	  * @param		size	Source buffer size
-	  * @param		pw		Password
-	  * @param		plen	Password length
-	  * @return		0 on success, 1 on failure
-	  */
-	int decrypt(uint8_t *src, uint8_t *dst, size_t size, const char *pw, size_t plen);
+  /**
+   * @brief		Encrypt a buffer
+   * @param		src			Source buffer
+   * @param		dst			Destination buffer
+   * @param		size		Source buffer size
+   * @param		pw			Password
+   * @param		plen		Password length
+   * @return		0 on success, 1 on failure
+   */
+  int encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
 
-	/**
-	  * @brief		Encrypt a buffer
-	  * @param		src			Source buffer
-	  * @param		dst			Destination buffer
-	  * @param		size		Source buffer size
-	  * @param		pw			Password
-	  * @param		plen		Password length
-	  * @return		0 on success, 1 on failure
-	  */
-	int encrypt(uint8_t *src, uint8_t *dst, size_t size, const char *pw, size_t plen);
+  /* ==================================================
+   * Callback functions
+   * ================================================== */
 
+  /**
+   * @brief	Callback function for error reporting
+   * @param	errMsg	Error message string
+   */
+  using ErrorCallback = std::function<void(const char* errMsg)>;
 
-	/* ==================================================
-	 * Callback functions
-	 * ================================================== */
+  /**
+   * @brief	Set error callback function
+   * @param	ecb		Error callback function
+   */
+  void setErrorCb(ErrorCallback ecb) { this->ecb = ecb; }
 
-	/**
-	 * @brief	Callback function for error reporting
-	 * @param	errMsg	Error message string
-	 */
-	using ErrorCallback = std::function<void(const char *errMsg)>;
+ private:
+  EVP_CIPHER_CTX* ctx = nullptr;  // OpenSSL encryption/decryption context
 
-	/**
-	 * @brief	Set error callback function
-	 * @param	ecb		Error callback function
-	 */
-	void setErrorCb(ErrorCallback ecb) {
-		this->ecb = ecb;
-	}
+  ErrorCallback ecb = nullptr;  // Error reporting callback function
 
-private:
-	EVP_CIPHER_CTX *ctx = nullptr;	// OpenSSL encryption/decryption context
+  uint8_t iv[kIVSize];      // Initial vector
+  uint8_t key[kKeySize];    // Key derived from password
+  uint8_t salt[kSaltSize];  // Key derivation salt
 
-	ErrorCallback ecb = nullptr;	// Error reporting callback function
+  uint8_t* src = nullptr;  // Source buffer
+  uint8_t* dst = nullptr;  // Destination buffer
 
-	uint8_t iv[kIVSize];		// Initial vector
-	uint8_t key[kKeySize];		// Key derived from password
-	uint8_t salt[kSaltSize];	// Key derivation salt
+  size_t srcCrs = 0;  // Current read position in buffer
+  size_t dstCrs = 0;  // Current write position in buffer
+  size_t size = 0;    // Source buffer size
 
-	uint8_t *src = nullptr;		// Source buffer
-	uint8_t *dst = nullptr;		// Destination buffer
+  /* ==================================================
+   * Decryption functions
+   * ================================================== */
 
-	size_t srcCrs = 0;	// Current read position in buffer
-	size_t dstCrs = 0;	// Current write position in buffer
-	size_t size = 0;	// Source buffer size
+  /**
+   * @brief	Initialize decryption context
+   * @param	pw		Password
+   * @param	plen	Password length
+   * @return	0 on success, 1 on failure
+   */
+  int decryptInit(const char* pw, size_t plen);
 
+  /**
+   * @brief	Read and verify authentication tag
+   * @return	0 on success, 1 on failure
+   */
+  int decryptTag();
 
-	/* ==================================================
-	 * Decryption functions
-	 * ================================================== */
+  /**
+   * @brief	Decrypt buffer
+   * @return	0 on success, 1 on failure
+   */
+  int decryptBuff();
 
-	/**
-	 * @brief	Initialize decryption context
-	 * @param	pw		Password
-	 * @param	plen	Password length
-	 * @return	0 on success, 1 on failure
-	 */
-	int decryptInit(const char *pw, size_t plen);
+  /**
+   * @brief	Finalize decryption
+   * @return	0 on success, 1 on failure
+   */
+  int decryptFinal();
 
-	/**
-	 * @brief	Read and verify authentication tag
-	 * @return	0 on success, 1 on failure
-	 */
-	int decryptTag();
+  /* ==================================================
+   * Encryption functions
+   * ================================================== */
 
-	/**
-	 * @brief	Decrypt buffer
-	 * @return	0 on success, 1 on failure
-	 */
-	int decryptBuff();
+  /**
+   * @brief	Initialize encryption context
+   * @param	pw		Password
+   * @param	plen	Password length
+   * @return	0 on success, 1 on failure
+   */
+  int encryptInit(const char* pw, size_t plen);
 
-	/**
-	 * @brief	Finalize decryption
-	 * @return	0 on success, 1 on failure
-	 */
-	int decryptFinal();
+  /**
+   * @brief	Encrypt buffer
+   * @return	0 on success, 1 on failure
+   */
+  int encryptBuff();
 
+  /**
+   * @brief	Finalize encryption
+   * @return	0 on success, 1 on failure
+   */
+  int encryptFinal();
 
-	/* ==================================================
-	 * Encryption functions
-	 * ================================================== */
+  /**
+   * @brief	Generate and write authentication tag
+   * @return	0 on success, 1 on failure
+   */
+  int encryptTag();
 
-	/**
-	 * @brief	Initialize encryption context
-	 * @param	pw		Password
-	 * @param	plen	Password length
-	 * @return	0 on success, 1 on failure
-	 */
-	int encryptInit(const char *pw, size_t plen);
+  /* ==================================================
+   * Callback helper functions
+   * ================================================== */
 
-	/**
-	 * @brief	Encrypt buffer
-	 * @return	0 on success, 1 on failure
-	 */
-	int encryptBuff();
-
-	/**
-	 * @brief	Finalize encryption
-	 * @return	0 on success, 1 on failure
-	 */
-	int encryptFinal();
-
-	/**
-	 * @brief	Generate and write authentication tag
-	 * @return	0 on success, 1 on failure
-	 */
-	int encryptTag();
-
-
-	/* ==================================================
-	 * Callback helper functions
-	 * ================================================== */
-
-	/**
-	  * @brief	Report error via callback
-	  * @param	msg		Error message string
-	  */
-	void reportError(const char *msg);
+  /**
+   * @brief	Report error via callback
+   * @param	msg		Error message string
+   */
+  void reportError(const char* msg);
 };

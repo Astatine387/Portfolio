@@ -18,15 +18,15 @@
 #include <QWidget>
 
 /**
-  * @struct     UserInput
-  * @brief      Container for user input parameters
-  */
+ * @struct     UserInput
+ * @brief      Container for user input parameters
+ */
 struct UserInput {
-    bool valid = false;
-    int mode = -1;
-    QString src;
-    QString dst;
-    Password pw;
+  bool valid = false;
+  int mode = -1;
+  QString src;
+  QString dst;
+  Password pw;
 };
 
 /**
@@ -34,41 +34,41 @@ struct UserInput {
  * @brief   User input window with start button
  */
 class InputGUI : public QWidget {
-    Q_OBJECT
+  Q_OBJECT
 
-public:
-    /**
-     * @brief   Constructor of InputGUI class
-     * @param   parent  Parent widget
-     */
-    explicit InputGUI(QWidget *parent = nullptr);
+ public:
+  /**
+   * @brief   Constructor of InputGUI class
+   * @param   parent  Parent widget
+   */
+  explicit InputGUI(QWidget* parent = nullptr);
 
-    /**
-     * @brief   Display error message
-     * @param   msg     error message string
-     */
-    void setErrMsg(const QString &msg);
+  /**
+   * @brief   Display error message
+   * @param   msg     error message string
+   */
+  void setErrMsg(const QString& msg);
 
-signals:
-    /**
-     * @brief   Signal when start button clicked
-     * @param   input   User inputs
-     */
-    void startRequested(const UserInput &input);
+ signals:
+  /**
+   * @brief   Signal when start button clicked
+   * @param   input   User inputs
+   */
+  void startRequested(const UserInput& input);
 
-private slots:
-    /**
-     * @brief   Check the user input parameters are valid and start process
-     */
-    void onStartClicked();
+ private slots:
+  /**
+   * @brief   Check the user input parameters are valid and start process
+   */
+  void onStartClicked();
 
-private:
-    ModeButton *modeBtn;
-    PWLineEdit *pwLine;
-    QLineEdit *srcLine;     // Source file input field
-    QLineEdit *dstLine;     // Destination file input field
-    QPushButton *startBtn;
-    QLabel *errMsg;         // Label to display error messages
-    QHBoxLayout *hBox;      // Layout for start button and error message
-    QVBoxLayout *vBox;
+ private:
+  ModeButton* modeBtn;
+  PWLineEdit* pwLine;
+  QLineEdit* srcLine;  // Source file input field
+  QLineEdit* dstLine;  // Destination file input field
+  QPushButton* startBtn;
+  QLabel* errMsg;     // Label to display error messages
+  QHBoxLayout* hBox;  // Layout for start button and error message
+  QVBoxLayout* vBox;
 };
