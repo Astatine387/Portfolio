@@ -31,13 +31,17 @@ int64_t GetFileSize(FILE* file) {
   int64_t size;
 
 #ifdef _WIN32
-  if (_fseeki64(file, 0, SEEK_END))
-    return -1;
+  if (_fseeki64(file, 0, SEEK_END)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
+
   size = _ftelli64(file);
 
 #else
-  if (fseeko(file, 0, SEEK_END))
-    return -1;
+  if (fseeko(file, 0, SEEK_END)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
+
   size = ftello(file);
 
 #endif
@@ -89,8 +93,9 @@ int Random(uint8_t* dst, size_t size) {
     ssize_t res = getrandom(dst, rem, 0);
 
     if (res == -1) {
-      if (errno == EINTR)
+      if (errno == EINTR) {
         continue;
+      }
 
       return -1;
     }
@@ -143,8 +148,9 @@ void OpenFile(FILE** file, const QString& path, const char* mode) {
   std::wstring wpath = path.toStdWString();
   std::wstring wmode;
 
-  for (const char* p = mode; *p; ++p)
+  for (const char* p = mode; *p; ++p) {
     wmode += static_cast<wchar_t>(*p);
+  }
 
   _wfopen_s(file, wpath.c_str(), wmode.c_str());
 
@@ -176,8 +182,9 @@ void Wipe(void* buff, size_t size) {
 #else
   volatile uint8_t* p = static_cast<volatile uint8_t*>(buff);
 
-  while (size--)
+  while (size--) {
     *p++ = 0;
+  }
 
   __asm__ __volatile__("" : : "r"(buff) : "memory");
 

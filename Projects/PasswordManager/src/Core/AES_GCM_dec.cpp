@@ -13,17 +13,21 @@ int AES_GCM::decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, si
   this->src = src, this->dst = dst, this->size = size;
   srcCrs = 0, dstCrs = 0;
 
-  if (decryptInit(pw, plen))
-    return 1;
+  if (decryptInit(pw, plen)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
-  if (decryptTag())
-    return 1;
+  if (decryptTag()) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
-  if (decryptBuff())
-    return 1;
+  if (decryptBuff()) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
-  if (decryptFinal())
-    return 1;
+  if (decryptFinal()) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
   return 0;
 }

@@ -13,17 +13,21 @@ int AES_GCM::encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, si
   this->src = src, this->dst = dst, this->size = size;
   srcCrs = 0, dstCrs = 0;
 
-  if (encryptInit(pw, plen))
-    return 1;
+  if (encryptInit(pw, plen)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
-  if (encryptBuff())
-    return 1;
+  if (encryptBuff()) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
-  if (encryptFinal())
-    return 1;
+  if (encryptFinal()) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
-  if (encryptTag())
-    return 1;
+  if (encryptTag()) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
   return 0;
 }

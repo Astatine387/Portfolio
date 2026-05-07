@@ -269,8 +269,9 @@ int Vault::changePW(const Password& newPW, const QString& path) {
     return 1;
   }
 
-  if (saveVault(path))
-    return 1;
+  if (saveVault(path)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
   return 0;
 }

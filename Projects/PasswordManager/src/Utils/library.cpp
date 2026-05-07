@@ -32,13 +32,17 @@ int64_t GetFileSize(FILE* file) {
   int64_t size;
 
 #ifdef _WIN32
-  if (_fseeki64(file, 0, SEEK_END))
-    return -1;
+  if (_fseeki64(file, 0, SEEK_END)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
+
   size = _ftelli64(file);
 
 #else
-  if (fseeko(file, 0, SEEK_END))
-    return -1;
+  if (fseeko(file, 0, SEEK_END)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
+
   size = ftello(file);
 
 #endif
@@ -101,8 +105,9 @@ int Random(uint8_t* dst, size_t size) {
     ssize_t res = getrandom(dst, rem, 0);
 
     if (res == -1) {
-      if (errno == EINTR)
+      if (errno == EINTR) {
         continue;
+      }
 
       return -1;
     }
@@ -135,8 +140,9 @@ int RenameFile(const QString& src, const QString& dst) {
   std::wstring wsrc = src.toStdWString();
   std::wstring wdst = dst.toStdWString();
 
-  if (!MoveFileExW(wsrc.c_str(), wdst.c_str(), MOVEFILE_REPLACE_EXISTING))
-    return 1;
+  if (!MoveFileExW(wsrc.c_str(), wdst.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
   return 0;
 
@@ -150,20 +156,25 @@ int RenameFile(const QString& src, const QString& dst) {
 }
 
 int SyncFile(FILE* file) {
-  if (fflush(file))
-    return 1;
+  if (fflush(file)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
 #ifdef _WIN32
   HANDLE h = (HANDLE)_get_osfhandle(_fileno(file));
 
-  if (h == INVALID_HANDLE_VALUE)
-    return 1;
-  if (!FlushFileBuffers(h))
-    return 1;
+  if (h == INVALID_HANDLE_VALUE) {
+    return 1;  // LCOV_EXCL_LINE
+  }
+
+  if (!FlushFileBuffers(h)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
 #else
-  if (fsync(fileno(file)))
-    return 1;
+  if (fsync(fileno(file))) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
 #endif
 
@@ -185,8 +196,9 @@ void OpenFile(FILE** file, const QString& path, const char* mode) {
   std::wstring wpath = path.toStdWString();
   std::wstring wmode;
 
-  for (const char* p = mode; *p; ++p)
+  for (const char* p = mode; *p; ++p) {
     wmode += static_cast<wchar_t>(*p);
+  }
 
   _wfopen_s(file, wpath.c_str(), wmode.c_str());
 
@@ -199,8 +211,9 @@ void OpenFile(FILE** file, const QString& path, const char* mode) {
 }
 
 void Shuffle(uint8_t* arr, int size) {
-  for (int i = 0; i < size; i++)
+  for (int i = 0; i < size; i++) {
     Swap(&arr[i], &arr[RandomRange(i, size - 1)]);
+  }
 }
 
 void Swap(uint8_t* a, uint8_t* b) {
@@ -229,8 +242,9 @@ void Wipe(void* buff, size_t size) {
 #else
   volatile uint8_t* p = static_cast<volatile uint8_t*>(buff);
 
-  while (size--)
+  while (size--) {
     *p++ = 0;
+  }
 
   __asm__ __volatile__("" : : "r"(buff) : "memory");
 

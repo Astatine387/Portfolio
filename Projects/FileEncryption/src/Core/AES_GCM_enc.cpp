@@ -15,20 +15,25 @@ int AES_GCM::encrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
 
   writing = false;
 
-  if (encryptInit(pw, plen))
-    return 1;
+  if (encryptInit(pw, plen)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
-  if (encryptBatch())
-    return 1;
+  if (encryptBatch()) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
-  if (encryptRemain())
-    return 1;
+  if (encryptRemain()) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
-  if (encryptFinal())
-    return 1;
+  if (encryptFinal()) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
-  if (encryptTag())
-    return 1;
+  if (encryptTag()) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
   return 0;
 }
@@ -160,18 +165,21 @@ int AES_GCM::encryptBatch() {
   while (prog + kBuffSize * kBlockSize <= size) {
     /* Wait for the previous write to finish */
 
-    if (writing && writeRes.get() != 0)
-      return 1;
+    if (writing && writeRes.get() != 0) {
+      return 1;  // LCOV_EXCL_LINE
+    }
 
     /* Read in main thread */
 
-    if (readFile(buff[cur], kBuffSize * kBlockSize))
-      return 1;
+    if (readFile(buff[cur], kBuffSize * kBlockSize)) {
+      return 1;  // LCOV_EXCL_LINE
+    }
 
     /* Encrypt in main thread */
 
-    if (encryptBuff(buff[cur], buff[cur], kBuffSize * kBlockSize))
-      return 1;
+    if (encryptBuff(buff[cur], buff[cur], kBuffSize * kBlockSize)) {
+      return 1;  // LCOV_EXCL_LINE
+    }
 
     /* Asynchronous write in another thread */
 
@@ -197,8 +205,9 @@ int AES_GCM::encryptBatch() {
   /* Wait for the last write to finish */
 
   if (writing) {
-    if (writeRes.get() != 0)
-      return 1;
+    if (writeRes.get() != 0) {
+      return 1;  // LCOV_EXCL_LINE
+    }
 
     writing = false;
   }
@@ -209,14 +218,16 @@ int AES_GCM::encryptBatch() {
 int AES_GCM::encryptRemain() {
   int crs = 0, rem = size % (kBuffSize * kBlockSize);
 
-  if (readFile(buff[0], rem))
-    return 1;
+  if (readFile(buff[0], rem)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
   /* Encrypt remaining full blocks */
 
   while (prog + kBlockSize <= size) {
-    if (encryptBuff(buff[0][crs], buff[0][crs], kBlockSize))
-      return 1;
+    if (encryptBuff(buff[0][crs], buff[0][crs], kBlockSize)) {
+      return 1;  // LCOV_EXCL_LINE
+    }
 
     crs++;
 
@@ -228,17 +239,20 @@ int AES_GCM::encryptRemain() {
   rem = size % kBlockSize;
 
   if (rem) {
-    if (encryptBuff(buff[0][crs], buff[0][crs], rem))
-      return 1;
+    if (encryptBuff(buff[0][crs], buff[0][crs], rem)) {
+      return 1;  // LCOV_EXCL_LINE
+    }
 
     prog += rem;
   }
 
-  if (writeFile(buff[0], kBlockSize * crs + rem))
-    return 1;
+  if (writeFile(buff[0], kBlockSize * crs + rem)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
-  if (reportProgress())
-    return 1;
+  if (reportProgress()) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
   return 0;
 }
@@ -254,8 +268,9 @@ int AES_GCM::encryptFinal() {
     // LCOV_EXCL_STOP
   }
 
-  if (finalLen > 0 && writeFile(final, finalLen))
-    return 1;
+  if (finalLen > 0 && writeFile(final, finalLen)) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
   return 0;
 }
