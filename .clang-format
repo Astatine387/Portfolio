@@ -1,0 +1,60 @@
+---
+BasedOnStyle: Google
+Language: Cpp
+Standard: c++20
+
+# Use 2-space indent
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+
+# Maximum 100 characters per line
+ColumnLimit: 100
+
+# Left alignment for pointers and references
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+# Shift access modifiers one character left
+AccessModifierOffset: -1
+
+# Regroup and sort headers
+IncludeBlocks: Regroup
+SortIncludes: CaseSensitive
+IncludeCategories:
+  - Regex:           '^"[^/]+\.h"$'         # same-directory project headers
+    Priority:        1
+  - Regex:           '^"(Core|GUI|Utils)/'  # your project's subdirectories
+    Priority:        2
+  - Regex:           '^<Q[A-Z]'             # Qt headers
+    Priority:        3
+  - Regex:           '^<.*\.h>$'            # C system headers
+    Priority:        4
+  - Regex:           '^<.*>$'               # C++ standard library
+    Priority:        5
+
+# Miscellaneous
+AllowShortFunctionsOnASingleLine: Inline    # Allow single line implementation for inline function only
+AllowShortIfStatementsOnASingleLine: Never  # Never allow single line implementation for if statement
+AllowShortLoopsOnASingleLine: false         # Never allow single line implementation for loop statement
+BreakBeforeBraces: Custom                   # Break a line before try-catch or if-else statement
+BraceWrapping:
+  AfterCaseLabel:        false
+  AfterClass:            false
+  AfterControlStatement: Never
+  AfterEnum:             false
+  AfterFunction:         false
+  AfterNamespace:        false
+  AfterStruct:           false
+  AfterUnion:            false
+  AfterExternBlock:      false
+  BeforeCatch:           true
+  BeforeElse:            true
+  BeforeLambdaBody:      false
+  BeforeWhile:           false
+  IndentBraces:          false
+  SplitEmptyFunction:    false
+  SplitEmptyRecord:      false
+  SplitEmptyNamespace:   false
+SpaceBeforeParens: ControlStatements        # Use space before control statements only
