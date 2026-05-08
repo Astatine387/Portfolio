@@ -21,9 +21,9 @@
 TEST(PasswordTest, IsDefaultEmpty) {
   Password pw;
 
-  EXPECT_TRUE(pw.isEmpty());
-  EXPECT_EQ(pw.getSize(), 0);
-  EXPECT_EQ(pw.getData(), nullptr);
+  EXPECT_TRUE(pw.IsEmpty());
+  EXPECT_EQ(pw.GetSize(), 0);
+  EXPECT_EQ(pw.GetData(), nullptr);
 }
 
 /* ==================================================
@@ -38,12 +38,12 @@ TEST(PasswordTest, SetDataCString) {
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw.setData(data, size);
+  pw.SetData(data, size);
 
-  EXPECT_FALSE(pw.isEmpty());
-  EXPECT_STREQ(pw.getData(), data);
-  EXPECT_EQ(pw.getSize(), size);
-  EXPECT_NE(pw.getData(), data);
+  EXPECT_FALSE(pw.IsEmpty());
+  EXPECT_STREQ(pw.GetData(), data);
+  EXPECT_EQ(pw.GetSize(), size);
+  EXPECT_NE(pw.GetData(), data);
 }
 
 /**
@@ -54,16 +54,16 @@ TEST(PasswordTest, SetDataPassword) {
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw0.setData(data, size);
+  pw0.SetData(data, size);
 
   Password pw1;
 
-  pw1.setData(pw0);
+  pw1.SetData(pw0);
 
-  EXPECT_FALSE(pw1.isEmpty());
-  EXPECT_STREQ(pw1.getData(), data);
-  EXPECT_EQ(pw1.getSize(), size);
-  EXPECT_NE(pw1.getData(), pw0.getData());
+  EXPECT_FALSE(pw1.IsEmpty());
+  EXPECT_STREQ(pw1.GetData(), data);
+  EXPECT_EQ(pw1.GetSize(), size);
+  EXPECT_NE(pw1.GetData(), pw0.GetData());
 }
 
 /**
@@ -77,11 +77,11 @@ TEST(PasswordTest, SetDataReplace) {
   size_t size0 = strlen(data0);
   size_t size1 = strlen(data1);
 
-  pw.setData(data0, size0);
-  pw.setData(data1, size1);
+  pw.SetData(data0, size0);
+  pw.SetData(data1, size1);
 
-  EXPECT_STREQ(pw.getData(), data1);
-  EXPECT_EQ(pw.getSize(), size1);
+  EXPECT_STREQ(pw.GetData(), data1);
+  EXPECT_EQ(pw.GetSize(), size1);
 }
 
 /* ==================================================
@@ -99,13 +99,13 @@ TEST(PasswordTest, CopyConstructor) {
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw0.setData(data, size);
+  pw0.SetData(data, size);
 
   Password pw1(pw0);
 
-  EXPECT_STREQ(pw0.getData(), pw1.getData());
-  EXPECT_EQ(pw0.getSize(), pw1.getSize());
-  EXPECT_NE(pw0.getData(), pw1.getData());
+  EXPECT_STREQ(pw0.GetData(), pw1.GetData());
+  EXPECT_EQ(pw0.GetSize(), pw1.GetSize());
+  EXPECT_NE(pw0.GetData(), pw1.GetData());
 }
 
 /**
@@ -121,14 +121,14 @@ TEST(PasswordTest, CopyAssignment) {
   size_t size0 = strlen(data0);
   size_t size1 = strlen(data1);
 
-  pw0.setData(data0, size0);
-  pw1.setData(data1, size1);
+  pw0.SetData(data0, size0);
+  pw1.SetData(data1, size1);
 
   pw1 = pw0;
 
-  EXPECT_STREQ(pw1.getData(), data0);
-  EXPECT_EQ(pw1.getSize(), size0);
-  EXPECT_NE(pw0.getData(), pw1.getData());
+  EXPECT_STREQ(pw1.GetData(), data0);
+  EXPECT_EQ(pw1.GetSize(), size0);
+  EXPECT_NE(pw0.GetData(), pw1.GetData());
 }
 
 /**
@@ -141,14 +141,14 @@ TEST(PasswordTest, MoveConstructor) {
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw0.setData(data, size);
+  pw0.SetData(data, size);
 
-  const char* ptr = pw0.getData();
+  const char* ptr = pw0.GetData();
   Password pw1(std::move(pw0));
 
-  EXPECT_STREQ(pw1.getData(), data);
-  EXPECT_EQ(pw1.getData(), ptr);
-  EXPECT_TRUE(pw0.isEmpty());
+  EXPECT_STREQ(pw1.GetData(), data);
+  EXPECT_EQ(pw1.GetData(), ptr);
+  EXPECT_TRUE(pw0.IsEmpty());
 }
 
 /**
@@ -161,16 +161,16 @@ TEST(PasswordTest, MoveAssignment) {
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw0.setData(data, size);
+  pw0.SetData(data, size);
 
-  const char* ptr = pw0.getData();
+  const char* ptr = pw0.GetData();
   Password pw1;
 
   pw1 = std::move(pw0);
 
-  EXPECT_STREQ(pw1.getData(), data);
-  EXPECT_EQ(pw1.getData(), ptr);
-  EXPECT_TRUE(pw0.isEmpty());
+  EXPECT_STREQ(pw1.GetData(), data);
+  EXPECT_EQ(pw1.GetData(), ptr);
+  EXPECT_TRUE(pw0.IsEmpty());
 }
 
 /* ==================================================
@@ -185,12 +185,12 @@ TEST(PasswordTest, SelfAssignmentSafe) {
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw.setData(data, size);
+  pw.SetData(data, size);
 
   pw = pw;
 
-  EXPECT_STREQ(pw.getData(), data);
-  EXPECT_EQ(pw.getSize(), size);
+  EXPECT_STREQ(pw.GetData(), data);
+  EXPECT_EQ(pw.GetSize(), size);
 }
 
 /**
@@ -198,9 +198,9 @@ TEST(PasswordTest, SelfAssignmentSafe) {
  */
 TEST(PasswordTest, SetDataNull) {
   Password pw;
-  pw.setData(nullptr, 0);
+  pw.SetData(nullptr, 0);
 
-  EXPECT_TRUE(pw.isEmpty());
+  EXPECT_TRUE(pw.IsEmpty());
 }
 
 /**
@@ -211,10 +211,10 @@ TEST(PasswordTest, DestructorAfterMove) {
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw0->setData(data, size);
+  pw0->SetData(data, size);
 
   Password pw1(std::move(*pw0));
 
   EXPECT_NO_THROW(delete pw0);
-  EXPECT_STREQ(pw1.getData(), data);
+  EXPECT_STREQ(pw1.GetData(), data);
 }

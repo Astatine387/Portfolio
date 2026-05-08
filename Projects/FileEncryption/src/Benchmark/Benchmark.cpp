@@ -19,16 +19,16 @@
  */
 class Benchmark : public benchmark::Fixture {
  protected:
-  QString srcPath = "bench_src.tmp";
-  QString encPath = "bench_enc.tmp";
-  QString decPath = "bench_dec.tmp";
-  const char* pw = "password";
-  size_t psize = strlen(pw);
+  QString src_path_ = "bench_src.tmp";
+  QString enc_path_ = "bench_enc.tmp";
+  QString dec_path_ = "bench_dec.tmp";
+  const char* pw_ = "password";
+  size_t psize_ = strlen(pw_);
 
-  void create(size_t size) {
+  void Create(size_t size) {
     FILE* file = nullptr;
 
-    OpenFile(&file, srcPath, "wb");
+    OpenFile(&file, src_path_, "wb");
 
     if (file) {
       std::vector<uint8_t> data(size, 'a');
@@ -37,10 +37,10 @@ class Benchmark : public benchmark::Fixture {
     }
   }
 
-  void clean() {
-    RemoveFile(srcPath);
-    RemoveFile(encPath);
-    RemoveFile(decPath);
+  void Clean() {
+    RemoveFile(src_path_);
+    RemoveFile(enc_path_);
+    RemoveFile(dec_path_);
   }
 };
 
@@ -50,27 +50,30 @@ class Benchmark : public benchmark::Fixture {
 BENCHMARK_DEFINE_F(Benchmark, Encrypt)(benchmark::State& state) {
   size_t size = state.range(0);
 
-  create(size);
+  Create(size);
 
   for (auto _ : state) {
     AES_GCM aes;
     FILE *src = nullptr, *dst = nullptr;
 
-    OpenFile(&src, srcPath, "rb");
-    OpenFile(&dst, encPath, "wb+");
+    OpenFile(&src, src_path_, "rb");
+    OpenFile(&dst, enc_path_, "wb+");
 
-    aes.encrypt(src, dst, pw, psize);
+    aes.Encrypt(src, dst, pw_, psize_);
 
-    if (src)
+    if (src) {
       fclose(src);
-    if (dst)
+    }
+
+    if (dst) {
       fclose(dst);
+    }
   }
 
   state.SetBytesProcessed(int64_t(state.iterations()) * size);
   state.SetLabel(std::to_string(size / (1024 * 1024)) + " MB");
 
-  clean();
+  Clean();
 }
 
 /**
@@ -78,22 +81,25 @@ BENCHMARK_DEFINE_F(Benchmark, Encrypt)(benchmark::State& state) {
  */
 BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
   size_t size = state.range(0);
-  create(size);
+  Create(size);
 
   /* Encrypt */
 
   AES_GCM aes;
   FILE *src = nullptr, *dst = nullptr;
 
-  OpenFile(&src, srcPath, "rb");
-  OpenFile(&dst, encPath, "wb+");
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
 
-  aes.encrypt(src, dst, pw, psize);
+  aes.Encrypt(src, dst, pw_, psize_);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   /* Decrypt and test performance */
 
@@ -101,20 +107,23 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
     AES_GCM aes;
     FILE *src = nullptr, *dst = nullptr;
 
-    OpenFile(&src, encPath, "rb");
-    OpenFile(&dst, decPath, "wb+");
+    OpenFile(&src, enc_path_, "rb");
+    OpenFile(&dst, dec_path_, "wb+");
 
-    aes.decrypt(src, dst, pw, psize);
+    aes.Decrypt(src, dst, pw_, psize_);
 
-    if (src)
+    if (src) {
       fclose(src);
-    if (dst)
+    }
+
+    if (dst) {
       fclose(dst);
+    }
   }
 
   state.SetBytesProcessed(int64_t(state.iterations()) * size);
 
-  clean();
+  Clean();
 }
 
 /**
@@ -125,11 +134,13 @@ static void BM_Argon2id(benchmark::State& state) {
   const char* pw = "password";
   int psize = strlen(pw);
 
-  for (int i = 0; i < kSaltSize; i++)
+  for (int i = 0; i < kSaltSize; i++) {
     salt[i] = i;
+  }
 
-  for (auto _ : state)
+  for (auto _ : state) {
     Argon2id(salt, pw, psize, key);
+  }
 }
 
 BENCHMARK_REGISTER_F(Benchmark, Encrypt)

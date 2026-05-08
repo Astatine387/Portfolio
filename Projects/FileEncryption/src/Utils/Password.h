@@ -22,15 +22,16 @@ class Password {
   /**
    * @brief   Destructor, securely wipes password data
    */
-  ~Password() { clean(); }
+  ~Password() { Clean(); }
 
   /**
    * @brief   Copy constructor, performs deep copy
    * @param	other	Source password to copy
    */
   Password(const Password& other) {
-    if (other.data && other.size > 0)
-      setData(other.data, other.size);
+    if (other.data_ && other.size_ > 0) {
+      SetData(other.data_, other.size_);
+    }
   }
 
   /**
@@ -39,10 +40,11 @@ class Password {
    */
   Password& operator=(const Password& other) {
     if (this != &other) {
-      clean();
+      Clean();
 
-      if (other.data && other.size > 0)
-        setData(other.data, other.size);
+      if (other.data_ && other.size_ > 0) {
+        SetData(other.data_, other.size_);
+      }
     }
 
     return *this;
@@ -52,9 +54,9 @@ class Password {
    * @brief   Move constructor
    * @param	other	Source password to copy
    */
-  Password(Password&& other) noexcept : data(other.data), size(other.size) {
-    other.data = nullptr;
-    other.size = 0;
+  Password(Password&& other) noexcept : data_(other.data_), size_(other.size_) {
+    other.data_ = nullptr;
+    other.size_ = 0;
   }
 
   /**
@@ -63,13 +65,13 @@ class Password {
    */
   Password& operator=(Password&& other) noexcept {
     if (this != &other) {
-      clean();
+      Clean();
 
-      data = other.data;
-      size = other.size;
+      data_ = other.data_;
+      size_ = other.size_;
 
-      other.data = nullptr;
-      other.size = 0;
+      other.data_ = nullptr;
+      other.size_ = 0;
     }
 
     return *this;
@@ -79,39 +81,39 @@ class Password {
    * @brief   Check the password data is empty
    * @return	true if empty
    */
-  bool isEmpty() const;
+  bool IsEmpty() const;
 
   /**
    * @brief   Get password data
    * @return	Password data
    */
-  const char* getData() const;
+  const char* GetData() const;
 
   /**
    * @brief   Get password size
    * @return	Password size
    */
-  size_t getSize() const;
+  size_t GetSize() const;
 
   /**
    * @brief   Set password data
    * @param	pw	Source
    */
-  void setData(const Password& pw);
+  void SetData(const Password& pw);
 
   /**
    * @brief   Set password data
    * @param	str		Source
    * @param	len		Password length
    */
-  void setData(const char* str, size_t len);
+  void SetData(const char* str, size_t len);
 
  private:
-  char* data = nullptr;
-  size_t size = 0;
+  char* data_ = nullptr;
+  size_t size_ = 0;
 
   /**
    * @brief   Securely wipe password data
    */
-  void clean();
+  void Clean();
 };

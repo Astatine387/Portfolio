@@ -9,34 +9,34 @@
 ModeButton::ModeButton(QWidget* parent) : QWidget(parent) {
   /* Create layout and components */
 
-  hBox = new QHBoxLayout;
-  encBtn = new QRadioButton("Encrypt");
-  decBtn = new QRadioButton("Decrypt");
+  hbox_ = new QHBoxLayout;
+  enc_btn_ = new QRadioButton("Encrypt");
+  dec_btn_ = new QRadioButton("Decrypt");
 
   /* Neither is selected by default */
 
-  encBtn->setChecked(false);
-  decBtn->setChecked(false);
+  enc_btn_->setChecked(false);
+  dec_btn_->setChecked(false);
 
   /* Group buttons for mutual exclustion */
 
-  btnGrp = new QButtonGroup(this);
-  btnGrp->addButton(encBtn, 0);
-  btnGrp->addButton(decBtn, 1);
-  btnGrp->setExclusive(true);
+  btn_group_ = new QButtonGroup(this);
+  btn_group_->addButton(enc_btn_, 0);
+  btn_group_->addButton(dec_btn_, 1);
+  btn_group_->setExclusive(true);
 
   /* Configure layout */
 
-  hBox->addWidget(encBtn);
-  hBox->addWidget(decBtn);
-  hBox->addStretch();
-  hBox->setSpacing(10);
-  hBox->setContentsMargins(0, 0, 0, 0);
+  hbox_->addWidget(enc_btn_);
+  hbox_->addWidget(dec_btn_);
+  hbox_->addStretch();
+  hbox_->setSpacing(10);
+  hbox_->setContentsMargins(0, 0, 0, 0);
 
-  setLayout(hBox);
+  setLayout(hbox_);
 }
 
-int ModeButton::getMode() {
-  QAbstractButton* btn = btnGrp->checkedButton();
-  return btn ? btnGrp->id(btn) : -1;
+int ModeButton::GetMode() {
+  QAbstractButton* btn = btn_group_->checkedButton();
+  return btn ? btn_group_->id(btn) : -1;
 }

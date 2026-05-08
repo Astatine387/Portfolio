@@ -31,20 +31,20 @@ class ProgressGUI : public QWidget {
    * @brief   Check whether the process is cancelled by user
    * @return  true if cancel button is clicked
    */
-  bool isCancelled();
+  bool IsCancelled();
 
   /**
    * @brief   Update progress bar and status message
    * @param   perc     Progress percentage
    * @param   status  Status message
    */
-  void update(int perc, const QString& status);
+  void Update(int perc, const QString& status);
 
   /**
    * @brief   Show result and enable close button
    * @param   msg     result message
    */
-  void showResult(const QString& msg);
+  void ShowResult(const QString& msg);
 
  signals:
   /**
@@ -64,10 +64,11 @@ class ProgressGUI : public QWidget {
   void onCancelClicked();
 
  private:
-  QLabel* prgLabel;
-  QProgressBar* prgBar;
-  QPushButton *cancelBtn, *closeBtn;
-  QHBoxLayout* hBox;
-  QVBoxLayout* vBox;
-  bool cancelled = false;
+  QLabel* prg_label_;
+  QProgressBar* prg_bar_;
+  QPushButton* cancel_btn_;
+  QPushButton* close_btn_;
+  QHBoxLayout* hbox_;
+  QVBoxLayout* vbox_;
+  bool cancelled_ = false;
 };

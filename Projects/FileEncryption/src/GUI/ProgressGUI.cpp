@@ -6,64 +6,64 @@
 
 #include "GUI/ProgressGUI.h"
 
-ProgressGUI::ProgressGUI(QWidget* parent) : QWidget(parent), cancelled(false) {
+ProgressGUI::ProgressGUI(QWidget* parent) : QWidget(parent), cancelled_(false) {
   /* Create layouts and components */
 
-  prgLabel = new QLabel("Initializing...\n");
-  prgBar = new QProgressBar;
-  cancelBtn = new QPushButton("Cancel");
-  closeBtn = new QPushButton("Close");
-  hBox = new QHBoxLayout;
-  vBox = new QVBoxLayout;
+  prg_label_ = new QLabel("Initializing...\n");
+  prg_bar_ = new QProgressBar;
+  cancel_btn_ = new QPushButton("Cancel");
+  close_btn_ = new QPushButton("Close");
+  hbox_ = new QHBoxLayout;
+  vbox_ = new QVBoxLayout;
 
   /* Configure progress bar */
 
-  prgBar->setRange(0, 100);
-  prgBar->setValue(0);
+  prg_bar_->setRange(0, 100);
+  prg_bar_->setValue(0);
 
   /* Hide close button during the process */
 
-  closeBtn->hide();
+  close_btn_->hide();
 
   /* Configure layouts */
 
-  hBox->addWidget(cancelBtn);
-  hBox->addWidget(closeBtn);
-  hBox->addStretch();
-  hBox->setSpacing(10);
-  hBox->setContentsMargins(0, 0, 0, 0);
+  hbox_->addWidget(cancel_btn_);
+  hbox_->addWidget(close_btn_);
+  hbox_->addStretch();
+  hbox_->setSpacing(10);
+  hbox_->setContentsMargins(0, 0, 0, 0);
 
-  vBox->addWidget(prgLabel);
-  vBox->addWidget(prgBar);
-  vBox->addStretch();
-  vBox->addLayout(hBox);
-  vBox->setSpacing(10);
-  vBox->setContentsMargins(10, 10, 10, 10);
+  vbox_->addWidget(prg_label_);
+  vbox_->addWidget(prg_bar_);
+  vbox_->addStretch();
+  vbox_->addLayout(hbox_);
+  vbox_->setSpacing(10);
+  vbox_->setContentsMargins(10, 10, 10, 10);
 
-  setLayout(vBox);
+  setLayout(vbox_);
 
   /* Connect cancel/close functions to each button */
 
-  connect(cancelBtn, &QPushButton::clicked, this, &ProgressGUI::onCancelClicked);
-  connect(closeBtn, &QPushButton::clicked, this, &ProgressGUI::closeRequested);
+  connect(cancel_btn_, &QPushButton::clicked, this, &ProgressGUI::onCancelClicked);
+  connect(close_btn_, &QPushButton::clicked, this, &ProgressGUI::closeRequested);
 }
 
-bool ProgressGUI::isCancelled() {
-  return cancelled;
+bool ProgressGUI::IsCancelled() {
+  return cancelled_;
 }
 
-void ProgressGUI::update(int val, const QString& status) {
-  prgBar->setValue(val);
-  prgLabel->setText(status);
+void ProgressGUI::Update(int val, const QString& status) {
+  prg_bar_->setValue(val);
+  prg_label_->setText(status);
 }
 
-void ProgressGUI::showResult(const QString& msg) {
-  prgLabel->setText(msg);
-  cancelBtn->hide();
-  closeBtn->show();
+void ProgressGUI::ShowResult(const QString& msg) {
+  prg_label_->setText(msg);
+  cancel_btn_->hide();
+  close_btn_->show();
 }
 
 void ProgressGUI::onCancelClicked() {
-  cancelled = true;
+  cancelled_ = true;
   emit cancelRequested();
 }

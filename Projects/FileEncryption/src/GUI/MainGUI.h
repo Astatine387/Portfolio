@@ -38,13 +38,13 @@ class MainGUI : public QWidget {
    * @brief   Get the current user input
    * @return  Current user input
    */
-  UserInput getUserInput();
+  UserInput GetUserInput();
 
   /**
    * @brief   Check the current user input is valid
    * @return  true if valid
    */
-  bool isInputValid();
+  bool IsInputValid();
 
  private slots:
   /**
@@ -65,7 +65,7 @@ class MainGUI : public QWidget {
    * @param   msg             Result message
    * @param   shouldDelete    Destination file deletion flag value
    */
-  void onWorkFinished(const QString& msg, bool shouldDelete);
+  void onWorkFinished(const QString& msg, bool should_delete);
 
   /**
    * @brief	Clean resources on worker thread finished
@@ -78,29 +78,29 @@ class MainGUI : public QWidget {
   void onCloseRequested();
 
  private:
-  FILE *srcFile = nullptr, *dstFile = nullptr;
-  InputGUI* inputGUI;
-  ProgressGUI* prgGUI;
-  QStackedWidget* widget;
-  QThread* thread;
-  QVBoxLayout* vBox;
-  UserInput userInput;
-  Worker* worker;
-  bool shouldDelete = false;  // Destination file deletion flag for cancellation or failure
+  FILE *src_file_ = nullptr, *dst_file_ = nullptr;
+  InputGUI* input_gui_;
+  ProgressGUI* prg_gui_;
+  QStackedWidget* widget_;
+  QThread* thread_;
+  QVBoxLayout* vbox_;
+  UserInput user_input_;
+  Worker* worker_;
+  bool should_delete_ = false;  // Destination file deletion flag for cancellation or failure
 
   /**
    * @brief   Open file pointers
    * @return  0 on success, 1 on error
    */
-  int openFiles();
+  int OpenFiles();
 
   /**
    * @brief   Clean all resources
    */
-  void clean();
+  void Clean();
 
   /**
    * @brief   Clean file pointers
    */
-  void closeFiles();
+  void CloseFiles();
 };

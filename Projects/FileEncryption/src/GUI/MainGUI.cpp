@@ -13,167 +13,168 @@
 MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
   /* Create layouts and components */
 
-  inputGUI = new InputGUI(this);
-  prgGUI = new ProgressGUI(this);
-  widget = new QStackedWidget(this);
-  vBox = new QVBoxLayout(this);
+  input_gui_ = new InputGUI(this);
+  prg_gui_ = new ProgressGUI(this);
+  widget_ = new QStackedWidget(this);
+  vbox_ = new QVBoxLayout(this);
 
   /* Add GUIs to stacked widget for switching */
 
-  widget->addWidget(inputGUI);
-  widget->addWidget(prgGUI);
+  widget_->addWidget(input_gui_);
+  widget_->addWidget(prg_gui_);
 
   /* Configure layout */
 
-  vBox->addWidget(widget);
-  vBox->setContentsMargins(0, 0, 0, 0);
+  vbox_->addWidget(widget_);
+  vbox_->setContentsMargins(0, 0, 0, 0);
 
-  setLayout(vBox);
+  setLayout(vbox_);
   setWindowTitle("FileEncryption");
 
   /* Connect functions to buttons */
 
-  connect(inputGUI, &InputGUI::startRequested, this, &MainGUI::onStartRequested);
-  connect(prgGUI, &ProgressGUI::closeRequested, this, &QWidget::close);
+  connect(input_gui_, &InputGUI::startRequested, this, &MainGUI::onStartRequested);
+  connect(prg_gui_, &ProgressGUI::closeRequested, this, &QWidget::close);
 }
 
 MainGUI::~MainGUI() {
-  clean();
+  Clean();
 }
 
-UserInput MainGUI::getUserInput() {
-  return userInput;
+UserInput MainGUI::GetUserInput() {
+  return user_input_;
 }
 
-bool MainGUI::isInputValid() {
-  return userInput.valid;
+bool MainGUI::IsInputValid() {
+  return user_input_.valid;
 }
 
 void MainGUI::onStartRequested(const UserInput& input) {
   /* Copy user input parameters */
 
-  userInput.valid = input.valid;
-  userInput.mode = input.mode;
-  userInput.src = input.src;
-  userInput.dst = input.dst;
-  userInput.pw.setData(input.pw);
+  user_input_.valid = input.valid;
+  user_input_.mode = input.mode;
+  user_input_.src = input.src;
+  user_input_.dst = input.dst;
+  user_input_.pw.SetData(input.pw);
 
-  if (openFiles() == 0) {
+  if (OpenFiles() == 0) {
     /* Switch to progress window */
 
-    widget->setCurrentWidget(prgGUI);
+    widget_->setCurrentWidget(prg_gui_);
 
     /* Create worker thread */
 
-    thread = new QThread(this);
-    worker = new Worker(srcFile, dstFile, userInput.dst, userInput.pw, userInput.mode);
-    worker->moveToThread(thread);
+    thread_ = new QThread(this);
+    worker_ = new Worker(src_file_, dst_file_, user_input_.dst, user_input_.pw, user_input_.mode);
+    worker_->moveToThread(thread_);
 
     /* Connect signals */
 
-    connect(thread, &QThread::started, worker, &Worker::work);
-    connect(worker, &Worker::progressUpdate, this, &MainGUI::onProgressUpdated);
-    connect(worker, &Worker::finished, this, &MainGUI::onWorkFinished);
-    connect(prgGUI, &ProgressGUI::cancelRequested, worker, &Worker::requestCancel,
+    connect(thread_, &QThread::started, worker_, &Worker::work);
+    connect(worker_, &Worker::progressUpdate, this, &MainGUI::onProgressUpdated);
+    connect(worker_, &Worker::finished, this, &MainGUI::onWorkFinished);
+    connect(prg_gui_, &ProgressGUI::cancelRequested, worker_, &Worker::requestCancel,
             Qt::DirectConnection);
-    connect(worker, &Worker::finished, thread, &QThread::quit);
-    connect(thread, &QThread::finished, this, &MainGUI::onThreadFinished);
+    connect(worker_, &Worker::finished, thread_, &QThread::quit);
+    connect(thread_, &QThread::finished, this, &MainGUI::onThreadFinished);
 
     /* Start worker thread */
 
-    thread->start();
+    thread_->start();
   }
 }
 
 void MainGUI::onProgressUpdated(int perc, const QString& status) {
-  prgGUI->update(perc, status);
+  prg_gui_->Update(perc, status);
 }
 
-void MainGUI::onWorkFinished(const QString& msg, bool shouldDelete) {
-  prgGUI->showResult(msg);
-  this->shouldDelete = shouldDelete;
+void MainGUI::onWorkFinished(const QString& msg, bool should_delete) {
+  prg_gui_->ShowResult(msg);
+  this->should_delete_ = should_delete;
 }
 
 void MainGUI::onThreadFinished() {
-  clean();
+  Clean();
 }
 
 void MainGUI::onCloseRequested() {
   close();
 }
 
-int MainGUI::openFiles() {
-  QFileInfo srcInfo(userInput.src);
-  QFileInfo dstInfo(userInput.dst);
+int MainGUI::OpenFiles() {
+  QFileInfo srcInfo(user_input_.src);
+  QFileInfo dstInfo(user_input_.dst);
 
-  closeFiles();
+  CloseFiles();
 
-  OpenFile(&srcFile, userInput.src, "rb");
+  OpenFile(&src_file_, user_input_.src, "rb");
 
-  if (srcFile == nullptr) {
-    inputGUI->setErrMsg("ERROR: Failed to open source file");
+  if (src_file_ == nullptr) {
+    input_gui_->SetErrMsg("ERROR: Failed to open source file");
     return 1;
   }
 
   if (srcInfo.canonicalFilePath() == dstInfo.canonicalFilePath()) {
-    inputGUI->setErrMsg("Source and destination cannot be the same");
+    input_gui_->SetErrMsg("Source and destination cannot be the same");
     return 1;
   }
 
-  if (FileExists(userInput.dst)) {
-    inputGUI->setErrMsg("Destination file already exists");
+  if (FileExists(user_input_.dst)) {
+    input_gui_->SetErrMsg("Destination file already exists");
     return 1;
   }
 
-  OpenFile(&dstFile, userInput.dst, "wb+");
+  OpenFile(&dst_file_, user_input_.dst, "wb+");
 
-  if (dstFile == nullptr) {
-    inputGUI->setErrMsg("ERROR: Failed to create destination file");
+  if (dst_file_ == nullptr) {
+    input_gui_->SetErrMsg("ERROR: Failed to create destination file");
     return 1;
   }
 
   return 0;
 }
 
-void MainGUI::clean() {
-  if (thread && thread->isRunning()) {
-    if (worker)
-      worker->requestCancel();
+void MainGUI::Clean() {
+  if (thread_ && thread_->isRunning()) {
+    if (worker_) {
+      worker_->requestCancel();
+    }
 
-    thread->quit();
+    thread_->quit();
 
-    if (!thread->wait(5000)) {
-      thread->terminate();
-      thread->wait();
+    if (!thread_->wait(5000)) {
+      thread_->terminate();
+      thread_->wait();
     }
   }
 
-  if (worker) {
-    worker->deleteLater();
-    worker = nullptr;
+  if (worker_) {
+    worker_->deleteLater();
+    worker_ = nullptr;
   }
 
-  if (thread) {
-    thread->deleteLater();
-    thread = nullptr;
+  if (thread_) {
+    thread_->deleteLater();
+    thread_ = nullptr;
   }
 
-  closeFiles();
+  CloseFiles();
 
-  if (shouldDelete) {
-    RemoveFile(userInput.dst);
-    shouldDelete = false;
+  if (should_delete_) {
+    RemoveFile(user_input_.dst);
+    should_delete_ = false;
   }
 }
 
-void MainGUI::closeFiles() {
-  if (srcFile) {
-    fclose(srcFile);
-    srcFile = nullptr;
+void MainGUI::CloseFiles() {
+  if (src_file_) {
+    fclose(src_file_);
+    src_file_ = nullptr;
   }
 
-  if (dstFile) {
-    fclose(dstFile);
-    dstFile = nullptr;
+  if (dst_file_) {
+    fclose(dst_file_);
+    dst_file_ = nullptr;
   }
 }

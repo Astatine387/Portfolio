@@ -27,11 +27,11 @@ class ModeButton : public QWidget {
    * @brief   Get the currently selected mode
    * @return  0 for encrypt, 1 for decrypt, -1 if neither is selected
    */
-  int getMode();
+  int GetMode();
 
  private:
-  QButtonGroup* btnGrp;
-  QHBoxLayout* hBox;
-  QRadioButton* encBtn;
-  QRadioButton* decBtn;
+  QButtonGroup* btn_group_;
+  QHBoxLayout* hbox_;
+  QRadioButton* enc_btn_;
+  QRadioButton* dec_btn_;
 };

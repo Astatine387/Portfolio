@@ -18,17 +18,17 @@
  */
 class AES_GCM_Test : public ::testing::Test {
  protected:
-  QString srcPath = "test_src.tmp";
-  QString encPath = "test_enc.tmp";
-  QString decPath = "test_dec.tmp";
+  QString src_path_ = "test_src.tmp";
+  QString enc_path_ = "test_enc.tmp";
+  QString dec_path_ = "test_dec.tmp";
 
   /**
    * @brief   Clean up temporary files after each test
    */
   void TearDown() override {
-    RemoveFile(srcPath);
-    RemoveFile(encPath);
-    RemoveFile(decPath);
+    RemoveFile(src_path_);
+    RemoveFile(enc_path_);
+    RemoveFile(dec_path_);
   }
 
   /**
@@ -37,7 +37,7 @@ class AES_GCM_Test : public ::testing::Test {
    * @param   data    File content
    * @param   size    File size
    */
-  void create(QString& path, std::vector<uint8_t>& data, int size) {
+  void Create(QString& path, std::vector<uint8_t>& data, int size) {
     FILE* file = nullptr;
 
     OpenFile(&file, path, "wb");
@@ -53,7 +53,7 @@ class AES_GCM_Test : public ::testing::Test {
    * @param   path    Source file path
    * @param   vec     Destination buffer
    */
-  void read(QString& path, std::vector<uint8_t>& vec) {
+  void Read(QString& path, std::vector<uint8_t>& vec) {
     FILE* file = nullptr;
     uint64_t size;
 
@@ -90,42 +90,49 @@ TEST_F(AES_GCM_Test, EncryptDecryptBasic) {
   int psize = strlen(pw);
   int res;
 
-  for (int i = 0; i < dsize; i++)
+  for (int i = 0; i < dsize; i++) {
     orig.push_back(data[i]);
+  }
 
-  create(srcPath, orig, dsize);
+  Create(src_path_, orig, dsize);
 
   /* Encrypt */
 
-  OpenFile(&src, srcPath, "rb");
-  OpenFile(&dst, encPath, "wb+");
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
 
-  res = aes.encrypt(src, dst, pw, psize);
+  res = aes.Encrypt(src, dst, pw, psize);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   EXPECT_EQ(res, 0);
 
   /* Decrypt */
 
-  OpenFile(&src, encPath, "rb");
-  OpenFile(&dst, decPath, "wb+");
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb+");
 
-  res = aes.decrypt(src, dst, pw, psize);
+  res = aes.Decrypt(src, dst, pw, psize);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   EXPECT_EQ(res, 0);
 
   /* Compare with original */
 
-  read(decPath, copy);
+  Read(dec_path_, copy);
 
   EXPECT_EQ(orig, copy);
 }
@@ -147,34 +154,41 @@ TEST_F(AES_GCM_Test, WrongPasswordFails) {
   int psize0 = strlen(pw0), psize1 = strlen(pw1);
   int res;
 
-  for (int i = 0; i < dsize; i++)
+  for (int i = 0; i < dsize; i++) {
     orig.push_back(data[i]);
+  }
 
-  create(srcPath, orig, dsize);
+  Create(src_path_, orig, dsize);
 
   /* Encrypt */
 
-  OpenFile(&src, srcPath, "rb");
-  OpenFile(&dst, encPath, "wb+");
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
 
-  aes.encrypt(src, dst, pw0, psize0);
+  aes.Encrypt(src, dst, pw0, psize0);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   /* Decrypt with wrong password */
 
-  OpenFile(&src, encPath, "rb");
-  OpenFile(&dst, decPath, "wb");
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb");
 
-  res = aes.decrypt(src, dst, pw1, psize1);
+  res = aes.Decrypt(src, dst, pw1, psize1);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   EXPECT_NE(res, 0);
 }
@@ -192,42 +206,49 @@ TEST_F(AES_GCM_Test, TamperedCipherFails) {
   int psize = strlen(pw);
   int res;
 
-  for (int i = 0; i < dsize; i++)
+  for (int i = 0; i < dsize; i++) {
     orig.push_back(data[i]);
+  }
 
-  create(srcPath, orig, dsize);
+  Create(src_path_, orig, dsize);
 
   /* Encrypt */
 
-  OpenFile(&src, srcPath, "rb");
-  OpenFile(&dst, encPath, "wb+");
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
 
-  aes.encrypt(src, dst, pw, psize);
+  aes.Encrypt(src, dst, pw, psize);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   /* Tamper ciphertext */
 
-  read(encPath, copy);
+  Read(enc_path_, copy);
 
   copy[kSaltSize + kIVSize] ^= 0xFF;
 
-  create(encPath, copy, copy.size());
+  Create(enc_path_, copy, copy.size());
 
   /* Decrypt */
 
-  OpenFile(&src, encPath, "rb");
-  OpenFile(&dst, decPath, "wb+");
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb+");
 
-  res = aes.decrypt(src, dst, pw, psize);
+  res = aes.Decrypt(src, dst, pw, psize);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   EXPECT_NE(res, 0);
 }
@@ -248,39 +269,45 @@ TEST_F(AES_GCM_Test, EmptyFile) {
   int psize = strlen(pw);
   int res;
 
-  create(srcPath, orig, dsize);
+  Create(src_path_, orig, dsize);
 
   /* Encrypt */
 
-  OpenFile(&src, srcPath, "rb");
-  OpenFile(&dst, encPath, "wb+");
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
 
-  res = aes.encrypt(src, dst, pw, psize);
+  res = aes.Encrypt(src, dst, pw, psize);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   EXPECT_EQ(res, 0);
 
   /* Decrypt */
 
-  OpenFile(&src, encPath, "rb");
-  OpenFile(&dst, decPath, "wb+");
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb+");
 
-  res = aes.decrypt(src, dst, pw, psize);
+  res = aes.Decrypt(src, dst, pw, psize);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   EXPECT_EQ(res, 0);
 
   /* Compare with original */
 
-  read(decPath, copy);
+  Read(dec_path_, copy);
 
   EXPECT_EQ(orig, copy);
 }
@@ -299,39 +326,45 @@ TEST_F(AES_GCM_Test, ExactBuffSizeFile) {
 
   orig.resize(dsize, 'a');
 
-  create(srcPath, orig, dsize);
+  Create(src_path_, orig, dsize);
 
   /* Encrypt */
 
-  OpenFile(&src, srcPath, "rb");
-  OpenFile(&dst, encPath, "wb+");
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
 
-  res = aes.encrypt(src, dst, pw, psize);
+  res = aes.Encrypt(src, dst, pw, psize);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   EXPECT_EQ(res, 0);
 
   /* Decrypt */
 
-  OpenFile(&src, encPath, "rb");
-  OpenFile(&dst, decPath, "wb+");
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb+");
 
-  res = aes.decrypt(src, dst, pw, psize);
+  res = aes.Decrypt(src, dst, pw, psize);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   EXPECT_EQ(res, 0);
 
   /* Compare with original */
 
-  read(decPath, copy);
+  Read(dec_path_, copy);
 
   EXPECT_EQ(orig, copy);
 }
@@ -350,39 +383,45 @@ TEST_F(AES_GCM_Test, ArbitrarySizeFile) {
 
   orig.resize(dsize, 'a');
 
-  create(srcPath, orig, dsize);
+  Create(src_path_, orig, dsize);
 
   /* Encrypt */
 
-  OpenFile(&src, srcPath, "rb");
-  OpenFile(&dst, encPath, "wb+");
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
 
-  res = aes.encrypt(src, dst, pw, psize);
+  res = aes.Encrypt(src, dst, pw, psize);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   EXPECT_EQ(res, 0);
 
   /* Decrypt */
 
-  OpenFile(&src, encPath, "rb");
-  OpenFile(&dst, decPath, "wb+");
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb+");
 
-  res = aes.decrypt(src, dst, pw, psize);
+  res = aes.Decrypt(src, dst, pw, psize);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   EXPECT_EQ(res, 0);
 
   /* Compare with original */
 
-  read(decPath, copy);
+  Read(dec_path_, copy);
 
   EXPECT_EQ(orig, copy);
 }
@@ -405,14 +444,14 @@ TEST_F(AES_GCM_Test, ProgressCallback) {
 
   orig.resize(dsize, 'a');
 
-  create(srcPath, orig, dsize);
+  Create(src_path_, orig, dsize);
 
   /* Encrypt with progress callback */
 
-  OpenFile(&src, srcPath, "rb");
-  OpenFile(&dst, encPath, "wb+");
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
 
-  aes.setProgressCb([&](int perc, bool* cancelled) {
+  aes.SetProgressCallback([&](int perc, bool* cancelled) {
     cnt++;
 
     EXPECT_GE(perc, last);
@@ -420,12 +459,15 @@ TEST_F(AES_GCM_Test, ProgressCallback) {
     last = perc;
   });
 
-  aes.encrypt(src, dst, pw, psize);
+  aes.Encrypt(src, dst, pw, psize);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   EXPECT_GT(cnt, 0);
 }
@@ -446,33 +488,39 @@ TEST_F(AES_GCM_Test, ErrorCallback) {
   for (int i = 0; i < dsize; i++)
     orig.push_back(data[i]);
 
-  create(srcPath, orig, dsize);
+  Create(src_path_, orig, dsize);
 
   /* Encrypt */
 
-  OpenFile(&src, srcPath, "rb");
-  OpenFile(&dst, encPath, "wb+");
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
 
-  aes.encrypt(src, dst, pw0, psize0);
+  aes.Encrypt(src, dst, pw0, psize0);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   /* Decrypt with wrong password and error callback */
 
-  OpenFile(&src, encPath, "rb");
-  OpenFile(&dst, decPath, "wb+");
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb+");
 
-  aes.setErrorCb([&](const char* msg) { b = true; });
+  aes.SetErrorCallback([&](const char* msg) { b = true; });
 
-  aes.decrypt(src, dst, pw1, psize1);
+  aes.Decrypt(src, dst, pw1, psize1);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   EXPECT_TRUE(b);
 }
@@ -495,26 +543,30 @@ TEST_F(AES_GCM_Test, Cancellation) {
 
   orig.resize(dsize, 'a');
 
-  create(srcPath, orig, dsize);
+  Create(src_path_, orig, dsize);
 
   /* Encrypt and cancel after the second callback */
 
-  OpenFile(&src, srcPath, "rb");
-  OpenFile(&dst, encPath, "wb+");
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
 
-  aes.setProgressCb([&](int perc, bool* cancelled) {
+  aes.SetProgressCallback([&](int perc, bool* cancelled) {
     cnt++;
 
-    if (cnt >= 2)
+    if (cnt >= 2) {
       *cancelled = true;
+    }
   });
 
-  res = aes.encrypt(src, dst, pw, psize);
+  res = aes.Encrypt(src, dst, pw, psize);
 
-  if (src)
+  if (src) {
     fclose(src);
-  if (dst)
+  }
+
+  if (dst) {
     fclose(dst);
+  }
 
   EXPECT_NE(res, 0);
   EXPECT_GE(cnt, 2);

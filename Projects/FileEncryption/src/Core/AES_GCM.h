@@ -53,7 +53,7 @@ class AES_GCM {
    * @param		plen	Password length
    * @return		0 on success, 1 on failure
    */
-  int decrypt(FILE* src, FILE* dst, const char* pw, size_t plen);
+  int Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen);
 
   /**
    * @brief		Encrypt a file
@@ -63,7 +63,7 @@ class AES_GCM {
    * @param		plen	Password length
    * @return		0 on success, 1 on failure
    */
-  int encrypt(FILE* src, FILE* dst, const char* pw, size_t plen);
+  int Encrypt(FILE* src, FILE* dst, const char* pw, size_t plen);
 
   /* ==================================================
    * Callback functions
@@ -73,7 +73,7 @@ class AES_GCM {
    * @brief	Callback function for error reporting
    * @param	errMsg	Error message string
    */
-  using ErrorCallback = std::function<void(const char* errMsg)>;
+  using ErrorCallback = std::function<void(const char* msg)>;
 
   /**
    * @brief	Callback function for progress reporting
@@ -86,34 +86,34 @@ class AES_GCM {
    * @brief	Set error callback function
    * @param	ecb		Error callback function
    */
-  void setErrorCb(ErrorCallback ecb) { this->ecb = ecb; }
+  void SetErrorCallback(ErrorCallback ecb) { this->ecb_ = ecb; }
 
   /**
    * @brief	Set progress callback function
    * @param	pcb		Progress callback function
    */
-  void setProgressCb(ProgressCallback pcb) { this->pcb = pcb; }
+  void SetProgressCallback(ProgressCallback pcb) { this->pcb_ = pcb; }
 
  private:
-  EVP_CIPHER_CTX* ctx = nullptr;  // OpenSSL encryption/decryption context
+  EVP_CIPHER_CTX* ctx_ = nullptr;  // OpenSSL encryption/decryption context
 
-  FILE* src = nullptr;  // Source file
-  FILE* dst = nullptr;  // Destination file
+  FILE* src_file_ = nullptr;  // Source file
+  FILE* dst_file_ = nullptr;  // Destination file
 
-  ErrorCallback ecb = nullptr;     // Error reporting callback function
-  ProgressCallback pcb = nullptr;  // Progress reporting callback function
+  ErrorCallback ecb_ = nullptr;     // Error reporting callback function
+  ProgressCallback pcb_ = nullptr;  // Progress reporting callback function
 
-  int64_t size = 0;   // Source file size
-  uint64_t prog = 0;  // Current progress
+  int64_t src_size_ = 0;   // Source file size
+  uint64_t progress_ = 0;  // Current progress
 
-  uint8_t buff[kBuffNum][kBuffSize][kBlockSize];  // Buffer
-  uint8_t iv[kIVSize];                            // Initial vector
-  uint8_t key[kKeySize];                          // Key derived from password
-  uint8_t salt[kSaltSize];                        // Key derivation salt
+  uint8_t buff_[kBuffNum][kBuffSize][kBlockSize];  // Buffer
+  uint8_t iv_[kIVSize];                            // Initial vector
+  uint8_t key_[kKeySize];                          // Key derived from password
+  uint8_t salt_[kSaltSize];                        // Key derivation salt
 
-  std::atomic<bool> cancelled{false};  // Is the program cancelled?
-  std::future<int> writeRes;           // Asynchronous write result
-  bool writing = false;                // Is there currently ongoing asynchronous write?
+  std::atomic<bool> cancelled_{false};  // Is the program cancelled?
+  std::future<int> write_res_;          // Asynchronous write result
+  bool writing_ = false;                // Is there currently ongoing asynchronous write?
 
   /* ==================================================
    * I/O helper functions
@@ -125,7 +125,7 @@ class AES_GCM {
    * @param	size	Number of bytes to read
    * @return	0 on success, 1 on failure
    */
-  int readFile(void* buff, int size);
+  int ReadFile(void* buff, int size);
 
   /**
    * @brief	Write data from buffer to destination file
@@ -133,7 +133,7 @@ class AES_GCM {
    * @param	size	Number of bytes to write
    * @return	0 on success, 1 on failure
    */
-  int writeFile(const void* buff, int size);
+  int WriteFile(const void* buff, int size);
 
   /* ==================================================
    * Decryption functions
@@ -145,13 +145,13 @@ class AES_GCM {
    * @param	plen	Password length
    * @return	0 on success, 1 on failure
    */
-  int decryptInit(const char* pw, size_t plen);
+  int DecryptInit(const char* pw, size_t plen);
 
   /**
    * @brief	Read and verify authentication tag
    * @return	0 on success, 1 on failure
    */
-  int decryptTag();
+  int DecryptTag();
 
   /**
    * @brief	Decrypt buffer
@@ -160,25 +160,25 @@ class AES_GCM {
    * @param	srcLen	Source buffer length
    * @return	0 on success, 1 on failure
    */
-  int decryptBuff(void* src, void* dst, int srcLen);
+  int DecryptBuff(void* src, void* dst, int srclen);
 
   /**
    * @brief	Decrypt multiple blocks in a batch
    * @return	0 on success, 1 on failure
    */
-  int decryptBatch();
+  int DecryptBatch();
 
   /**
    * @brief	Decrypt remaining data smaller than buffer
    * @return	0 on success, 1 on failure
    */
-  int decryptRemain();
+  int DecryptRemain();
 
   /**
    * @brief	Finialize decryption
    * @return	0 on success, 1 on failure
    */
-  int decryptFinal();
+  int DecryptFinal();
 
   /* ==================================================
    * Encryption functions
@@ -190,7 +190,7 @@ class AES_GCM {
    * @param	plen	Password length
    * @return	0 on success, 1 on failure
    */
-  int encryptInit(const char* pw, size_t plen);
+  int EncryptInit(const char* pw, size_t plen);
 
   /**
    * @brief	Encrypt buffer
@@ -199,31 +199,31 @@ class AES_GCM {
    * @param	srcLen	Source buffer length
    * @return	0 on success, 1 on failure
    */
-  int encryptBuff(void* src, void* dst, int srcLen);
+  int EncryptBuff(void* src, void* dst, int srclen);
 
   /**
    * @brief	Encrypt multiple blocks in a batch
    * @return	0 on success, 1 on failure
    */
-  int encryptBatch();
+  int EncryptBatch();
 
   /**
    * @brief	Encrypt remaining data smaller than buffer
    * @return	0 on success, 1 on failure
    */
-  int encryptRemain();
+  int EncryptRemain();
 
   /**
    * @brief	Finialize encryption
    * @return	0 on success, 1 on failure
    */
-  int encryptFinal();
+  int EncryptFinal();
 
   /**
    * @brief	Generate and write authentication tag
    * @return	0 on success, 1 on failure
    */
-  int encryptTag();
+  int EncryptTag();
 
   /* ==================================================
    * Callback helper functions
@@ -233,11 +233,11 @@ class AES_GCM {
    * @brief		Report current progress via callback
    * @return	0 on continue, 1 on cancelled
    */
-  int reportProgress();
+  int ReportProgress();
 
   /**
    * @brief	Report error via callback
    * @param	msg		Error message string
    */
-  void reportError(const char* msg);
+  void ReportError(const char* msg);
 };

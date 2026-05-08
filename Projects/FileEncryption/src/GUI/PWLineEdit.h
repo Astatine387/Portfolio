@@ -30,13 +30,13 @@ class PWLineEdit : public QWidget {
   /**
    * @brief   Clear the input field
    */
-  void clear();
+  void Clear();
 
   /**
    * @brief   Extract data from the input line to Password class
    * @param   pw  Destination
    */
-  void extract(Password& pw);
+  void Extract(Password& pw);
 
  private slots:
   /**
@@ -45,7 +45,7 @@ class PWLineEdit : public QWidget {
   void toggleMask();
 
  private:
-  QHBoxLayout* hBox;
-  QLineEdit* pwLine;
-  QPushButton* maskBtn;
+  QHBoxLayout* hbox_;
+  QLineEdit* pw_line_;
+  QPushButton* mask_btn_;
 };

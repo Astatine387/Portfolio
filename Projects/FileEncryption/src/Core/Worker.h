@@ -28,12 +28,12 @@ class Worker : public QObject {
    * @param   pw          Password
    * @param   mode        Encryption/decryption mode
    */
-  Worker(FILE* srcFile, FILE* dstFile, const QString& dstPath, const Password& pw, int mode) {
-    this->srcFile = srcFile;
-    this->dstFile = dstFile;
-    this->dstPath = dstPath;
-    this->pw.setData(pw);
-    this->mode = mode;
+  Worker(FILE* src_file, FILE* dst_file, const QString& dst_path, const Password& pw, int mode) {
+    this->src_file_ = src_file;
+    this->dst_file_ = dst_file;
+    this->dst_path_ = dst_path;
+    this->pw_.SetData(pw);
+    this->mode_ = mode;
   }
 
  signals:
@@ -42,7 +42,7 @@ class Worker : public QObject {
    * @param   msg             Result message
    * @param   shouldDelete    Destination file deletion flag value
    */
-  void finished(QString msg, bool shouldDelete);
+  void finished(QString msg, bool should_delete);
 
   /**
    * @brief   Update progress bar and status message
@@ -63,9 +63,9 @@ class Worker : public QObject {
   void work();
 
  private:
-  FILE *srcFile = nullptr, *dstFile = nullptr;
-  QString err = "", dstPath;
-  Password pw;
-  std::atomic<bool> shouldCancel{false};
-  int mode;
+  FILE *src_file_ = nullptr, *dst_file_ = nullptr;
+  QString err_ = "", dst_path_;
+  Password pw_;
+  std::atomic<bool> should_cancel_{false};
+  int mode_;
 };

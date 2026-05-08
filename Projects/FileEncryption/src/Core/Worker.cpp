@@ -7,21 +7,21 @@
 #include "Worker.h"
 
 void Worker::requestCancel() {
-  shouldCancel.store(true, std::memory_order_release);
+  should_cancel_.store(true, std::memory_order_release);
 }
 
 void Worker::work() {
   AES_GCM aes;
   QString msg;
-  bool shouldDelete = false;
+  bool should_delete = false;
   int res;
 
-  aes.setErrorCb([this](const char* msg) { err = QString(msg); });
+  aes.SetErrorCallback([this](const char* msg) { err_ = QString(msg); });
 
-  aes.setProgressCb([this](int perc, bool* cancelled) {
+  aes.SetProgressCallback([this](int perc, bool* cancelled) {
     QString status;
 
-    if (mode == 0) {
+    if (mode_ == 0) {
       status = QString("Encrypting... %1%\n").arg(perc);
     }
     else {
@@ -30,39 +30,39 @@ void Worker::work() {
 
     emit progressUpdate(perc, status);
 
-    *cancelled = shouldCancel.load(std::memory_order_acquire);
+    *cancelled = should_cancel_.load(std::memory_order_acquire);
   });
 
-  if (mode == 0) {
-    res = aes.encrypt(srcFile, dstFile, pw.getData(), pw.getSize());
+  if (mode_ == 0) {
+    res = aes.Encrypt(src_file_, dst_file_, pw_.GetData(), pw_.GetSize());
 
-    if (shouldCancel) {
+    if (should_cancel_) {
       msg = "Encryption canceled\n";
-      shouldDelete = true;
+      should_delete = true;
     }
     else if (res) {
-      msg = err + "Encryption failed\n";
-      shouldDelete = true;
+      msg = err_ + "Encryption failed\n";
+      should_delete = true;
     }
     else {
       msg = "Encryption complete\n";
     }
   }
   else {
-    res = aes.decrypt(srcFile, dstFile, pw.getData(), pw.getSize());
+    res = aes.Decrypt(src_file_, dst_file_, pw_.GetData(), pw_.GetSize());
 
-    if (shouldCancel) {
+    if (should_cancel_) {
       msg = "Decryption canceled\n";
-      shouldDelete = true;
+      should_delete = true;
     }
     else if (res) {
-      msg = err + "Decryption failed\n";
-      shouldDelete = true;
+      msg = err_ + "Decryption failed\n";
+      should_delete = true;
     }
     else {
       msg = "Decryption complete\n";
     }
   }
 
-  emit finished(msg, shouldDelete);
+  emit finished(msg, should_delete);
 }

@@ -70,11 +70,11 @@ int Argon2id(uint8_t* salt, const char* pw, size_t plen, uint8_t* key) {
 
 int GetProcNum() {
 #ifdef _WIN32
-  SYSTEM_INFO systemInfo;
+  SYSTEM_INFO system_info;
 
-  GetSystemInfo(&systemInfo);
+  GetSystemInfo(&system_info);
 
-  return systemInfo.dwNumberOfProcessors;
+  return system_info.dwNumberOfProcessors;
 
 #else
   return std::thread::hardware_concurrency();

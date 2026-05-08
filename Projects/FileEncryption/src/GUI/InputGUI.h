@@ -47,7 +47,7 @@ class InputGUI : public QWidget {
    * @brief   Display error message
    * @param   msg     error message string
    */
-  void setErrMsg(const QString& msg);
+  void SetErrMsg(const QString& msg);
 
  signals:
   /**
@@ -63,12 +63,12 @@ class InputGUI : public QWidget {
   void onStartClicked();
 
  private:
-  ModeButton* modeBtn;
-  PWLineEdit* pwLine;
-  QLineEdit* srcLine;  // Source file input field
-  QLineEdit* dstLine;  // Destination file input field
-  QPushButton* startBtn;
-  QLabel* errMsg;     // Label to display error messages
-  QHBoxLayout* hBox;  // Layout for start button and error message
-  QVBoxLayout* vBox;
+  ModeButton* mode_btn_;
+  PWLineEdit* pw_line_;
+  QLineEdit* src_line_;  // Source file input field
+  QLineEdit* dst_line;   // Destination file input field
+  QPushButton* start_btn_;
+  QLabel* err_msg_;    // Label to display error messages
+  QHBoxLayout* hbox_;  // Layout for start button and error message
+  QVBoxLayout* vbox_;
 };

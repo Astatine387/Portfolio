@@ -16,38 +16,41 @@
 #include <cstring>
 
 AES_GCM::AES_GCM() {
-  for (int i = 0; i < kBuffNum; i++)
-    memset(buff[i], 0, sizeof(uint8_t) * kBuffSize * kBlockSize);
+  for (int i = 0; i < kBuffNum; i++) {
+    memset(buff_[i], 0, sizeof(uint8_t) * kBuffSize * kBlockSize);
+  }
 
-  memset(iv, 0, sizeof(uint8_t) * kIVSize);
-  memset(salt, 0, sizeof(uint8_t) * kSaltSize);
+  memset(iv_, 0, sizeof(uint8_t) * kIVSize);
+  memset(salt_, 0, sizeof(uint8_t) * kSaltSize);
 
-  Lock(key, kKeySize);
+  Lock(key_, kKeySize);
 }
 
 AES_GCM::~AES_GCM() {
-  if (writeRes.valid())
-    writeRes.wait();
+  if (write_res_.valid()) {
+    write_res_.wait();
+  }
 
-  for (int i = 0; i < kBuffNum; i++)
-    Wipe(buff[i], sizeof(uint8_t) * kBuffSize * kBlockSize);
+  for (int i = 0; i < kBuffNum; i++) {
+    Wipe(buff_[i], sizeof(uint8_t) * kBuffSize * kBlockSize);
+  }
 
-  Wipe(iv, sizeof(uint8_t) * kIVSize);
-  Wipe(key, sizeof(uint8_t) * kKeySize);
-  Wipe(salt, sizeof(uint8_t) * kSaltSize);
+  Wipe(iv_, sizeof(uint8_t) * kIVSize);
+  Wipe(key_, sizeof(uint8_t) * kKeySize);
+  Wipe(salt_, sizeof(uint8_t) * kSaltSize);
 
-  Unlock(key, kKeySize);
+  Unlock(key_, kKeySize);
 
-  if (ctx) {
-    EVP_CIPHER_CTX_free(ctx);
-    ctx = nullptr;
+  if (ctx_) {
+    EVP_CIPHER_CTX_free(ctx_);
+    ctx_ = nullptr;
   }
 }
 
-int AES_GCM::readFile(void* buff, int size) {
-  if (fread(buff, sizeof(uint8_t), size, src) != size) {
+int AES_GCM::ReadFile(void* buff, int size) {
+  if (fread(buff, sizeof(uint8_t), size, src_file_) != size) {
     // LCOV_EXCL_START
-    reportError("[File] Read failed - Cannot read source file data\n");
+    ReportError("[File] Read failed - Cannot read source file data\n");
     return 1;
     // LCOV_EXCL_STOP
   }
@@ -55,13 +58,15 @@ int AES_GCM::readFile(void* buff, int size) {
   return 0;
 }
 
-int AES_GCM::writeFile(const void* buff, int size) {
-  if (fwrite(buff, sizeof(uint8_t), size, dst) != size) {
+int AES_GCM::WriteFile(const void* buff, int size) {
+  if (fwrite(buff, sizeof(uint8_t), size, dst_file_) != size) {
     // LCOV_EXCL_START
-    if (ferror(dst))
-      reportError("[File] Write failed - Disk may be full or I/O error\n");
-    else
-      reportError("[File] Write failed - Cannot write destination file data\n");
+    if (ferror(dst_file_)) {
+      ReportError("[File] Write failed - Disk may be full or I/O error\n");
+    }
+    else {
+      ReportError("[File] Write failed - Cannot write destination file data\n");
+    }
 
     return 1;
     // LCOV_EXCL_STOP
@@ -70,16 +75,16 @@ int AES_GCM::writeFile(const void* buff, int size) {
   return 0;
 }
 
-int AES_GCM::reportProgress() {
-  if (pcb) {
-    uint64_t perc = size > 0 ? prog * 100 / size : 100;
+int AES_GCM::ReportProgress() {
+  if (pcb_) {
+    uint64_t perc = src_size_ > 0 ? progress_ * 100 / src_size_ : 100;
 
-    bool shouldCancel = false;
+    bool should_cancel = false;
 
-    pcb(perc, &shouldCancel);
+    pcb_(perc, &should_cancel);
 
-    if (shouldCancel) {
-      cancelled.store(true);
+    if (should_cancel) {
+      cancelled_.store(true);
       return 1;
     }
   }
@@ -87,23 +92,24 @@ int AES_GCM::reportProgress() {
   return 0;
 }
 
-void AES_GCM::reportError(const char* msg) {
-  if (!ecb)
+void AES_GCM::ReportError(const char* msg) {
+  if (!ecb_) {
     return;
+  }
 
   std::string res;
   unsigned long code;
-  char errStr[256];
+  char err_str[256];
 
   res += msg;
 
   while ((code = ERR_get_error()) != 0) {
-    ERR_error_string_n(code, errStr, sizeof(errStr));
+    ERR_error_string_n(code, err_str, sizeof(err_str));
 
     res += " -> ";
-    res += errStr;
+    res += err_str;
     res += '\n';
   }
 
-  ecb(res.c_str());
+  ecb_(res.c_str());
 }

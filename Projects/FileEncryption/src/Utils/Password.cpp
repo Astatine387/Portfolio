@@ -10,44 +10,44 @@
 
 #include <cstring>
 
-bool Password::isEmpty() const {
-  return size == 0;
+bool Password::IsEmpty() const {
+  return size_ == 0;
 }
 
-const char* Password::getData() const {
-  return data;
+const char* Password::GetData() const {
+  return data_;
 }
 
-size_t Password::getSize() const {
-  return size;
+size_t Password::GetSize() const {
+  return size_;
 }
 
-void Password::setData(const Password& pw) {
-  setData(pw.getData(), pw.getSize());
+void Password::SetData(const Password& pw) {
+  SetData(pw.GetData(), pw.GetSize());
 }
 
-void Password::setData(const char* str, size_t len) {
-  clean();
+void Password::SetData(const char* str, size_t len) {
+  Clean();
 
   if (str) {
-    size = len;
-    data = new char[size + 1];
+    size_ = len;
+    data_ = new char[size_ + 1];
 
-    Lock(data, size + 1);
-    memcpy(data, str, size);
+    Lock(data_, size_ + 1);
+    memcpy(data_, str, size_);
 
-    data[size] = '\0';
+    data_[size_] = '\0';
   }
 }
 
-void Password::clean() {
-  if (data != nullptr) {
-    Wipe(data, size + 1);
-    Unlock(data, size + 1);
+void Password::Clean() {
+  if (data_ != nullptr) {
+    Wipe(data_, size_ + 1);
+    Unlock(data_, size_ + 1);
 
-    delete[] data;
+    delete[] data_;
   }
 
-  data = nullptr;
-  size = 0;
+  data_ = nullptr;
+  size_ = 0;
 }
