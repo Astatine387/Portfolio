@@ -281,7 +281,7 @@ TEST_F(OpenFileTest, OpenExisting) {
  * The probability of 32 random bytes being all zero is negligible (2^-256)
  */
 TEST(RandomTest, GeneratesNonZero) {
-  uint8_t buff[32] = {0};
+  uint8_t buff[32] = { 0 };
   bool all_zero = true;
 
   EXPECT_EQ(Random(buff, 32), 0);
@@ -424,7 +424,7 @@ TEST(UtilsTest, RenameFileOverwrite) {
 
   EXPECT_EQ(size, static_cast<int64_t>(strlen(srcData)));
 
-  char buff[32] = {0};
+  char buff[32] = { 0 };
 
   fread(buff, 1, size, file);
   fclose(file);

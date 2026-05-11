@@ -90,7 +90,7 @@ class AES_GCM {
 
   size_t src_crs_ = 0;  // Current read position in buffer
   size_t dst_crs_ = 0;  // Current write position in buffer
-  size_t size_ = 0;    // Source buffer size
+  size_t size_ = 0;     // Source buffer size
 
   /* ==================================================
    * Decryption functions

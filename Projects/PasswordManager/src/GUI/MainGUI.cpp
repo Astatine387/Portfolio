@@ -56,7 +56,8 @@ MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
 
   /* Set verify callback for password change */
 
-  change_pw_gui_->SetVerifyCb([this](const Password& curPW) -> bool { return vault_.VerifyPW(curPW); });
+  change_pw_gui_->SetVerifyCb(
+      [this](const Password& curPW) -> bool { return vault_.VerifyPW(curPW); });
 }
 
 MainGUI::~MainGUI() {
@@ -130,7 +131,7 @@ void MainGUI::OnEditRequested(const std::string& site, const std::string& acc) {
 
   /* Find the entry to get its password */
 
-  Entry target = {site, acc};
+  Entry target = { site, acc };
   const auto& entries = vault_.GetEntries();
   auto it = entries.find(target);
 
@@ -169,7 +170,7 @@ void MainGUI::OnDeleteRequested(const std::string& site, const std::string& acc)
 }
 
 void MainGUI::OnCopyPWRequested(const std::string& site, const std::string& acc) {
-  Entry target = {site, acc};
+  Entry target = { site, acc };
   const auto& entries = vault_.GetEntries();
   auto it = entries.find(target);
 

@@ -115,8 +115,8 @@ class Vault {
    * @param	newPw		New password
    * @return	0 on success, 1 on failure
    */
-  int UpdateEntry(const std::string& old_site, const std::string& old_acc, const std::string& new_site,
-                  const std::string& new_acc, const Password& new_pw);
+  int UpdateEntry(const std::string& old_site, const std::string& old_acc,
+                  const std::string& new_site, const std::string& new_acc, const Password& new_pw);
 
   /**
    * @brief	Delete an entry

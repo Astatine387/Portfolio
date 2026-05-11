@@ -32,7 +32,7 @@ ListGUI::ListGUI(QWidget* parent) : QWidget(parent) {
   /* Configure table */
 
   table_->setColumnCount(2);
-  table_->setHorizontalHeaderLabels({"Site", "Account"});
+  table_->setHorizontalHeaderLabels({ "Site", "Account" });
 
   table_->setSelectionBehavior(QAbstractItemView::SelectRows);
   table_->setSelectionMode(QAbstractItemView::SingleSelection);

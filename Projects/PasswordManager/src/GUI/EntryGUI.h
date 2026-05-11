@@ -104,15 +104,15 @@ class EntryGUI : public QDialog {
 
   static constexpr char spcs_[] = "`~!@#$%^&*()-_=+[{]}\\|;:\'\",<.>/?";
 
-  static constexpr bool default_spc_[32] = {
-                                    //    `  ~  !  @  #  $  %  ^
-                                          0, 1, 1, 1, 0, 0, 1, 1,
-                                    //    &  *  (  )  -  _  =  +
-                                          0, 0, 0, 0, 0, 1, 1, 1,
-                                    //    [  {  ]  }  \  |  ;  :
-                                          1, 1, 1, 1, 0, 0, 0, 1,
-                                    //    '  "  ,  <  .  >  /  ?
-                                          0, 0, 1, 0, 0, 0, 0, 1};
+  static constexpr bool default_spc_[32] = { //    `  ~  !  @  #  $  %  ^
+                                             0, 1, 1, 1, 0, 0, 1, 1,
+                                             //    &  *  (  )  -  _  =  +
+                                             0, 0, 0, 0, 0, 1, 1, 1,
+                                             //    [  {  ]  }  \  |  ;  :
+                                             1, 1, 1, 1, 0, 0, 0, 1,
+                                             //    '  "  ,  <  .  >  /  ?
+                                             0, 0, 1, 0, 0, 0, 0, 1
+  };
 
   /**
    * @brief     Get the special character selection list
@@ -137,7 +137,7 @@ class EntryGUI : public QDialog {
    *
    * Generate a random password including at least one each of
    * uppercase, lowercase, number, and special character
-   * 
+   *
    * @param	dst		    Destination password
    * @param	spcList	    List of specials to be used
    * @param	size	    Destination password size

@@ -83,7 +83,7 @@ class ChangePWGUI : public QDialog {
   QPushButton* ok_btn_;
   QPushButton* cancel_btn_;
   QHBoxLayout* btn_box_;
-  len_slider_* vbox_;
+  QVBoxLayout* vbox_;
 
   VerifyCallback vcb_ = nullptr;
 };

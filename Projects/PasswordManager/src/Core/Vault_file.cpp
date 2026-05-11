@@ -25,7 +25,8 @@ int Vault::NewVault(const QString& path) {
 
   /* Encrypt */
 
-  if (aes_.Encrypt(src_buff_.get(), dst_buff_.get() + kMagicSize, src_size_, pw_.GetData(), pw_.GetSize())) {
+  if (aes_.Encrypt(src_buff_.get(), dst_buff_.get() + kMagicSize, src_size_, pw_.GetData(),
+                   pw_.GetSize())) {
     ReportError("[Crypto] Encryption failed - Cannot encrypt vault data\n");
     return 1;
   }
@@ -125,8 +126,8 @@ int Vault::OpenVault(const QString& path) {
 
   dst_buff_ = std::make_unique<uint8_t[]>(dst_size_);
 
-  if (aes_.Decrypt(src_buff_.get() + kMagicSize, dst_buff_.get(), src_size_ - kMagicSize, pw_.GetData(),
-                  pw_.GetSize())) {
+  if (aes_.Decrypt(src_buff_.get() + kMagicSize, dst_buff_.get(), src_size_ - kMagicSize,
+                   pw_.GetData(), pw_.GetSize())) {
     ReportError("[Auth] Decryption failed - Invalid password or corrupted vault\n");
     return 1;
   }
@@ -198,7 +199,8 @@ int Vault::SaveVault(const QString& path) {
 
   /* Encrypt */
 
-  if (aes_.Encrypt(src_buff_.get(), dst_buff_.get() + dst_cur, src_size_, pw_.GetData(), pw_.GetSize())) {
+  if (aes_.Encrypt(src_buff_.get(), dst_buff_.get() + dst_cur, src_size_, pw_.GetData(),
+                   pw_.GetSize())) {
     ReportError("[Crypto] Encryption failed - Cannot encrypt vault data\n");
     return 1;
   }

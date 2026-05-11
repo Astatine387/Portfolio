@@ -57,9 +57,9 @@ TEST(EntryTest, SizeEmpty) {
 TEST(EntryTest, ComparatorOrdering) {
   EntryCmp cmp;
 
-  Entry a = {"Amazon", "user0"};
-  Entry b = {"Amazon", "user1"};
-  Entry c = {"Google", "user0"};
+  Entry a = { "Amazon", "user0" };
+  Entry b = { "Amazon", "user1" };
+  Entry c = { "Google", "user0" };
 
   EXPECT_TRUE(cmp(a, b));
   EXPECT_FALSE(cmp(b, a));
@@ -75,8 +75,8 @@ TEST(EntryTest, ComparatorOrdering) {
 TEST(EntryTest, ComparatorEqual) {
   EntryCmp cmp;
 
-  Entry a = {"Google", "user"};
-  Entry b = {"Google", "user"};
+  Entry a = { "Google", "user" };
+  Entry b = { "Google", "user" };
 
   EXPECT_FALSE(cmp(a, b));
   EXPECT_FALSE(cmp(b, a));
@@ -91,10 +91,10 @@ TEST(EntryTest, SetInsertion) {
 
   pw.SetData("password", 8);
 
-  Entry entry0 = {"Google", "user1", pw};
-  Entry entry1 = {"Google", "user2", pw};
-  Entry entry2 = {"Amazon", "user1", pw};
-  Entry entry3 = {"Google", "user1", pw};  // Duplicate
+  Entry entry0 = { "Google", "user1", pw };
+  Entry entry1 = { "Google", "user2", pw };
+  Entry entry2 = { "Amazon", "user1", pw };
+  Entry entry3 = { "Google", "user1", pw };  // Duplicate
 
   entry_set.insert(entry0);
   entry_set.insert(entry1);
@@ -301,15 +301,15 @@ TEST(EntryTest, DeserializationBoundaryCheck) {
 
   /* Buffer truncated before password length */
 
-  size =
-      sizeof(uint32_t) + src.site_.size() + sizeof(uint32_t) + src.acc_.size() + sizeof(uint32_t) - 1;
+  size = sizeof(uint32_t) + src.site_.size() + sizeof(uint32_t) + src.acc_.size() +
+         sizeof(uint32_t) - 1;
 
   EXPECT_EQ(dst.Deser(vec.data(), size), 0);
 
   /* Buffer truncated before password length */
 
-  size = sizeof(uint32_t) + src.site_.size() + sizeof(uint32_t) + src.acc_.size() + sizeof(uint32_t) +
-         src.pw_.GetSize() - 1;
+  size = sizeof(uint32_t) + src.site_.size() + sizeof(uint32_t) + src.acc_.size() +
+         sizeof(uint32_t) + src.pw_.GetSize() - 1;
 
   EXPECT_EQ(dst.Deser(vec.data(), size), 0);
 }

@@ -313,8 +313,8 @@ TEST_F(VaultFileTest, SaveAndReload) {
 
   const auto& entries = vault_.GetEntries();
 
-  EXPECT_NE(entries.find({"Google", "user1@google.com"}), entries.end());
-  EXPECT_NE(entries.find({"Microsoft", "user2@microsoft.com"}), entries.end());
+  EXPECT_NE(entries.find({ "Google", "user1@google.com" }), entries.end());
+  EXPECT_NE(entries.find({ "Microsoft", "user2@microsoft.com" }), entries.end());
 }
 
 /**
