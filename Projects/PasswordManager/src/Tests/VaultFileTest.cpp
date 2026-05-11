@@ -15,8 +15,8 @@
  */
 class VaultFileTest : public ::testing::Test {
  protected:
-  Vault vault;
-  QString path = "test.vault";
+  Vault vault_;
+  QString path_ = "test.vault";
 
   /**
    * @brief   Set up test fixture with master password and empty vault file
@@ -26,26 +26,26 @@ class VaultFileTest : public ::testing::Test {
     const char* pwstr = "password";
     size_t psize = strlen(pwstr);
 
-    pw.setData(pwstr, psize);
+    pw.SetData(pwstr, psize);
 
-    vault.setPW(pw);
-    vault.newVault(path);
+    vault_.SetPW(pw);
+    vault_.NewVault(path_);
   }
 
   /**
    * @brief   Clean up temporary vault files after each test
    */
-  void TearDown() override { RemoveFile(path); }
+  void TearDown() override { RemoveFile(path_); }
 
   /**
    * @brief   Create a Password object from C-string
    * @param   str     Password string
    * @return  Password object
    */
-  Password makePW(const char* str) {
+  Password MakePW(const char* str) {
     Password pw;
 
-    pw.setData(str, strlen(str));
+    pw.SetData(str, strlen(str));
 
     return pw;
   }
@@ -54,11 +54,11 @@ class VaultFileTest : public ::testing::Test {
    * @brief   Close vault and reopen with master password
    * @return  0 on success, non-zero on failure
    */
-  int reload() {
+  int Reload() {
     const char* pwstr = "password";
     size_t psize = strlen(pwstr);
 
-    return reload(pwstr, psize);
+    return Reload(pwstr, psize);
   }
 
   /**
@@ -67,15 +67,15 @@ class VaultFileTest : public ::testing::Test {
    * @param   pwLen   Password length
    * @return  0 on success, non-zero on failure
    */
-  int reload(const char* pwStr, size_t pwLen) {
-    vault.closeVault();
+  int Reload(const char* pwStr, size_t pwLen) {
+    vault_.CloseVault();
 
     Password pw;
 
-    pw.setData(pwStr, pwLen);
-    vault.setPW(pw);
+    pw.SetData(pwStr, pwLen);
+    vault_.SetPW(pw);
 
-    return vault.openVault(path);
+    return vault_.OpenVault(path_);
   }
 };
 
@@ -87,15 +87,15 @@ class VaultFileTest : public ::testing::Test {
  * @brief   Verify creating a new vault file succeeds
  */
 TEST_F(VaultFileTest, NewVault) {
-  EXPECT_TRUE(FileExists(path));
+  EXPECT_TRUE(FileExists(path_));
 }
 
 /**
  * @brief   Verify new vault can be opened and is empty
  */
 TEST_F(VaultFileTest, NewVaultIsEmpty) {
-  EXPECT_EQ(reload(), 0);
-  EXPECT_EQ(vault.getEntryCount(), 0);
+  EXPECT_EQ(Reload(), 0);
+  EXPECT_EQ(vault_.GetEntryCount(), 0);
 }
 
 /* ==================================================
@@ -109,24 +109,24 @@ TEST_F(VaultFileTest, OpenWrongPassword) {
   const char* pwstr = "asdf1234";
   size_t psize = strlen(pwstr);
 
-  EXPECT_NE(reload(pwstr, psize), 0);
+  EXPECT_NE(Reload(pwstr, psize), 0);
 }
 
 /**
  * @brief   Verify opening non-existent vault fails
  */
 TEST_F(VaultFileTest, OpenNonExistent) {
-  vault.closeVault();
+  vault_.CloseVault();
 
   Password pw;
 
   const char* pwstr = "asdf1234";
   size_t psize = strlen(pwstr);
 
-  pw.setData(pwstr, psize);
-  vault.setPW(pw);
+  pw.SetData(pwstr, psize);
+  vault_.SetPW(pw);
 
-  EXPECT_NE(vault.openVault("nonexistent.vault"), 0);
+  EXPECT_NE(vault_.OpenVault("nonexistent.vault"), 0);
 }
 
 /**
@@ -136,14 +136,14 @@ TEST_F(VaultFileTest, OpenCorruptedFile) {
   FILE* file = nullptr;
   std::vector<uint8_t> vec(kMinSize, 0x00);
 
-  OpenFile(&file, path, "wb");
+  OpenFile(&file, path_, "wb");
 
   if (file) {
     fwrite(vec.data(), sizeof(uint8_t), vec.size(), file);
     fclose(file);
   }
 
-  EXPECT_NE(reload(), 0);
+  EXPECT_NE(Reload(), 0);
 }
 
 /**
@@ -152,12 +152,12 @@ TEST_F(VaultFileTest, OpenCorruptedFile) {
 TEST_F(VaultFileTest, OpenEmptyFile) {
   FILE* file = nullptr;
 
-  OpenFile(&file, path, "wb");
+  OpenFile(&file, path_, "wb");
 
   if (file)
     fclose(file);
 
-  EXPECT_NE(reload(), 0);
+  EXPECT_NE(Reload(), 0);
 }
 
 /**
@@ -167,14 +167,14 @@ TEST_F(VaultFileTest, OpenUndersizedFile) {
   FILE* file = nullptr;
   std::vector<uint8_t> vec(kMinSize - 1, 0x00);
 
-  OpenFile(&file, path, "wb");
+  OpenFile(&file, path_, "wb");
 
   if (file) {
     fwrite(vec.data(), sizeof(uint8_t), vec.size(), file);
     fclose(file);
   }
 
-  EXPECT_NE(reload(), 0);
+  EXPECT_NE(Reload(), 0);
 }
 
 /**
@@ -183,7 +183,7 @@ TEST_F(VaultFileTest, OpenUndersizedFile) {
 TEST_F(VaultFileTest, OpenOversizedFile) {
   FILE* file = nullptr;
 
-  OpenFile(&file, path, "wb");
+  OpenFile(&file, path_, "wb");
 
   if (file) {
 #ifdef _WIN32
@@ -198,7 +198,7 @@ TEST_F(VaultFileTest, OpenOversizedFile) {
     fclose(file);
   }
 
-  EXPECT_NE(reload(), 0);
+  EXPECT_NE(Reload(), 0);
 }
 
 /**
@@ -224,14 +224,14 @@ TEST_F(VaultFileTest, OpenInflatedEntryCount) {
 
   std::vector<uint8_t> enc(encSize);
 
-  aes.encrypt(src.data(), enc.data(), srcSize, pwstr, psize);
+  aes.Encrypt(src.data(), enc.data(), srcSize, pwstr, psize);
 
   /* Write vault file */
 
   FILE* file = nullptr;
   uint32_t magic = kMagicNum;
 
-  OpenFile(&file, path, "wb");
+  OpenFile(&file, path_, "wb");
 
   if (file) {
     fwrite(&magic, sizeof(uint32_t), 1, file);
@@ -239,7 +239,7 @@ TEST_F(VaultFileTest, OpenInflatedEntryCount) {
     fclose(file);
   }
 
-  EXPECT_NE(reload(), 0);
+  EXPECT_NE(Reload(), 0);
 }
 
 /**
@@ -255,12 +255,12 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
 
   Entry entry;
 
-  entry.site = "Google";
-  entry.acc = "user@google.com";
-  entry.pw.setData("password", 8);
+  entry.site_ = "Google";
+  entry.acc_ = "user@google.com";
+  entry.pw_.SetData("password", 8);
 
   uint32_t entryCnt = 2;
-  size_t entrySize = entry.size();
+  size_t entrySize = entry.Size();
   size_t srcSize = sizeof(uint32_t) + entrySize + kMinEntrySize;
 
   std::vector<uint8_t> src(srcSize, 0xFF);
@@ -270,7 +270,7 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
   memcpy(src.data() + cur, &entryCnt, sizeof(uint32_t));
   cur += sizeof(uint32_t);
 
-  entry.ser(src.data() + cur);
+  entry.Ser(src.data() + cur);
 
   /* Encrypt */
 
@@ -278,14 +278,14 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
 
   std::vector<uint8_t> enc(encSize);
 
-  aes.encrypt(src.data(), enc.data(), srcSize, pwstr, psize);
+  aes.Encrypt(src.data(), enc.data(), srcSize, pwstr, psize);
 
   /* Write vault file */
 
   FILE* file = nullptr;
   uint32_t magic = kMagicNum;
 
-  OpenFile(&file, path, "wb");
+  OpenFile(&file, path_, "wb");
 
   if (file) {
     fwrite(&magic, sizeof(uint32_t), 1, file);
@@ -293,7 +293,7 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
     fclose(file);
   }
 
-  EXPECT_NE(reload(), 0);
+  EXPECT_NE(Reload(), 0);
 }
 
 /* ==================================================
@@ -304,14 +304,14 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
  * @brief   Verify entries survive save and reload cycle
  */
 TEST_F(VaultFileTest, SaveAndReload) {
-  vault.createEntry("Google", "user1@google.com", makePW("password"));
-  vault.createEntry("Microsoft", "user2@microsoft.com", makePW("asdf1234"));
-  vault.saveVault(path);
+  vault_.CreateEntry("Google", "user1@google.com", MakePW("password"));
+  vault_.CreateEntry("Microsoft", "user2@microsoft.com", MakePW("asdf1234"));
+  vault_.SaveVault(path_);
 
-  EXPECT_EQ(reload(), 0);
-  EXPECT_EQ(vault.getEntryCount(), 2);
+  EXPECT_EQ(Reload(), 0);
+  EXPECT_EQ(vault_.GetEntryCount(), 2);
 
-  const auto& entries = vault.getEntries();
+  const auto& entries = vault_.GetEntries();
 
   EXPECT_NE(entries.find({"Google", "user1@google.com"}), entries.end());
   EXPECT_NE(entries.find({"Microsoft", "user2@microsoft.com"}), entries.end());
@@ -321,26 +321,26 @@ TEST_F(VaultFileTest, SaveAndReload) {
  * @brief   Verify passwords are correctly preserved through save and reload
  */
 TEST_F(VaultFileTest, SavePreservesPasswords) {
-  Password pw = makePW("password");
+  Password pw = MakePW("password");
 
-  vault.createEntry("Google", "user@google.com", pw);
-  vault.saveVault(path);
+  vault_.CreateEntry("Google", "user@google.com", pw);
+  vault_.SaveVault(path_);
 
-  EXPECT_EQ(reload(), 0);
+  EXPECT_EQ(Reload(), 0);
 
-  const auto& entries = vault.getEntries();
+  const auto& entries = vault_.GetEntries();
 
-  EXPECT_TRUE(entries.begin()->pw.equal(pw));
+  EXPECT_TRUE(entries.begin()->pw_.Equal(pw));
 }
 
 /**
  * @brief   Verify saving an empty vault and reopening it succeeds
  */
 TEST_F(VaultFileTest, SaveEmptyVault) {
-  vault.saveVault(path);
+  vault_.SaveVault(path_);
 
-  EXPECT_EQ(reload(), 0);
-  EXPECT_EQ(vault.getEntryCount(), 0);
+  EXPECT_EQ(Reload(), 0);
+  EXPECT_EQ(vault_.GetEntryCount(), 0);
 }
 
 /* ==================================================
@@ -354,11 +354,11 @@ TEST_F(VaultFileTest, ChangePW) {
   const char* pwstr = "asdf1234";
   size_t psize = strlen(pwstr);
 
-  vault.createEntry("Google", "user@google.com", makePW("password"));
+  vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
 
-  EXPECT_EQ(vault.changePW(makePW(pwstr), path), 0);
-  EXPECT_EQ(reload(pwstr, psize), 0);
-  EXPECT_EQ(vault.getEntryCount(), 1);
+  EXPECT_EQ(vault_.ChangePW(MakePW(pwstr), path_), 0);
+  EXPECT_EQ(Reload(pwstr, psize), 0);
+  EXPECT_EQ(vault_.GetEntryCount(), 1);
 }
 
 /**
@@ -368,9 +368,9 @@ TEST_F(VaultFileTest, ChangePWOldFails) {
   const char* pwstr = "password";  // original master password
   size_t psize = strlen(pwstr);
 
-  vault.changePW(makePW("asdf1234"), path);
+  vault_.ChangePW(MakePW("asdf1234"), path_);
 
-  EXPECT_NE(reload(pwstr, psize), 0);
+  EXPECT_NE(Reload(pwstr, psize), 0);
 }
 
 /* ==================================================
@@ -383,10 +383,10 @@ TEST_F(VaultFileTest, ChangePWOldFails) {
 TEST_F(VaultFileTest, ErrorCallback) {
   bool cb = false;
 
-  vault.setErrorCb([&](const char* msg) { cb = true; });
+  vault_.SetErrorCallback([&](const char* msg) { cb = true; });
 
-  vault.closeVault();
-  vault.openVault("nonexistent.vault");
+  vault_.CloseVault();
+  vault_.OpenVault("nonexistent.vault");
 
   EXPECT_TRUE(cb);
 }
@@ -395,9 +395,9 @@ TEST_F(VaultFileTest, ErrorCallback) {
  * @brief   Verify getLastError returns error message on failure
  */
 TEST_F(VaultFileTest, GetLastError) {
-  vault.closeVault();
+  vault_.CloseVault();
 
-  vault.openVault("nonexistent.vault");
+  vault_.OpenVault("nonexistent.vault");
 
-  EXPECT_FALSE(vault.getLastError().empty());
+  EXPECT_FALSE(vault_.GetLastError().empty());
 }

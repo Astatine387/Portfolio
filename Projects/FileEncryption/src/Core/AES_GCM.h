@@ -86,13 +86,13 @@ class AES_GCM {
    * @brief	Set error callback function
    * @param	ecb		Error callback function
    */
-  void SetErrorCallback(ErrorCallback ecb) { this->ecb_ = ecb; }
+  void SetErrorCallback(ErrorCallback ecb) { ecb_ = ecb; }
 
   /**
    * @brief	Set progress callback function
    * @param	pcb		Progress callback function
    */
-  void SetProgressCallback(ProgressCallback pcb) { this->pcb_ = pcb; }
+  void SetProgressCallback(ProgressCallback pcb) { pcb_ = pcb; }
 
  private:
   EVP_CIPHER_CTX* ctx_ = nullptr;  // OpenSSL encryption/decryption context
@@ -111,9 +111,9 @@ class AES_GCM {
   uint8_t key_[kKeySize];                          // Key derived from password
   uint8_t salt_[kSaltSize];                        // Key derivation salt
 
-  std::atomic<bool> cancelled_{false};  // Is the program cancelled?
-  std::future<int> write_res_;          // Asynchronous write result
-  bool writing_ = false;                // Is there currently ongoing asynchronous write?
+  std::atomic<bool> cancelled_{ false };  // Is the program cancelled?
+  std::future<int> write_res_;            // Asynchronous write result
+  bool writing_ = false;                  // Is there currently ongoing asynchronous write?
 
   /* ==================================================
    * I/O helper functions

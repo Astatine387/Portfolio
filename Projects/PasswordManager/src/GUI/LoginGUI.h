@@ -31,21 +31,21 @@ class LoginGUI : public QWidget {
    * @param	mode	0 for new, 1 for open
    * @param	path	Selected vault file path
    */
-  void vaultSelected(int mode, const QString& path);
+  void VaultSelected(int mode, const QString& path);
 
  private slots:
   /**
    * @brief	Open file dialog for new vault creation
    */
-  void onNewClicked();
+  void OnNewClicked();
 
   /**
    * @brief	Open file dialog for existing vault
    */
-  void onOpenClicked();
+  void OnOpenClicked();
 
  private:
-  QPushButton* newBtn;
-  QPushButton* openBtn;
-  QHBoxLayout* hBox;
+  QPushButton* new_btn_;
+  QPushButton* open_btn_;
+  QHBoxLayout* hbox_;
 };

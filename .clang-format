@@ -60,4 +60,5 @@ BraceWrapping:
   SplitEmptyFunction:    false
   SplitEmptyRecord:      false
   SplitEmptyNamespace:   false
+Cpp11BracedListStyle: false                 # Add space between braces and elements
 SpaceBeforeParens: ControlStatements        # Use space before control statements only

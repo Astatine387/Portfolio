@@ -11,143 +11,143 @@
 ListGUI::ListGUI(QWidget* parent) : QWidget(parent) {
   /* Create layouts and components */
 
-  errMsg = new QLabel();
-  searchLine = new QLineEdit;
-  addBtn = new QPushButton("Add");
-  editBtn = new QPushButton("Edit");
-  deleteBtn = new QPushButton("Delete");
-  copyPWBtn = new QPushButton("Copy Password");
-  saveBtn = new QPushButton("Save");
-  closeBtn = new QPushButton("Close");
-  changePWBtn = new QPushButton("Change Master Password");
-  table = new QTableWidget;
-  entryBtns = new QHBoxLayout;
-  vaultBtns = new QHBoxLayout;
-  vBox = new QVBoxLayout;
+  err_msg_ = new QLabel();
+  search_line_ = new QLineEdit;
+  add_btn_ = new QPushButton("Add");
+  edit_btn_ = new QPushButton("Edit");
+  delete_btn_ = new QPushButton("Delete");
+  copy_pw_btn_ = new QPushButton("Copy Password");
+  save_btn_ = new QPushButton("Save");
+  close_btn_ = new QPushButton("Close");
+  change_pw_btn_ = new QPushButton("Change Master Password");
+  table_ = new QTableWidget;
+  entry_btns_ = new QHBoxLayout;
+  vault_btns_ = new QHBoxLayout;
+  vbox_ = new QVBoxLayout;
 
   /* Configure search bar */
 
-  searchLine->setPlaceholderText("Search");
+  search_line_->setPlaceholderText("Search");
 
   /* Configure table */
 
-  table->setColumnCount(2);
-  table->setHorizontalHeaderLabels({"Site", "Account"});
+  table_->setColumnCount(2);
+  table_->setHorizontalHeaderLabels({"Site", "Account"});
 
-  table->setSelectionBehavior(QAbstractItemView::SelectRows);
-  table->setSelectionMode(QAbstractItemView::SingleSelection);
-  table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  table_->setSelectionBehavior(QAbstractItemView::SelectRows);
+  table_->setSelectionMode(QAbstractItemView::SingleSelection);
+  table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-  table->horizontalHeader()->setStretchLastSection(true);
-  table->verticalHeader()->setVisible(false);
+  table_->horizontalHeader()->setStretchLastSection(true);
+  table_->verticalHeader()->setVisible(false);
 
   /* Put add, edit, delete, copy password buttons in the same line */
 
-  entryBtns->addWidget(addBtn);
-  entryBtns->addWidget(editBtn);
-  entryBtns->addWidget(deleteBtn);
-  entryBtns->addWidget(copyPWBtn);
-  entryBtns->addStretch();
+  entry_btns_->addWidget(add_btn_);
+  entry_btns_->addWidget(edit_btn_);
+  entry_btns_->addWidget(delete_btn_);
+  entry_btns_->addWidget(copy_pw_btn_);
+  entry_btns_->addStretch();
 
-  entryBtns->setSpacing(10);
-  entryBtns->setContentsMargins(0, 0, 0, 0);
+  entry_btns_->setSpacing(10);
+  entry_btns_->setContentsMargins(0, 0, 0, 0);
 
   /* Put save, change master password buttons in the same line */
 
-  vaultBtns->addWidget(saveBtn);
-  vaultBtns->addWidget(closeBtn);
-  vaultBtns->addWidget(changePWBtn);
-  vaultBtns->addStretch();
+  vault_btns_->addWidget(save_btn_);
+  vault_btns_->addWidget(close_btn_);
+  vault_btns_->addWidget(change_pw_btn_);
+  vault_btns_->addStretch();
 
-  vaultBtns->setSpacing(10);
-  vaultBtns->setContentsMargins(0, 0, 0, 0);
+  vault_btns_->setSpacing(10);
+  vault_btns_->setContentsMargins(0, 0, 0, 0);
 
   /* Configure main layout */
 
-  vBox->addWidget(searchLine);
-  vBox->addWidget(table);
-  vBox->addWidget(errMsg);
-  vBox->addLayout(entryBtns);
-  vBox->addLayout(vaultBtns);
+  vbox_->addWidget(search_line_);
+  vbox_->addWidget(table_);
+  vbox_->addWidget(err_msg_);
+  vbox_->addLayout(entry_btns_);
+  vbox_->addLayout(vault_btns_);
 
-  vBox->setSpacing(10);
-  vBox->setContentsMargins(10, 10, 10, 10);
+  vbox_->setSpacing(10);
+  vbox_->setContentsMargins(10, 10, 10, 10);
 
-  setLayout(vBox);
+  setLayout(vbox_);
 
   /* Connect functions to buttons */
 
-  connect(addBtn, &QPushButton::clicked, this, &ListGUI::onAddClicked);
-  connect(editBtn, &QPushButton::clicked, this, &ListGUI::onEditClicked);
-  connect(deleteBtn, &QPushButton::clicked, this, &ListGUI::onDeleteClicked);
-  connect(copyPWBtn, &QPushButton::clicked, this, &ListGUI::onCopyPWClicked);
-  connect(saveBtn, &QPushButton::clicked, this, &ListGUI::saveRequested);
-  connect(closeBtn, &QPushButton::clicked, this, &ListGUI::closeRequested);
-  connect(changePWBtn, &QPushButton::clicked, this, &ListGUI::changePWRequested);
-  connect(searchLine, &QLineEdit::textChanged, this, &ListGUI::onSearchChanged);
+  connect(add_btn_, &QPushButton::clicked, this, &ListGUI::OnAddClicked);
+  connect(edit_btn_, &QPushButton::clicked, this, &ListGUI::OnEditClicked);
+  connect(delete_btn_, &QPushButton::clicked, this, &ListGUI::OnDeleteClicked);
+  connect(copy_pw_btn_, &QPushButton::clicked, this, &ListGUI::OnCopyPWClicked);
+  connect(save_btn_, &QPushButton::clicked, this, &ListGUI::SaveRequested);
+  connect(close_btn_, &QPushButton::clicked, this, &ListGUI::CloseRequested);
+  connect(change_pw_btn_, &QPushButton::clicked, this, &ListGUI::ChangePWRequested);
+  connect(search_line_, &QLineEdit::textChanged, this, &ListGUI::OnSearchChanged);
 }
 
-void ListGUI::loadEntries(const std::vector<std::pair<std::string, std::string>>& entries) {
+void ListGUI::LoadEntries(const std::vector<std::pair<std::string, std::string>>& entries) {
   size_t size = entries.size();
 
-  table->setRowCount(0);
+  table_->setRowCount(0);
 
   for (size_t i = 0; i < size; i++) {
-    int row = table->rowCount();
+    int row = table_->rowCount();
 
-    table->insertRow(row);
-    table->setItem(row, 0, new QTableWidgetItem(QString::fromStdString(entries[i].first)));
-    table->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(entries[i].second)));
+    table_->insertRow(row);
+    table_->setItem(row, 0, new QTableWidgetItem(QString::fromStdString(entries[i].first)));
+    table_->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(entries[i].second)));
   }
 
-  errMsg->clear();
+  err_msg_->clear();
 }
 
-void ListGUI::setErrMsg(const QString& msg) {
-  errMsg->setText(msg);
+void ListGUI::SetErrMsg(const QString& msg) {
+  err_msg_->setText(msg);
 }
 
-void ListGUI::onAddClicked() {
-  errMsg->clear();
+void ListGUI::OnAddClicked() {
+  err_msg_->clear();
 
-  emit addRequested();
+  emit AddRequested();
 }
 
-void ListGUI::onEditClicked() {
+void ListGUI::OnEditClicked() {
   std::string site, acc;
 
-  if (!getSelectedEntry(site, acc))
+  if (!GetSelectedEntry(site, acc))
     return;
 
-  emit editRequested(site, acc);
+  emit EditRequested(site, acc);
 }
 
-void ListGUI::onDeleteClicked() {
+void ListGUI::OnDeleteClicked() {
   std::string site, acc;
 
-  if (!getSelectedEntry(site, acc))
+  if (!GetSelectedEntry(site, acc))
     return;
 
-  emit deleteRequested(site, acc);
+  emit DeleteRequested(site, acc);
 }
 
-void ListGUI::onCopyPWClicked() {
+void ListGUI::OnCopyPWClicked() {
   std::string site, acc;
 
-  if (!getSelectedEntry(site, acc))
+  if (!GetSelectedEntry(site, acc))
     return;
 
-  emit copyPWRequested(site, acc);
+  emit CopyPWRequested(site, acc);
 }
 
-void ListGUI::onSearchChanged(const QString& text) {
-  int rows = table->rowCount(), cols = table->columnCount();
+void ListGUI::OnSearchChanged(const QString& text) {
+  int rows = table_->rowCount(), cols = table_->columnCount();
 
   for (int i = 0; i < rows; i++) {
     bool match = false;
 
     for (int j = 0; j < cols; j++) {
-      QTableWidgetItem* item = table->item(i, j);
+      QTableWidgetItem* item = table_->item(i, j);
 
       if (item && item->text().contains(text, Qt::CaseInsensitive)) {
         match = true;
@@ -155,22 +155,22 @@ void ListGUI::onSearchChanged(const QString& text) {
       }
     }
 
-    table->setRowHidden(i, !match);
+    table_->setRowHidden(i, !match);
   }
 }
 
-bool ListGUI::getSelectedEntry(std::string& site, std::string& acc) {
-  int row = table->currentRow();
+bool ListGUI::GetSelectedEntry(std::string& site, std::string& acc) {
+  int row = table_->currentRow();
 
   if (row < 0) {
-    errMsg->setText("No entry selected");
+    err_msg_->setText("No entry selected");
     return false;
   }
 
-  errMsg->clear();
+  err_msg_->clear();
 
-  site = table->item(row, 0)->text().toStdString();
-  acc = table->item(row, 1)->text().toStdString();
+  site = table_->item(row, 0)->text().toStdString();
+  acc = table_->item(row, 1)->text().toStdString();
 
   return true;
 }

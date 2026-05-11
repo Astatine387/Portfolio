@@ -12,167 +12,169 @@
 MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
   /* Create layouts and components */
 
-  changePWGUI = new ChangePWGUI(this);
-  entryGUI = new EntryGUI(this);
-  listGUI = new ListGUI(this);
-  loginGUI = new LoginGUI(this);
-  pwGUI = new PasswordGUI(this);
-  stack = new QStackedWidget(this);
-  vBox = new QVBoxLayout(this);
+  change_pw_gui_ = new ChangePWGUI(this);
+  entry_gui_ = new EntryGUI(this);
+  list_gui_ = new ListGUI(this);
+  login_gui_ = new LoginGUI(this);
+  pw_gui_ = new PasswordGUI(this);
+  stack_ = new QStackedWidget(this);
+  vbox_ = new QVBoxLayout(this);
 
   /* Add GUIs to stacked widget for switching */
 
-  stack->addWidget(loginGUI);
-  stack->addWidget(pwGUI);
-  stack->addWidget(listGUI);
+  stack_->addWidget(login_gui_);
+  stack_->addWidget(pw_gui_);
+  stack_->addWidget(list_gui_);
 
   /* Configure layout */
 
-  vBox->addWidget(stack);
-  vBox->setContentsMargins(0, 0, 0, 0);
+  vbox_->addWidget(stack_);
+  vbox_->setContentsMargins(0, 0, 0, 0);
 
-  setLayout(vBox);
+  setLayout(vbox_);
   setWindowTitle("PasswordManager");
 
   /* Connect login signals */
 
-  connect(loginGUI, &LoginGUI::vaultSelected, this, &MainGUI::onVaultSelected);
-  connect(pwGUI, &PasswordGUI::loginRequested, this, &MainGUI::onLoginRequested);
-  connect(pwGUI, &PasswordGUI::backRequested, this, &MainGUI::onBackToLogin);
+  connect(login_gui_, &LoginGUI::VaultSelected, this, &MainGUI::OnVaultSelected);
+  connect(pw_gui_, &PasswordGUI::LoginRequested, this, &MainGUI::OnLoginRequested);
+  connect(pw_gui_, &PasswordGUI::BackRequested, this, &MainGUI::OnBackToLogin);
 
   /* Connect list signals */
 
-  connect(listGUI, &ListGUI::addRequested, this, &MainGUI::onAddRequested);
-  connect(listGUI, &ListGUI::editRequested, this, &MainGUI::onEditRequested);
-  connect(listGUI, &ListGUI::deleteRequested, this, &MainGUI::onDeleteRequested);
-  connect(listGUI, &ListGUI::copyPWRequested, this, &MainGUI::onCopyPWRequested);
-  connect(listGUI, &ListGUI::saveRequested, this, &MainGUI::onSaveRequested);
-  connect(listGUI, &ListGUI::closeRequested, this, &MainGUI::onCloseRequested);
-  connect(listGUI, &ListGUI::changePWRequested, this, &MainGUI::onChangePWRequested);
+  connect(list_gui_, &ListGUI::AddRequested, this, &MainGUI::OnAddRequested);
+  connect(list_gui_, &ListGUI::EditRequested, this, &MainGUI::OnEditRequested);
+  connect(list_gui_, &ListGUI::DeleteRequested, this, &MainGUI::OnDeleteRequested);
+  connect(list_gui_, &ListGUI::CopyPWRequested, this, &MainGUI::OnCopyPWRequested);
+  connect(list_gui_, &ListGUI::SaveRequested, this, &MainGUI::OnSaveRequested);
+  connect(list_gui_, &ListGUI::CloseRequested, this, &MainGUI::OnCloseRequested);
+  connect(list_gui_, &ListGUI::ChangePWRequested, this, &MainGUI::OnChangePWRequested);
 
   /* Set error callback */
 
-  vault.setErrorCb([this](const char* msg) { lastError = msg; });
+  vault_.SetErrorCallback([this](const char* msg) { last_error_ = msg; });
 
   /* Set verify callback for password change */
 
-  changePWGUI->setVerifyCb([this](const Password& curPW) -> bool { return vault.verifyPW(curPW); });
+  change_pw_gui_->SetVerifyCb([this](const Password& curPW) -> bool { return vault_.VerifyPW(curPW); });
 }
 
 MainGUI::~MainGUI() {
   ;
 }
 
-void MainGUI::onVaultSelected(int mode, const QString& path) {
-  pwGUI->setVaultInfo(mode, path);
+void MainGUI::OnVaultSelected(int mode, const QString& path) {
+  pw_gui_->SetVaultInfo(mode, path);
 
-  stack->setCurrentWidget(pwGUI);
+  stack_->setCurrentWidget(pw_gui_);
 }
 
-void MainGUI::onLoginRequested(const LoginInput& input) {
+void MainGUI::OnLoginRequested(const LoginInput& input) {
   int res;
 
   /* Set master password */
 
   Password pw;
-  pw.setData(input.pw);
-  vault.setPW(pw);
+  pw.SetData(input.pw);
+  vault_.SetPW(pw);
 
   /* Create or open vault */
 
-  if (input.mode == 0)
-    res = vault.newVault(input.path);
-  else
-    res = vault.openVault(input.path);
+  if (input.mode == 0) {
+    res = vault_.NewVault(input.path);
+  }
+  else {
+    res = vault_.OpenVault(input.path);
+  }
 
   if (res) {
-    pwGUI->setErrMsg(QString::fromStdString(lastError));
+    pw_gui_->SetErrMsg(QString::fromStdString(last_error_));
     return;
   }
 
   /* Switch to list screen */
 
-  vaultPath = input.path;
+  vault_path_ = input.path;
 
-  refreshList();
+  RefreshList();
 
-  stack->setCurrentWidget(listGUI);
+  stack_->setCurrentWidget(list_gui_);
   resize(300, 300);
 }
 
-void MainGUI::onBackToLogin() {
-  stack->setCurrentWidget(loginGUI);
+void MainGUI::OnBackToLogin() {
+  stack_->setCurrentWidget(login_gui_);
 }
 
-void MainGUI::onAddRequested() {
-  isEditMode = false;
+void MainGUI::OnAddRequested() {
+  is_edit_mode_ = false;
 
-  entryGUI->setAddMode();
+  entry_gui_->SetAddMode();
 
-  if (entryGUI->exec() == QDialog::Accepted) {
-    Entry entry = entryGUI->getInput();
+  if (entry_gui_->exec() == QDialog::Accepted) {
+    Entry entry = entry_gui_->GetInput();
 
-    if (vault.createEntry(entry.site, entry.acc, entry.pw)) {
-      listGUI->setErrMsg("Entry already exists");
+    if (vault_.CreateEntry(entry.site_, entry.acc_, entry.pw_)) {
+      list_gui_->SetErrMsg("Entry already exists");
       return;
     }
 
-    refreshList();
+    RefreshList();
   }
 }
 
-void MainGUI::onEditRequested(const std::string& site, const std::string& acc) {
-  isEditMode = true;
-  origSite = site;
-  origAcc = acc;
+void MainGUI::OnEditRequested(const std::string& site, const std::string& acc) {
+  is_edit_mode_ = true;
+  orig_site_ = site;
+  orig_acc_ = acc;
 
   /* Find the entry to get its password */
 
   Entry target = {site, acc};
-  const auto& entries = vault.getEntries();
+  const auto& entries = vault_.GetEntries();
   auto it = entries.find(target);
 
   if (it == entries.end()) {
-    listGUI->setErrMsg("Entry not found");
+    list_gui_->SetErrMsg("Entry not found");
     return;
   }
 
-  entryGUI->setEditMode(site, acc, it->pw);
+  entry_gui_->SetEditMode(site, acc, it->pw_);
 
-  if (entryGUI->exec() == QDialog::Accepted) {
-    Entry entry = entryGUI->getInput();
-    int res = vault.updateEntry(origSite, origAcc, entry.site, entry.acc, entry.pw);
+  if (entry_gui_->exec() == QDialog::Accepted) {
+    Entry entry = entry_gui_->GetInput();
+    int res = vault_.UpdateEntry(orig_site_, orig_acc_, entry.site_, entry.acc_, entry.pw_);
 
     if (res == 1) {
-      listGUI->setErrMsg("Original entry not found");
+      list_gui_->SetErrMsg("Original entry not found");
       return;
     }
 
     if (res == 2) {
-      listGUI->setErrMsg("Entry already exists");
+      list_gui_->SetErrMsg("Entry already exists");
       return;
     }
 
-    refreshList();
+    RefreshList();
   }
 }
 
-void MainGUI::onDeleteRequested(const std::string& site, const std::string& acc) {
-  if (vault.deleteEntry(site, acc)) {
-    listGUI->setErrMsg("Failed to delete entry");
+void MainGUI::OnDeleteRequested(const std::string& site, const std::string& acc) {
+  if (vault_.DeleteEntry(site, acc)) {
+    list_gui_->SetErrMsg("Failed to delete entry");
     return;
   }
 
-  refreshList();
+  RefreshList();
 }
 
-void MainGUI::onCopyPWRequested(const std::string& site, const std::string& acc) {
+void MainGUI::OnCopyPWRequested(const std::string& site, const std::string& acc) {
   Entry target = {site, acc};
-  const auto& entries = vault.getEntries();
+  const auto& entries = vault_.GetEntries();
   auto it = entries.find(target);
 
   if (it == entries.end()) {
-    listGUI->setErrMsg("Entry not found");
+    list_gui_->SetErrMsg("Entry not found");
     return;
   }
 
@@ -180,81 +182,81 @@ void MainGUI::onCopyPWRequested(const std::string& site, const std::string& acc)
 
   QClipboard* board = QGuiApplication::clipboard();
 
-  board->setText(QString::fromUtf8(it->pw.getData(), static_cast<int>(it->pw.getSize())));
+  board->setText(QString::fromUtf8(it->pw_.GetData(), static_cast<int>(it->pw_.GetSize())));
 
   /* Auto-clear clipboard after 30 seconds */
 
-  countdown = 30;
+  countdown_ = 30;
 
-  listGUI->setErrMsg("Password copied (clears after 30s)");
+  list_gui_->SetErrMsg("Password copied (clears after 30s)");
 
-  if (timer) {
-    timer->stop();
-    timer->disconnect();
+  if (timer_) {
+    timer_->stop();
+    timer_->disconnect();
   }
   else {
-    timer = new QTimer(this);
+    timer_ = new QTimer(this);
   }
 
-  connect(timer, &QTimer::timeout, this, [this, board]() {
-    countdown--;
+  connect(timer_, &QTimer::timeout, this, [this, board]() {
+    countdown_--;
 
-    if (countdown > 0) {
-      listGUI->setErrMsg(QString("Password copied (clears after %1s)").arg(countdown));
+    if (countdown_ > 0) {
+      list_gui_->SetErrMsg(QString("Password copied (clears after %1s)").arg(countdown_));
     }
     else {
-      timer->stop();
+      timer_->stop();
       board->clear();
-      listGUI->setErrMsg("Clipboard cleared");
-      timer->deleteLater();
-      timer = nullptr;
+      list_gui_->SetErrMsg("Clipboard cleared");
+      timer_->deleteLater();
+      timer_ = nullptr;
     }
   });
 
-  timer->setSingleShot(false);
-  timer->start(1000);
+  timer_->setSingleShot(false);
+  timer_->start(1000);
 }
 
-void MainGUI::onSaveRequested() {
-  if (vault.saveVault(vaultPath)) {
-    pwGUI->setErrMsg(QString::fromStdString(lastError));
+void MainGUI::OnSaveRequested() {
+  if (vault_.SaveVault(vault_path_)) {
+    pw_gui_->SetErrMsg(QString::fromStdString(last_error_));
     return;
   }
 
-  listGUI->setErrMsg("Saved");
+  list_gui_->SetErrMsg("Saved");
 }
 
-void MainGUI::onCloseRequested() {
-  vault.closeVault();
-  vaultPath.clear();
+void MainGUI::OnCloseRequested() {
+  vault_.CloseVault();
+  vault_path_.clear();
 
-  stack->setCurrentWidget(loginGUI);
+  stack_->setCurrentWidget(login_gui_);
   resize(300, 150);
 }
 
-void MainGUI::onChangePWRequested() {
-  changePWGUI->reset();
+void MainGUI::OnChangePWRequested() {
+  change_pw_gui_->Reset();
 
-  if (changePWGUI->exec() == QDialog::Accepted) {
+  if (change_pw_gui_->exec() == QDialog::Accepted) {
     Password curPW, newPW;
 
-    changePWGUI->getInput(curPW, newPW);
+    change_pw_gui_->GetInput(curPW, newPW);
 
-    if (vault.changePW(newPW, vaultPath)) {
-      listGUI->setErrMsg("Failed to save vault");
+    if (vault_.ChangePW(newPW, vault_path_)) {
+      list_gui_->SetErrMsg("Failed to save vault");
       return;
     }
 
-    listGUI->setErrMsg("Password changed");
+    list_gui_->SetErrMsg("Password changed");
   }
 }
 
-void MainGUI::closeEvent(QCloseEvent* event) {
-  if (timer) {
-    timer->stop();
-    timer->disconnect();
-    timer->deleteLater();
-    timer = nullptr;
+void MainGUI::CloseEvent(QCloseEvent* event) {
+  if (timer_) {
+    timer_->stop();
+    timer_->disconnect();
+    timer_->deleteLater();
+    timer_ = nullptr;
 
     QClipboard* board = QGuiApplication::clipboard();
     board->clear();
@@ -263,12 +265,12 @@ void MainGUI::closeEvent(QCloseEvent* event) {
   QWidget::closeEvent(event);
 }
 
-void MainGUI::refreshList() {
+void MainGUI::RefreshList() {
   std::vector<std::pair<std::string, std::string>> entryVec;
-  const auto& entrySet = vault.getEntries();
+  const auto& entrySet = vault_.GetEntries();
 
   for (auto it = entrySet.begin(); it != entrySet.end(); it++)
-    entryVec.emplace_back(it->site, it->acc);
+    entryVec.emplace_back(it->site_, it->acc_);
 
-  listGUI->loadEntries(entryVec);
+  list_gui_->LoadEntries(entryVec);
 }

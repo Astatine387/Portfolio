@@ -32,27 +32,27 @@ class PWLineEdit : public QWidget {
    * @param   pw  Destination
    * @return  0 on success, 1 on failure (exceeds MAX_SIZE)
    */
-  int extract(Password& pw);
+  int Extract(Password& pw);
 
   /**
    * @brief   Clear the input field
    */
-  void clear();
+  void Clear();
 
   /**
    * @brief	Set password data to the input field
    * @param	pw	Source password
    */
-  void setPassword(const Password& pw);
+  void SetPassword(const Password& pw);
 
  private slots:
   /**
    * @brief   Signal when toggle masking button clicked
    */
-  void toggleMask();
+  void ToggleMask();
 
  private:
-  QHBoxLayout* hBox;
-  QLineEdit* pwLine;
-  QPushButton* maskBtn;
+  QHBoxLayout* hbox_;
+  QLineEdit* pw_line_;
+  QPushButton* mask_btn_;
 };

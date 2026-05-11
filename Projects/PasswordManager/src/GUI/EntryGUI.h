@@ -40,7 +40,7 @@ class EntryGUI : public QDialog {
   /**
    * @brief	Set dialog to add mode
    */
-  void setAddMode();
+  void SetAddMode();
 
   /**
    * @brief	Set dialog to edit mode with existing data
@@ -48,85 +48,100 @@ class EntryGUI : public QDialog {
    * @param	acc		Current account
    * @param	pw		Current password
    */
-  void setEditMode(const std::string& site, const std::string& acc, const Password& pw);
+  void SetEditMode(const std::string& site, const std::string& acc, const Password& pw);
 
   /**
    * @brief	Get the entry input from the dialog
    * @return	Entry input parameters
    */
-  Entry getInput();
+  Entry GetInput();
 
  private slots:
   /**
    * @brief	Validate input and accept dialog
    */
-  void onOKClicked();
+  void OnOKClicked();
 
   /**
    * @brief	Validate special character selection and emit generate request
    */
-  void onGenerateClicked();
+  void OnGenerateClicked();
 
   /**
    * @brief	Check all special character checkboxes
    */
-  void onCheckAllClicked();
+  void OnCheckAllClicked();
 
   /**
    * @brief	Uncheck all special character checkboxes
    */
-  void onUncheckAllClicked();
+  void OnUncheckAllClicked();
 
   /**
    * @brief	Reset special character checkboxes to default
    */
-  void onResetClicked();
+  void OnResetClicked();
 
  private:
-  PWLineEdit* pwLine;
-  QCheckBox* spcChecks[32];
-  QGridLayout* spcGrid;
-  QLabel *errMsg, *lenLabel;
-  QLineEdit *siteLine, *accLine;
-  QPushButton *checkAllBtn, *uncheckAllBtn, *resetBtn, *genBtn, *okBtn, *cancelBtn;
-  QSlider* lenSlider;
-  QHBoxLayout *btnBox, *lenBox, *spcBtnBox;
-  QVBoxLayout* vBox;
+  PWLineEdit* pwline_;
+  QCheckBox* spc_checks_[32];
+  QGridLayout* spc_grid_;
+  QLabel* err_msg_;
+  QLabel* len_label_;
+  QLineEdit* site_line_;
+  QLineEdit* acc_line_;
+  QPushButton* check_all_btn_;
+  QPushButton* uncheck_all_btn_;
+  QPushButton* reset_btn_;
+  QPushButton* gen_btn_;
+  QPushButton* ok_btn_;
+  QPushButton* cancel_btn_;
+  QSlider* len_slider_;
+  QHBoxLayout* btn_box_;
+  QHBoxLayout* len_box_;
+  QHBoxLayout* spc_btn_box_;
+  QVBoxLayout* vbox_;
 
-  static constexpr char spcs[] = "`~!@#$%^&*()-_=+[{]}\\|;:\'\",<.>/?";
+  static constexpr char spcs_[] = "`~!@#$%^&*()-_=+[{]}\\|;:\'\",<.>/?";
 
-  static constexpr bool defaultSpc[32] = {//  `  ~  !  @  #  $  %  ^
+  static constexpr bool default_spc_[32] = {
+                                    //    `  ~  !  @  #  $  %  ^
                                           0, 1, 1, 1, 0, 0, 1, 1,
-                                          //  &  *  (  )  -  _  =  +
+                                    //    &  *  (  )  -  _  =  +
                                           0, 0, 0, 0, 0, 1, 1, 1,
-                                          //  [  {  ]  }  \  |  ;  :
+                                    //    [  {  ]  }  \  |  ;  :
                                           1, 1, 1, 1, 0, 0, 0, 1,
-                                          //  '  "  ,  <  .  >  /  ?
+                                    //    '  "  ,  <  .  >  /  ?
                                           0, 0, 1, 0, 0, 0, 0, 1};
 
   /**
-   * @brief	Get the special character selection list
+   * @brief     Get the special character selection list
    * @return	Special character selection list
    */
-  std::vector<bool> getSpecialsList();
-
-  bool hasSpecial(const Password& pw) const;
+  std::vector<bool> GetSpecialsList();
 
   /**
-   * @brief	Check if at least one special character is selected
+   * @brief	    Check whether the password has at least one special character
+   * @return	true if the password has at least one special character
+   */
+  bool HasSpecial(const Password& pw) const;
+
+  /**
+   * @brief	    Check if at least one special character is selected
    * @return	true if at least one is checked
    */
-  bool hasSpecialSelected() const;
+  bool HasSpecialSelected() const;
 
   /**
-   * @brief	Generate a random password
+   * @brief	    Generate a random password
    *
    * Generate a random password including at least one each of
    * uppercase, lowercase, number, and special character
-   * @param	dst		Destination password
-   * @param	spcList	List of specials to be used
-   * @param	size	Destination password size
-   * @return	0 on success, 1 on failure
+   * 
+   * @param	dst		    Destination password
+   * @param	spcList	    List of specials to be used
+   * @param	size	    Destination password size
+   * @return	        0 on success, 1 on failure
    */
-  int genPW(Password& dst, const std::vector<bool>& spcList, int size);
+  int GenPW(Password& dst, const std::vector<bool>& spc_list, int pw_size);
 };

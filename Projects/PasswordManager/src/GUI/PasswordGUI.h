@@ -45,41 +45,41 @@ class PasswordGUI : public QWidget {
    * @param	mode	0 for new, 1 for open
    * @param	path	Vault file path
    */
-  void setVaultInfo(int mode, const QString& path);
+  void SetVaultInfo(int mode, const QString& path);
 
   /**
    * @brief	Display error message
    * @param	msg		Error message string
    */
-  void setErrMsg(const QString& msg);
+  void SetErrMsg(const QString& msg);
 
  signals:
   /**
    * @brief	Signal when login is confirmed
    * @param	input	Login input parameters
    */
-  void loginRequested(const LoginInput& input);
+  void LoginRequested(const LoginInput& input);
 
   /**
    * @brief	Signal when back button is clicked
    */
-  void backRequested();
+  void BackRequested();
 
  private slots:
   /**
    * @brief	Validate input and emit login request
    */
-  void onConfirmClicked();
+  void OnConfirmClicked();
 
  private:
-  PWLineEdit* pwLine;
-  QLabel* pathLabel;
-  QLabel* errMsg;
-  QPushButton* backBtn;
-  QPushButton* confirmBtn;
-  QString path;
-  QHBoxLayout* btnBox;
-  QVBoxLayout* vBox;
+  PWLineEdit* pw_line_;
+  QLabel* path_label_;
+  QLabel* err_msg_;
+  QPushButton* back_btn_;
+  QPushButton* confirm_btn_;
+  QString path_;
+  QHBoxLayout* btn_box_;
+  QVBoxLayout* vbox_;
 
-  int mode = -1;
+  int mode_ = -1;
 };

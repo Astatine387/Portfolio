@@ -8,8 +8,8 @@
 #include "Utils/library.h"
 
 int AES_GCM::Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
-  this->src_file_ = src;
-  this->dst_file_ = dst;
+  src_file_ = src;
+  dst_file_ = dst;
   cancelled_ = false;
   progress_ = 0;
   writing_ = false;

@@ -9,50 +9,51 @@
 #include "Utils/library.h"
 
 Vault::Vault() {
-  aes.setErrorCb([this](const char* msg) { lastError = msg; });
+  aes_.SetErrorCallback([this](const char* msg) { last_error_ = msg; });
 }
 
 Vault::~Vault() {
-  clear();
+  Clear();
 }
 
-const std::set<Entry, EntryCmp>& Vault::getEntries() const {
-  return entrySet;
+const std::set<Entry, EntryCmp>& Vault::GetEntries() const {
+  return entry_set_;
 }
 
-const std::string& Vault::getLastError() const {
-  return lastError;
+const std::string& Vault::GetLastError() const {
+  return last_error_;
 }
 
-int Vault::getEntryCount() const {
-  return static_cast<int>(entrySet.size());
+int Vault::GetEntryCount() const {
+  return static_cast<int>(entry_set_.size());
 }
 
-void Vault::clear() {
-  if (file) {
-    fclose(file);
-    file = nullptr;
+void Vault::Clear() {
+  if (file_) {
+    fclose(file_);
+    file_ = nullptr;
   }
 
-  if (srcBuff) {
-    Wipe(srcBuff.get(), srcSize);
-    srcBuff.reset();
+  if (src_buff_) {
+    Wipe(src_buff_.get(), src_size_);
+    src_buff_.reset();
   }
 
-  if (dstBuff) {
-    Wipe(dstBuff.get(), dstSize);
-    dstBuff.reset();
+  if (dst_buff_) {
+    Wipe(dst_buff_.get(), dst_size_);
+    dst_buff_.reset();
   }
 
-  srcSize = 0;
-  dstSize = 0;
+  src_size_ = 0;
+  dst_size_ = 0;
 }
 
-void Vault::reportError(const char* msg) {
-  lastError = msg;
+void Vault::ReportError(const char* msg) {
+  last_error_ = msg;
 
-  if (ecb)
-    ecb(lastError.c_str());
+  if (ecb_) {
+    ecb_(last_error_.c_str());
+  }
 
-  clear();
+  Clear();
 }

@@ -48,13 +48,13 @@ class MainGUI : public QWidget {
    * @brief	Callback function for error reporting
    * @param	errMsg	Error message string
    */
-  using ErrorCallback = std::function<void(const char* errMsg)>;
+  using ErrorCallback = std::function<void(const char* err_msg)>;
 
   /**
    * @brief	Set error callback function
    * @param	ecb		Error callback function
    */
-  void setErrorCb(ErrorCallback ecb) { this->ecb = ecb; }
+  void SetErrorCb(ErrorCallback ecb) { this->ecb_ = ecb; }
 
  private slots:
   /**
@@ -62,88 +62,88 @@ class MainGUI : public QWidget {
    * @param	mode	0 for new, 1 for open
    * @param	path	Vault file path
    */
-  void onVaultSelected(int mode, const QString& path);
+  void OnVaultSelected(int mode, const QString& path);
 
   /**
    * @brief	Process vault login request
    * @param	input	Login input parameters
    */
-  void onLoginRequested(const LoginInput& input);
+  void OnLoginRequested(const LoginInput& input);
 
   /**
    * @brief	Return to login screen
    */
-  void onBackToLogin();
+  void OnBackToLogin();
 
   /**
    * @brief	Process entry add request
    */
-  void onAddRequested();
+  void OnAddRequested();
 
   /**
    * @brief	Process entry edit request
    * @param	site	Site of entry to be edited
    * @param	acc		Account of entry to be edited
    */
-  void onEditRequested(const std::string& site, const std::string& acc);
+  void OnEditRequested(const std::string& site, const std::string& acc);
 
   /**
    * @brief	Process entry delete request
    * @param	site	Site of entry to be deleted
    * @param	acc		Account of entry to be deleted
    */
-  void onDeleteRequested(const std::string& site, const std::string& acc);
+  void OnDeleteRequested(const std::string& site, const std::string& acc);
 
   /**
    * @brief	Process copy password request
    * @param	site	Site of entry to copy password from
    * @param	acc		Account of entry to copy password from
    */
-  void onCopyPWRequested(const std::string& site, const std::string& acc);
+  void OnCopyPWRequested(const std::string& site, const std::string& acc);
 
   /**
    * @brief	Process vault save request
    */
-  void onSaveRequested();
+  void OnSaveRequested();
 
   /**
    * @brief	Process vault close request
    */
-  void onCloseRequested();
+  void OnCloseRequested();
 
   /**
    * @brief	Process change master password request
    */
-  void onChangePWRequested();
+  void OnChangePWRequested();
 
  private:
-  ChangePWGUI* changePWGUI;
-  EntryGUI* entryGUI;
-  ListGUI* listGUI;
-  LoginGUI* loginGUI;
-  PasswordGUI* pwGUI;
-  QStackedWidget* stack;
-  QString vaultPath;
-  QTimer* timer = nullptr;
-  QVBoxLayout* vBox;
-  Vault vault;
+  ChangePWGUI* change_pw_gui_;
+  EntryGUI* entry_gui_;
+  ListGUI* list_gui_;
+  LoginGUI* login_gui_;
+  PasswordGUI* pw_gui_;
+  QStackedWidget* stack_;
+  QString vault_path_;
+  QTimer* timer_ = nullptr;
+  QVBoxLayout* vbox_;
+  Vault vault_;
 
-  int countdown = 0;
+  int countdown_ = 0;
 
-  std::string lastError;
-  std::string origSite;
-  std::string origAcc;
-  bool isEditMode = false;
+  std::string last_error_;
+  std::string orig_site_;
+  std::string orig_acc_;
+  bool is_edit_mode_ = false;
 
-  ErrorCallback ecb = nullptr;
+  ErrorCallback ecb_ = nullptr;
 
   /**
    * @brief	Clean timer and clipboard when GUI is closed
    */
-  void closeEvent(QCloseEvent* event);
+  void CloseEvent(QCloseEvent* event);
 
   /**
    * @brief	Refresh list GUI
    */
-  void refreshList();
+  void RefreshList();
 };

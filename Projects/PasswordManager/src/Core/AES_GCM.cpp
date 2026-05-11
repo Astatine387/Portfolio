@@ -13,28 +13,29 @@
 #include <cstring>
 
 AES_GCM::AES_GCM() {
-  memset(iv, 0, sizeof(uint8_t) * kIVSize);
-  memset(salt, 0, sizeof(uint8_t) * kSaltSize);
+  memset(iv_, 0, sizeof(uint8_t) * kIVSize);
+  memset(salt_, 0, sizeof(uint8_t) * kSaltSize);
 
-  Lock(key, kKeySize);
+  Lock(key_, kKeySize);
 }
 
 AES_GCM::~AES_GCM() {
-  Wipe(iv, sizeof(uint8_t) * kIVSize);
-  Wipe(key, sizeof(uint8_t) * kKeySize);
-  Wipe(salt, sizeof(uint8_t) * kSaltSize);
+  Wipe(iv_, sizeof(uint8_t) * kIVSize);
+  Wipe(key_, sizeof(uint8_t) * kKeySize);
+  Wipe(salt_, sizeof(uint8_t) * kSaltSize);
 
-  Unlock(key, kKeySize);
+  Unlock(key_, kKeySize);
 
-  if (ctx) {
-    EVP_CIPHER_CTX_free(ctx);
-    ctx = nullptr;
+  if (ctx_) {
+    EVP_CIPHER_CTX_free(ctx_);
+    ctx_ = nullptr;
   }
 }
 
-void AES_GCM::reportError(const char* msg) {
-  if (!ecb)
+void AES_GCM::ReportError(const char* msg) {
+  if (!ecb_) {
     return;
+  }
 
   std::string res;
   unsigned long code;
@@ -50,5 +51,5 @@ void AES_GCM::reportError(const char* msg) {
     res += '\n';
   }
 
-  ecb(res.c_str());
+  ecb_(res.c_str());
 }

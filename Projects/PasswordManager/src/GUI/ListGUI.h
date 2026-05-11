@@ -35,90 +35,97 @@ class ListGUI : public QWidget {
    * @brief	Refresh the table with current entry data
    * @param	entries		List of entries as (site, account) pairs
    */
-  void loadEntries(const std::vector<std::pair<std::string, std::string>>& entries);
+  void LoadEntries(const std::vector<std::pair<std::string, std::string>>& entries);
 
   /**
    * @brief	Display error message
    * @param	msg		Error message string
    */
-  void setErrMsg(const QString& msg);
+  void SetErrMsg(const QString& msg);
 
  signals:
   /**
    * @brief	Signal when add button is clicked
    */
-  void addRequested();
+  void AddRequested();
 
   /**
    * @brief	Signal when edit button is clicked
    * @param	site	Site name of the selected entry
    * @param	acc		Account of the selected entry
    */
-  void editRequested(const std::string& site, const std::string& acc);
+  void EditRequested(const std::string& site, const std::string& acc);
 
   /**
    * @brief	Signal when delete button is clicked
    * @param	site	Site name of the selected entry
    * @param	acc		Account of the selected entry
    */
-  void deleteRequested(const std::string& site, const std::string& acc);
+  void DeleteRequested(const std::string& site, const std::string& acc);
 
   /**
    * @brief	Signal when copy password button is clicked
    * @param	site	Site name of the selected entry
    * @param	acc		Account of the selected entry
    */
-  void copyPWRequested(const std::string& site, const std::string& acc);
+  void CopyPWRequested(const std::string& site, const std::string& acc);
 
   /**
    * @brief	Signal when save button is clicked
    */
-  void saveRequested();
+  void SaveRequested();
 
   /**
    * @brief	Signal when close button is clicked
    */
-  void closeRequested();
+  void CloseRequested();
 
   /**
    * @brief	Signal when change password button is clicked
    */
-  void changePWRequested();
+  void ChangePWRequested();
 
  private slots:
   /**
    * @brief	Handle add button click
    */
-  void onAddClicked();
+  void OnAddClicked();
 
   /**
    * @brief	Handle edit button click
    */
-  void onEditClicked();
+  void OnEditClicked();
 
   /**
    * @brief	Handle delete button click
    */
-  void onDeleteClicked();
+  void OnDeleteClicked();
 
   /**
    * @brief	Handle copy password button click
    */
-  void onCopyPWClicked();
+  void OnCopyPWClicked();
 
   /**
    * @brief	Filter table rows based on search text
    * @param	text	Search text
    */
-  void onSearchChanged(const QString& text);
+  void OnSearchChanged(const QString& text);
 
  private:
-  QLabel* errMsg;
-  QLineEdit* searchLine;
-  QPushButton *addBtn, *editBtn, *deleteBtn, *copyPWBtn, *saveBtn, *closeBtn, *changePWBtn;
-  QTableWidget* table;
-  QHBoxLayout *entryBtns, *vaultBtns;
-  QVBoxLayout* vBox;
+  QLabel* err_msg_;
+  QLineEdit* search_line_;
+  QPushButton* add_btn_;
+  QPushButton* edit_btn_;
+  QPushButton* delete_btn_;
+  QPushButton* copy_pw_btn_;
+  QPushButton* save_btn_;
+  QPushButton* close_btn_;
+  QPushButton* change_pw_btn_;
+  QTableWidget* table_;
+  QHBoxLayout* entry_btns_;
+  QHBoxLayout* vault_btns_;
+  QVBoxLayout* vbox_;
 
   /**
    * @brief	Get site and account from the selected row
@@ -126,5 +133,5 @@ class ListGUI : public QWidget {
    * @param	acc		Destination for account
    * @return	true if a row is selected
    */
-  bool getSelectedEntry(std::string& site, std::string& acc);
+  bool GetSelectedEntry(std::string& site, std::string& acc);
 };

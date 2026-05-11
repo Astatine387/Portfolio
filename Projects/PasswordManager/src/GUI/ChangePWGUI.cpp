@@ -9,135 +9,135 @@
 ChangePWGUI::ChangePWGUI(QWidget* parent) : QDialog(parent) {
   /* Create layouts and components */
 
-  curPWLine = new PWLineEdit;
-  newPWLine = new PWLineEdit;
-  confirmPWLine = new PWLineEdit;
-  curLabel = new QLabel("Current Password:");
-  newLabel = new QLabel("New Password:");
-  confirmLabel = new QLabel("Confirm New Password:");
-  errMsg = new QLabel;
-  okBtn = new QPushButton("Ok");
-  cancelBtn = new QPushButton("Cancel");
-  btnBox = new QHBoxLayout;
-  vBox = new QVBoxLayout;
+  cur_pwline_ = new PWLineEdit;
+  new_pwline_ = new PWLineEdit;
+  confirm_pwline = new PWLineEdit;
+  cur_label_ = new QLabel("Current Password:");
+  new_label_ = new QLabel("New Password:");
+  confirm_label_ = new QLabel("Confirm New Password:");
+  err_msg_ = new QLabel;
+  ok_btn_ = new QPushButton("Ok");
+  cancel_btn_ = new QPushButton("Cancel");
+  btn_box_ = new QHBoxLayout;
+  vbox_ = new QVBoxLayout;
 
   /* Configure error message */
 
-  errMsg->setStyleSheet("color: red;");
+  err_msg_->setStyleSheet("color: red;");
 
   /* Configure button layout */
 
-  btnBox->addStretch();
-  btnBox->addWidget(okBtn);
-  btnBox->addWidget(cancelBtn);
+  btn_box_->addStretch();
+  btn_box_->addWidget(ok_btn_);
+  btn_box_->addWidget(cancel_btn_);
 
   /* Configure main layout */
 
-  vBox->addWidget(curLabel);
-  vBox->addWidget(curPWLine);
-  vBox->addWidget(newLabel);
-  vBox->addWidget(newPWLine);
-  vBox->addWidget(confirmLabel);
-  vBox->addWidget(confirmPWLine);
-  vBox->addWidget(errMsg);
-  vBox->addLayout(btnBox);
-  vBox->setSpacing(10);
-  vBox->setContentsMargins(20, 20, 20, 20);
+  vbox_->addWidget(cur_label_);
+  vbox_->addWidget(cur_pwline_);
+  vbox_->addWidget(new_label_);
+  vbox_->addWidget(new_pwline_);
+  vbox_->addWidget(confirm_label_);
+  vbox_->addWidget(confirm_pwline);
+  vbox_->addWidget(err_msg_);
+  vbox_->addLayout(btn_box_);
+  vbox_->setSpacing(10);
+  vbox_->setContentsMargins(20, 20, 20, 20);
 
-  setLayout(vBox);
+  setLayout(vbox_);
   setWindowTitle("Change Master Password");
   setMinimumWidth(400);
 
   /* Connect functions to buttons */
 
-  connect(okBtn, &QPushButton::clicked, this, &ChangePWGUI::onOKClicked);
-  connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
+  connect(ok_btn_, &QPushButton::clicked, this, &ChangePWGUI::OnOKClicked);
+  connect(cancel_btn_, &QPushButton::clicked, this, &QDialog::reject);
 }
 
-void ChangePWGUI::getInput(Password& curPW, Password& newPW) {
-  curPWLine->extract(curPW);
-  newPWLine->extract(newPW);
+void ChangePWGUI::GetInput(Password& cur_pw, Password& new_pw) {
+  cur_pwline_->Extract(cur_pw);
+  new_pwline_->Extract(new_pw);
 }
 
-void ChangePWGUI::reset() {
-  curPWLine->clear();
-  newPWLine->clear();
-  confirmPWLine->clear();
-  errMsg->clear();
+void ChangePWGUI::Reset() {
+  cur_pwline_->Clear();
+  new_pwline_->Clear();
+  confirm_pwline->Clear();
+  err_msg_->clear();
 }
 
-void ChangePWGUI::setErrMsg(const QString& msg) {
-  errMsg->setText(msg);
+void ChangePWGUI::SetErrMsg(const QString& msg) {
+  err_msg_->setText(msg);
 }
 
-void ChangePWGUI::setVerifyCb(VerifyCallback vcb) {
-  this->vcb = vcb;
+void ChangePWGUI::SetVerifyCb(VerifyCallback vcb) {
+  this->vcb_ = vcb;
 }
 
-void ChangePWGUI::onOKClicked() {
-  errMsg->clear();
+void ChangePWGUI::OnOKClicked() {
+  err_msg_->clear();
 
   /* Extract passwords for validation */
 
   Password curPW, newPW, confirmPW;
 
-  curPWLine->extract(curPW);
+  cur_pwline_->Extract(curPW);
 
-  if (newPWLine->extract(newPW)) {
-    errMsg->setText("Password exceeds maximum length (256 characters)");
+  if (new_pwline_->Extract(newPW)) {
+    err_msg_->setText("Password exceeds maximum length (256 characters)");
     return;
   }
 
-  if (confirmPWLine->extract(confirmPW)) {
-    errMsg->setText("Password exceeds maximum length (256 characters)");
+  if (confirm_pwline->Extract(confirmPW)) {
+    err_msg_->setText("Password exceeds maximum length (256 characters)");
     return;
   }
 
   /* Validate all fields are filled */
 
-  if (curPW.isEmpty()) {
-    errMsg->setText("Current password is not input");
+  if (curPW.IsEmpty()) {
+    err_msg_->setText("Current password is not input");
     return;
   }
 
-  if (newPW.isEmpty()) {
-    errMsg->setText("New password is not input");
+  if (newPW.IsEmpty()) {
+    err_msg_->setText("New password is not input");
     return;
   }
 
-  if (confirmPW.isEmpty()) {
-    errMsg->setText("Confirm password is not input");
+  if (confirmPW.IsEmpty()) {
+    err_msg_->setText("Confirm password is not input");
     return;
   }
 
   /* Validate new password matches confirmation */
 
-  if (newPW.getSize() != confirmPW.getSize() || !newPW.equal(confirmPW)) {
-    errMsg->setText("New and confirm password do not match");
+  if (newPW.GetSize() != confirmPW.GetSize() || !newPW.Equal(confirmPW)) {
+    err_msg_->setText("New and confirm password do not match");
     return;
   }
 
   /* Validate new password differs from current */
 
-  if (newPW.getSize() == curPW.getSize() && newPW.equal(curPW)) {
-    errMsg->setText("Old and new password are the same");
+  if (newPW.GetSize() == curPW.GetSize() && newPW.Equal(curPW)) {
+    err_msg_->setText("Old and new password are the same");
     return;
   }
 
   /* Verify current password via callback */
 
-  if (vcb && !vcb(curPW)) {
-    errMsg->setText("Current password is incorrect");
-    curPWLine->clear();
-    newPWLine->clear();
-    confirmPWLine->clear();
+  if (vcb_ && !vcb_(curPW)) {
+    err_msg_->setText("Current password is incorrect");
+    cur_pwline_->Clear();
+    new_pwline_->Clear();
+    confirm_pwline->Clear();
     return;
   }
 
   /* Restore passwords for getInput() */
 
-  curPWLine->setPassword(curPW);
-  newPWLine->setPassword(newPW);
+  cur_pwline_->SetPassword(curPW);
+  new_pwline_->SetPassword(newPW);
 
   accept();
 }

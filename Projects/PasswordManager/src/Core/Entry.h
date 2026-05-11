@@ -19,22 +19,22 @@
  * @brief      Password entry
  */
 struct Entry {
-  std::string site;
-  std::string acc;
-  Password pw;
+  std::string site_;
+  std::string acc_;
+  Password pw_;
 
   /**
    * @brief   Calculate serialized size in bytes
    * @return  Serialized size in bytes
    */
-  size_t size() const;
+  size_t Size() const;
 
   /**
    * @brief   Serialize entry to buffer
    * @param   dst     Destination buffer (must have enough space)
    * @return  Number of bytes written
    */
-  size_t ser(uint8_t* dst) const;
+  size_t Ser(uint8_t* dst) const;
 
   /**
    * @brief   Deserialize entry from buffer
@@ -42,7 +42,7 @@ struct Entry {
    * @param   srcLen      Source buffer size
    * @return  Number of bytes read on success, 0 on failure
    */
-  size_t deser(const uint8_t* src, size_t srcLen);
+  size_t Deser(const uint8_t* src, size_t srclen);
 };
 
 /**
@@ -51,8 +51,10 @@ struct Entry {
  */
 struct EntryCmp {
   bool operator()(const Entry& a, const Entry& b) const {
-    if (a.site != b.site)
-      return a.site < b.site;
-    return a.acc < b.acc;
+    if (a.site_ != b.site_) {
+      return a.site_ < b.site_;
+    }
+
+    return a.acc_ < b.acc_;
   }
 };

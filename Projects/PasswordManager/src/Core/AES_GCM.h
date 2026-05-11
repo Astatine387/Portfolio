@@ -47,7 +47,7 @@ class AES_GCM {
    * @param		plen	Password length
    * @return		0 on success, 1 on failure
    */
-  int decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
+  int Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
 
   /**
    * @brief		Encrypt a buffer
@@ -58,7 +58,7 @@ class AES_GCM {
    * @param		plen		Password length
    * @return		0 on success, 1 on failure
    */
-  int encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
+  int Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
 
   /* ==================================================
    * Callback functions
@@ -68,29 +68,29 @@ class AES_GCM {
    * @brief	Callback function for error reporting
    * @param	errMsg	Error message string
    */
-  using ErrorCallback = std::function<void(const char* errMsg)>;
+  using ErrorCallback = std::function<void(const char* msg)>;
 
   /**
    * @brief	Set error callback function
    * @param	ecb		Error callback function
    */
-  void setErrorCb(ErrorCallback ecb) { this->ecb = ecb; }
+  void SetErrorCallback(ErrorCallback ecb) { ecb_ = ecb; }
 
  private:
-  EVP_CIPHER_CTX* ctx = nullptr;  // OpenSSL encryption/decryption context
+  EVP_CIPHER_CTX* ctx_ = nullptr;  // OpenSSL encryption/decryption context
 
-  ErrorCallback ecb = nullptr;  // Error reporting callback function
+  ErrorCallback ecb_ = nullptr;  // Error reporting callback function
 
-  uint8_t iv[kIVSize];      // Initial vector
-  uint8_t key[kKeySize];    // Key derived from password
-  uint8_t salt[kSaltSize];  // Key derivation salt
+  uint8_t iv_[kIVSize];      // Initial vector
+  uint8_t key_[kKeySize];    // Key derived from password
+  uint8_t salt_[kSaltSize];  // Key derivation salt
 
-  uint8_t* src = nullptr;  // Source buffer
-  uint8_t* dst = nullptr;  // Destination buffer
+  uint8_t* src_buff_ = nullptr;  // Source buffer
+  uint8_t* dst_buff_ = nullptr;  // Destination buffer
 
-  size_t srcCrs = 0;  // Current read position in buffer
-  size_t dstCrs = 0;  // Current write position in buffer
-  size_t size = 0;    // Source buffer size
+  size_t src_crs_ = 0;  // Current read position in buffer
+  size_t dst_crs_ = 0;  // Current write position in buffer
+  size_t size_ = 0;    // Source buffer size
 
   /* ==================================================
    * Decryption functions
@@ -102,25 +102,25 @@ class AES_GCM {
    * @param	plen	Password length
    * @return	0 on success, 1 on failure
    */
-  int decryptInit(const char* pw, size_t plen);
+  int DecryptInit(const char* pw, size_t plen);
 
   /**
    * @brief	Read and verify authentication tag
    * @return	0 on success, 1 on failure
    */
-  int decryptTag();
+  int DecryptTag();
 
   /**
    * @brief	Decrypt buffer
    * @return	0 on success, 1 on failure
    */
-  int decryptBuff();
+  int DecryptBuff();
 
   /**
    * @brief	Finalize decryption
    * @return	0 on success, 1 on failure
    */
-  int decryptFinal();
+  int DecryptFinal();
 
   /* ==================================================
    * Encryption functions
@@ -132,25 +132,25 @@ class AES_GCM {
    * @param	plen	Password length
    * @return	0 on success, 1 on failure
    */
-  int encryptInit(const char* pw, size_t plen);
+  int EncryptInit(const char* pw, size_t plen);
 
   /**
    * @brief	Encrypt buffer
    * @return	0 on success, 1 on failure
    */
-  int encryptBuff();
+  int EncryptBuff();
 
   /**
    * @brief	Finalize encryption
    * @return	0 on success, 1 on failure
    */
-  int encryptFinal();
+  int EncryptFinal();
 
   /**
    * @brief	Generate and write authentication tag
    * @return	0 on success, 1 on failure
    */
-  int encryptTag();
+  int EncryptTag();
 
   /* ==================================================
    * Callback helper functions
@@ -160,5 +160,5 @@ class AES_GCM {
    * @brief	Report error via callback
    * @param	msg		Error message string
    */
-  void reportError(const char* msg);
+  void ReportError(const char* msg);
 };

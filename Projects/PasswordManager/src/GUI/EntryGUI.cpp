@@ -13,239 +13,239 @@
 EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
   /* Create layouts and components */
 
-  pwLine = new PWLineEdit;
-  spcGrid = new QGridLayout;
-  errMsg = new QLabel;
-  lenLabel = new QLabel("Length: 16");
-  siteLine = new QLineEdit;
-  accLine = new QLineEdit;
-  checkAllBtn = new QPushButton("Check All");
-  uncheckAllBtn = new QPushButton("Uncheck All");
-  resetBtn = new QPushButton("Reset to Default");
-  genBtn = new QPushButton("Generate");
-  okBtn = new QPushButton("Ok");
-  lenSlider = new QSlider(Qt::Horizontal);
-  cancelBtn = new QPushButton("Cancel");
-  btnBox = new QHBoxLayout;
-  lenBox = new QHBoxLayout;
-  spcBtnBox = new QHBoxLayout;
-  vBox = new QVBoxLayout;
+  pwline_ = new PWLineEdit;
+  spc_grid_ = new QGridLayout;
+  err_msg_ = new QLabel;
+  len_label_ = new QLabel("Length: 16");
+  site_line_ = new QLineEdit;
+  acc_line_ = new QLineEdit;
+  check_all_btn_ = new QPushButton("Check All");
+  uncheck_all_btn_ = new QPushButton("Uncheck All");
+  reset_btn_ = new QPushButton("Reset to Default");
+  gen_btn_ = new QPushButton("Generate");
+  ok_btn_ = new QPushButton("Ok");
+  len_slider_ = new QSlider(Qt::Horizontal);
+  cancel_btn_ = new QPushButton("Cancel");
+  btn_box_ = new QHBoxLayout;
+  len_box_ = new QHBoxLayout;
+  spc_btn_box_ = new QHBoxLayout;
+  vbox_ = new QVBoxLayout;
 
   /* Configure input lines */
 
-  siteLine->setPlaceholderText("Site");
-  siteLine->setMaxLength(kMaxSiteLen);
-  accLine->setPlaceholderText("Account");
-  accLine->setMaxLength(kMaxAccLen);
+  site_line_->setPlaceholderText("Site");
+  site_line_->setMaxLength(kMaxSiteLen);
+  acc_line_->setPlaceholderText("Account");
+  acc_line_->setMaxLength(kMaxAccLen);
 
   /* Configure password length slider */
 
-  lenSlider->setRange(8, 32);
-  lenSlider->setValue(16);
+  len_slider_->setRange(8, 32);
+  len_slider_->setValue(16);
 
-  lenBox->addWidget(lenLabel);
-  lenBox->addWidget(lenSlider);
-  lenBox->setSpacing(10);
-  lenBox->setContentsMargins(0, 0, 0, 0);
+  len_box_->addWidget(len_label_);
+  len_box_->addWidget(len_slider_);
+  len_box_->setSpacing(10);
+  len_box_->setContentsMargins(0, 0, 0, 0);
 
   /* Configure special character checkboxes */
 
   for (int i = 0; i < 32; i++) {
-    QString label = QString(spcs[i]);
+    QString label = QString(spcs_[i]);
 
-    spcChecks[i] = new QCheckBox(label);
-    spcChecks[i]->setChecked(defaultSpc[i]);
+    spc_checks_[i] = new QCheckBox(label);
+    spc_checks_[i]->setChecked(default_spc_[i]);
 
-    spcGrid->addWidget(spcChecks[i], i / 8, i % 8);
+    spc_grid_->addWidget(spc_checks_[i], i / 8, i % 8);
   }
 
-  spcGrid->setSpacing(5);
-  spcGrid->setContentsMargins(0, 0, 0, 0);
+  spc_grid_->setSpacing(5);
+  spc_grid_->setContentsMargins(0, 0, 0, 0);
 
   /* Configure special character control buttons */
 
-  spcBtnBox->addWidget(checkAllBtn);
-  spcBtnBox->addWidget(uncheckAllBtn);
-  spcBtnBox->addWidget(resetBtn);
-  spcBtnBox->addStretch();
+  spc_btn_box_->addWidget(check_all_btn_);
+  spc_btn_box_->addWidget(uncheck_all_btn_);
+  spc_btn_box_->addWidget(reset_btn_);
+  spc_btn_box_->addStretch();
 
-  spcBtnBox->setSpacing(10);
-  spcBtnBox->setContentsMargins(0, 0, 0, 0);
+  spc_btn_box_->setSpacing(10);
+  spc_btn_box_->setContentsMargins(0, 0, 0, 0);
 
   /* Put OK, Cancel, and error message in the same line */
 
-  btnBox->addWidget(genBtn);
-  btnBox->addWidget(okBtn);
-  btnBox->addWidget(cancelBtn);
-  btnBox->addStretch();
+  btn_box_->addWidget(gen_btn_);
+  btn_box_->addWidget(ok_btn_);
+  btn_box_->addWidget(cancel_btn_);
+  btn_box_->addStretch();
 
-  btnBox->setSpacing(10);
-  btnBox->setContentsMargins(0, 0, 0, 0);
+  btn_box_->setSpacing(10);
+  btn_box_->setContentsMargins(0, 0, 0, 0);
 
   /* Configure main layout */
 
-  vBox->addWidget(siteLine);
-  vBox->addWidget(accLine);
-  vBox->addWidget(pwLine);
-  vBox->addLayout(lenBox);
-  vBox->addLayout(spcGrid);
-  vBox->addLayout(spcBtnBox);
-  vBox->addWidget(errMsg);
-  vBox->addLayout(btnBox);
+  vbox_->addWidget(site_line_);
+  vbox_->addWidget(acc_line_);
+  vbox_->addWidget(pwline_);
+  vbox_->addLayout(len_box_);
+  vbox_->addLayout(spc_grid_);
+  vbox_->addLayout(spc_btn_box_);
+  vbox_->addWidget(err_msg_);
+  vbox_->addLayout(btn_box_);
 
-  vBox->setSpacing(10);
-  vBox->setContentsMargins(10, 10, 10, 10);
+  vbox_->setSpacing(10);
+  vbox_->setContentsMargins(10, 10, 10, 10);
 
-  setLayout(vBox);
+  setLayout(vbox_);
 
   /* Connect functions to buttons */
 
-  connect(checkAllBtn, &QPushButton::clicked, this, &EntryGUI::onCheckAllClicked);
-  connect(uncheckAllBtn, &QPushButton::clicked, this, &EntryGUI::onUncheckAllClicked);
-  connect(resetBtn, &QPushButton::clicked, this, &EntryGUI::onResetClicked);
-  connect(okBtn, &QPushButton::clicked, this, &EntryGUI::onOKClicked);
-  connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
-  connect(genBtn, &QPushButton::clicked, this, &EntryGUI::onGenerateClicked);
+  connect(check_all_btn_, &QPushButton::clicked, this, &EntryGUI::OnCheckAllClicked);
+  connect(uncheck_all_btn_, &QPushButton::clicked, this, &EntryGUI::OnUncheckAllClicked);
+  connect(reset_btn_, &QPushButton::clicked, this, &EntryGUI::OnResetClicked);
+  connect(ok_btn_, &QPushButton::clicked, this, &EntryGUI::OnOKClicked);
+  connect(cancel_btn_, &QPushButton::clicked, this, &QDialog::reject);
+  connect(gen_btn_, &QPushButton::clicked, this, &EntryGUI::OnGenerateClicked);
 
-  connect(lenSlider, &QSlider::valueChanged, this,
-          [this](int val) { lenLabel->setText(QString("Length: %1").arg(val)); });
+  connect(len_slider_, &QSlider::valueChanged, this,
+          [this](int val) { len_label_->setText(QString("Length: %1").arg(val)); });
 }
 
-void EntryGUI::setAddMode() {
+void EntryGUI::SetAddMode() {
   setWindowTitle("Add Entry");
 
-  siteLine->clear();
-  accLine->clear();
-  pwLine->clear();
-  errMsg->clear();
+  site_line_->clear();
+  acc_line_->clear();
+  pwline_->Clear();
+  err_msg_->clear();
 }
 
-void EntryGUI::setEditMode(const std::string& site, const std::string& acc, const Password& pw) {
+void EntryGUI::SetEditMode(const std::string& site, const std::string& acc, const Password& pw) {
   setWindowTitle("Edit Entry");
 
-  siteLine->setText(QString::fromStdString(site));
-  accLine->setText(QString::fromStdString(acc));
-  pwLine->setPassword(pw);
-  errMsg->clear();
+  site_line_->setText(QString::fromStdString(site));
+  acc_line_->setText(QString::fromStdString(acc));
+  pwline_->SetPassword(pw);
+  err_msg_->clear();
 }
 
-Entry EntryGUI::getInput() {
+Entry EntryGUI::GetInput() {
   Entry entry;
 
-  entry.site = siteLine->text().toStdString();
-  entry.acc = accLine->text().toStdString();
-  pwLine->extract(entry.pw);
+  entry.site_ = site_line_->text().toStdString();
+  entry.acc_ = acc_line_->text().toStdString();
+  pwline_->Extract(entry.pw_);
 
   return entry;
 }
 
-void EntryGUI::onOKClicked() {
-  errMsg->clear();
+void EntryGUI::OnOKClicked() {
+  err_msg_->clear();
 
-  if (siteLine->text().isEmpty()) {
-    errMsg->setText("Site is not input");
+  if (site_line_->text().isEmpty()) {
+    err_msg_->setText("Site is not input");
     return;
   }
 
-  if (accLine->text().isEmpty()) {
-    errMsg->setText("Account is not input");
+  if (acc_line_->text().isEmpty()) {
+    err_msg_->setText("Account is not input");
     return;
   }
 
   Password tmp;
 
-  if (pwLine->extract(tmp)) {
-    errMsg->setText("Password exceeds maximum length (256 characters)");
+  if (pwline_->Extract(tmp)) {
+    err_msg_->setText("Password exceeds maximum length (256 characters)");
     return;
   }
 
-  if (tmp.isEmpty()) {
-    errMsg->setText("Password is not input");
+  if (tmp.IsEmpty()) {
+    err_msg_->setText("Password is not input");
     return;
   }
 
-  if (!hasSpecial(tmp)) {
-    errMsg->setText("Password must contain at least one special character");
+  if (!HasSpecial(tmp)) {
+    err_msg_->setText("Password must contain at least one special character");
     return;
   }
 
-  pwLine->setPassword(tmp);
+  pwline_->SetPassword(tmp);
 
   accept();
 }
 
-void EntryGUI::onGenerateClicked() {
-  if (!hasSpecialSelected()) {
-    errMsg->setText("No special characters selected");
+void EntryGUI::OnGenerateClicked() {
+  if (!HasSpecialSelected()) {
+    err_msg_->setText("No special characters selected");
     return;
   }
 
-  errMsg->clear();
+  err_msg_->clear();
 
-  std::vector<bool> spcList = getSpecialsList();
-  int size = lenSlider->value();
+  std::vector<bool> spcList = GetSpecialsList();
+  int size = len_slider_->value();
   Password generated;
 
-  if (genPW(generated, spcList, size)) {
-    errMsg->setText("Failed to generate password");
+  if (GenPW(generated, spcList, size)) {
+    err_msg_->setText("Failed to generate password");
     return;
   }
 
-  pwLine->setPassword(generated);
+  pwline_->SetPassword(generated);
 }
 
-void EntryGUI::onCheckAllClicked() {
+void EntryGUI::OnCheckAllClicked() {
   for (int i = 0; i < 32; i++)
-    spcChecks[i]->setChecked(true);
+    spc_checks_[i]->setChecked(true);
 }
 
-void EntryGUI::onUncheckAllClicked() {
+void EntryGUI::OnUncheckAllClicked() {
   for (int i = 0; i < 32; i++)
-    spcChecks[i]->setChecked(false);
+    spc_checks_[i]->setChecked(false);
 }
 
-void EntryGUI::onResetClicked() {
+void EntryGUI::OnResetClicked() {
   for (int i = 0; i < 32; i++)
-    spcChecks[i]->setChecked(defaultSpc[i]);
+    spc_checks_[i]->setChecked(default_spc_[i]);
 }
 
-std::vector<bool> EntryGUI::getSpecialsList() {
+std::vector<bool> EntryGUI::GetSpecialsList() {
   std::vector<bool> list(32);
 
   for (int i = 0; i < 32; i++)
-    list[i] = spcChecks[i]->isChecked();
+    list[i] = spc_checks_[i]->isChecked();
 
   return list;
 }
 
-bool EntryGUI::hasSpecial(const Password& pw) const {
-  const char* data = pw.getData();
-  size_t size = pw.getSize();
+bool EntryGUI::HasSpecial(const Password& pw) const {
+  const char* data = pw.GetData();
+  size_t size = pw.GetSize();
 
   if (!data || size == 0)
     return false;
 
   for (size_t i = 0; i < size; i++) {
     for (int j = 0; j < 32; j++)
-      if (data[i] == spcs[j])
+      if (data[i] == spcs_[j])
         return true;
   }
 
   return false;
 }
 
-bool EntryGUI::hasSpecialSelected() const {
+bool EntryGUI::HasSpecialSelected() const {
   for (int i = 0; i < 32; i++) {
-    if (spcChecks[i]->isChecked())
+    if (spc_checks_[i]->isChecked())
       return true;
   }
 
   return false;
 }
 
-int EntryGUI::genPW(Password& dst, const std::vector<bool>& spcList, int pwSize) {
+int EntryGUI::GenPW(Password& dst, const std::vector<bool>& spc_list, int pw_size) {
   std::string pool;
-  size_t poolSize = 62;
+  size_t pool_size = 62;
   const char lower[] = "abcdefghijklmnopqrstuvwxyz";
   const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const char num[] = "0123456789";
@@ -254,21 +254,21 @@ int EntryGUI::genPW(Password& dst, const std::vector<bool>& spcList, int pwSize)
 
   /* Check the special character list size is valid */
 
-  if (spcList.size() != 32)
+  if (spc_list.size() != 32)
     return 1;
 
   /* Check the password size is valid */
 
-  if (pwSize < 8)
+  if (pw_size < 8)
     return 1;
 
   /* Add characters to pool */
 
   for (int i = 0; i < 32; i++)
-    if (spcList[i])
-      poolSize++;
+    if (spc_list[i])
+      pool_size++;
 
-  pool.resize(poolSize);
+  pool.resize(pool_size);
 
   for (int i = 0; i < 26; i++)
     pool[crs++] = lower[i];
@@ -277,34 +277,34 @@ int EntryGUI::genPW(Password& dst, const std::vector<bool>& spcList, int pwSize)
   for (int i = 0; i < 10; i++)
     pool[crs++] = num[i];
   for (int i = 0; i < 32; i++)
-    if (spcList[i])
-      pool[crs++] = spcs[i];
+    if (spc_list[i])
+      pool[crs++] = spcs_[i];
 
   /* Check at least one special character is selected */
 
-  if (poolSize <= 62)
+  if (pool_size <= 62)
     return 1;
 
   /* Generate password */
 
-  pw = new char[pwSize]{};
+  pw = new char[pw_size]{};
 
   pw[0] = lower[RandomRange(0, 25)];
   pw[1] = upper[RandomRange(0, 25)];
   pw[2] = num[RandomRange(0, 9)];
-  pw[3] = pool[RandomRange(62, static_cast<uint32_t>(poolSize) - 1)];
+  pw[3] = pool[RandomRange(62, static_cast<uint32_t>(pool_size) - 1)];
 
-  for (int i = 4; i < pwSize; i++)
-    pw[i] = pool[RandomRange(0, static_cast<uint32_t>(poolSize) - 1)];
+  for (int i = 4; i < pw_size; i++)
+    pw[i] = pool[RandomRange(0, static_cast<uint32_t>(pool_size) - 1)];
 
-  Shuffle(reinterpret_cast<uint8_t*>(pw), pwSize);
+  Shuffle(reinterpret_cast<uint8_t*>(pw), pw_size);
 
-  res = dst.setData(pw, pwSize);
+  res = dst.SetData(pw, pw_size);
 
   /* Cleanup */
 
   Wipe(pool.data(), pool.size());
-  Wipe(pw, pwSize);
+  Wipe(pw, pw_size);
 
   delete[] pw;
 

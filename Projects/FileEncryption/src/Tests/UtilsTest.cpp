@@ -295,7 +295,7 @@ TEST_F(OpenFileTest, OpenExisting) {
  * The probability of 32 random bytes being all zero is negligible (2^-256)
  */
 TEST(RandomTest, GeneratesNonZero) {
-  uint8_t buff[32] = {0};
+  uint8_t buff[32] = { 0 };
   bool all_zero = true;
 
   EXPECT_EQ(Random(buff, 32), 0);

@@ -11,37 +11,37 @@
 LoginGUI::LoginGUI(QWidget* parent) : QWidget(parent) {
   /* Create layout and components */
 
-  newBtn = new QPushButton("New");
-  openBtn = new QPushButton("Open");
-  hBox = new QHBoxLayout;
+  new_btn_ = new QPushButton("New");
+  open_btn_ = new QPushButton("Open");
+  hbox_ = new QHBoxLayout;
 
   /* Configure layout */
 
-  hBox->addStretch();
-  hBox->addWidget(newBtn);
-  hBox->addStretch();
-  hBox->addWidget(openBtn);
-  hBox->addStretch();
+  hbox_->addStretch();
+  hbox_->addWidget(new_btn_);
+  hbox_->addStretch();
+  hbox_->addWidget(open_btn_);
+  hbox_->addStretch();
 
-  setLayout(hBox);
+  setLayout(hbox_);
 
   /* Connect functions to buttons */
 
-  connect(newBtn, &QPushButton::clicked, this, &LoginGUI::onNewClicked);
-  connect(openBtn, &QPushButton::clicked, this, &LoginGUI::onOpenClicked);
+  connect(new_btn_, &QPushButton::clicked, this, &LoginGUI::OnNewClicked);
+  connect(open_btn_, &QPushButton::clicked, this, &LoginGUI::OnOpenClicked);
 }
 
-void LoginGUI::onNewClicked() {
+void LoginGUI::OnNewClicked() {
   QString path =
       QFileDialog::getSaveFileName(this, "Create New Vault", "", "Vault Files (*.vault)");
 
   if (!path.isEmpty())
-    emit vaultSelected(0, path);
+    emit VaultSelected(0, path);
 }
 
-void LoginGUI::onOpenClicked() {
+void LoginGUI::OnOpenClicked() {
   QString path = QFileDialog::getOpenFileName(this, "Open Vault", "", "Vault Files (*.vault)");
 
   if (!path.isEmpty())
-    emit vaultSelected(1, path);
+    emit VaultSelected(1, path);
 }

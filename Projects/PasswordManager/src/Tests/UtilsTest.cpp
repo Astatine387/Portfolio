@@ -20,39 +20,39 @@
  */
 class GetFileSizeTest : public ::testing::Test {
  protected:
-  FILE* file = nullptr;
-  QString path = "test.tmp";
+  FILE* file_ = nullptr;
+  QString path_ = "test.tmp";
 
   /**
    * @brief   Clean up temporary files after each test
    */
   void TearDown() override {
-    if (file) {
-      fclose(file);
-      file = nullptr;
+    if (file_) {
+      fclose(file_);
+      file_ = nullptr;
     }
 
-    RemoveFile(path);
+    RemoveFile(path_);
   }
 
   /**
    * @brief   Create file with specified size
    * @param   size    File size in bytes
    */
-  void create(size_t size) {
-    OpenFile(&file, path, "wb+");
+  void Create(size_t size) {
+    OpenFile(&file_, path_, "wb+");
 
-    if (file) {
+    if (file_) {
       std::vector<uint8_t> vec(size, 0x00);
 
-      fwrite(vec.data(), 1, size, file);
+      fwrite(vec.data(), 1, size, file_);
 
-      fclose(file);
+      fclose(file_);
 
-      file = nullptr;
+      file_ = nullptr;
     }
 
-    OpenFile(&file, path, "rb");
+    OpenFile(&file_, path_, "rb");
   }
 };
 
@@ -60,18 +60,18 @@ class GetFileSizeTest : public ::testing::Test {
  * @brief   Verify GetFileSize works with empty file
  */
 TEST_F(GetFileSizeTest, EmptyFile) {
-  create(0);
+  Create(0);
 
-  EXPECT_EQ(GetFileSize(file), 0);
+  EXPECT_EQ(GetFileSize(file_), 0);
 }
 
 /**
  * @brief   Verify GetFileSize works with an arbitrary sized file
  */
 TEST_F(GetFileSizeTest, ArbitSizeFile) {
-  create(1000);
+  Create(1000);
 
-  EXPECT_EQ(GetFileSize(file), 1000);
+  EXPECT_EQ(GetFileSize(file_), 1000);
 }
 
 /* ==================================================
@@ -84,23 +84,23 @@ TEST_F(GetFileSizeTest, ArbitSizeFile) {
  */
 class FileExistsTest : public ::testing::Test {
  protected:
-  QString path = "test_exists.tmp";
+  QString path_ = "test_exists.tmp";
 
   /**
    * @brief   Clean up temporary files after each test
    */
-  void TearDown() override { RemoveFile(path); }
+  void TearDown() override { RemoveFile(path_); }
 
   /**
    * @brief   Create a temporary test file
    */
-  void create() {
-    FILE* file = nullptr;
+  void Create() {
+    FILE* file_ = nullptr;
 
-    OpenFile(&file, path, "wb");
+    OpenFile(&file_, path_, "wb");
 
-    if (file)
-      fclose(file);
+    if (file_)
+      fclose(file_);
   }
 };
 
@@ -108,9 +108,9 @@ class FileExistsTest : public ::testing::Test {
  * @brief   Verify FileExists returns true for existing file
  */
 TEST_F(FileExistsTest, ExistingFile) {
-  create();
+  Create();
 
-  EXPECT_TRUE(FileExists(path));
+  EXPECT_TRUE(FileExists(path_));
 }
 
 /**
@@ -124,13 +124,13 @@ TEST_F(FileExistsTest, NonExistingFile) {
  * @brief   Verify FileExists returns false after file deletion
  */
 TEST_F(FileExistsTest, AfterDeletion) {
-  create();
+  Create();
 
-  ASSERT_TRUE(FileExists(path));
+  ASSERT_TRUE(FileExists(path_));
 
-  RemoveFile(path);
+  RemoveFile(path_);
 
-  EXPECT_FALSE(FileExists(path));
+  EXPECT_FALSE(FileExists(path_));
 }
 
 /* ==================================================
@@ -145,8 +145,9 @@ TEST(Argon2idTest, SameInput) {
   const char* pw = "password";
   size_t size = strlen(pw);
 
-  for (int i = 0; i < kSaltSize; i++)
+  for (int i = 0; i < kSaltSize; i++) {
     salt[i] = i;
+  }
 
   EXPECT_EQ(Argon2id(salt, pw, size, key0), 0);
   EXPECT_EQ(Argon2id(salt, pw, size, key1), 0);
@@ -164,8 +165,9 @@ TEST(Argon2idTest, DifferentPW) {
   size_t size0 = strlen(pw0);
   size_t size1 = strlen(pw1);
 
-  for (int i = 0; i < kSaltSize; i++)
+  for (int i = 0; i < kSaltSize; i++) {
     salt[i] = i;
+  }
 
   Argon2id(salt, pw0, size0, key0);
   Argon2id(salt, pw1, size1, key1);
@@ -182,10 +184,13 @@ TEST(Argon2idTest, DifferentSalt) {
   const char* pw = "password";
   size_t size = strlen(pw);
 
-  for (int i = 0; i < kSaltSize; i++)
+  for (int i = 0; i < kSaltSize; i++) {
     salt0[i] = i;
-  for (int i = 0; i < kSaltSize; i++)
+  }
+
+  for (int i = 0; i < kSaltSize; i++) {
     salt1[i] = i + 16;
+  }
 
   Argon2id(salt0, pw, size, key0);
   Argon2id(salt1, pw, size, key1);
@@ -200,8 +205,9 @@ TEST(Argon2Test, EmptyPassword) {
   uint8_t salt[kSaltSize];
   uint8_t key[kKeySize];
 
-  for (int i = 0; i < kSaltSize; i++)
+  for (int i = 0; i < kSaltSize; i++) {
     salt[i] = i;
+  }
 
   EXPECT_EQ(Argon2id(salt, "", 0, key), 0);
 }
@@ -216,20 +222,20 @@ TEST(Argon2Test, EmptyPassword) {
  */
 class OpenFileTest : public ::testing::Test {
  protected:
-  FILE* file = nullptr;
-  QString path = "test.tmp";
+  FILE* file_ = nullptr;
+  QString path_ = "test.tmp";
 
   /**
    * @brief   Clean up temporary files after each test
    */
 
   void TearDown() override {
-    if (file) {
-      fclose(file);
-      file = nullptr;
+    if (file_) {
+      fclose(file_);
+      file_ = nullptr;
     }
 
-    RemoveFile(path);
+    RemoveFile(path_);
   }
 };
 
@@ -237,32 +243,32 @@ class OpenFileTest : public ::testing::Test {
  * @brief   Verify OpenFile creates new file in write mode
  */
 TEST_F(OpenFileTest, CreateNew) {
-  OpenFile(&file, path, "wb+");
+  OpenFile(&file_, path_, "wb+");
 
-  EXPECT_NE(file, nullptr);
+  EXPECT_NE(file_, nullptr);
 }
 
 /**
  * @brief   Verify OpenFile returns nullptr for non-existent file in read mode
  */
 TEST_F(OpenFileTest, ReadNonExistent) {
-  OpenFile(&file, "fake.tmp", "rb");
+  OpenFile(&file_, "fake.tmp", "rb");
 
-  EXPECT_EQ(file, nullptr);
+  EXPECT_EQ(file_, nullptr);
 }
 
 /**
  * @brief   Verify OpenFile opens existing file in read mode
  */
 TEST_F(OpenFileTest, OpenExisting) {
-  OpenFile(&file, path, "wb+");
+  OpenFile(&file_, path_, "wb+");
 
-  fclose(file);
-  file = nullptr;
+  fclose(file_);
+  file_ = nullptr;
 
-  OpenFile(&file, path, "rb");
+  OpenFile(&file_, path_, "rb");
 
-  EXPECT_NE(file, nullptr);
+  EXPECT_NE(file_, nullptr);
 }
 
 /* ==================================================
@@ -276,18 +282,18 @@ TEST_F(OpenFileTest, OpenExisting) {
  */
 TEST(RandomTest, GeneratesNonZero) {
   uint8_t buff[32] = {0};
-  bool allZero = true;
+  bool all_zero = true;
 
   EXPECT_EQ(Random(buff, 32), 0);
 
   for (int i = 0; i < 32; i++) {
     if (buff[i]) {
-      allZero = false;
+      all_zero = false;
       break;
     }
   }
 
-  EXPECT_FALSE(allZero);
+  EXPECT_FALSE(all_zero);
 }
 
 /**
@@ -444,8 +450,9 @@ TEST(WipeTest, WipeBuffer) {
 
   Wipe(buff, 32);
 
-  for (int i = 0; i < 32; i++)
+  for (int i = 0; i < 32; i++) {
     EXPECT_EQ(buff[i], 0);
+  }
 }
 
 /**
@@ -458,11 +465,13 @@ TEST(WipeTest, WipePartial) {
 
   Wipe(buff, 16);
 
-  for (int i = 0; i < 16; i++)
+  for (int i = 0; i < 16; i++) {
     EXPECT_EQ(buff[i], 0);
+  }
 
-  for (int i = 16; i < 32; i++)
+  for (int i = 16; i < 32; i++) {
     EXPECT_EQ(buff[i], 0xFF);
+  }
 }
 
 /* ==================================================
@@ -486,8 +495,9 @@ TEST(ShuffleTest, PreservesElements) {
 
   std::sort(sorted.begin(), sorted.end());
 
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 10; i++) {
     EXPECT_EQ(sorted[i], i);
+  }
 }
 
 /* ==================================================

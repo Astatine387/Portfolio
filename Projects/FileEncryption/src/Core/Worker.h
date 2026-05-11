@@ -29,11 +29,11 @@ class Worker : public QObject {
    * @param   mode        Encryption/decryption mode
    */
   Worker(FILE* src_file, FILE* dst_file, const QString& dst_path, const Password& pw, int mode) {
-    this->src_file_ = src_file;
-    this->dst_file_ = dst_file;
-    this->dst_path_ = dst_path;
-    this->pw_.SetData(pw);
-    this->mode_ = mode;
+    src_file_ = src_file;
+    dst_file_ = dst_file;
+    dst_path_ = dst_path;
+    pw_.SetData(pw);
+    mode_ = mode;
   }
 
  signals:
@@ -66,6 +66,6 @@ class Worker : public QObject {
   FILE *src_file_ = nullptr, *dst_file_ = nullptr;
   QString err_ = "", dst_path_;
   Password pw_;
-  std::atomic<bool> should_cancel_{false};
+  std::atomic<bool> should_cancel_{ false };
   int mode_;
 };

@@ -32,21 +32,22 @@ class ChangePWGUI : public QDialog {
   explicit ChangePWGUI(QWidget* parent = nullptr);
 
   /**
-   * @brief	Get the change password input from the dialog
-   * @return	Change password input parameters
+   * @brief		Get the change password input from the dialog
+   * @cur_pw	Current password will be extracted here
+   * @new_pw	New password will be extracted here
    */
-  void getInput(Password& curPw, Password& newPw);
+  void GetInput(Password& cur_pw, Password& new_pw);
 
   /**
    * @brief	Reset all input fields
    */
-  void reset();
+  void Reset();
 
   /**
    * @brief	Display error message
    * @param	msg		Error message string
    */
-  void setErrMsg(const QString& msg);
+  void SetErrMsg(const QString& msg);
 
   /* ==================================================
    * Callback functions
@@ -57,26 +58,32 @@ class ChangePWGUI : public QDialog {
    * @param	curPW	Current password to verify
    * @return	true if password is correct
    */
-  using VerifyCallback = std::function<bool(const Password& curPW)>;
+  using VerifyCallback = std::function<bool(const Password& cur_pw)>;
 
   /**
    * @brief	Set verify callback function
    * @param	vcb		Verify callback function
    */
-  void setVerifyCb(VerifyCallback vcb);
+  void SetVerifyCb(VerifyCallback vcb);
 
  private slots:
   /**
    * @brief	Validate input and accept dialog
    */
-  void onOKClicked();
+  void OnOKClicked();
 
  private:
-  PWLineEdit *curPWLine, *newPWLine, *confirmPWLine;
-  QLabel *curLabel, *newLabel, *confirmLabel, *errMsg;
-  QPushButton *okBtn, *cancelBtn;
-  QHBoxLayout* btnBox;
-  QVBoxLayout* vBox;
+  PWLineEdit* cur_pwline_;
+  PWLineEdit* new_pwline_;
+  PWLineEdit* confirm_pwline;
+  QLabel* cur_label_;
+  QLabel* new_label_;
+  QLabel* confirm_label_;
+  QLabel* err_msg_;
+  QPushButton* ok_btn_;
+  QPushButton* cancel_btn_;
+  QHBoxLayout* btn_box_;
+  len_slider_* vbox_;
 
-  VerifyCallback vcb = nullptr;
+  VerifyCallback vcb_ = nullptr;
 };

@@ -9,161 +9,164 @@
 
 #include <cstring>
 
-int AES_GCM::encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen) {
-  this->src = src, this->dst = dst, this->size = size;
-  srcCrs = 0, dstCrs = 0;
+int AES_GCM::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen) {
+  src_buff_ = src;
+  dst_buff_ = dst;
+  size_ = size;
+  src_crs_ = 0;
+  dst_crs_ = 0;
 
-  if (encryptInit(pw, plen)) {
+  if (EncryptInit(pw, plen)) {
     return 1;  // LCOV_EXCL_LINE
   }
 
-  if (encryptBuff()) {
+  if (EncryptBuff()) {
     return 1;  // LCOV_EXCL_LINE
   }
 
-  if (encryptFinal()) {
+  if (EncryptFinal()) {
     return 1;  // LCOV_EXCL_LINE
   }
 
-  if (encryptTag()) {
+  if (EncryptTag()) {
     return 1;  // LCOV_EXCL_LINE
   }
 
   return 0;
 }
 
-int AES_GCM::encryptInit(const char* pw, size_t plen) {
+int AES_GCM::EncryptInit(const char* pw, size_t plen) {
   /* Clear existing context */
 
-  if (ctx) {
-    EVP_CIPHER_CTX_free(ctx);
-    ctx = nullptr;
+  if (ctx_) {
+    EVP_CIPHER_CTX_free(ctx_);
+    ctx_ = nullptr;
   }
 
   /* Generate salt and IV */
 
-  if (Random(salt, kSaltSize)) {
+  if (Random(salt_, kSaltSize)) {
     // LCOV_EXCL_START
-    reportError("[Crypto] Random failed - Cannot generate salt\n");
+    ReportError("[Crypto] Random failed - Cannot generate salt\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
-  if (Random(iv, kIVSize)) {
+  if (Random(iv_, kIVSize)) {
     // LCOV_EXCL_START
-    reportError("[Crypto] Random failed - Cannot generate initial vector\n");
+    ReportError("[Crypto] Random failed - Cannot generate initial vector\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   /* Derive key from password */
 
-  if (Argon2id(salt, pw, plen, key)) {
+  if (Argon2id(salt_, pw, plen, key_)) {
     // LCOV_EXCL_START
-    reportError("[Crypto] Key derivation failed - Argon2id error\n");
+    ReportError("[Crypto] Key derivation failed - Argon2id error\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   /* Set encryption context */
 
-  if (!(ctx = EVP_CIPHER_CTX_new())) {
+  if (!(ctx_ = EVP_CIPHER_CTX_new())) {
     // LCOV_EXCL_START
-    reportError("[Crypto] Initialization failed - Cannot create context\n");
+    ReportError("[Crypto] Initialization failed - Cannot create context\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), NULL, NULL, NULL) != 1) {
+  if (EVP_EncryptInit_ex(ctx_, EVP_aes_256_gcm(), NULL, NULL, NULL) != 1) {
     // LCOV_EXCL_START
-    reportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
+    ReportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, kIVSize, NULL) != 1) {
+  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, kIVSize, NULL) != 1) {
     // LCOV_EXCL_START
-    reportError("[Crypto] Initialization failed - Cannot set initial vector size\n");
+    ReportError("[Crypto] Initialization failed - Cannot set initial vector size\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_EncryptInit_ex(ctx, NULL, NULL, key, iv) != 1) {
+  if (EVP_EncryptInit_ex(ctx_, NULL, NULL, key_, iv_) != 1) {
     // LCOV_EXCL_START
-    reportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
+    ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   /* Write salt and IV */
 
-  memcpy(dst + dstCrs, salt, kSaltSize);
-  dstCrs += kSaltSize;
+  memcpy(dst_buff_ + dst_crs_, salt_, kSaltSize);
+  dst_crs_ += kSaltSize;
 
-  memcpy(dst + dstCrs, iv, kIVSize);
-  dstCrs += kIVSize;
-
-  return 0;
-}
-
-int AES_GCM::encryptBuff() {
-  int outLen;
-
-  if (EVP_EncryptUpdate(ctx, dst + dstCrs, &outLen, src, size) != 1) {
-    // LCOV_EXCL_START
-    reportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
-    return 1;
-    // LCOV_EXCL_STOP
-  }
-
-  if (outLen != size) {
-    // LCOV_EXCL_START
-    reportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
-    return 1;
-    // LCOV_EXCL_STOP
-  }
-
-  dstCrs += size;
+  memcpy(dst_buff_ + dst_crs_, iv_, kIVSize);
+  dst_crs_ += kIVSize;
 
   return 0;
 }
 
-int AES_GCM::encryptFinal() {
-  uint8_t finalBuff[kBlockSize];
-  int finalLen;
+int AES_GCM::EncryptBuff() {
+  int out_len;
 
-  if (EVP_EncryptFinal_ex(ctx, finalBuff, &finalLen) != 1) {
+  if (EVP_EncryptUpdate(ctx_, dst_buff_ + dst_crs_, &out_len, src_buff_, size_) != 1) {
     // LCOV_EXCL_START
-    reportError("[Crypto] Finalization failed - Cannot finalize encryption\n");
+    ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
-  if (finalLen > 0) {
+  if (out_len != size_) {
     // LCOV_EXCL_START
-    reportError("[Crypto] Finalization failed - Unexpected output from finalization\n");
+    ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
-  memcpy(dst + dstCrs, finalBuff, finalLen);
-  dstCrs += finalLen;
+  dst_crs_ += size_;
 
   return 0;
 }
 
-int AES_GCM::encryptTag() {
+int AES_GCM::EncryptFinal() {
+  uint8_t final_buff[kBlockSize];
+  int final_len;
+
+  if (EVP_EncryptFinal_ex(ctx_, final_buff, &final_len) != 1) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Finalization failed - Cannot finalize encryption\n");
+    return 1;
+    // LCOV_EXCL_STOP
+  }
+
+  if (final_len > 0) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Finalization failed - Unexpected output from finalization\n");
+    return 1;
+    // LCOV_EXCL_STOP
+  }
+
+  memcpy(dst_buff_ + dst_crs_, final_buff, final_len);
+  dst_crs_ += final_len;
+
+  return 0;
+}
+
+int AES_GCM::EncryptTag() {
   uint8_t tag[kTagSize];
 
-  if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, kTagSize, tag) != 1) {
+  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_GET_TAG, kTagSize, tag) != 1) {
     // LCOV_EXCL_START
-    reportError("[Crypto] Tag Error - Cannot get authentication tag\n");
+    ReportError("[Crypto] Tag Error - Cannot get authentication tag\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
-  memcpy(dst + dstCrs, tag, kTagSize);
-  dstCrs += kTagSize;
+  memcpy(dst_buff_ + dst_crs_, tag, kTagSize);
+  dst_crs_ += kTagSize;
 
   return 0;
 }

@@ -23,23 +23,23 @@ TEST(AES_GCM_Test, EncryptDecryptBasic) {
 
   size_t dsize = strlen(data);
   size_t psize = strlen(pw);
-  size_t encSize = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
-  std::vector<uint8_t> enc(encSize);
+  std::vector<uint8_t> enc(enc_size);
   std::vector<uint8_t> dec(dsize);
 
   memcpy(src.data(), data, dsize);
 
   /* Encrypt */
 
-  int res = aes.encrypt(src.data(), enc.data(), dsize, pw, psize);
+  int res = aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
 
   EXPECT_EQ(res, 0);
 
   /* Decrypt */
 
-  res = aes.decrypt(enc.data(), dec.data(), encSize, pw, psize);
+  res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
 
   EXPECT_EQ(res, 0);
   EXPECT_EQ(memcmp(src.data(), dec.data(), dsize), 0);
@@ -56,18 +56,18 @@ TEST(AES_GCM_Test, EncryptProducesDifferentOutput) {
 
   size_t dsize = strlen(data);
   size_t psize = strlen(pw);
-  size_t encSize = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
-  std::vector<uint8_t> enc0(encSize);
-  std::vector<uint8_t> enc1(encSize);
+  std::vector<uint8_t> enc0(enc_size);
+  std::vector<uint8_t> enc1(enc_size);
 
   memcpy(src.data(), data, dsize);
 
-  aes.encrypt(src.data(), enc0.data(), dsize, pw, psize);
-  aes.encrypt(src.data(), enc1.data(), dsize, pw, psize);
+  aes.Encrypt(src.data(), enc0.data(), dsize, pw, psize);
+  aes.Encrypt(src.data(), enc1.data(), dsize, pw, psize);
 
-  EXPECT_NE(memcmp(enc0.data(), enc1.data(), encSize), 0);
+  EXPECT_NE(memcmp(enc0.data(), enc1.data(), enc_size), 0);
 }
 
 /**
@@ -83,17 +83,17 @@ TEST(AES_GCM_Test, DecryptWrongPassword) {
   size_t dsize = strlen(data);
   size_t psize0 = strlen(pw0);
   size_t psize1 = strlen(pw1);
-  size_t encSize = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
-  std::vector<uint8_t> enc(encSize);
+  std::vector<uint8_t> enc(enc_size);
   std::vector<uint8_t> dec(dsize);
 
   memcpy(src.data(), data, dsize);
 
-  aes.encrypt(src.data(), enc.data(), dsize, pw0, psize0);
+  aes.Encrypt(src.data(), enc.data(), dsize, pw0, psize0);
 
-  int res = aes.decrypt(enc.data(), dec.data(), encSize, pw1, psize1);
+  int res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw1, psize1);
 
   EXPECT_NE(res, 0);
 }
@@ -109,21 +109,21 @@ TEST(AES_GCM_Test, TamperedCiphertext) {
 
   size_t dsize = strlen(data);
   size_t psize = strlen(pw);
-  size_t encSize = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
-  std::vector<uint8_t> enc(encSize);
+  std::vector<uint8_t> enc(enc_size);
   std::vector<uint8_t> dec(dsize);
 
   memcpy(src.data(), data, dsize);
 
-  aes.encrypt(src.data(), enc.data(), dsize, pw, psize);
+  aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
 
   /* Tamper with encrypted data */
 
   enc[kSaltSize + kIVSize] ^= 0x01;
 
-  int res = aes.decrypt(enc.data(), dec.data(), encSize, pw, psize);
+  int res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
 
   EXPECT_NE(res, 0);
 }
@@ -139,21 +139,21 @@ TEST(AES_GCM_Test, TamperedTag) {
 
   size_t dsize = strlen(data);
   size_t psize = strlen(pw);
-  size_t encSize = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
-  std::vector<uint8_t> enc(encSize);
+  std::vector<uint8_t> enc(enc_size);
   std::vector<uint8_t> dec(dsize);
 
   memcpy(src.data(), data, dsize);
 
-  aes.encrypt(src.data(), enc.data(), dsize, pw, psize);
+  aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
 
   /* Tamper with authentication tag */
 
-  enc[encSize - 1] ^= 0x01;
+  enc[enc_size - 1] ^= 0x01;
 
-  int res = aes.decrypt(enc.data(), dec.data(), encSize, pw, psize);
+  int res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
 
   EXPECT_NE(res, 0);
 }
@@ -172,21 +172,21 @@ TEST(AES_GCM_Test, SingleByte) {
 
   size_t psize = strlen(pw);
   size_t dsize = 1;
-  size_t encSize = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   uint8_t src = 0x00;
-  std::vector<uint8_t> enc(encSize);
+  std::vector<uint8_t> enc(enc_size);
   uint8_t dec;
 
   /* Encrypt */
 
-  int res = aes.encrypt(&src, enc.data(), dsize, pw, psize);
+  int res = aes.Encrypt(&src, enc.data(), dsize, pw, psize);
 
   EXPECT_EQ(res, 0);
 
   /* Decrypt */
 
-  res = aes.decrypt(enc.data(), &dec, encSize, pw, psize);
+  res = aes.Decrypt(enc.data(), &dec, enc_size, pw, psize);
 
   EXPECT_EQ(res, 0);
   EXPECT_EQ(dec, src);
@@ -202,21 +202,21 @@ TEST(AES_GCM_Test, LargeData) {
 
   size_t psize = strlen(pw);
   size_t dsize = 1024 * 1024;  // 1 MiB
-  size_t encSize = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize, 0x00);
-  std::vector<uint8_t> enc(encSize);
+  std::vector<uint8_t> enc(enc_size);
   std::vector<uint8_t> dec(dsize);
 
   /* Encrypt */
 
-  int res = aes.encrypt(src.data(), enc.data(), dsize, pw, psize);
+  int res = aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
 
   EXPECT_EQ(res, 0);
 
   /* Decrypt */
 
-  res = aes.decrypt(enc.data(), dec.data(), encSize, pw, psize);
+  res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
 
   EXPECT_EQ(res, 0);
   EXPECT_EQ(memcmp(src.data(), dec.data(), dsize), 0);
@@ -231,7 +231,7 @@ TEST(AES_GCM_Test, LargeData) {
  */
 TEST(AES_GCM_Test, ErrorCallback) {
   AES_GCM aes;
-  bool callbackCalled = false;
+  bool cb_called = false;
 
   const char* data = "Hello, world!";
   const char* pw0 = "password";
@@ -240,19 +240,19 @@ TEST(AES_GCM_Test, ErrorCallback) {
   size_t dsize = strlen(data);
   size_t psize0 = strlen(pw0);
   size_t psize1 = strlen(pw1);
-  size_t encSize = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
-  std::vector<uint8_t> enc(encSize);
+  std::vector<uint8_t> enc(enc_size);
   std::vector<uint8_t> dec(dsize);
 
   memcpy(src.data(), data, dsize);
 
-  aes.encrypt(src.data(), enc.data(), dsize, pw0, psize0);
+  aes.Encrypt(src.data(), enc.data(), dsize, pw0, psize0);
 
-  aes.setErrorCb([&](const char* msg) { callbackCalled = true; });
+  aes.SetErrorCallback([&](const char* msg) { cb_called = true; });
 
-  aes.decrypt(enc.data(), dec.data(), encSize, pw1, psize1);
+  aes.Decrypt(enc.data(), dec.data(), enc_size, pw1, psize1);
 
-  EXPECT_TRUE(callbackCalled);
+  EXPECT_TRUE(cb_called);
 }
