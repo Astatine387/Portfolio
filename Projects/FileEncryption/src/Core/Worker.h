@@ -28,8 +28,12 @@ class Worker : public QObject {
    * @param   pw          Password
    * @param   mode        Encryption/decryption mode
    */
-  Worker(FILE* src_file, FILE* dst_file, const QString& dst_path, const Password& pw, int mode)
-      : src_file_(src_file), dst_file_(dst_file), dst_path_(dst_path), pw_(pw), mode_(mode) {};
+  Worker(FILE* src_file, FILE* dst_file, const QString& dst_path, const Password& pw, int mode) : 
+      src_file_(src_file), 
+      dst_file_(dst_file), 
+      dst_path_(dst_path), 
+      pw_(pw), 
+      mode_(mode) {}
 
  signals:
   /**
