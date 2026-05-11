@@ -156,7 +156,7 @@ class Vault {
    * @brief	Set error callback function
    * @param	ecb		Error callback function
    */
-  void SetErrorCallback(ErrorCallback ecb) { ecb = ecb; }
+  void SetErrorCallback(ErrorCallback ecb) { ecb_ = ecb; };
 
   /**
    * @brief	Get the last error message
