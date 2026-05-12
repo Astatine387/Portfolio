@@ -6,9 +6,11 @@
 /Projects/FileEncryption/build-tidy
 /Projects/FileEncryption/CMakeUserPresets.json
 /Projects/FileEncryption/CMakePresets.json
+/Projects/FileEncryption/effective-config.yaml
 /Projects/FileEncryption/plain.txt
 /Projects/PasswordManager/.vs
 /Projects/PasswordManager/build
 /Projects/PasswordManager/build-tidy
 /Projects/PasswordManager/CMakeUserPresets.json
 /Projects/PasswordManager/CMakePresets.json
+/Projects/PasswordManager/effective-config.yaml
