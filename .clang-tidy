@@ -19,7 +19,7 @@ Checks: >
   -readability-magic-numbers,
   -misc-non-private-member-variables-in-classes
 
-WarningsAsErrors: ''          # temporally empty
+WarningsAsErrors: 'readability-identifier-naming'
 HeaderFilterRegex: 'src/.*'
 FormatStyle: file
 
@@ -31,6 +31,8 @@ CheckOptions:
   - key: readability-identifier-naming.FunctionCase
     value: CamelCase
   - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.PublicMemberCase
     value: lower_case
   - key: readability-identifier-naming.PrivateMemberCase
     value: lower_case
