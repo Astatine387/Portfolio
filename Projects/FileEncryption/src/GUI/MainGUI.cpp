@@ -1,5 +1,5 @@
 /**
- * @file	MainGUI.h
+ * @file	MainGUI.cpp
  * @brief	Implementation of MainGUI class
  * @author	Astatine387
  */
