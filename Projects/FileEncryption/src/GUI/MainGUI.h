@@ -6,14 +6,14 @@
 
 #pragma once
 
-#include "Core/Worker.h"
-#include "GUI/InputGUI.h"
-#include "GUI/ProgressGUI.h"
-
 #include <QStackedWidget>
 #include <QThread>
 #include <QVBoxLayout>
 #include <QWidget>
+
+#include "Core/Worker.h"
+#include "GUI/InputGUI.h"
+#include "GUI/ProgressGUI.h"
 
 /**
  * @class   MainGUI
@@ -86,7 +86,8 @@ class MainGUI : public QWidget {
   QVBoxLayout* vbox_;
   UserInput user_input_;
   Worker* worker_;
-  bool should_delete_ = false;  // Destination file deletion flag for cancellation or failure
+  bool should_delete_ =
+      false;  // Destination file deletion flag for cancellation or failure
 
   /**
    * @brief   Open file pointers

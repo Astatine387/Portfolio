@@ -14,7 +14,6 @@
 #include <QTableWidget>
 #include <QVBoxLayout>
 #include <QWidget>
-
 #include <vector>
 
 /**
@@ -35,7 +34,8 @@ class ListGUI : public QWidget {
    * @brief	Refresh the table with current entry data
    * @param	entries		List of entries as (site, account) pairs
    */
-  void LoadEntries(const std::vector<std::pair<std::string, std::string>>& entries);
+  void LoadEntries(
+      const std::vector<std::pair<std::string, std::string>>& entries);
 
   /**
    * @brief	Display error message

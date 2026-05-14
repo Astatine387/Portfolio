@@ -6,9 +6,9 @@
 
 #include "Utils/Password.h"
 
-#include "Utils/library.h"
-
 #include <cstring>
+
+#include "Utils/library.h"
 
 bool Password::IsEmpty() const {
   return size_ == 0;

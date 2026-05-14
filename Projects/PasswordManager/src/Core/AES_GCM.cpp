@@ -6,11 +6,11 @@
 
 #include "Core/AES_GCM.h"
 
-#include "Utils/library.h"
-
 #include <openssl/err.h>
 
 #include <cstring>
+
+#include "Utils/library.h"
 
 AesGcm::AesGcm() {
   memset(iv_, 0, sizeof(uint8_t) * kIVSize);

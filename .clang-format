@@ -8,8 +8,8 @@ IndentWidth: 2
 TabWidth: 2
 UseTab: Never
 
-# Maximum 100 characters per line
-ColumnLimit: 100
+# Maximum 80 characters per line
+ColumnLimit: 80
 
 # Left alignment for pointers and references
 DerivePointerAlignment: false
@@ -23,19 +23,16 @@ AccessModifierOffset: -1
 IncludeBlocks: Regroup
 SortIncludes: CaseSensitive
 IncludeCategories:
-  - Regex:           '^<windows\.h>$'
-    Priority:        1
-    SortPriority:    0
-  - Regex:           '^"[^/]+\.h"$'         # same-directory project headers
-    Priority:        2
-  - Regex:           '^"(Core|GUI|Utils)/'  # your project's subdirectories
-    Priority:        3
-  - Regex:           '^<Q[A-Z]'             # Qt headers
-    Priority:        4
-  - Regex:           '^<.*\.h>$'            # C system headers
-    Priority:        5
-  - Regex:           '^<.*>$'               # C++ standard library
-    Priority:        6
+  - Regex:  '^<windows\.h>$'   # windows.h is always top
+    Priority: 1
+  - Regex:  '^<ext/.*\.h>'     # GCC extension headers
+    Priority: 3
+  - Regex:  '^<.*\.h>'         # C system headers
+    Priority: 2
+  - Regex:  '^<.*'             # Qt C++ standard library and Qt headers
+    Priority: 3
+  - Regex:  '.*'               # Project headers
+    Priority: 4
 
 # Miscellaneous
 AllowShortFunctionsOnASingleLine: Inline    # Allow single line implementation for inline function only

@@ -6,10 +6,9 @@
 
 #include "Utils/library.h"
 
-#include <QString>
-
 #include <argon2.h>
 
+#include <QString>
 #include <filesystem>
 
 #ifdef _WIN32
@@ -76,8 +75,8 @@ bool FileExists(const QString& path) {
 }
 
 int Argon2id(uint8_t salt[], const char pw[], size_t plen, uint8_t key[]) {
-  return argon2id_hash_raw(kTimeCost, kMemCost, GetProcNum(), pw, plen, salt, kSaltSize, key,
-                           kKeySize);
+  return argon2id_hash_raw(kTimeCost, kMemCost, GetProcNum(), pw, plen, salt,
+                           kSaltSize, key, kKeySize);
 }
 
 int GetProcNum() {

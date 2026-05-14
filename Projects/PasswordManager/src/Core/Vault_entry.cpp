@@ -6,7 +6,8 @@
 
 #include "Core/Vault.h"
 
-int Vault::CreateEntry(const std::string& site, const std::string& acc, const Password& pw) {
+int Vault::CreateEntry(const std::string& site, const std::string& acc,
+                       const Password& pw) {
   Entry new_entry = { site, acc, pw };
 
   auto res = entry_set_.insert(new_entry);

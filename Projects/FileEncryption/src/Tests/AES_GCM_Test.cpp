@@ -6,11 +6,11 @@
 
 #include "Core/AES_GCM.h"
 
-#include "Utils/library.h"
+#include <gtest/gtest.h>
 
 #include <QString>
 
-#include <gtest/gtest.h>
+#include "Utils/library.h"
 
 /**
  * @class   AES_GCM_Test
@@ -77,8 +77,8 @@ class TEST : public ::testing::Test {
  * ================================================== */
 
 /**
- * @brief   Verify encryption and decryption works with no error, and decrypted data is identical to
- * original
+ * @brief   Verify encryption and decryption works with no error, and decrypted
+ * data is identical to original
  */
 TEST_F(TEST, EncryptDecryptBasic) {
   AesGcm aes;

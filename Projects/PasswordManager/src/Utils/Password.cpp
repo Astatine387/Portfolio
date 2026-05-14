@@ -6,9 +6,9 @@
 
 #include "Utils/Password.h"
 
-#include "Utils/library.h"
-
 #include <cstring>
+
+#include "Utils/library.h"
 
 bool Password::Equal(const Password& other) const {
   volatile uint8_t diff = (size_ != other.size_) ? 1 : 0;

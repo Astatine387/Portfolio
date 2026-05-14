@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "Utils/Password.h"
-
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QWidget>
+
+#include "Utils/Password.h"
 
 /**
  * @class   PWLineEdit

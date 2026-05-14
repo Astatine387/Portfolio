@@ -6,9 +6,8 @@
 
 #include "GUI/PWLineEdit.h"
 
-#include "Utils/library.h"
-
 #include "Common/constants.h"
+#include "Utils/library.h"
 
 PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
   /* Create layout and components */
@@ -24,8 +23,9 @@ PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
 
   /* Configure masking toggle button */
 
-  mask_btn_->setFixedSize(static_cast<int>(45 * kFontScale),
-                          static_cast<int>(pw_line_->sizeHint().height() * kFontScale));
+  mask_btn_->setFixedSize(
+      static_cast<int>(45 * kFontScale),
+      static_cast<int>(pw_line_->sizeHint().height() * kFontScale));
 
   /* Configure layout */
 

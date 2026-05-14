@@ -4,12 +4,12 @@
  * @author  Astatine387
  */
 
-#include "Utils/Password.h"
-
 #include <gtest/gtest.h>
 
 #include <cstddef>
 #include <cstdint>
+
+#include "Utils/Password.h"
 
 /* ==================================================
  * Construction and Initialization Test
@@ -134,7 +134,8 @@ TEST(PasswordTest, CopyAssignment) {
 /**
  * @brief   Verify move constructor transfers ownership
  *
- * After move, destination must own the original pointer, and source must be empty
+ * After move, destination must own the original pointer, and source must be
+ * empty
  */
 TEST(PasswordTest, MoveConstructor) {
   Password pw0;
@@ -154,7 +155,8 @@ TEST(PasswordTest, MoveConstructor) {
 /**
  * @brief   Verify move assignment transfers ownership
  *
- * After move, destination must own the original pointer, and source must be empty
+ * After move, destination must own the original pointer, and source must be
+ * empty
  */
 TEST(PasswordTest, MoveAssignment) {
   Password pw0;

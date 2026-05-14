@@ -99,21 +99,24 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
 
   if (EVP_EncryptInit_ex(ctx_, EVP_aes_256_gcm(), NULL, NULL, NULL) != 1) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
+    ReportError(
+        "[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, kIVSize, NULL) != 1) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot set initial vector size\n");
+    ReportError(
+        "[Crypto] Initialization failed - Cannot set initial vector size\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   if (EVP_EncryptInit_ex(ctx_, NULL, NULL, key_, iv_) != 1) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
+    ReportError(
+        "[Crypto] Initialization failed - Cannot set key and initial vector\n");
     return 1;
     // LCOV_EXCL_STOP
   }
@@ -122,14 +125,17 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
 
   if (fwrite(salt_, sizeof(uint8_t), kSaltSize, dst_file_) != kSaltSize) {
     // LCOV_EXCL_START
-    ReportError("[File] Write failed - Cannot write salt to destination file header\n");
+    ReportError(
+        "[File] Write failed - Cannot write salt to destination file header\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   if (fwrite(iv_, sizeof(uint8_t), kIVSize, dst_file_) != kIVSize) {
     // LCOV_EXCL_START
-    ReportError("[File] Write failed - Cannot write initial vector to destination file header\n");
+    ReportError(
+        "[File] Write failed - Cannot write initial vector to destination file "
+        "header\n");
     return 1;
     // LCOV_EXCL_STOP
   }
@@ -287,7 +293,9 @@ int AesGcm::EncryptTag() {
 
   if (fwrite(tag, sizeof(uint8_t), kTagSize, dst_file_) != kTagSize) {
     // LCOV_EXCL_START
-    ReportError("[File] Write failed - Cannot write authentication tag on destination file\n");
+    ReportError(
+        "[File] Write failed - Cannot write authentication tag on destination "
+        "file\n");
     return 1;
     // LCOV_EXCL_STOP
   }

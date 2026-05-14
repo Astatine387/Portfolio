@@ -32,15 +32,16 @@ LoginGUI::LoginGUI(QWidget* parent) : QWidget(parent) {
 }
 
 void LoginGUI::OnNewClicked() {
-  QString path =
-      QFileDialog::getSaveFileName(this, "Create New Vault", "", "Vault Files (*.vault)");
+  QString path = QFileDialog::getSaveFileName(this, "Create New Vault", "",
+                                              "Vault Files (*.vault)");
 
   if (!path.isEmpty())
     emit VaultSelected(0, path);
 }
 
 void LoginGUI::OnOpenClicked() {
-  QString path = QFileDialog::getOpenFileName(this, "Open Vault", "", "Vault Files (*.vault)");
+  QString path = QFileDialog::getOpenFileName(this, "Open Vault", "",
+                                              "Vault Files (*.vault)");
 
   if (!path.isEmpty())
     emit VaultSelected(1, path);

@@ -23,4 +23,5 @@ inline constexpr size_t kIVSize = 12;      /// Initial vector size in bytes
 inline constexpr size_t kTagSize = 16;     /// Authentication tag size in bytes
 
 inline constexpr int64_t kMaxSize =
-    64ULL * 1024 * 1024 * 1024;  /// Maximum source file size that can be processed
+    64ULL * 1024 * 1024 *
+    1024;  /// Maximum source file size that can be processed

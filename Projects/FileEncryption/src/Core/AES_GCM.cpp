@@ -9,11 +9,11 @@
 
 #include "Core/AES_GCM.h"
 
-#include "Utils/library.h"
-
 #include <openssl/err.h>
 
 #include <cstring>
+
+#include "Utils/library.h"
 
 AesGcm::AesGcm() {
   for (int i = 0; i < kBuffNum; i++) {

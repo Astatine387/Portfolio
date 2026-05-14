@@ -53,7 +53,8 @@ class AesGcm {
    * @param		plen	Password length
    * @return		0 on success, 1 on failure
    */
-  int Decrypt(FILE* source, FILE* destination, const char* password, size_t password_length);
+  int Decrypt(FILE* source, FILE* destination, const char* password,
+              size_t password_length);
 
   /**
    * @brief		Encrypt a file
@@ -113,7 +114,7 @@ class AesGcm {
 
   std::atomic<bool> cancelled_{ false };  // Is the program cancelled?
   std::future<int> write_res_;            // Asynchronous write result
-  bool writing_ = false;                  // Is there currently ongoing asynchronous write?
+  bool writing_ = false;  // Is there currently ongoing asynchronous write?
 
   /* ==================================================
    * I/O helper functions

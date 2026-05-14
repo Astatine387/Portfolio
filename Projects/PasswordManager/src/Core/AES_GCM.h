@@ -47,7 +47,8 @@ class AesGcm {
    * @param		plen	Password length
    * @return		0 on success, 1 on failure
    */
-  int Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
+  int Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw,
+              size_t plen);
 
   /**
    * @brief		Encrypt a buffer
@@ -58,7 +59,8 @@ class AesGcm {
    * @param		plen		Password length
    * @return		0 on success, 1 on failure
    */
-  int Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
+  int Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw,
+              size_t plen);
 
   /* ==================================================
    * Callback functions

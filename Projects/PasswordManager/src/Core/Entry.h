@@ -6,13 +6,12 @@
 
 #pragma once
 
-#include "Utils/Password.h"
-
 #include <cstddef>
 #include <cstdint>
 #include <string>
 
 #include "Common/constants.h"
+#include "Utils/Password.h"
 
 /**
  * @struct     Entry

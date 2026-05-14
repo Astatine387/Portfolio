@@ -6,9 +6,8 @@
 
 #include "GUI/EntryGUI.h"
 
-#include "Utils/library.h"
-
 #include "Common/constants.h"
+#include "Utils/library.h"
 
 EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
   /* Create layouts and components */
@@ -100,15 +99,18 @@ EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
 
   /* Connect functions to buttons */
 
-  connect(check_all_btn_, &QPushButton::clicked, this, &EntryGUI::OnCheckAllClicked);
-  connect(uncheck_all_btn_, &QPushButton::clicked, this, &EntryGUI::OnUncheckAllClicked);
+  connect(check_all_btn_, &QPushButton::clicked, this,
+          &EntryGUI::OnCheckAllClicked);
+  connect(uncheck_all_btn_, &QPushButton::clicked, this,
+          &EntryGUI::OnUncheckAllClicked);
   connect(reset_btn_, &QPushButton::clicked, this, &EntryGUI::OnResetClicked);
   connect(ok_btn_, &QPushButton::clicked, this, &EntryGUI::OnOKClicked);
   connect(cancel_btn_, &QPushButton::clicked, this, &QDialog::reject);
   connect(gen_btn_, &QPushButton::clicked, this, &EntryGUI::OnGenerateClicked);
 
-  connect(len_slider_, &QSlider::valueChanged, this,
-          [this](int val) { len_label_->setText(QString("Length: %1").arg(val)); });
+  connect(len_slider_, &QSlider::valueChanged, this, [this](int val) {
+    len_label_->setText(QString("Length: %1").arg(val));
+  });
 }
 
 void EntryGUI::SetAddMode() {
@@ -120,7 +122,8 @@ void EntryGUI::SetAddMode() {
   err_msg_->clear();
 }
 
-void EntryGUI::SetEditMode(const std::string& site, const std::string& acc, const Password& pw) {
+void EntryGUI::SetEditMode(const std::string& site, const std::string& acc,
+                           const Password& pw) {
   setWindowTitle("Edit Entry");
 
   site_line_->setText(QString::fromStdString(site));
@@ -250,7 +253,8 @@ bool EntryGUI::HasSpecialSelected() const {
   return false;
 }
 
-int EntryGUI::GenPW(Password& dst, const std::vector<bool>& spc_list, int pw_size) {
+int EntryGUI::GenPW(Password& dst, const std::vector<bool>& spc_list,
+                    int pw_size) {
   std::string pool;
   size_t pool_size = 62;
   const char lower[] = "abcdefghijklmnopqrstuvwxyz";

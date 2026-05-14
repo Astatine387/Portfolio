@@ -4,12 +4,12 @@
  * @author  Astatine387
  */
 
-#include "Core/AES_GCM.h"
-#include "Utils/library.h"
+#include <benchmark/benchmark.h>
 
 #include <QString>
 
-#include <benchmark/benchmark.h>
+#include "Core/AES_GCM.h"
+#include "Utils/library.h"
 
 #define FILE_SIZE 4LL * 1024 * 1024 * 1024
 

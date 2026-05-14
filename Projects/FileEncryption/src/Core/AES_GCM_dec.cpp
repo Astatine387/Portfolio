@@ -58,7 +58,8 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
 
   if (src_size_ < kSaltSize + kIVSize + kTagSize) {
     // LCOV_EXCL_START
-    ReportError("[File] Validation failed - File should be at least 44 bytes\n");
+    ReportError(
+        "[File] Validation failed - File should be at least 44 bytes\n");
     return 1;
     // LCOV_EXCL_STOP
   }
@@ -69,14 +70,17 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
 
   if (fread(salt_, sizeof(uint8_t), kSaltSize, src_file_) != kSaltSize) {
     // LCOV_EXCL_START
-    ReportError("[File] Read failed - Cannot read salt from source file header\n");
+    ReportError(
+        "[File] Read failed - Cannot read salt from source file header\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   if (fread(iv_, sizeof(uint8_t), kIVSize, src_file_) != kIVSize) {
     // LCOV_EXCL_START
-    ReportError("[File] Read failed - Cannot read initial vector from source file header\n");
+    ReportError(
+        "[File] Read failed - Cannot read initial vector from source file "
+        "header\n");
     return 1;
     // LCOV_EXCL_STOP
   }
@@ -101,21 +105,24 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
 
   if (EVP_DecryptInit_ex(ctx_, EVP_aes_256_gcm(), NULL, NULL, NULL) != 1) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
+    ReportError(
+        "[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, kIVSize, NULL) != 1) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot set initial vector size\n");
+    ReportError(
+        "[Crypto] Initialization failed - Cannot set initial vector size\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   if (EVP_DecryptInit_ex(ctx_, NULL, NULL, key_, iv_) != 1) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
+    ReportError(
+        "[Crypto] Initialization failed - Cannot set key and initial vector\n");
     return 1;
     // LCOV_EXCL_STOP
   }
@@ -128,7 +135,9 @@ int AesGcm::DecryptTag() {
 
   if (Seek(src_file_, -kTagSize, SEEK_END)) {
     // LCOV_EXCL_START
-    ReportError("[File] Seek failed - Cannot move file pointer to authentication tag\n");
+    ReportError(
+        "[File] Seek failed - Cannot move file pointer to authentication "
+        "tag\n");
     return 1;
     // LCOV_EXCL_STOP
   }
@@ -281,7 +290,8 @@ int AesGcm::DecryptFinal() {
   int final_len;
 
   if (EVP_DecryptFinal_ex(ctx_, final, &final_len) != 1) {
-    ReportError("[Auth] Verification failed - Invalid password or corrupted file\n");
+    ReportError(
+        "[Auth] Verification failed - Invalid password or corrupted file\n");
     return 1;
   }
 

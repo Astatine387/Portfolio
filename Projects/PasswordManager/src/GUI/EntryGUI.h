@@ -6,10 +6,6 @@
 
 #pragma once
 
-#include "Core/Entry.h"
-#include "GUI/PWLineEdit.h"
-#include "Utils/Password.h"
-
 #include <QCheckBox>
 #include <QDialog>
 #include <QGridLayout>
@@ -19,9 +15,12 @@
 #include <QSlider>
 #include <QVBoxLayout>
 #include <QWidget>
-
 #include <string>
 #include <vector>
+
+#include "Core/Entry.h"
+#include "GUI/PWLineEdit.h"
+#include "Utils/Password.h"
 
 /**
  * @class	EntryGUI
@@ -48,7 +47,8 @@ class EntryGUI : public QDialog {
    * @param	acc		Current account
    * @param	pw		Current password
    */
-  void SetEditMode(const std::string& site, const std::string& acc, const Password& pw);
+  void SetEditMode(const std::string& site, const std::string& acc,
+                   const Password& pw);
 
   /**
    * @brief	Get the entry input from the dialog

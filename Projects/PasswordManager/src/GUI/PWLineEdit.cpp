@@ -23,8 +23,9 @@ PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
 
   /* Configure masking toggle button */
 
-  mask_btn_->setFixedSize(static_cast<int>(45 * kFontScale),
-                          static_cast<int>(pw_line_->sizeHint().height() * kFontScale));
+  mask_btn_->setFixedSize(
+      static_cast<int>(45 * kFontScale),
+      static_cast<int>(pw_line_->sizeHint().height() * kFontScale));
 
   /* Configure layout */
 
@@ -62,7 +63,8 @@ void PWLineEdit::Clear() {
 
 void PWLineEdit::SetPassword(const Password& pw) {
   if (!pw.IsEmpty()) {
-    pw_line_->setText(QString::fromUtf8(pw.GetData(), static_cast<int>(pw.GetSize())));
+    pw_line_->setText(
+        QString::fromUtf8(pw.GetData(), static_cast<int>(pw.GetSize())));
   }
 }
 

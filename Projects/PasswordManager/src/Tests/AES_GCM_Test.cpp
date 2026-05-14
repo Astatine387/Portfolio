@@ -46,7 +46,8 @@ TEST(AES_GCM_Test, EncryptDecryptBasic) {
 }
 
 /**
- * @brief   Verify encryption produces different ciphertext each time (random salt/IV)
+ * @brief   Verify encryption produces different ciphertext each time (random
+ * salt/IV)
  */
 TEST(AES_GCM_Test, EncryptProducesDifferentOutput) {
   AesGcm aes;

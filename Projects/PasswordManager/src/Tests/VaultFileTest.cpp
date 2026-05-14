@@ -4,10 +4,10 @@
  * @author  Astatine387
  */
 
+#include <gtest/gtest.h>
+
 #include "Core/Vault.h"
 #include "Utils/library.h"
-
-#include <gtest/gtest.h>
 
 /**
  * @class   VaultFileTest
@@ -202,7 +202,8 @@ TEST_F(VaultFileTest, OpenOversizedFile) {
 }
 
 /**
- * @brief   Verify opening a vault where entry count grossly exceeds available data fails
+ * @brief   Verify opening a vault where entry count grossly exceeds available
+ * data fails
  */
 TEST_F(VaultFileTest, OpenInflatedEntryCount) {
   AesGcm aes;
@@ -243,8 +244,8 @@ TEST_F(VaultFileTest, OpenInflatedEntryCount) {
 }
 
 /**
- * @brief   Verify opening a vault where entry count exceeds actual entries fails during
- * deserialization
+ * @brief   Verify opening a vault where entry count exceeds actual entries
+ * fails during deserialization
  */
 TEST_F(VaultFileTest, OpenPartialEntryData) {
   AesGcm aes;
@@ -314,7 +315,8 @@ TEST_F(VaultFileTest, SaveAndReload) {
   const auto& entries = vault_.GetEntries();
 
   EXPECT_NE(entries.find({ "Google", "user1@google.com" }), entries.end());
-  EXPECT_NE(entries.find({ "Microsoft", "user2@microsoft.com" }), entries.end());
+  EXPECT_NE(entries.find({ "Microsoft", "user2@microsoft.com" }),
+            entries.end());
 }
 
 /**
@@ -348,7 +350,8 @@ TEST_F(VaultFileTest, SaveEmptyVault) {
  * ================================================== */
 
 /**
- * @brief   Verify changing master password and reopening with new password succeeds
+ * @brief   Verify changing master password and reopening with new password
+ * succeeds
  */
 TEST_F(VaultFileTest, ChangePW) {
   const char* pwstr = "asdf1234";

@@ -6,15 +6,15 @@
 
 #pragma once
 
-#include "GUI/PWLineEdit.h"
-#include "Utils/Password.h"
-
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QString>
 #include <QVBoxLayout>
 #include <QWidget>
+
+#include "GUI/PWLineEdit.h"
+#include "Utils/Password.h"
 
 /**
  * @struct	LoginInput

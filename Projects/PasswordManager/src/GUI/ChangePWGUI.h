@@ -6,9 +6,6 @@
 
 #pragma once
 
-#include "GUI/PWLineEdit.h"
-#include "Utils/Password.h"
-
 #include <QDialog>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -16,6 +13,9 @@
 #include <QString>
 #include <QVBoxLayout>
 #include <QWidget>
+
+#include "GUI/PWLineEdit.h"
+#include "Utils/Password.h"
 
 /**
  * @class	ChangePWGUI

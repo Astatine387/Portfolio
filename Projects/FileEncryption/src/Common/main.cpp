@@ -4,13 +4,13 @@
  * @author	Astatine387
  */
 
-#include "GUI/MainGUI.h"
-
 #include <QApplication>
 #include <QFont>
 #include <QRect>
 #include <QScreen>
 #include <QSize>
+
+#include "GUI/MainGUI.h"
 
 int ShowGUI(int argc, char* argv[]) {
   QApplication app(argc, argv);

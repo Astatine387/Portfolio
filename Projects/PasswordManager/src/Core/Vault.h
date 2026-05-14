@@ -6,17 +6,15 @@
 
 #pragma once
 
-#include "Core/AES_GCM.h"
-#include "Core/Entry.h"
-
 #include <QString>
-
 #include <functional>
 #include <memory>
 #include <set>
 #include <string>
 
 #include "Common/constants.h"
+#include "Core/AES_GCM.h"
+#include "Core/Entry.h"
 
 /**
  * @class	Vault
@@ -104,7 +102,8 @@ class Vault {
    * @param	pw		Password of the new entry
    * @return	0 on success, 1 on failure
    */
-  int CreateEntry(const std::string& site, const std::string& acc, const Password& pw);
+  int CreateEntry(const std::string& site, const std::string& acc,
+                  const Password& pw);
 
   /**
    * @brief	Update an entry
@@ -116,7 +115,8 @@ class Vault {
    * @return	0 on success, 1 on failure
    */
   int UpdateEntry(const std::string& old_site, const std::string& old_acc,
-                  const std::string& new_site, const std::string& new_acc, const Password& new_pw);
+                  const std::string& new_site, const std::string& new_acc,
+                  const Password& new_pw);
 
   /**
    * @brief	Delete an entry

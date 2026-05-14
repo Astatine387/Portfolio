@@ -4,12 +4,13 @@
  * @author	Astatine387
  */
 
+#include <cstring>
+
 #include "Core/AES_GCM.h"
 #include "Utils/library.h"
 
-#include <cstring>
-
-int AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen) {
+int AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw,
+                    size_t plen) {
   src_buff_ = src;
   dst_buff_ = dst;
   size_ = size;
@@ -79,21 +80,24 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
 
   if (EVP_EncryptInit_ex(ctx_, EVP_aes_256_gcm(), NULL, NULL, NULL) != 1) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
+    ReportError(
+        "[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, kIVSize, NULL) != 1) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot set initial vector size\n");
+    ReportError(
+        "[Crypto] Initialization failed - Cannot set initial vector size\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   if (EVP_EncryptInit_ex(ctx_, NULL, NULL, key_, iv_) != 1) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
+    ReportError(
+        "[Crypto] Initialization failed - Cannot set key and initial vector\n");
     return 1;
     // LCOV_EXCL_STOP
   }
@@ -112,7 +116,8 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
 int AesGcm::EncryptBuff() {
   int out_len;
 
-  if (EVP_EncryptUpdate(ctx_, dst_buff_ + dst_crs_, &out_len, src_buff_, size_) != 1) {
+  if (EVP_EncryptUpdate(ctx_, dst_buff_ + dst_crs_, &out_len, src_buff_,
+                        size_) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
     return 1;
@@ -144,7 +149,8 @@ int AesGcm::EncryptFinal() {
 
   if (final_len > 0) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Finalization failed - Unexpected output from finalization\n");
+    ReportError(
+        "[Crypto] Finalization failed - Unexpected output from finalization\n");
     return 1;
     // LCOV_EXCL_STOP
   }

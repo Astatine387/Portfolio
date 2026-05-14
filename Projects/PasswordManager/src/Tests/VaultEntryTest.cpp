@@ -4,9 +4,9 @@
  * @author  Astatine387
  */
 
-#include "Core/Vault.h"
-
 #include <gtest/gtest.h>
+
+#include "Core/Vault.h"
 
 /**
  * @class   VaultEntryTest
@@ -90,8 +90,8 @@ TEST_F(VaultEntryTest, CreateDuplicate) {
 TEST_F(VaultEntryTest, UpdateBasic) {
   vault_.CreateEntry("Google", "old@google.com", MakePW("password"));
 
-  int res = vault_.UpdateEntry("Google", "old@google.com", "Google", "new@google.com",
-                               MakePW("asdf1234"));
+  int res = vault_.UpdateEntry("Google", "old@google.com", "Google",
+                               "new@google.com", MakePW("asdf1234"));
 
   EXPECT_EQ(res, 0);
   EXPECT_EQ(vault_.GetEntryCount(), 1);
@@ -110,8 +110,8 @@ TEST_F(VaultEntryTest, UpdateBasic) {
  * @brief   Verify updating a non-existent entry fails
  */
 TEST_F(VaultEntryTest, UpdateNonExistent) {
-  int res = vault_.UpdateEntry("Google", "user@google.com", "Google", "user@google.com",
-                               MakePW("password"));
+  int res = vault_.UpdateEntry("Google", "user@google.com", "Google",
+                               "user@google.com", MakePW("password"));
 
   EXPECT_EQ(res, 1);
 }
@@ -123,8 +123,8 @@ TEST_F(VaultEntryTest, UpdateConflict) {
   vault_.CreateEntry("Google", "user1@google.com", MakePW("password"));
   vault_.CreateEntry("Google", "user2@google.com", MakePW("asdf1234"));
 
-  int res = vault_.UpdateEntry("Google", "user1@google.com", "Google", "user2@google.com",
-                               MakePW("qwerty"));
+  int res = vault_.UpdateEntry("Google", "user1@google.com", "Google",
+                               "user2@google.com", MakePW("qwerty"));
 
   EXPECT_EQ(res, 2);
   EXPECT_EQ(vault_.GetEntryCount(), 2);
@@ -136,8 +136,8 @@ TEST_F(VaultEntryTest, UpdateConflict) {
 TEST_F(VaultEntryTest, UpdateSameKeySelf) {
   vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
 
-  int res = vault_.UpdateEntry("Google", "user@google.com", "Google", "user@google.com",
-                               MakePW("asdf1234"));
+  int res = vault_.UpdateEntry("Google", "user@google.com", "Google",
+                               "user@google.com", MakePW("asdf1234"));
 
   EXPECT_EQ(res, 0);
   EXPECT_EQ(vault_.GetEntryCount(), 1);

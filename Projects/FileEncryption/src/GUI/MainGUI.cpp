@@ -6,9 +6,9 @@
 
 #include "GUI/MainGUI.h"
 
-#include "Utils/library.h"
-
 #include <QFileInfo>
+
+#include "Utils/library.h"
 
 MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
   /* Create layouts and components */
@@ -33,7 +33,8 @@ MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
 
   /* Connect functions to buttons */
 
-  connect(input_gui_, &InputGUI::StartRequested, this, &MainGUI::OnStartRequested);
+  connect(input_gui_, &InputGUI::StartRequested, this,
+          &MainGUI::OnStartRequested);
   connect(prg_gui_, &ProgressGUI::CloseRequested, this, &QWidget::close);
 }
 
@@ -66,16 +67,18 @@ void MainGUI::OnStartRequested(const UserInput& input) {
     /* Create worker thread */
 
     thread_ = new QThread(this);
-    worker_ = new Worker(src_file_, dst_file_, user_input_.dst, user_input_.pw, user_input_.mode);
+    worker_ = new Worker(src_file_, dst_file_, user_input_.dst, user_input_.pw,
+                         user_input_.mode);
     worker_->moveToThread(thread_);
 
     /* Connect signals */
 
     connect(thread_, &QThread::started, worker_, &Worker::Work);
-    connect(worker_, &Worker::ProgressUpdate, this, &MainGUI::OnProgressUpdated);
+    connect(worker_, &Worker::ProgressUpdate, this,
+            &MainGUI::OnProgressUpdated);
     connect(worker_, &Worker::Finished, this, &MainGUI::OnWorkFinished);
-    connect(prg_gui_, &ProgressGUI::CancelRequested, worker_, &Worker::RequestCancel,
-            Qt::DirectConnection);
+    connect(prg_gui_, &ProgressGUI::CancelRequested, worker_,
+            &Worker::RequestCancel, Qt::DirectConnection);
     connect(worker_, &Worker::Finished, thread_, &QThread::quit);
     connect(thread_, &QThread::finished, this, &MainGUI::OnThreadFinished);
 

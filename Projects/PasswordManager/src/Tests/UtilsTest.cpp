@@ -4,11 +4,11 @@
  * @author  Astatine387
  */
 
-#include "Utils/library.h"
+#include <gtest/gtest.h>
 
 #include <QString>
 
-#include <gtest/gtest.h>
+#include "Utils/library.h"
 
 /* ==================================================
  * GetFileSize Test
