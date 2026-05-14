@@ -115,7 +115,7 @@ void MainGUI::OnAddRequested() {
   if (entry_gui_->exec() == QDialog::Accepted) {
     Entry entry = entry_gui_->GetInput();
 
-    if (vault_.CreateEntry(entry.site_, entry.acc_, entry.pw_)) {
+    if (vault_.CreateEntry(entry.site, entry.acc, entry.pw)) {
       list_gui_->SetErrMsg("Entry already exists");
       return;
     }
@@ -140,11 +140,11 @@ void MainGUI::OnEditRequested(const std::string& site, const std::string& acc) {
     return;
   }
 
-  entry_gui_->SetEditMode(site, acc, it->pw_);
+  entry_gui_->SetEditMode(site, acc, it->pw);
 
   if (entry_gui_->exec() == QDialog::Accepted) {
     Entry entry = entry_gui_->GetInput();
-    int res = vault_.UpdateEntry(orig_site_, orig_acc_, entry.site_, entry.acc_, entry.pw_);
+    int res = vault_.UpdateEntry(orig_site_, orig_acc_, entry.site, entry.acc, entry.pw);
 
     if (res == 1) {
       list_gui_->SetErrMsg("Original entry not found");
@@ -183,7 +183,7 @@ void MainGUI::OnCopyPWRequested(const std::string& site, const std::string& acc)
 
   QClipboard* board = QGuiApplication::clipboard();
 
-  board->setText(QString::fromUtf8(it->pw_.GetData(), static_cast<int>(it->pw_.GetSize())));
+  board->setText(QString::fromUtf8(it->pw.GetData(), static_cast<int>(it->pw.GetSize())));
 
   /* Auto-clear clipboard after 30 seconds */
 
@@ -271,7 +271,7 @@ void MainGUI::RefreshList() {
   const auto& entrySet = vault_.GetEntries();
 
   for (auto it = entrySet.begin(); it != entrySet.end(); it++)
-    entryVec.emplace_back(it->site_, it->acc_);
+    entryVec.emplace_back(it->site, it->acc);
 
   list_gui_->LoadEntries(entryVec);
 }

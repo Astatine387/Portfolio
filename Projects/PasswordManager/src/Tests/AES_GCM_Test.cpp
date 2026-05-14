@@ -16,7 +16,7 @@
  * @brief   Verify encryption and decryption round-trip preserves data
  */
 TEST(AES_GCM_Test, EncryptDecryptBasic) {
-  AES_GCM aes;
+  AesGcm aes;
 
   const char* data = "Hello, world!";
   const char* pw = "password";
@@ -49,7 +49,7 @@ TEST(AES_GCM_Test, EncryptDecryptBasic) {
  * @brief   Verify encryption produces different ciphertext each time (random salt/IV)
  */
 TEST(AES_GCM_Test, EncryptProducesDifferentOutput) {
-  AES_GCM aes;
+  AesGcm aes;
 
   const char* data = "Hello, world!";
   const char* pw = "password";
@@ -74,7 +74,7 @@ TEST(AES_GCM_Test, EncryptProducesDifferentOutput) {
  * @brief   Verify decryption with wrong password fails
  */
 TEST(AES_GCM_Test, DecryptWrongPassword) {
-  AES_GCM aes;
+  AesGcm aes;
 
   const char* data = "Hello, world!";
   const char* pw0 = "password";
@@ -102,7 +102,7 @@ TEST(AES_GCM_Test, DecryptWrongPassword) {
  * @brief   Verify tampering with ciphertext causes decryption failure
  */
 TEST(AES_GCM_Test, TamperedCiphertext) {
-  AES_GCM aes;
+  AesGcm aes;
 
   const char* data = "Hello, world!";
   const char* pw = "password";
@@ -132,7 +132,7 @@ TEST(AES_GCM_Test, TamperedCiphertext) {
  * @brief   Verify tampering with authentication tag causes decryption failure
  */
 TEST(AES_GCM_Test, TamperedTag) {
-  AES_GCM aes;
+  AesGcm aes;
 
   const char* data = "Hello, world!";
   const char* pw = "password";
@@ -166,7 +166,7 @@ TEST(AES_GCM_Test, TamperedTag) {
  * @brief   Verify encryption and decryption works with single byte
  */
 TEST(AES_GCM_Test, SingleByte) {
-  AES_GCM aes;
+  AesGcm aes;
 
   const char* pw = "password";
 
@@ -196,7 +196,7 @@ TEST(AES_GCM_Test, SingleByte) {
  * @brief   Verify encryption and decryption works with large data
  */
 TEST(AES_GCM_Test, LargeData) {
-  AES_GCM aes;
+  AesGcm aes;
 
   const char* pw = "password";
 
@@ -230,7 +230,7 @@ TEST(AES_GCM_Test, LargeData) {
  * @brief   Verify error callback is invoked on decryption failure
  */
 TEST(AES_GCM_Test, ErrorCallback) {
-  AES_GCM aes;
+  AesGcm aes;
   bool cb_called = false;
 
   const char* data = "Hello, world!";

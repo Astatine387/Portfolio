@@ -51,10 +51,10 @@ EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
   /* Configure special character checkboxes */
 
   for (int i = 0; i < 32; i++) {
-    QString label = QString(spcs_[i]);
+    QString label = QString(kSpcs[i]);
 
     spc_checks_[i] = new QCheckBox(label);
-    spc_checks_[i]->setChecked(default_spc_[i]);
+    spc_checks_[i]->setChecked(kDefaultSpcs[i]);
 
     spc_grid_->addWidget(spc_checks_[i], i / 8, i % 8);
   }
@@ -132,9 +132,9 @@ void EntryGUI::SetEditMode(const std::string& site, const std::string& acc, cons
 Entry EntryGUI::GetInput() {
   Entry entry;
 
-  entry.site_ = site_line_->text().toStdString();
-  entry.acc_ = acc_line_->text().toStdString();
-  pwline_->Extract(entry.pw_);
+  entry.site = site_line_->text().toStdString();
+  entry.acc = acc_line_->text().toStdString();
+  pwline_->Extract(entry.pw);
 
   return entry;
 }
@@ -182,11 +182,11 @@ void EntryGUI::OnGenerateClicked() {
 
   err_msg_->clear();
 
-  std::vector<bool> spcList = GetSpecialsList();
+  std::vector<bool> spc_list = GetSpecialsList();
   int size = len_slider_->value();
   Password generated;
 
-  if (GenPW(generated, spcList, size)) {
+  if (GenPW(generated, spc_list, size)) {
     err_msg_->setText("Failed to generate password");
     return;
   }
@@ -195,25 +195,29 @@ void EntryGUI::OnGenerateClicked() {
 }
 
 void EntryGUI::OnCheckAllClicked() {
-  for (int i = 0; i < 32; i++)
+  for (int i = 0; i < 32; i++) {
     spc_checks_[i]->setChecked(true);
+  }
 }
 
 void EntryGUI::OnUncheckAllClicked() {
-  for (int i = 0; i < 32; i++)
+  for (int i = 0; i < 32; i++) {
     spc_checks_[i]->setChecked(false);
+  }
 }
 
 void EntryGUI::OnResetClicked() {
-  for (int i = 0; i < 32; i++)
-    spc_checks_[i]->setChecked(default_spc_[i]);
+  for (int i = 0; i < 32; i++) {
+    spc_checks_[i]->setChecked(kDefaultSpcs[i]);
+  }
 }
 
 std::vector<bool> EntryGUI::GetSpecialsList() {
   std::vector<bool> list(32);
 
-  for (int i = 0; i < 32; i++)
+  for (int i = 0; i < 32; i++) {
     list[i] = spc_checks_[i]->isChecked();
+  }
 
   return list;
 }
@@ -222,13 +226,15 @@ bool EntryGUI::HasSpecial(const Password& pw) const {
   const char* data = pw.GetData();
   size_t size = pw.GetSize();
 
-  if (!data || size == 0)
+  if (!data || size == 0) {
     return false;
+  }
 
   for (size_t i = 0; i < size; i++) {
     for (int j = 0; j < 32; j++)
-      if (data[i] == spcs_[j])
+      if (data[i] == kSpcs[j]) {
         return true;
+      }
   }
 
   return false;
@@ -236,8 +242,9 @@ bool EntryGUI::HasSpecial(const Password& pw) const {
 
 bool EntryGUI::HasSpecialSelected() const {
   for (int i = 0; i < 32; i++) {
-    if (spc_checks_[i]->isChecked())
+    if (spc_checks_[i]->isChecked()) {
       return true;
+    }
   }
 
   return false;
@@ -254,36 +261,49 @@ int EntryGUI::GenPW(Password& dst, const std::vector<bool>& spc_list, int pw_siz
 
   /* Check the special character list size is valid */
 
-  if (spc_list.size() != 32)
+  if (spc_list.size() != 32) {
     return 1;
+  }
 
   /* Check the password size is valid */
 
-  if (pw_size < 8)
+  if (pw_size < 8) {
     return 1;
+  }
 
   /* Add characters to pool */
 
-  for (int i = 0; i < 32; i++)
-    if (spc_list[i])
+  for (int i = 0; i < 32; i++) {
+    if (spc_list[i]) {
       pool_size++;
+    }
+  }
 
   pool.resize(pool_size);
 
-  for (int i = 0; i < 26; i++)
+  for (int i = 0; i < 26; i++) {
     pool[crs++] = lower[i];
-  for (int i = 0; i < 26; i++)
+  }
+
+  for (int i = 0; i < 26; i++) {
     pool[crs++] = upper[i];
-  for (int i = 0; i < 10; i++)
+  }
+
+  for (int i = 0; i < 10; i++) {
     pool[crs++] = num[i];
-  for (int i = 0; i < 32; i++)
-    if (spc_list[i])
-      pool[crs++] = spcs_[i];
+  }
+
+  for (int i = 0; i < 32; i++) {
+    if (spc_list[i]) {
+      pool[crs++] = kSpcs[i];
+    }
+  }
 
   /* Check at least one special character is selected */
 
-  if (pool_size <= 62)
+  if (pool_size <= 62) {
     return 1;
+  }
 
   /* Generate password */
 
@@ -294,8 +314,9 @@ int EntryGUI::GenPW(Password& dst, const std::vector<bool>& spc_list, int pw_siz
   pw[2] = num[RandomRange(0, 9)];
   pw[3] = pool[RandomRange(62, static_cast<uint32_t>(pool_size) - 1)];
 
-  for (int i = 4; i < pw_size; i++)
+  for (int i = 4; i < pw_size; i++) {
     pw[i] = pool[RandomRange(0, static_cast<uint32_t>(pool_size) - 1)];
+  }
 
   Shuffle(reinterpret_cast<uint8_t*>(pw), pw_size);
 

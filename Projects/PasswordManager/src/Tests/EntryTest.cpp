@@ -26,9 +26,9 @@ TEST(EntryTest, SizeCalculation) {
   size_t acc_len = strlen(acc);
   size_t pw_len = strlen(pw);
 
-  entry.site_ = site;
-  entry.acc_ = acc;
-  entry.pw_.SetData(pw, pw_len);
+  entry.site = site;
+  entry.acc = acc;
+  entry.pw.SetData(pw, pw_len);
 
   size_t expected =
       sizeof(uint32_t) + site_len + sizeof(uint32_t) + acc_len + sizeof(uint32_t) + pw_len;
@@ -122,9 +122,9 @@ TEST(EntryTest, SerializeSize) {
   size_t acc_len = strlen(acc);
   size_t pw_len = strlen(pw);
 
-  entry.site_ = site;
-  entry.acc_ = acc;
-  entry.pw_.SetData(pw, pw_len);
+  entry.site = site;
+  entry.acc = acc;
+  entry.pw.SetData(pw, pw_len);
 
   std::vector<uint8_t> vec(entry.Size());
 
@@ -147,9 +147,9 @@ TEST(EntryTest, SerializeDeserializeRoundTrip) {
   size_t acc_len = strlen(acc);
   size_t pw_len = strlen(pw);
 
-  orig.site_ = site;
-  orig.acc_ = acc;
-  orig.pw_.SetData(pw, pw_len);
+  orig.site = site;
+  orig.acc = acc;
+  orig.pw.SetData(pw, pw_len);
 
   std::vector<uint8_t> vec(orig.Size());
 
@@ -157,10 +157,10 @@ TEST(EntryTest, SerializeDeserializeRoundTrip) {
   size_t read = copy.Deser(vec.data(), vec.size());
 
   EXPECT_EQ(writ, read);
-  EXPECT_EQ(copy.site_, orig.site_);
-  EXPECT_EQ(copy.acc_, orig.acc_);
-  EXPECT_EQ(copy.pw_.GetSize(), orig.pw_.GetSize());
-  EXPECT_TRUE(copy.pw_.Equal(orig.pw_));
+  EXPECT_EQ(copy.site, orig.site);
+  EXPECT_EQ(copy.acc, orig.acc);
+  EXPECT_EQ(copy.pw.GetSize(), orig.pw.GetSize());
+  EXPECT_TRUE(copy.pw.Equal(orig.pw));
 }
 
 /**
@@ -175,9 +175,9 @@ TEST(EntryTest, SerializeDeserializeEmpty) {
   size_t read = copy.Deser(vec.data(), vec.size());
 
   EXPECT_EQ(writ, read);
-  EXPECT_EQ(copy.site_, "");
-  EXPECT_EQ(copy.acc_, "");
-  EXPECT_TRUE(copy.pw_.IsEmpty());
+  EXPECT_EQ(copy.site, "");
+  EXPECT_EQ(copy.acc, "");
+  EXPECT_TRUE(copy.pw.IsEmpty());
 }
 
 /**
@@ -192,8 +192,8 @@ TEST(EntryTest, SerializeMultipleEntries) {
   size_t site0_len = strlen(site0), acc0Len = strlen(acc0), pw0Len = strlen(pw0);
   size_t site1_len = strlen(site1), acc1Len = strlen(acc1), pw1Len = strlen(pw1);
 
-  entry0.site_ = site0, entry0.acc_ = acc0, entry0.pw_.SetData(pw0, pw0Len);
-  entry1.site_ = site1, entry1.acc_ = acc1, entry1.pw_.SetData(pw1, pw0Len);
+  entry0.site = site0, entry0.acc = acc0, entry0.pw.SetData(pw0, pw0Len);
+  entry1.site = site1, entry1.acc = acc1, entry1.pw.SetData(pw1, pw0Len);
 
   /* Serialize both */
 
@@ -215,10 +215,10 @@ TEST(EntryTest, SerializeMultipleEntries) {
   cur += copy1.Deser(vec.data() + cur, vec.size());
 
   EXPECT_EQ(cur, totalSize);
-  EXPECT_EQ(copy0.site_, site0);
-  EXPECT_EQ(copy0.acc_, acc0);
-  EXPECT_EQ(copy1.site_, site1);
-  EXPECT_EQ(copy1.acc_, acc1);
+  EXPECT_EQ(copy0.site, site0);
+  EXPECT_EQ(copy0.acc, acc0);
+  EXPECT_EQ(copy1.site, site1);
+  EXPECT_EQ(copy1.acc, acc1);
 }
 
 /**
@@ -235,18 +235,18 @@ TEST(EntryTest, SerializeSpecialCharacters) {
   size_t acc_len = strlen(acc);
   size_t pw_len = strlen(pw);
 
-  orig.site_ = site;
-  orig.acc_ = acc;
-  orig.pw_.SetData(pw, pw_len);
+  orig.site = site;
+  orig.acc = acc;
+  orig.pw.SetData(pw, pw_len);
 
   std::vector<uint8_t> vec(orig.Size());
 
   orig.Ser(vec.data());
   copy.Deser(vec.data(), vec.size());
 
-  EXPECT_EQ(copy.site_, orig.site_);
-  EXPECT_EQ(copy.acc_, orig.acc_);
-  EXPECT_TRUE(copy.pw_.Equal(orig.pw_));
+  EXPECT_EQ(copy.site, orig.site);
+  EXPECT_EQ(copy.acc, orig.acc);
+  EXPECT_TRUE(copy.pw.Equal(orig.pw));
 }
 
 /* ==================================================
@@ -267,9 +267,9 @@ TEST(EntryTest, DeserializationBoundaryCheck) {
   size_t acc_len = strlen(acc);
   size_t pw_len = strlen(pw);
 
-  src.site_ = site;
-  src.acc_ = acc;
-  src.pw_.SetData(pw, pw_len);
+  src.site = site;
+  src.acc = acc;
+  src.pw.SetData(pw, pw_len);
 
   std::vector<uint8_t> vec(src.Size());
 
@@ -283,33 +283,33 @@ TEST(EntryTest, DeserializationBoundaryCheck) {
 
   /* Buffer truncated before site data */
 
-  size = sizeof(uint32_t) + src.site_.size() - 1;
+  size = sizeof(uint32_t) + src.site.size() - 1;
 
   EXPECT_EQ(dst.Deser(vec.data(), size), 0);
 
   /* Buffer truncated before account length */
 
-  size = sizeof(uint32_t) + src.site_.size() + sizeof(uint32_t) - 1;
+  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) - 1;
 
   EXPECT_EQ(dst.Deser(vec.data(), size), 0);
 
   /* Buffer truncated before account data */
 
-  size = sizeof(uint32_t) + src.site_.size() + sizeof(uint32_t) + src.acc_.size() - 1;
+  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() - 1;
 
   EXPECT_EQ(dst.Deser(vec.data(), size), 0);
 
   /* Buffer truncated before password length */
 
-  size = sizeof(uint32_t) + src.site_.size() + sizeof(uint32_t) + src.acc_.size() +
+  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() +
          sizeof(uint32_t) - 1;
 
   EXPECT_EQ(dst.Deser(vec.data(), size), 0);
 
   /* Buffer truncated before password length */
 
-  size = sizeof(uint32_t) + src.site_.size() + sizeof(uint32_t) + src.acc_.size() +
-         sizeof(uint32_t) + src.pw_.GetSize() - 1;
+  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() +
+         sizeof(uint32_t) + src.pw.GetSize() - 1;
 
   EXPECT_EQ(dst.Deser(vec.data(), size), 0);
 }
@@ -379,7 +379,7 @@ TEST(EntryTest, DeserializeMaxFieldLengths) {
   Entry entry;
 
   EXPECT_NE(buildAndDeser(entry, kMaxSiteLen, kMaxAccLen, kMaxPWLen), 0);
-  EXPECT_EQ(entry.site_.size(), kMaxSiteLen);
-  EXPECT_EQ(entry.acc_.size(), kMaxAccLen);
-  EXPECT_EQ(entry.pw_.GetSize(), kMaxPWLen);
+  EXPECT_EQ(entry.site.size(), kMaxSiteLen);
+  EXPECT_EQ(entry.acc.size(), kMaxAccLen);
+  EXPECT_EQ(entry.pw.GetSize(), kMaxPWLen);
 }

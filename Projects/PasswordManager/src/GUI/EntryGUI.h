@@ -102,9 +102,9 @@ class EntryGUI : public QDialog {
   QHBoxLayout* spc_btn_box_;
   QVBoxLayout* vbox_;
 
-  static constexpr char spcs_[] = "`~!@#$%^&*()-_=+[{]}\\|;:\'\",<.>/?";
+  static constexpr char kSpcs[] = "`~!@#$%^&*()-_=+[{]}\\|;:\'\",<.>/?";
 
-  static constexpr bool default_spc_[32] = { //    `  ~  !  @  #  $  %  ^
+  static constexpr bool kDefaultSpcs[32] = { //    `  ~  !  @  #  $  %  ^
                                              0, 1, 1, 1, 0, 0, 1, 1,
                                              //    &  *  (  )  -  _  =  +
                                              0, 0, 0, 0, 0, 1, 1, 1,

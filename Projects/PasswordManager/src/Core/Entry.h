@@ -19,9 +19,9 @@
  * @brief      Password entry
  */
 struct Entry {
-  std::string site_;
-  std::string acc_;
-  Password pw_;
+  std::string site;
+  std::string acc;
+  Password pw;
 
   /**
    * @brief   Calculate serialized size in bytes
@@ -51,10 +51,10 @@ struct Entry {
  */
 struct EntryCmp {
   bool operator()(const Entry& a, const Entry& b) const {
-    if (a.site_ != b.site_) {
-      return a.site_ < b.site_;
+    if (a.site != b.site) {
+      return a.site < b.site;
     }
 
-    return a.acc_ < b.acc_;
+    return a.acc < b.acc;
   }
 };

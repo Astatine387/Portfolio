@@ -13,7 +13,7 @@
 
 #include "Common/constants.h"
 
-class AES_GCM {
+class AesGcm {
  public:
   /* ==================================================
    * Constructor, destructor, operators
@@ -22,17 +22,17 @@ class AES_GCM {
   /**
    * @brief	Default constructor of AES_GCM class
    */
-  AES_GCM();
+  AesGcm();
 
   /**
    * @brief	Destructor of AES_GCM class
    */
-  ~AES_GCM();
+  ~AesGcm();
 
-  AES_GCM(const AES_GCM&) = delete;             // Delete copy constructor
-  AES_GCM& operator=(const AES_GCM&) = delete;  // Delete copy assignment operator
-  AES_GCM(AES_GCM&&) = delete;                  // Delete move constructor
-  AES_GCM& operator=(AES_GCM&&) = delete;       // Delete move assignment operator
+  AesGcm(const AesGcm&) = delete;             // Delete copy constructor
+  AesGcm& operator=(const AesGcm&) = delete;  // Delete copy assignment operator
+  AesGcm(AesGcm&&) = delete;                  // Delete move constructor
+  AesGcm& operator=(AesGcm&&) = delete;       // Delete move assignment operator
 
   /* ==================================================
    * Interface functions

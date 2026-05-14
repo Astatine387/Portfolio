@@ -103,8 +103,8 @@ void MainGUI::OnCloseRequested() {
 }
 
 int MainGUI::OpenFiles() {
-  QFileInfo srcInfo(user_input_.src);
-  QFileInfo dstInfo(user_input_.dst);
+  QFileInfo src_info(user_input_.src);
+  QFileInfo dst_info(user_input_.dst);
 
   CloseFiles();
 
@@ -115,7 +115,7 @@ int MainGUI::OpenFiles() {
     return 1;
   }
 
-  if (srcInfo.canonicalFilePath() == dstInfo.canonicalFilePath()) {
+  if (src_info.canonicalFilePath() == dst_info.canonicalFilePath()) {
     input_gui_->SetErrMsg("Source and destination cannot be the same");
     return 1;
   }

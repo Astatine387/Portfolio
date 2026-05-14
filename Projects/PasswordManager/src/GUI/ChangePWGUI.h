@@ -75,7 +75,7 @@ class ChangePWGUI : public QDialog {
  private:
   PWLineEdit* cur_pwline_;
   PWLineEdit* new_pwline_;
-  PWLineEdit* confirm_pwline;
+  PWLineEdit* confirm_pwline_;
   QLabel* cur_label_;
   QLabel* new_label_;
   QLabel* confirm_label_;

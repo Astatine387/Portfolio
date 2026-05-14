@@ -11,7 +11,7 @@ ChangePWGUI::ChangePWGUI(QWidget* parent) : QDialog(parent) {
 
   cur_pwline_ = new PWLineEdit;
   new_pwline_ = new PWLineEdit;
-  confirm_pwline = new PWLineEdit;
+  confirm_pwline_ = new PWLineEdit;
   cur_label_ = new QLabel("Current Password:");
   new_label_ = new QLabel("New Password:");
   confirm_label_ = new QLabel("Confirm New Password:");
@@ -38,7 +38,7 @@ ChangePWGUI::ChangePWGUI(QWidget* parent) : QDialog(parent) {
   vbox_->addWidget(new_label_);
   vbox_->addWidget(new_pwline_);
   vbox_->addWidget(confirm_label_);
-  vbox_->addWidget(confirm_pwline);
+  vbox_->addWidget(confirm_pwline_);
   vbox_->addWidget(err_msg_);
   vbox_->addLayout(btn_box_);
   vbox_->setSpacing(10);
@@ -62,7 +62,7 @@ void ChangePWGUI::GetInput(Password& cur_pw, Password& new_pw) {
 void ChangePWGUI::Reset() {
   cur_pwline_->Clear();
   new_pwline_->Clear();
-  confirm_pwline->Clear();
+  confirm_pwline_->Clear();
   err_msg_->clear();
 }
 
@@ -79,65 +79,65 @@ void ChangePWGUI::OnOKClicked() {
 
   /* Extract passwords for validation */
 
-  Password curPW, newPW, confirmPW;
+  Password cur_pw, new_pw, confirm_pw;
 
-  cur_pwline_->Extract(curPW);
+  cur_pwline_->Extract(cur_pw);
 
-  if (new_pwline_->Extract(newPW)) {
+  if (new_pwline_->Extract(new_pw)) {
     err_msg_->setText("Password exceeds maximum length (256 characters)");
     return;
   }
 
-  if (confirm_pwline->Extract(confirmPW)) {
+  if (confirm_pwline_->Extract(confirm_pw)) {
     err_msg_->setText("Password exceeds maximum length (256 characters)");
     return;
   }
 
   /* Validate all fields are filled */
 
-  if (curPW.IsEmpty()) {
+  if (cur_pw.IsEmpty()) {
     err_msg_->setText("Current password is not input");
     return;
   }
 
-  if (newPW.IsEmpty()) {
+  if (new_pw.IsEmpty()) {
     err_msg_->setText("New password is not input");
     return;
   }
 
-  if (confirmPW.IsEmpty()) {
+  if (confirm_pw.IsEmpty()) {
     err_msg_->setText("Confirm password is not input");
     return;
   }
 
   /* Validate new password matches confirmation */
 
-  if (newPW.GetSize() != confirmPW.GetSize() || !newPW.Equal(confirmPW)) {
+  if (new_pw.GetSize() != confirm_pw.GetSize() || !new_pw.Equal(confirm_pw)) {
     err_msg_->setText("New and confirm password do not match");
     return;
   }
 
   /* Validate new password differs from current */
 
-  if (newPW.GetSize() == curPW.GetSize() && newPW.Equal(curPW)) {
+  if (new_pw.GetSize() == cur_pw.GetSize() && new_pw.Equal(cur_pw)) {
     err_msg_->setText("Old and new password are the same");
     return;
   }
 
   /* Verify current password via callback */
 
-  if (vcb_ && !vcb_(curPW)) {
+  if (vcb_ && !vcb_(cur_pw)) {
     err_msg_->setText("Current password is incorrect");
     cur_pwline_->Clear();
     new_pwline_->Clear();
-    confirm_pwline->Clear();
+    confirm_pwline_->Clear();
     return;
   }
 
   /* Restore passwords for getInput() */
 
-  cur_pwline_->SetPassword(curPW);
-  new_pwline_->SetPassword(newPW);
+  cur_pwline_->SetPassword(cur_pw);
+  new_pwline_->SetPassword(new_pw);
 
   accept();
 }

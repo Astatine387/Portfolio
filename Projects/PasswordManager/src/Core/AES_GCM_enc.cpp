@@ -9,7 +9,7 @@
 
 #include <cstring>
 
-int AES_GCM::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen) {
+int AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen) {
   src_buff_ = src;
   dst_buff_ = dst;
   size_ = size;
@@ -35,7 +35,7 @@ int AES_GCM::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, si
   return 0;
 }
 
-int AES_GCM::EncryptInit(const char* pw, size_t plen) {
+int AesGcm::EncryptInit(const char* pw, size_t plen) {
   /* Clear existing context */
 
   if (ctx_) {
@@ -109,7 +109,7 @@ int AES_GCM::EncryptInit(const char* pw, size_t plen) {
   return 0;
 }
 
-int AES_GCM::EncryptBuff() {
+int AesGcm::EncryptBuff() {
   int out_len;
 
   if (EVP_EncryptUpdate(ctx_, dst_buff_ + dst_crs_, &out_len, src_buff_, size_) != 1) {
@@ -131,7 +131,7 @@ int AES_GCM::EncryptBuff() {
   return 0;
 }
 
-int AES_GCM::EncryptFinal() {
+int AesGcm::EncryptFinal() {
   uint8_t final_buff[kBlockSize];
   int final_len;
 
@@ -155,7 +155,7 @@ int AES_GCM::EncryptFinal() {
   return 0;
 }
 
-int AES_GCM::EncryptTag() {
+int AesGcm::EncryptTag() {
   uint8_t tag[kTagSize];
 
   if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_GET_TAG, kTagSize, tag) != 1) {

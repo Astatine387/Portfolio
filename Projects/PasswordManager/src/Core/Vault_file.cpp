@@ -8,7 +8,7 @@
 #include "Utils/library.h"
 
 int Vault::NewVault(const QString& path) {
-  uint32_t entryCnt = 0;
+  uint32_t entry_cnt = 0;
 
   last_error_.clear();
 
@@ -20,7 +20,7 @@ int Vault::NewVault(const QString& path) {
   src_buff_ = std::make_unique<uint8_t[]>(src_size_);
   dst_buff_ = std::make_unique<uint8_t[]>(dst_size_);
 
-  memcpy(src_buff_.get(), &entryCnt, kCountSize);
+  memcpy(src_buff_.get(), &entry_cnt, kCountSize);
   memcpy(dst_buff_.get(), &magic_num_, kMagicSize);
 
   /* Encrypt */
@@ -207,9 +207,9 @@ int Vault::SaveVault(const QString& path) {
 
   /* Save to temporary file */
 
-  QString tmpPath = path + ".tmp";
+  QString tmp_path = path + ".tmp";
 
-  OpenFile(&file_, tmpPath, "wb");
+  OpenFile(&file_, tmp_path, "wb");
 
   if (file_ == nullptr) {
     // LCOV_EXCL_START
@@ -221,7 +221,7 @@ int Vault::SaveVault(const QString& path) {
   if (fwrite(dst_buff_.get(), sizeof(uint8_t), dst_size_, file_) != dst_size_) {
     // LCOV_EXCL_START
     ReportError("[File] Write failed - Cannot write temporary file\n");
-    RemoveFile(tmpPath);
+    RemoveFile(tmp_path);
     return 1;
     // LCOV_EXCL_STOP
   }
@@ -231,7 +231,7 @@ int Vault::SaveVault(const QString& path) {
   if (SyncFile(file_)) {
     // LCOV_EXCL_START
     ReportError("[File] Sync failed - Cannot flush vault file to disk\n");
-    RemoveFile(tmpPath);
+    RemoveFile(tmp_path);
     return 1;
     // LCOV_EXCL_STOP
   }
@@ -241,10 +241,10 @@ int Vault::SaveVault(const QString& path) {
 
   /* Rename temporary file to vault file */
 
-  if (RenameFile(tmpPath, path)) {
+  if (RenameFile(tmp_path, path)) {
     // LCOV_EXCL_START
     ReportError("[File] Rename failed - Cannot replace vault file\n");
-    RemoveFile(tmpPath);
+    RemoveFile(tmp_path);
     return 1;
     // LCOV_EXCL_STOP
   }

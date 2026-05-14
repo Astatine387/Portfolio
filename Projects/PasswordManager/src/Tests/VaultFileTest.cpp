@@ -67,12 +67,12 @@ class VaultFileTest : public ::testing::Test {
    * @param   pwLen   Password length
    * @return  0 on success, non-zero on failure
    */
-  int Reload(const char* pwStr, size_t pwLen) {
+  int Reload(const char* pw_str, size_t pw_len) {
     vault_.CloseVault();
 
     Password pw;
 
-    pw.SetData(pwStr, pwLen);
+    pw.SetData(pw_str, pw_len);
     vault_.SetPW(pw);
 
     return vault_.OpenVault(path_);
@@ -205,26 +205,26 @@ TEST_F(VaultFileTest, OpenOversizedFile) {
  * @brief   Verify opening a vault where entry count grossly exceeds available data fails
  */
 TEST_F(VaultFileTest, OpenInflatedEntryCount) {
-  AES_GCM aes;
+  AesGcm aes;
   const char* pwstr = "password";
   size_t psize = strlen(pwstr);
 
   /* Entry count is 10, but there is no actual entries */
 
-  uint32_t entryCnt = 10;
-  size_t srcSize = sizeof(uint32_t);
+  uint32_t entry_cnt = 10;
+  size_t src_size = sizeof(uint32_t);
 
-  std::vector<uint8_t> src(srcSize);
+  std::vector<uint8_t> src(src_size);
 
-  memcpy(src.data(), &entryCnt, sizeof(uint32_t));
+  memcpy(src.data(), &entry_cnt, sizeof(uint32_t));
 
   /* Encrypt */
 
-  size_t encSize = kSaltSize + kIVSize + srcSize + kTagSize;
+  size_t enc_size = kSaltSize + kIVSize + src_size + kTagSize;
 
-  std::vector<uint8_t> enc(encSize);
+  std::vector<uint8_t> enc(enc_size);
 
-  aes.Encrypt(src.data(), enc.data(), srcSize, pwstr, psize);
+  aes.Encrypt(src.data(), enc.data(), src_size, pwstr, psize);
 
   /* Write vault file */
 
@@ -235,7 +235,7 @@ TEST_F(VaultFileTest, OpenInflatedEntryCount) {
 
   if (file) {
     fwrite(&magic, sizeof(uint32_t), 1, file);
-    fwrite(enc.data(), sizeof(uint8_t), encSize, file);
+    fwrite(enc.data(), sizeof(uint8_t), enc_size, file);
     fclose(file);
   }
 
@@ -247,7 +247,7 @@ TEST_F(VaultFileTest, OpenInflatedEntryCount) {
  * deserialization
  */
 TEST_F(VaultFileTest, OpenPartialEntryData) {
-  AES_GCM aes;
+  AesGcm aes;
   const char* pwstr = "password";
   size_t psize = strlen(pwstr);
 
@@ -255,30 +255,30 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
 
   Entry entry;
 
-  entry.site_ = "Google";
-  entry.acc_ = "user@google.com";
-  entry.pw_.SetData("password", 8);
+  entry.site = "Google";
+  entry.acc = "user@google.com";
+  entry.pw.SetData("password", 8);
 
-  uint32_t entryCnt = 2;
-  size_t entrySize = entry.Size();
-  size_t srcSize = sizeof(uint32_t) + entrySize + kMinEntrySize;
+  uint32_t entry_cnt = 2;
+  size_t entry_size = entry.Size();
+  size_t src_size = sizeof(uint32_t) + entry_size + kMinEntrySize;
 
-  std::vector<uint8_t> src(srcSize, 0xFF);
+  std::vector<uint8_t> src(src_size, 0xFF);
 
   size_t cur = 0;
 
-  memcpy(src.data() + cur, &entryCnt, sizeof(uint32_t));
+  memcpy(src.data() + cur, &entry_cnt, sizeof(uint32_t));
   cur += sizeof(uint32_t);
 
   entry.Ser(src.data() + cur);
 
   /* Encrypt */
 
-  size_t encSize = kSaltSize + kIVSize + srcSize + kTagSize;
+  size_t enc_size = kSaltSize + kIVSize + src_size + kTagSize;
 
-  std::vector<uint8_t> enc(encSize);
+  std::vector<uint8_t> enc(enc_size);
 
-  aes.Encrypt(src.data(), enc.data(), srcSize, pwstr, psize);
+  aes.Encrypt(src.data(), enc.data(), src_size, pwstr, psize);
 
   /* Write vault file */
 
@@ -289,7 +289,7 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
 
   if (file) {
     fwrite(&magic, sizeof(uint32_t), 1, file);
-    fwrite(enc.data(), sizeof(uint8_t), encSize, file);
+    fwrite(enc.data(), sizeof(uint8_t), enc_size, file);
     fclose(file);
   }
 
@@ -330,7 +330,7 @@ TEST_F(VaultFileTest, SavePreservesPasswords) {
 
   const auto& entries = vault_.GetEntries();
 
-  EXPECT_TRUE(entries.begin()->pw_.Equal(pw));
+  EXPECT_TRUE(entries.begin()->pw.Equal(pw));
 }
 
 /**

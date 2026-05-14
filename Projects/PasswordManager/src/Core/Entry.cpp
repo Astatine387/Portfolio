@@ -9,8 +9,8 @@
 #include <cstring>
 
 size_t Entry::Size() const {
-  return sizeof(uint32_t) + site_.size() + sizeof(uint32_t) + acc_.size() + sizeof(uint32_t) +
-         pw_.GetSize();
+  return sizeof(uint32_t) + site.size() + sizeof(uint32_t) + acc.size() + sizeof(uint32_t) +
+         pw.GetSize();
 }
 
 size_t Entry::Ser(uint8_t* dst) const {
@@ -19,32 +19,32 @@ size_t Entry::Ser(uint8_t* dst) const {
 
   /* Write site */
 
-  dlen = static_cast<uint32_t>(site_.size());
+  dlen = static_cast<uint32_t>(site.size());
 
   memcpy(dst + cur, &dlen, sizeof(uint32_t));
   cur += sizeof(uint32_t);
 
-  memcpy(dst + cur, site_.data(), dlen);
+  memcpy(dst + cur, site.data(), dlen);
   cur += dlen;
 
   /* Write account */
 
-  dlen = static_cast<uint32_t>(acc_.size());
+  dlen = static_cast<uint32_t>(acc.size());
 
   memcpy(dst + cur, &dlen, sizeof(uint32_t));
   cur += sizeof(uint32_t);
 
-  memcpy(dst + cur, acc_.data(), dlen);
+  memcpy(dst + cur, acc.data(), dlen);
   cur += dlen;
 
   /* Write password */
 
-  dlen = static_cast<uint32_t>(pw_.GetSize());
+  dlen = static_cast<uint32_t>(pw.GetSize());
 
   memcpy(dst + cur, &dlen, sizeof(uint32_t));
   cur += sizeof(uint32_t);
 
-  memcpy(dst + cur, pw_.GetData(), dlen);
+  memcpy(dst + cur, pw.GetData(), dlen);
   cur += dlen;
 
   return cur;
@@ -67,7 +67,7 @@ size_t Entry::Deser(const uint8_t* src, size_t srclen) {
     return 0;
   }
 
-  site_.assign(reinterpret_cast<const char*>(src + cur), dlen);
+  site.assign(reinterpret_cast<const char*>(src + cur), dlen);
   cur += dlen;
 
   /* Read account */
@@ -83,7 +83,7 @@ size_t Entry::Deser(const uint8_t* src, size_t srclen) {
     return 0;
   }
 
-  acc_.assign(reinterpret_cast<const char*>(src + cur), dlen);
+  acc.assign(reinterpret_cast<const char*>(src + cur), dlen);
   cur += dlen;
 
   /* Read password */
@@ -99,7 +99,7 @@ size_t Entry::Deser(const uint8_t* src, size_t srclen) {
     return 0;
   }
 
-  if (pw_.SetData(reinterpret_cast<const char*>(src + cur), dlen)) {
+  if (pw.SetData(reinterpret_cast<const char*>(src + cur), dlen)) {
     return 0;
   }
 

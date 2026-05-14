@@ -165,7 +165,7 @@ class Vault {
   const std::string& GetLastError() const;
 
  private:
-  AES_GCM aes_;
+  AesGcm aes_;
   Password pw_;
   std::set<Entry, EntryCmp> entry_set_;
   std::string last_error_;

@@ -9,7 +9,7 @@
 
 #include <cstring>
 
-int AES_GCM::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen) {
+int AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen) {
   src_buff_ = src;
   dst_buff_ = dst;
   size_ = size;
@@ -35,7 +35,7 @@ int AES_GCM::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, si
   return 0;
 }
 
-int AES_GCM::DecryptInit(const char* pw, size_t plen) {
+int AesGcm::DecryptInit(const char* pw, size_t plen) {
   /* Clear existing context */
 
   if (ctx_) {
@@ -93,7 +93,7 @@ int AES_GCM::DecryptInit(const char* pw, size_t plen) {
   return 0;
 }
 
-int AES_GCM::DecryptTag() {
+int AesGcm::DecryptTag() {
   uint8_t tag[kTagSize];
 
   memcpy(tag, src_buff_ + size_ - kTagSize, kTagSize);
@@ -108,7 +108,7 @@ int AES_GCM::DecryptTag() {
   return 0;
 }
 
-int AES_GCM::DecryptBuff() {
+int AesGcm::DecryptBuff() {
   int in_len = size_ - kSaltSize - kIVSize - kTagSize;
   int out_len;
 
@@ -131,7 +131,7 @@ int AES_GCM::DecryptBuff() {
   return 0;
 }
 
-int AES_GCM::DecryptFinal() {
+int AesGcm::DecryptFinal() {
   uint8_t final_buff[kBlockSize];
   int final_len;
 

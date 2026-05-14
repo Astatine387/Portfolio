@@ -205,18 +205,18 @@ TEST_F(VaultEntryTest, GetEntries) {
 
   auto it = entries.begin();
 
-  EXPECT_EQ(it->site_, "Amazon");
-  EXPECT_EQ(it->acc_, "user3@amazon.com");
+  EXPECT_EQ(it->site, "Amazon");
+  EXPECT_EQ(it->acc, "user3@amazon.com");
 
   ++it;
 
-  EXPECT_EQ(it->site_, "Google");
-  EXPECT_EQ(it->acc_, "user1@google.com");
+  EXPECT_EQ(it->site, "Google");
+  EXPECT_EQ(it->acc, "user1@google.com");
 
   ++it;
 
-  EXPECT_EQ(it->site_, "Microsoft");
-  EXPECT_EQ(it->acc_, "user2@microsoft.com");
+  EXPECT_EQ(it->site, "Microsoft");
+  EXPECT_EQ(it->acc, "user2@microsoft.com");
 }
 
 /**
