@@ -145,13 +145,13 @@ TEST(PasswordTest, MoveConstructor) {
 
   pw0.SetData(data, size);
 
-  const char* origPtr = pw0.GetData();
+  const char* orig_ptr = pw0.GetData();
 
   Password pw1(std::move(pw0));
 
   EXPECT_STREQ(pw1.GetData(), data);
   EXPECT_EQ(pw1.GetSize(), size);
-  EXPECT_EQ(pw1.GetData(), origPtr);
+  EXPECT_EQ(pw1.GetData(), orig_ptr);
   EXPECT_TRUE(pw0.IsEmpty());
   EXPECT_EQ(pw0.GetData(), nullptr);
 }
@@ -171,13 +171,13 @@ TEST(PasswordTest, MoveAssignment) {
   pw0.SetData(data0, size0);
   pw1.SetData(data1, size1);
 
-  const char* origPtr = pw0.GetData();
+  const char* orig_ptr = pw0.GetData();
 
   pw1 = std::move(pw0);
 
   EXPECT_STREQ(pw1.GetData(), data0);
   EXPECT_EQ(pw1.GetSize(), size0);
-  EXPECT_EQ(pw1.GetData(), origPtr);
+  EXPECT_EQ(pw1.GetData(), orig_ptr);
   EXPECT_TRUE(pw0.IsEmpty());
   EXPECT_EQ(pw0.GetData(), nullptr);
 }

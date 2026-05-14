@@ -95,12 +95,12 @@ class FileExistsTest : public ::testing::Test {
    * @brief   Create a temporary test file
    */
   void Create() {
-    FILE* file_ = nullptr;
+    FILE* file = nullptr;
 
-    OpenFile(&file_, path_, "wb");
+    OpenFile(&file, path_, "wb");
 
-    if (file_)
-      fclose(file_);
+    if (file)
+      fclose(file);
   }
 };
 
@@ -391,9 +391,9 @@ TEST(UtilsTest, RenameFileOverwrite) {
   OpenFile(&file, src, "wb");
   ASSERT_NE(file, nullptr);
 
-  const char* srcData = "Hello, world!";
+  const char* src_data = "Hello, world!";
 
-  fwrite(srcData, 1, strlen(srcData), file);
+  fwrite(src_data, 1, strlen(src_data), file);
   fclose(file);
 
   /* Create destination file with different data */
@@ -401,9 +401,9 @@ TEST(UtilsTest, RenameFileOverwrite) {
   OpenFile(&file, dst, "wb");
   ASSERT_NE(file, nullptr);
 
-  const char* dstData = "Goodbye, world!";
+  const char* dst_data = "Goodbye, world!";
 
-  fwrite(dstData, 1, strlen(dstData), file);
+  fwrite(dst_data, 1, strlen(dst_data), file);
   fclose(file);
 
   EXPECT_TRUE(FileExists(src));
@@ -422,14 +422,14 @@ TEST(UtilsTest, RenameFileOverwrite) {
 
   int64_t size = GetFileSize(file);
 
-  EXPECT_EQ(size, static_cast<int64_t>(strlen(srcData)));
+  EXPECT_EQ(size, static_cast<int64_t>(strlen(src_data)));
 
   char buff[32] = { 0 };
 
   fread(buff, 1, size, file);
   fclose(file);
 
-  EXPECT_EQ(memcmp(buff, srcData, strlen(srcData)), 0);
+  EXPECT_EQ(memcmp(buff, src_data, strlen(src_data)), 0);
 
   /* Cleanup */
 

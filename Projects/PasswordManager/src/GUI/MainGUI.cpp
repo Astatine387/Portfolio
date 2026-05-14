@@ -57,7 +57,7 @@ MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
   /* Set verify callback for password change */
 
   change_pw_gui_->SetVerifyCb(
-      [this](const Password& curPW) -> bool { return vault_.VerifyPW(curPW); });
+      [this](const Password& cur_pw) -> bool { return vault_.VerifyPW(cur_pw); });
 }
 
 MainGUI::~MainGUI() {
@@ -239,11 +239,11 @@ void MainGUI::OnChangePWRequested() {
   change_pw_gui_->Reset();
 
   if (change_pw_gui_->exec() == QDialog::Accepted) {
-    Password curPW, newPW;
+    Password cur_pw, new_pw;
 
-    change_pw_gui_->GetInput(curPW, newPW);
+    change_pw_gui_->GetInput(cur_pw, new_pw);
 
-    if (vault_.ChangePW(newPW, vault_path_)) {
+    if (vault_.ChangePW(new_pw, vault_path_)) {
       list_gui_->SetErrMsg("Failed to save vault");
       return;
     }
@@ -267,11 +267,11 @@ void MainGUI::CloseEvent(QCloseEvent* event) {
 }
 
 void MainGUI::RefreshList() {
-  std::vector<std::pair<std::string, std::string>> entryVec;
-  const auto& entrySet = vault_.GetEntries();
+  std::vector<std::pair<std::string, std::string>> entry_vec;
+  const auto& entry_set = vault_.GetEntries();
 
-  for (auto it = entrySet.begin(); it != entrySet.end(); it++)
-    entryVec.emplace_back(it->site, it->acc);
+  for (auto it = entry_set.begin(); it != entry_set.end(); it++)
+    entry_vec.emplace_back(it->site, it->acc);
 
-  list_gui_->LoadEntries(entryVec);
+  list_gui_->LoadEntries(entry_vec);
 }
