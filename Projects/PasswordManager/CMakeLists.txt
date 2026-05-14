@@ -110,13 +110,15 @@ target_link_libraries(PasswordManager-tests PRIVATE
 include(GoogleTest)
 
 if(WIN32)
-    gtest_discover_tests(PasswordManager-tests
-        PROPERTIES ENVIRONMENT "PATH=$<TARGET_FILE_DIR:Qt6::Core>;$ENV{PATH}"
-        DISCOVERY_MODE PRE_TEST
-    )
-else()
-    gtest_discover_tests(PasswordManager-tests)
+    add_custom_command(TARGET PasswordManager-tests POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:PasswordManager-tests>
+            $<TARGET_FILE_DIR:PasswordManager-tests>
+        COMMAND_EXPAND_LISTS
+        COMMENT "Copying runtime DLLs next to PasswordManager-tests")
 endif()
+
+gtest_discover_tests(PasswordManager-tests)
 
 file(GLOB_RECURSE ALL_CXX_SOURCE_FILES
      CONFIGURE_DEPENDS
