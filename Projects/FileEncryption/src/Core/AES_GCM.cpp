@@ -15,7 +15,7 @@
 
 #include <cstring>
 
-AES_GCM::AES_GCM() {
+AesGcm::AesGcm() {
   for (int i = 0; i < kBuffNum; i++) {
     memset(buff_[i], 0, sizeof(uint8_t) * kBuffSize * kBlockSize);
   }
@@ -26,7 +26,7 @@ AES_GCM::AES_GCM() {
   Lock(key_, kKeySize);
 }
 
-AES_GCM::~AES_GCM() {
+AesGcm::~AesGcm() {
   if (write_res_.valid()) {
     write_res_.wait();
   }
@@ -47,7 +47,7 @@ AES_GCM::~AES_GCM() {
   }
 }
 
-int AES_GCM::ReadFile(void* buff, int size) {
+int AesGcm::ReadFile(void* buff, int size) {
   if (fread(buff, sizeof(uint8_t), size, src_file_) != size) {
     // LCOV_EXCL_START
     ReportError("[File] Read failed - Cannot read source file data\n");
@@ -58,7 +58,7 @@ int AES_GCM::ReadFile(void* buff, int size) {
   return 0;
 }
 
-int AES_GCM::WriteFile(const void* buff, int size) {
+int AesGcm::WriteFile(const void* buff, int size) {
   if (fwrite(buff, sizeof(uint8_t), size, dst_file_) != size) {
     // LCOV_EXCL_START
     if (ferror(dst_file_)) {
@@ -75,7 +75,7 @@ int AES_GCM::WriteFile(const void* buff, int size) {
   return 0;
 }
 
-int AES_GCM::ReportProgress() {
+int AesGcm::ReportProgress() {
   if (pcb_) {
     uint64_t perc = src_size_ > 0 ? progress_ * 100 / src_size_ : 100;
 
@@ -92,7 +92,7 @@ int AES_GCM::ReportProgress() {
   return 0;
 }
 
-void AES_GCM::ReportError(const char* msg) {
+void AesGcm::ReportError(const char* msg) {
   if (!ecb_) {
     return;
   }

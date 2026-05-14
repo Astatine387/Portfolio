@@ -6,12 +6,12 @@
 
 #include "Worker.h"
 
-void Worker::requestCancel() {
+void Worker::RequestCancel() {
   should_cancel_.store(true, std::memory_order_release);
 }
 
-void Worker::work() {
-  AES_GCM aes;
+void Worker::Work() {
+  AesGcm aes;
   QString msg;
   bool should_delete = false;
   int res;
@@ -28,7 +28,7 @@ void Worker::work() {
       status = QString("Decrypting... %1%\n").arg(perc);
     }
 
-    emit progressUpdate(perc, status);
+    emit ProgressUpdate(perc, status);
 
     *cancelled = should_cancel_.load(std::memory_order_acquire);
   });
@@ -64,5 +64,5 @@ void Worker::work() {
     }
   }
 
-  emit finished(msg, should_delete);
+  emit Finished(msg, should_delete);
 }

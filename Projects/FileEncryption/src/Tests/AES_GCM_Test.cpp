@@ -16,7 +16,7 @@
  * @class   AES_GCM_Test
  * @brief   Test fixture for AES_GCM encryption/decryption tests
  */
-class AES_GCM_Test : public ::testing::Test {
+class TEST : public ::testing::Test {
  protected:
   QString src_path_ = "test_src.tmp";
   QString enc_path_ = "test_enc.tmp";
@@ -80,8 +80,8 @@ class AES_GCM_Test : public ::testing::Test {
  * @brief   Verify encryption and decryption works with no error, and decrypted data is identical to
  * original
  */
-TEST_F(AES_GCM_Test, EncryptDecryptBasic) {
-  AES_GCM aes;
+TEST_F(TEST, EncryptDecryptBasic) {
+  AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig, copy;
   const char* data = "Hello, world!";
@@ -144,8 +144,8 @@ TEST_F(AES_GCM_Test, EncryptDecryptBasic) {
 /**
  * @brief   Verify decryption fails with wrong password
  */
-TEST_F(AES_GCM_Test, WrongPasswordFails) {
-  AES_GCM aes;
+TEST_F(TEST, WrongPasswordFails) {
+  AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig;
   const char* data = "Hello, world!";
@@ -196,8 +196,8 @@ TEST_F(AES_GCM_Test, WrongPasswordFails) {
 /**
  * @brief   Verify tampered ciphertext fails decryption
  */
-TEST_F(AES_GCM_Test, TamperedCipherFails) {
-  AES_GCM aes;
+TEST_F(TEST, TamperedCipherFails) {
+  AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig, copy;
   const char* data = "Hello, world!";
@@ -260,8 +260,8 @@ TEST_F(AES_GCM_Test, TamperedCipherFails) {
 /**
  * @brief   Verify empty file can be encrypted and decrypted
  */
-TEST_F(AES_GCM_Test, EmptyFile) {
-  AES_GCM aes;
+TEST_F(TEST, EmptyFile) {
+  AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig, copy;
   const char* pw = "password";
@@ -315,8 +315,8 @@ TEST_F(AES_GCM_Test, EmptyFile) {
 /**
  * @brief   Verify file with exact buffer size works correctly
  */
-TEST_F(AES_GCM_Test, ExactBuffSizeFile) {
-  AES_GCM aes;
+TEST_F(TEST, ExactBuffSizeFile) {
+  AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig, copy;
   const char* pw = "password";
@@ -372,8 +372,8 @@ TEST_F(AES_GCM_Test, ExactBuffSizeFile) {
 /**
  * @brief   Verify arbitrary sized file works correctly
  */
-TEST_F(AES_GCM_Test, ArbitrarySizeFile) {
-  AES_GCM aes;
+TEST_F(TEST, ArbitrarySizeFile) {
+  AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig, copy;
   const char* pw = "password";
@@ -433,8 +433,8 @@ TEST_F(AES_GCM_Test, ArbitrarySizeFile) {
 /**
  * @brief   Verify progress callback is invoked during encryption
  */
-TEST_F(AES_GCM_Test, ProgressCallback) {
-  AES_GCM aes;
+TEST_F(TEST, ProgressCallback) {
+  AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig;
   const char* pw = "password";
@@ -475,8 +475,8 @@ TEST_F(AES_GCM_Test, ProgressCallback) {
 /**
  * @brief   Verify error callback is invoked on failure
  */
-TEST_F(AES_GCM_Test, ErrorCallback) {
-  AES_GCM aes;
+TEST_F(TEST, ErrorCallback) {
+  AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig;
   bool b = false;
@@ -532,8 +532,8 @@ TEST_F(AES_GCM_Test, ErrorCallback) {
 /**
  * @brief   Verify cancellation works
  */
-TEST_F(AES_GCM_Test, Cancellation) {
-  AES_GCM aes;
+TEST_F(TEST, Cancellation) {
+  AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig;
   const char* pw = "password";

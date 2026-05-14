@@ -37,25 +37,25 @@ class Worker : public QObject {
    * @param   msg             Result message
    * @param   shouldDelete    Destination file deletion flag value
    */
-  void finished(QString msg, bool should_delete);
+  void Finished(QString msg, bool should_delete);
 
   /**
    * @brief   Update progress bar and status message
    * @param   perc     Progress percentage
    * @param   status  Status message
    */
-  void progressUpdate(int perc, QString status);
+  void ProgressUpdate(int perc, QString status);
 
  public slots:
   /**
    * @brief   Cancel the process
    */
-  void requestCancel();
+  void RequestCancel();
 
   /**
    * @brief   Perform encryption/decryption
    */
-  void work();
+  void Work();
 
  private:
   FILE *src_file_ = nullptr, *dst_file_ = nullptr;

@@ -42,7 +42,7 @@ class PWLineEdit : public QWidget {
   /**
    * @brief   Signal when toggle masking button clicked
    */
-  void toggleMask();
+  void ToggleMask();
 
  private:
   QHBoxLayout* hbox_;

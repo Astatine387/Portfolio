@@ -50,18 +50,18 @@ class ProgressGUI : public QWidget {
   /**
    * @brief   Signal when cancel button clicked
    */
-  void cancelRequested();
+  void CancelRequested();
 
   /**
    * @brief   Signal when close button clicked
    */
-  void closeRequested();
+  void CloseRequested();
 
  private slots:
   /**
    * @brief   Set cancellation flag and emit cancellation signal
    */
-  void onCancelClicked();
+  void OnCancelClicked();
 
  private:
   QLabel* prg_label_;

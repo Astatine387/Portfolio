@@ -53,7 +53,7 @@ BENCHMARK_DEFINE_F(Benchmark, Encrypt)(benchmark::State& state) {
   Create(size);
 
   for (auto _ : state) {
-    AES_GCM aes;
+    AesGcm aes;
     FILE *src = nullptr, *dst = nullptr;
 
     OpenFile(&src, src_path_, "rb");
@@ -85,7 +85,7 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
 
   /* Encrypt */
 
-  AES_GCM aes;
+  AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
 
   OpenFile(&src, src_path_, "rb");
@@ -104,7 +104,7 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
   /* Decrypt and test performance */
 
   for (auto _ : state) {
-    AES_GCM aes;
+    AesGcm aes;
     FILE *src = nullptr, *dst = nullptr;
 
     OpenFile(&src, enc_path_, "rb");
@@ -129,7 +129,7 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
 /**
  * @brief   Argon2id benchmark
  */
-static void BM_Argon2id(benchmark::State& state) {
+static void BenchArgon2id(benchmark::State& state) {
   uint8_t salt[kSaltSize], key[kKeySize];
   const char* pw = "password";
   int psize = strlen(pw);
@@ -151,6 +151,6 @@ BENCHMARK_REGISTER_F(Benchmark, Decrypt)
     ->Arg(FILE_SIZE)  // 4 GiB
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK(BM_Argon2id)->Unit(benchmark::kMillisecond)->Iterations(10);
+BENCHMARK(BenchArgon2id)->Unit(benchmark::kMillisecond)->Iterations(10);
 
 BENCHMARK_MAIN();

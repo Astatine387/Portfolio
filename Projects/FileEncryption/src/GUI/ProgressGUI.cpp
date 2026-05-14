@@ -44,8 +44,8 @@ ProgressGUI::ProgressGUI(QWidget* parent) : QWidget(parent), cancelled_(false) {
 
   /* Connect cancel/close functions to each button */
 
-  connect(cancel_btn_, &QPushButton::clicked, this, &ProgressGUI::onCancelClicked);
-  connect(close_btn_, &QPushButton::clicked, this, &ProgressGUI::closeRequested);
+  connect(cancel_btn_, &QPushButton::clicked, this, &ProgressGUI::OnCancelClicked);
+  connect(close_btn_, &QPushButton::clicked, this, &ProgressGUI::CloseRequested);
 }
 
 bool ProgressGUI::IsCancelled() {
@@ -63,7 +63,7 @@ void ProgressGUI::ShowResult(const QString& msg) {
   close_btn_->show();
 }
 
-void ProgressGUI::onCancelClicked() {
+void ProgressGUI::OnCancelClicked() {
   cancelled_ = true;
-  emit cancelRequested();
+  emit CancelRequested();
 }

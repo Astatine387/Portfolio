@@ -33,8 +33,8 @@ MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
 
   /* Connect functions to buttons */
 
-  connect(input_gui_, &InputGUI::startRequested, this, &MainGUI::onStartRequested);
-  connect(prg_gui_, &ProgressGUI::closeRequested, this, &QWidget::close);
+  connect(input_gui_, &InputGUI::StartRequested, this, &MainGUI::OnStartRequested);
+  connect(prg_gui_, &ProgressGUI::CloseRequested, this, &QWidget::close);
 }
 
 MainGUI::~MainGUI() {
@@ -49,7 +49,7 @@ bool MainGUI::IsInputValid() {
   return user_input_.valid;
 }
 
-void MainGUI::onStartRequested(const UserInput& input) {
+void MainGUI::OnStartRequested(const UserInput& input) {
   /* Copy user input parameters */
 
   user_input_.valid = input.valid;
@@ -71,13 +71,13 @@ void MainGUI::onStartRequested(const UserInput& input) {
 
     /* Connect signals */
 
-    connect(thread_, &QThread::started, worker_, &Worker::work);
-    connect(worker_, &Worker::progressUpdate, this, &MainGUI::onProgressUpdated);
-    connect(worker_, &Worker::finished, this, &MainGUI::onWorkFinished);
-    connect(prg_gui_, &ProgressGUI::cancelRequested, worker_, &Worker::requestCancel,
+    connect(thread_, &QThread::started, worker_, &Worker::Work);
+    connect(worker_, &Worker::ProgressUpdate, this, &MainGUI::OnProgressUpdated);
+    connect(worker_, &Worker::Finished, this, &MainGUI::OnWorkFinished);
+    connect(prg_gui_, &ProgressGUI::CancelRequested, worker_, &Worker::RequestCancel,
             Qt::DirectConnection);
-    connect(worker_, &Worker::finished, thread_, &QThread::quit);
-    connect(thread_, &QThread::finished, this, &MainGUI::onThreadFinished);
+    connect(worker_, &Worker::Finished, thread_, &QThread::quit);
+    connect(thread_, &QThread::finished, this, &MainGUI::OnThreadFinished);
 
     /* Start worker thread */
 
@@ -85,20 +85,20 @@ void MainGUI::onStartRequested(const UserInput& input) {
   }
 }
 
-void MainGUI::onProgressUpdated(int perc, const QString& status) {
+void MainGUI::OnProgressUpdated(int perc, const QString& status) {
   prg_gui_->Update(perc, status);
 }
 
-void MainGUI::onWorkFinished(const QString& msg, bool should_delete) {
+void MainGUI::OnWorkFinished(const QString& msg, bool should_delete) {
   prg_gui_->ShowResult(msg);
   this->should_delete_ = should_delete;
 }
 
-void MainGUI::onThreadFinished() {
+void MainGUI::OnThreadFinished() {
   Clean();
 }
 
-void MainGUI::onCloseRequested() {
+void MainGUI::OnCloseRequested() {
   close();
 }
 
@@ -138,7 +138,7 @@ int MainGUI::OpenFiles() {
 void MainGUI::Clean() {
   if (thread_ && thread_->isRunning()) {
     if (worker_) {
-      worker_->requestCancel();
+      worker_->RequestCancel();
     }
 
     thread_->quit();

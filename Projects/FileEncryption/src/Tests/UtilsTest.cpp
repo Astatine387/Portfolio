@@ -221,9 +221,9 @@ TEST(Argon2Test, EmptyPassword) {
  * @brief   Verify GetProcNum returns positive value
  */
 TEST(GetProcNumTest, ReturnPositive) {
-  int numProcs = GetProcNum();
+  int num_procs = GetProcNum();
 
-  EXPECT_GT(numProcs, 0);
+  EXPECT_GT(num_procs, 0);
 }
 
 /* ==================================================
@@ -337,7 +337,7 @@ class RemoveFileTest : public ::testing::Test {
   /**
    * @brief   Create a temporary test file
    */
-  void createTestFile() {
+  void CreateTestFile() {
     FILE* file = nullptr;
 
     OpenFile(&file, path_, "wb");
@@ -352,13 +352,13 @@ class RemoveFileTest : public ::testing::Test {
    * @param   path    File path to check
    * @return  true if file exists
    */
-  bool fileExists(const char* path) {
-    FILE* file_ = nullptr;
+  bool FileExists(const char* path) {
+    FILE* file = nullptr;
 
-    OpenFile(&file_, path, "rb");
+    OpenFile(&file, path, "rb");
 
-    if (file_) {
-      fclose(file_);
+    if (file) {
+      fclose(file);
       return true;
     }
 
@@ -375,14 +375,14 @@ class RemoveFileTest : public ::testing::Test {
  * @brief   Verify RemoveFile deletes existing file
  */
 TEST_F(RemoveFileTest, DeleteExisting) {
-  createTestFile();
+  CreateTestFile();
 
-  ASSERT_TRUE(fileExists(path_));
+  ASSERT_TRUE(FileExists(path_));
 
   int res = RemoveFile(path_);
 
   EXPECT_EQ(res, 0);
-  EXPECT_FALSE(fileExists(path_));
+  EXPECT_FALSE(FileExists(path_));
 }
 
 /**

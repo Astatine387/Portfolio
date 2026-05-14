@@ -11,7 +11,7 @@ InputGUI::InputGUI(QWidget* parent) : QWidget(parent) {
 
   mode_btn_ = new ModeButton;
   src_line_ = new QLineEdit;
-  dst_line = new QLineEdit;
+  dst_line_ = new QLineEdit;
   pw_line_ = new PWLineEdit;
   start_btn_ = new QPushButton("Start");
   err_msg_ = new QLabel;
@@ -21,7 +21,7 @@ InputGUI::InputGUI(QWidget* parent) : QWidget(parent) {
   /* Set placeholder text that indicates each field */
 
   src_line_->setPlaceholderText("Source File");
-  dst_line->setPlaceholderText("Destination File");
+  dst_line_->setPlaceholderText("Destination File");
 
   /* Put start button and error message in the same line */
 
@@ -35,7 +35,7 @@ InputGUI::InputGUI(QWidget* parent) : QWidget(parent) {
 
   vbox_->addWidget(mode_btn_);
   vbox_->addWidget(src_line_);
-  vbox_->addWidget(dst_line);
+  vbox_->addWidget(dst_line_);
   vbox_->addWidget(pw_line_);
   vbox_->addLayout(hbox_);
   vbox_->addStretch();
@@ -46,14 +46,14 @@ InputGUI::InputGUI(QWidget* parent) : QWidget(parent) {
 
   /* Connect encryption/decryption start function to button */
 
-  connect(start_btn_, &QPushButton::clicked, this, &InputGUI::onStartClicked);
+  connect(start_btn_, &QPushButton::clicked, this, &InputGUI::OnStartClicked);
 }
 
 void InputGUI::SetErrMsg(const QString& msg) {
   err_msg_->setText(msg);
 }
 
-void InputGUI::onStartClicked() {
+void InputGUI::OnStartClicked() {
   UserInput input;
 
   if ((input.mode = mode_btn_->GetMode()) == -1) {
@@ -66,7 +66,7 @@ void InputGUI::onStartClicked() {
     return;
   }
 
-  if ((input.dst = dst_line->text()).isEmpty()) {
+  if ((input.dst = dst_line_->text()).isEmpty()) {
     err_msg_->setText("Destination file is not input");
     return;
   }
@@ -82,5 +82,5 @@ void InputGUI::onStartClicked() {
 
   input.valid = true;
 
-  emit startRequested(input);
+  emit StartRequested(input);
 }

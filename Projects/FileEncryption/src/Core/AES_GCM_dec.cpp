@@ -7,7 +7,7 @@
 #include "Core/AES_GCM.h"
 #include "Utils/library.h"
 
-int AES_GCM::Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
+int AesGcm::Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
   src_file_ = src;
   dst_file_ = dst;
   cancelled_ = false;
@@ -37,7 +37,7 @@ int AES_GCM::Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
   return 0;
 }
 
-int AES_GCM::DecryptInit(const char* pw, size_t plen) {
+int AesGcm::DecryptInit(const char* pw, size_t plen) {
   /* Clear existing context */
 
   if (ctx_) {
@@ -123,7 +123,7 @@ int AES_GCM::DecryptInit(const char* pw, size_t plen) {
   return 0;
 }
 
-int AES_GCM::DecryptTag() {
+int AesGcm::DecryptTag() {
   uint8_t tag[kTagSize];
 
   if (Seek(src_file_, -kTagSize, SEEK_END)) {
@@ -157,7 +157,7 @@ int AES_GCM::DecryptTag() {
   return 0;
 }
 
-int AES_GCM::DecryptBuff(void* src, void* dst, int srclen) {
+int AesGcm::DecryptBuff(void* src, void* dst, int srclen) {
   int dstlen;
 
   if (EVP_DecryptUpdate(ctx_, static_cast<unsigned char*>(dst), &dstlen,
@@ -178,7 +178,7 @@ int AES_GCM::DecryptBuff(void* src, void* dst, int srclen) {
   return 0;
 }
 
-int AES_GCM::DecryptBatch() {
+int AesGcm::DecryptBatch() {
   int cur = 0;
 
   while (progress_ + kBuffSize * kBlockSize <= src_size_) {
@@ -235,7 +235,7 @@ int AES_GCM::DecryptBatch() {
   return 0;
 }
 
-int AES_GCM::DecryptRemain() {
+int AesGcm::DecryptRemain() {
   int crs = 0, rem = src_size_ % (kBuffSize * kBlockSize);
 
   if (ReadFile(buff_[0], rem)) {
@@ -276,7 +276,7 @@ int AES_GCM::DecryptRemain() {
   return 0;
 }
 
-int AES_GCM::DecryptFinal() {
+int AesGcm::DecryptFinal() {
   uint8_t final[kBlockSize];
   int final_len;
 

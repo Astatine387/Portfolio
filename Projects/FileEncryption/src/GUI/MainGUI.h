@@ -51,31 +51,31 @@ class MainGUI : public QWidget {
    * @brief	Start encryption/decryption process
    * @param   input   User input parameters
    */
-  void onStartRequested(const UserInput& input);
+  void OnStartRequested(const UserInput& input);
 
   /**
    * @brief	Update progress bar and status message
    * @param   perc    Progress percentage
    * @param   status  Status message
    */
-  void onProgressUpdated(int perc, const QString& status);
+  void OnProgressUpdated(int perc, const QString& status);
 
   /**
    * @brief	Show result and set deletion flag
    * @param   msg             Result message
    * @param   shouldDelete    Destination file deletion flag value
    */
-  void onWorkFinished(const QString& msg, bool should_delete);
+  void OnWorkFinished(const QString& msg, bool should_delete);
 
   /**
    * @brief	Clean resources on worker thread finished
    */
-  void onThreadFinished();
+  void OnThreadFinished();
 
   /**
    * @brief	Clean resources on close button clicked
    */
-  void onCloseRequested();
+  void OnCloseRequested();
 
  private:
   FILE *src_file_ = nullptr, *dst_file_ = nullptr;

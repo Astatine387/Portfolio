@@ -36,7 +36,7 @@ PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
 
   /* Connect masking toggle function to button */
 
-  connect(mask_btn_, &QPushButton::clicked, this, &PWLineEdit::toggleMask);
+  connect(mask_btn_, &QPushButton::clicked, this, &PWLineEdit::ToggleMask);
 
   setLayout(hbox_);
 }
@@ -59,7 +59,7 @@ void PWLineEdit::Extract(Password& pw) {
   pw_line_->clear();
 }
 
-void PWLineEdit::toggleMask() {
+void PWLineEdit::ToggleMask() {
   if (pw_line_->echoMode() == QLineEdit::Password) {
     pw_line_->setEchoMode(QLineEdit::Normal);
     mask_btn_->setText("Hide");

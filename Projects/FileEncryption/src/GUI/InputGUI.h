@@ -54,19 +54,19 @@ class InputGUI : public QWidget {
    * @brief   Signal when start button clicked
    * @param   input   User inputs
    */
-  void startRequested(const UserInput& input);
+  void StartRequested(const UserInput& input);
 
  private slots:
   /**
    * @brief   Check the user input parameters are valid and start process
    */
-  void onStartClicked();
+  void OnStartClicked();
 
  private:
   ModeButton* mode_btn_;
   PWLineEdit* pw_line_;
   QLineEdit* src_line_;  // Source file input field
-  QLineEdit* dst_line;   // Destination file input field
+  QLineEdit* dst_line_;  // Destination file input field
   QPushButton* start_btn_;
   QLabel* err_msg_;    // Label to display error messages
   QHBoxLayout* hbox_;  // Layout for start button and error message
