@@ -301,15 +301,15 @@ TEST(EntryTest, DeserializationBoundaryCheck) {
 
   /* Buffer truncated before password length */
 
-  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() +
-         sizeof(uint32_t) - 1;
+  size =
+      sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() + sizeof(uint32_t) - 1;
 
   EXPECT_EQ(dst.Deser(vec.data(), size), 0);
 
   /* Buffer truncated before password length */
 
-  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() +
-         sizeof(uint32_t) + src.pw.GetSize() - 1;
+  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() + sizeof(uint32_t) +
+         src.pw.GetSize() - 1;
 
   EXPECT_EQ(dst.Deser(vec.data(), size), 0);
 }
