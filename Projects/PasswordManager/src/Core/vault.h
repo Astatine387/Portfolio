@@ -1,5 +1,5 @@
 /**
- * @file	Vault.h
+ * @file	vault.h
  * @brief	Manages password vaults
  * @author	Astatine387
  */

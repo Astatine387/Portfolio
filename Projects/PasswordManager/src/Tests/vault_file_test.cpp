@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include "Core/Vault.h"
+#include "Core/vault.h"
 #include "Utils/library.h"
 
 /**

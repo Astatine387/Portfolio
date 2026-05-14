@@ -4,7 +4,7 @@
  * @author	Astatine387
  */
 
-#include "Core/Vault.h"
+#include "Core/vault.h"
 
 int Vault::CreateEntry(const std::string& site, const std::string& acc,
                        const Password& pw) {

@@ -4,7 +4,7 @@
  * @author	Astatine387
  */
 
-#include "Core/Vault.h"
+#include "Core/vault.h"
 #include "Utils/library.h"
 
 int Vault::NewVault(const QString& path) {
