@@ -32,36 +32,36 @@ if(NOT ARGON2_LIBRARY OR NOT ARGON2_INCLUDE_DIR)
 endif()
 
 set(LIB_SOURCES
-    src/Core/AES_GCM.cpp
-    src/Core/AES_GCM_dec.cpp
-    src/Core/AES_GCM_enc.cpp
-    src/Core/Entry.cpp
-    src/Core/Vault.cpp
-    src/Core/Vault_file.cpp
-    src/Core/Vault_entry.cpp
-    src/GUI/ChangePWGUI.cpp
-    src/GUI/EntryGUI.cpp
-    src/GUI/ListGUI.cpp
-    src/GUI/LoginGUI.cpp
-    src/GUI/MainGUI.cpp
-    src/GUI/PasswordGUI.cpp
-    src/GUI/PWLineEdit.cpp
+    src/Core/aes_gcm.cpp
+    src/Core/aes_gcm_dec.cpp
+    src/Core/aes_gcm_enc.cpp
+    src/Core/entry.cpp
+    src/Core/vault.cpp
+    src/Core/vault_file.cpp
+    src/Core/vault_entry.cpp
+    src/GUI/change_pw_gui.cpp
+    src/GUI/entry_gui.cpp
+    src/GUI/list_gui.cpp
+    src/GUI/login_gui.cpp
+    src/GUI/main_gui.cpp
+    src/GUI/password_gui.cpp
+    src/GUI/pw_line_edit.cpp
     src/Utils/library.cpp
-    src/Utils/Password.cpp
+    src/Utils/password.cpp
 )
 
 set(HEADERS
     src/Common/constants.h
-    src/Core/AES_GCM.h
-    src/Core/Entry.h
-    src/Core/Vault.h
-    src/GUI/ChangePWGUI.h
-    src/GUI/EntryGUI.h
-    src/GUI/ListGUI.h
-    src/GUI/LoginGUI.h
-    src/GUI/MainGUI.h
-    src/GUI/PasswordGUI.h
-    src/GUI/PWLineEdit.h
+    src/Core/aes_gcm.h
+    src/Core/entry.h
+    src/Core/vault.h
+    src/GUI/change_pw_gui.h
+    src/GUI/entry_gui.h
+    src/GUI/list_gui.h
+    src/GUI/login_gui.h
+    src/GUI/main_gui.h
+    src/GUI/password_gui.h
+    src/GUI/pw_line_edit.h
     src/Utils/library.h
     src/Utils/Password.h
 )
@@ -91,12 +91,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE PasswordManager-lib)
 enable_testing()
 
 set(TEST_SOURCES
-    src/Tests/AES_GCM_Test.cpp
-    src/Tests/EntryTest.cpp
-    src/Tests/PasswordTest.cpp
-    src/Tests/UtilsTest.cpp
-    src/Tests/VaultEntryTest.cpp
-    src/Tests/VaultFileTest.cpp
+    src/Tests/aes_gcm_test.cpp
+    src/Tests/entry_test.cpp
+    src/Tests/password_test.cpp
+    src/Tests/utils_test.cpp
+    src/Tests/vault_entry_test.cpp
+    src/Tests/vault_file_test.cpp
 )
 
 add_executable(PasswordManager-tests ${TEST_SOURCES})

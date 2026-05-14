@@ -102,21 +102,21 @@ Source
 │   ├── constants.h        # Constant values
 │   └── main.cpp           # Application entry point
 ├── Core
-│   ├── AES_GCM.h/cpp      # AES-GCM engine
-│   ├── AES_GCM_enc.cpp    # Encryption implementation
-│   ├── AES_GCM_dec.cpp    # Decryption implementation
-│   ├── Entry.h/cpp        # Password entry struct with serialization
-│   ├── Vault.cpp          # Vault basic functions
-│   ├── Vault_file.cpp     # Vault file management (new, open, save)
-│   └── Vault_entry.cpp    # Vault entry CRUD operations
+│   ├── aes_gcm.h/cpp      # AES-GCM engine
+│   ├── aes_gcm_enc.cpp    # Encryption implementation
+│   ├── aes_gcm_dec.cpp    # Decryption implementation
+│   ├── entry.h/cpp        # Password entry struct with serialization
+│   ├── vault.cpp          # Vault basic functions
+│   ├── vault_file.cpp     # Vault file management (new, open, save)
+│   └── vault_entry.cpp    # Vault entry CRUD operations
 ├── GUI
-│   ├── MainGUI.h/cpp      # Main workflow controller
-│   ├── LoginGUI.h/cpp     # Vault file selection
-│   ├── PasswordGUI.h/cpp  # Master password input
-│   ├── ListGUI.h/cpp      # Entry list with search line
-│   ├── EntryGUI.h/cpp     # Entry add/edit dialog with password generator
-│   ├── ChangePWGUI.h/cpp  # Master password change dialog
-│   └── PWLineEdit.h/cpp   # Password input component with show/hide toggle
+│   ├── main_gui.h/cpp      # Main workflow controller
+│   ├── login_gui.h/cpp     # Vault file selection
+│   ├── password_gui.h/cpp  # Master password input
+│   ├── list_gui.h/cpp      # Entry list with search line
+│   ├── entry_gui.h/cpp     # Entry add/edit dialog with password generator
+│   ├── change_pw_gui.h/cpp  # Master password change dialog
+│   └── pw_line_edit.h/cpp   # Password input component with show/hide toggle
 └── Utils
     ├── Password.h/cpp     # Secure password container
     └── library.h/cpp        # Utility functions
@@ -192,28 +192,28 @@ cmake --build build
 
 | File                 | Tracked Lines | Covered | Partial | Missed | Coverage % |
 | -------------------- | ------------- | ------- | ------- | ------ | ---------- |
-| Core/AES_GCM.cpp     | 22            | 18      | 0       | 4      | 81.82%     |
-| Core/AES_GCM.h       | 2             | 2       | 0       | 0      | 100.00%    |
-| Core/AES_GCM_dec.cpp | 38            | 38      | 0       | 0      | 100.00%    |
-| Core/AES_GCM_enc.cpp | 38            | 38      | 0       | 0      | 100.00%    |
-| Core/Entry.cpp       | 41            | 41      | 0       | 0      | 100.00%    |
-| Core/Entry.h         | 3             | 3       | 0       | 0      | 100.00%    |
-| Core/Vault.cpp       | 28            | 28      | 0       | 0      | 100.00%    |
-| Core/Vault.h         | 2             | 2       | 0       | 0      | 100.00%    |
-| Core/Vault_entry.cpp | 32            | 30      | 0       | 2      | 93.75%     |
-| Core/Vault_file.cpp  | 101           | 95      | 0       | 6      | 94.06%     |
-| Utils/Password.cpp   | 33            | 33      | 0       | 0      | 100.00%    |
+| Core/aes_gcm.cpp     | 22            | 18      | 0       | 4      | 81.82%     |
+| Core/aes_gcm.h       | 2             | 2       | 0       | 0      | 100.00%    |
+| Core/aes_gcm_dec.cpp | 38            | 38      | 0       | 0      | 100.00%    |
+| Core/aes_gcm_enc.cpp | 38            | 38      | 0       | 0      | 100.00%    |
+| Core/entry.cpp       | 41            | 41      | 0       | 0      | 100.00%    |
+| Core/entry.h         | 3             | 3       | 0       | 0      | 100.00%    |
+| Core/vault.cpp       | 28            | 28      | 0       | 0      | 100.00%    |
+| Core/vault.h         | 2             | 2       | 0       | 0      | 100.00%    |
+| Core/vault_entry.cpp | 32            | 30      | 0       | 2      | 93.75%     |
+| Core/vault_file.cpp  | 101           | 95      | 0       | 6      | 94.06%     |
+| Utils/password.cpp   | 33            | 33      | 0       | 0      | 100.00%    |
 | Utils/Password.h     | 21            | 21      | 0       | 0      | 100.00%    |
 | Utils/library.cpp    | 53            | 51      | 0       | 2      | 96.23%     |
 
 | Module   | Test File            | Test Cases                                                                 |
 | -------- | -------------------- | -------------------------------------------------------------------------- |
-| AES_GCM  | `AES_GCM_Test.cpp`   | Encrypt/Decrypt, Integrity Check, Edge Cases, Callbacks                    |
-| Entry    | `EntryTest.cpp`      | Size Calculation, Serialization/Deserialization, Comparator, Set Insertion |
-| Password | `PasswordTest.cpp`   | RAII, Copy/Move Semantics, Constant-time Compare, Memory Safety, Max Size  |
-| Utils    | `UtilsTest.cpp`      | File I/O, Delete, Existence Check, Key Derivation, CSPRNG, Memory Wipe     |
-| Vault    | `VaultEntryTest.cpp` | Create, Update, Delete, Duplicate Check, Accessor                          |
-| Vault    | `VaultFileTest.cpp`  | New Vault, Open, Save, Round-trip, Password Change, Error Handling         |
+| AES_GCM  | `aes_gcm_test.cpp`   | Encrypt/Decrypt, Integrity Check, Edge Cases, Callbacks                    |
+| Entry    | `entry_test.cpp`      | Size Calculation, Serialization/Deserialization, Comparator, Set Insertion |
+| Password | `password_test.cpp`   | RAII, Copy/Move Semantics, Constant-time Compare, Memory Safety, Max Size  |
+| Utils    | `utils_test.cpp`      | File I/O, Delete, Existence Check, Key Derivation, CSPRNG, Memory Wipe     |
+| Vault    | `vault_entry_test.cpp` | Create, Update, Delete, Duplicate Check, Accessor                          |
+| Vault    | `vault_file_test.cpp`  | New Vault, Open, Save, Round-trip, Password Change, Error Handling         |
 
 **Note:** GUI files, error messages for external libraries and system calls are excluded from tests.
 

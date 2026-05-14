@@ -32,30 +32,30 @@ if(NOT ARGON2_LIBRARY OR NOT ARGON2_INCLUDE_DIR)
 endif()
 
 set(LIB_SOURCES
-    src/Core/AES_GCM.cpp
-    src/Core/AES_GCM_dec.cpp
-    src/Core/AES_GCM_enc.cpp
-    src/Core/Worker.cpp
-    src/GUI/MainGUI.cpp
-    src/GUI/InputGUI.cpp
-    src/GUI/ProgressGUI.cpp
-    src/GUI/ModeButton.cpp
-    src/GUI/PWLineEdit.cpp
-    src/Utils/Password.cpp
+    src/Core/aes_gcm.cpp
+    src/Core/aes_gcm_dec.cpp
+    src/Core/aes_gcm_enc.cpp
+    src/Core/worker.cpp
+    src/GUI/input_gui.cpp
+    src/GUI/main_gui.cpp
+    src/GUI/progress_gui.cpp
+    src/GUI/mode_button.cpp
+    src/GUI/pw_line_edit.cpp
+    src/Utils/password.cpp
     src/Utils/library.cpp
 )
 
 set(HEADERS
     src/Common/constants.h
-    src/Core/AES_GCM.h
-    src/Core/Worker.h
-    src/GUI/MainGUI.h
-    src/GUI/InputGUI.h
-    src/GUI/ProgressGUI.h
-    src/GUI/ModeButton.h
-    src/GUI/PWLineEdit.h
+    src/Core/aes_gcm.h
+    src/Core/worker.h
+    src/GUI/input_gui.h
+    src/GUI/main_gui.h
+    src/GUI/progress_gui.h
+    src/GUI/mode_button.h
+    src/GUI/pw_line_edit.h
     src/Utils/library.h
-    src/Utils/Password.h
+    src/Utils/password.h
 )
 
 add_library(FileEncryption-lib STATIC ${LIB_SOURCES} ${HEADERS})
@@ -83,9 +83,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE FileEncryption-lib)
 enable_testing()
 
 set(TEST_SOURCES
-    src/Tests/AES_GCM_Test.cpp
-    src/Tests/PasswordTest.cpp
-    src/Tests/UtilsTest.cpp
+    src/Tests/aes_gcm_test.cpp
+    src/Tests/password_test.cpp
+    src/Tests/utils_test.cpp
 )
 
 add_executable(FileEncryption-tests ${TEST_SOURCES})
@@ -112,9 +112,8 @@ gtest_discover_tests(FileEncryption-tests)
 find_package(benchmark CONFIG QUIET)
 
 if(benchmark_FOUND)
-
     set(BENCH_SOURCES
-        src/Benchmark/Benchmark.cpp
+        src/Benchmark/benchmark.cpp
     )
 
     add_executable(FileEncryption-bench ${BENCH_SOURCES})
@@ -123,7 +122,6 @@ if(benchmark_FOUND)
         benchmark::benchmark
         benchmark::benchmark_main
     )
-
 endif()
 
 file(GLOB_RECURSE ALL_CXX_SOURCE_FILES

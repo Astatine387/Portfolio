@@ -75,18 +75,18 @@ Source
 │   ├── constants.h        # Constant values
 │   └── main.cpp           # Application entry point
 ├── Core
-│   ├── AES_GCM.h/cpp      # AES-GCM engine
-│   ├── AES_GCM_enc.cpp    # Encryption implementation
-│   ├── AES_GCM_dec.cpp    # Decryption implementation
-│   └── Worker.h/cpp       # Asynchronous worker thread
+│   ├── aes_gcm.h/cpp      # AES-GCM engine
+│   ├── aes_gcm_enc.cpp    # Encryption implementation
+│   ├── aes_gcm_dec.cpp    # Decryption implementation
+│   └── worker.h/cpp       # Asynchronous worker thread
 ├── GUI
-│   ├── MainGUI.h/cpp      # Main workflow controller
-│   ├── InputGUI.h/cpp     # Source, destination, and password input
-│   ├── ProgressGUI.h/cpp  # Progress tracking
-│   ├── ModeButton.h/cpp   # Encrypt/Decrypt mode selection widget
-│   └── PWLineEdit.h/cpp   # Password input widget
+│   ├── input_gui.h/cpp      # Main workflow controller
+│   ├── input_gui.h/cpp     # Source, destination, and password input
+│   ├── progress_gui.h/cpp  # Progress tracking
+│   ├── mode_button.h/cpp   # Encrypt/Decrypt mode selection widget
+│   └── pw_line_edit.h/cpp   # Password input widget
 └── Utils
-    ├── Password.h/cpp     # Secure password container
+    ├── password.h/cpp     # Secure password container
     └── library.h.cpp      # Utility functions
 ```
 
@@ -157,19 +157,19 @@ cmake --build build
 
 | File                 | Tracked Lines | Covered | Partial | Missed | Coverage % |
 | -------------------- | ------------- | ------- | ------- | ------ | ---------- |
-| Core/AES_GCM.cpp     | 40            | 36      | 0       | 4      | 90.00%     |
-| Core/AES_GCM.h       | 4             | 4       | 0       | 0      | 100.00%    |
-| Core/AES_GCM_dec.cpp | 76            | 74      | 0       | 2      | 97.37%     |
-| Core/AES_GCM_enc.cpp | 74            | 72      | 0       | 2      | 97.30%     |
-| Utils/Password.cpp   | 23            | 23      | 0       | 0      | 100.00%    |
-| Utils/Password.h     | 21            | 21      | 0       | 0      | 100.00%    |
+| Core/aes_gcm.cpp     | 40            | 36      | 0       | 4      | 90.00%     |
+| Core/aes_gcm.h       | 4             | 4       | 0       | 0      | 100.00%    |
+| Core/aes_gcm_dec.cpp | 76            | 74      | 0       | 2      | 97.37%     |
+| Core/aes_gcm_enc.cpp | 74            | 72      | 0       | 2      | 97.30%     |
+| Utils/password.cpp   | 23            | 23      | 0       | 0      | 100.00%    |
+| Utils/password.h     | 21            | 21      | 0       | 0      | 100.00%    |
 | Utils/library.h      | 36            | 34      | 0       | 2      | 94.44%     |
 
 | Module   | Test File          | Test Cases                                                             |
 | -------- | ------------------ | ---------------------------------------------------------------------- |
-| AES_GCM  | `AES_GCM_Test.cpp` | Encrypt/Decrypt, Integrity Check, Edge Cases, Callbacks                |
-| Password | `PasswordTest.cpp` | RAII, Copy/Move Semantics, Memory Safety                               |
-| Utils    | `UtilsTest.cpp`    | File I/O, Delete, Existence Check, Key Derivation, CSPRNG, Memory Wipe |
+| AES_GCM  | `aes_gcm_test.cpp` | Encrypt/Decrypt, Integrity Check, Edge Cases, Callbacks                |
+| Password | `password_test.cpp` | RAII, Copy/Move Semantics, Memory Safety                               |
+| Utils    | `utils_test.cpp`    | File I/O, Delete, Existence Check, Key Derivation, CSPRNG, Memory Wipe |
 
 **Note:** GUI files, error messages for external libraries and system calls are excluded from tests.
 

@@ -78,13 +78,6 @@ class Password {
   }
 
   /**
-   * @brief	Constant-time comparison with another password
-   * @param	other	Password to compare
-   * @return	true if equal
-   */
-  bool Equal(const Password& other) const;
-
-  /**
    * @brief   Check the password data is empty
    * @return	true if empty
    */
@@ -106,21 +99,21 @@ class Password {
    * @brief   Set password data
    * @param	pw	Source
    */
-  int SetData(const Password& pw);
+  void SetData(const Password& pw);
 
   /**
    * @brief   Set password data
    * @param	str		Source
    * @param	len		Password length
    */
-  int SetData(const char* str, size_t len);
+  void SetData(const char* str, size_t len);
+
+ private:
+  char* data_ = nullptr;
+  size_t size_ = 0;
 
   /**
    * @brief   Securely wipe password data
    */
   void Clean();
-
- private:
-  char* data_ = nullptr;
-  size_t size_ = 0;
 };

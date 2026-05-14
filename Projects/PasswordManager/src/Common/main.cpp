@@ -10,7 +10,7 @@
 #include <QScreen>
 #include <QSize>
 
-#include "GUI/MainGUI.h"
+#include "GUI/main_gui.h"
 
 int ShowGUI(int argc, char* argv[]) {
   QApplication app(argc, argv);
