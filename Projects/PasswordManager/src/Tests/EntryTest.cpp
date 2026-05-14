@@ -189,22 +189,22 @@ TEST(EntryTest, SerializeMultipleEntries) {
   const char *site0 = "Google", *acc0 = "user@google.com", *pw0 = "password";
   const char *site1 = "Microsoft", *acc1 = "account@microsoft.com", *pw1 = "asdf1234!";
 
-  size_t site0_len = strlen(site0), acc0Len = strlen(acc0), pw0Len = strlen(pw0);
-  size_t site1_len = strlen(site1), acc1Len = strlen(acc1), pw1Len = strlen(pw1);
+  size_t site0_len = strlen(site0), acc0_len = strlen(acc0), pw0_len = strlen(pw0);
+  size_t site1_len = strlen(site1), acc1_len = strlen(acc1), pw1_len = strlen(pw1);
 
-  entry0.site = site0, entry0.acc = acc0, entry0.pw.SetData(pw0, pw0Len);
-  entry1.site = site1, entry1.acc = acc1, entry1.pw.SetData(pw1, pw0Len);
+  entry0.site = site0, entry0.acc = acc0, entry0.pw.SetData(pw0, pw0_len);
+  entry1.site = site1, entry1.acc = acc1, entry1.pw.SetData(pw1, pw0_len);
 
   /* Serialize both */
 
-  size_t cur = 0, totalSize = entry0.Size() + entry1.Size();
+  size_t cur = 0, total_size = entry0.Size() + entry1.Size();
 
-  std::vector<uint8_t> vec(totalSize);
+  std::vector<uint8_t> vec(total_size);
 
   cur += entry0.Ser(vec.data() + cur);
   cur += entry1.Ser(vec.data() + cur);
 
-  EXPECT_EQ(cur, totalSize);
+  EXPECT_EQ(cur, total_size);
 
   /* Deserialize both */
 
@@ -214,7 +214,7 @@ TEST(EntryTest, SerializeMultipleEntries) {
   cur += copy0.Deser(vec.data() + cur, vec.size());
   cur += copy1.Deser(vec.data() + cur, vec.size());
 
-  EXPECT_EQ(cur, totalSize);
+  EXPECT_EQ(cur, total_size);
   EXPECT_EQ(copy0.site, site0);
   EXPECT_EQ(copy0.acc, acc0);
   EXPECT_EQ(copy1.site, site1);
@@ -326,11 +326,11 @@ TEST(EntryTest, DeserializationBoundaryCheck) {
  * @param   pwLen       Password length
  * @return  Number of bytes read on success, 0 on failure
  */
-static size_t buildAndDeser(Entry& entry, uint32_t site_len, uint32_t acc_len, uint32_t pw_len) {
-  size_t total_size_ =
+static size_t BuildAndDeser(Entry& entry, uint32_t site_len, uint32_t acc_len, uint32_t pw_len) {
+  size_t total_size =
       sizeof(uint32_t) + site_len + sizeof(uint32_t) + acc_len + sizeof(uint32_t) + pw_len;
 
-  std::vector<uint8_t> vec(total_size_, 'a');
+  std::vector<uint8_t> vec(total_size, 'a');
 
   size_t cur = 0;
 
@@ -351,7 +351,7 @@ static size_t buildAndDeser(Entry& entry, uint32_t site_len, uint32_t acc_len, u
 TEST(EntryTest, DeserializeOversizedSite) {
   Entry entry;
 
-  EXPECT_EQ(buildAndDeser(entry, kMaxSiteLen + 1, 1, 1), 0);
+  EXPECT_EQ(BuildAndDeser(entry, kMaxSiteLen + 1, 1, 1), 0);
 }
 
 /**
@@ -360,7 +360,7 @@ TEST(EntryTest, DeserializeOversizedSite) {
 TEST(EntryTest, DeserializeOversizedAccount) {
   Entry entry;
 
-  EXPECT_EQ(buildAndDeser(entry, 1, kMaxAccLen + 1, 1), 0);
+  EXPECT_EQ(BuildAndDeser(entry, 1, kMaxAccLen + 1, 1), 0);
 }
 
 /**
@@ -369,7 +369,7 @@ TEST(EntryTest, DeserializeOversizedAccount) {
 TEST(EntryTest, DeserializeOversizedPassword) {
   Entry entry;
 
-  EXPECT_EQ(buildAndDeser(entry, 1, 1, kMaxPWLen + 1), 0);
+  EXPECT_EQ(BuildAndDeser(entry, 1, 1, kMaxPWLen + 1), 0);
 }
 
 /**
@@ -378,7 +378,7 @@ TEST(EntryTest, DeserializeOversizedPassword) {
 TEST(EntryTest, DeserializeMaxFieldLengths) {
   Entry entry;
 
-  EXPECT_NE(buildAndDeser(entry, kMaxSiteLen, kMaxAccLen, kMaxPWLen), 0);
+  EXPECT_NE(BuildAndDeser(entry, kMaxSiteLen, kMaxAccLen, kMaxPWLen), 0);
   EXPECT_EQ(entry.site.size(), kMaxSiteLen);
   EXPECT_EQ(entry.acc.size(), kMaxAccLen);
   EXPECT_EQ(entry.pw.GetSize(), kMaxPWLen);
