@@ -99,13 +99,15 @@ target_link_libraries(FileEncryption-tests PRIVATE
 include(GoogleTest)
 
 if(WIN32)
-    gtest_discover_tests(FileEncryption-tests
-        PROPERTIES ENVIRONMENT "PATH=$<TARGET_FILE_DIR:Qt6::Core>;$ENV{PATH}"
-        DISCOVERY_MODE PRE_TEST
-    )
-else()
-    gtest_discover_tests(FileEncryption-tests)
+    add_custom_command(TARGET FileEncryption-tests POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:FileEncryption-tests>
+            $<TARGET_FILE_DIR:FileEncryption-tests>
+        COMMAND_EXPAND_LISTS
+        COMMENT "Copying runtime DLLs next to FileEncryption-tests")
 endif()
+
+gtest_discover_tests(FileEncryption-tests)
 
 find_package(benchmark CONFIG QUIET)
 
