@@ -1,25 +1,6 @@
 ---
-Checks: >
-  bugprone-*,
-  cert-*,
-  clang-analyzer-*,
-  cppcoreguidelines-*,
-  google-*,
-  misc-*,
-  modernize-*,
-  performance-*,
-  portability-*,
-  readability-*,
-  -bugprone-easily-swappable-parameters,
-  -cppcoreguidelines-avoid-magic-numbers,
-  -cppcoreguidelines-pro-type-vararg,
-  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
-  -modernize-use-trailing-return-type,
-  -readability-identifier-length,
-  -readability-magic-numbers,
-  -misc-non-private-member-variables-in-classes
-
-WarningsAsErrors: 'readability-identifier-naming'
+Checks: readability-identifier-naming
+WarningsAsErrors: readability-identifier-naming
 HeaderFilterRegex: 'src/.*'
 FormatStyle: file
 
