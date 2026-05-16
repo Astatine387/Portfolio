@@ -11,7 +11,7 @@
 #include <QPushButton>
 #include <QWidget>
 
-#include "Utils/Password.h"
+#include "Utils/password.h"
 
 /**
  * @class   PWLineEdit

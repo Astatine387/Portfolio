@@ -11,7 +11,7 @@
 #include <string>
 
 #include "Common/constants.h"
-#include "Utils/Password.h"
+#include "Utils/password.h"
 
 /**
  * @struct     Entry

@@ -15,7 +15,7 @@
 #include <QWidget>
 
 #include "GUI/pw_line_edit.h"
-#include "Utils/Password.h"
+#include "Utils/password.h"
 
 /**
  * @class	ChangePWGUI

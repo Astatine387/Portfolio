@@ -118,7 +118,7 @@ Source
 │   ├── change_pw_gui.h/cpp  # Master password change dialog
 │   └── pw_line_edit.h/cpp   # Password input component with show/hide toggle
 └── Utils
-    ├── Password.h/cpp     # Secure password container
+    ├── password.h/cpp     # Secure password container
     └── library.h/cpp        # Utility functions
 ```
 
@@ -203,7 +203,7 @@ cmake --build build
 | Core/vault_entry.cpp | 32            | 30      | 0       | 2      | 93.75%     |
 | Core/vault_file.cpp  | 101           | 95      | 0       | 6      | 94.06%     |
 | Utils/password.cpp   | 33            | 33      | 0       | 0      | 100.00%    |
-| Utils/Password.h     | 21            | 21      | 0       | 0      | 100.00%    |
+| Utils/password.h     | 21            | 21      | 0       | 0      | 100.00%    |
 | Utils/library.cpp    | 53            | 51      | 0       | 2      | 96.23%     |
 
 | Module   | Test File            | Test Cases                                                                 |

@@ -63,7 +63,7 @@ set(HEADERS
     src/GUI/password_gui.h
     src/GUI/pw_line_edit.h
     src/Utils/library.h
-    src/Utils/Password.h
+    src/Utils/password.h
 )
 
 add_library(PasswordManager-lib STATIC ${LIB_SOURCES} ${HEADERS})

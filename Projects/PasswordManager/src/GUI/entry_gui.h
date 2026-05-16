@@ -20,7 +20,7 @@
 
 #include "Core/entry.h"
 #include "GUI/pw_line_edit.h"
-#include "Utils/Password.h"
+#include "Utils/password.h"
 
 /**
  * @class	EntryGUI

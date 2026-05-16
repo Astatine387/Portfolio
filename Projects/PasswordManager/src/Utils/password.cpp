@@ -4,7 +4,7 @@
  * @author	Astatine387
  */
 
-#include "Utils/Password.h"
+#include "Utils/password.h"
 
 #include <cstring>
 
