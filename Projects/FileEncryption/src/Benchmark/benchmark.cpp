@@ -6,6 +6,7 @@
 
 #include <benchmark/benchmark.h>
 
+#include <cstring>
 #include <string>
 
 #include "Core/aes_gcm.h"
