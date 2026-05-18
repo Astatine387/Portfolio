@@ -8,7 +8,7 @@
 
 #include <cstring>
 
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
 bool Password::IsEmpty() const {
   return size_ == 0;

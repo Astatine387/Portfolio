@@ -1,5 +1,5 @@
 /**
- * @file	library.h
+ * @file	platform.h
  * @brief	Declaration of utility functions
  * @author	Astatine387
  */
@@ -7,10 +7,9 @@
 #pragma once
 
 #include <cstdio>
+#include <string>
 
 #include "Common/constants.h"
-
-class QString;
 
 /**
  * @brief	Get the size of a file in bytes
@@ -24,7 +23,7 @@ int64_t GetFileSize(FILE* file);
  * @param	path	File path
  * @return	1 if file exists, 0 if file not exists
  */
-bool FileExists(const QString& path);
+bool FileExists(const std::string& path);
 
 /**
  * @brief	Derive a key using Argon2id
@@ -55,7 +54,7 @@ int Random(uint8_t* dst, size_t size);
  * @param	path	File path
  * @return	0 on success, non-zero on failure
  */
-int RemoveFile(const QString& path);
+int RemoveFile(const std::string& path);
 
 /**
  * @brief	Move file pointer to specific position
@@ -79,7 +78,7 @@ void Lock(void* ptr, size_t size);
  * @param	path	File path
  * @param	mode	Mode
  */
-void OpenFile(FILE** file, const QString& path, const char* mode);
+void OpenFile(FILE** file, const std::string& path, const char* mode);
 
 /**
  * @brief	Unlock memory space so that it can be swapped

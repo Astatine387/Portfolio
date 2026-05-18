@@ -6,8 +6,10 @@
 
 #include <gtest/gtest.h>
 
+#include <string>
+
 #include "Core/vault.h"
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
 /**
  * @class   VaultFileTest
@@ -16,7 +18,7 @@
 class VaultFileTest : public ::testing::Test {
  protected:
   Vault vault_;
-  QString path_ = "test.vault";
+  std::string path_ = "test.vault";
 
   /**
    * @brief   Set up test fixture with master password and empty vault file

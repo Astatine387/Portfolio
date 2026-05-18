@@ -42,8 +42,14 @@ set(LIB_SOURCES
     src/GUI/mode_button.cpp
     src/GUI/pw_line_edit.cpp
     src/Utils/password.cpp
-    src/Utils/library.cpp
+    src/Utils/platform.cpp
 )
+
+if(WIN32)
+    list(APPEND LIB_SOURCES src/Utils/platform_win32.cpp)
+else()
+    list(APPEND LIB_SOURCES src/Utils/platform_linux.cpp)
+endif()
 
 set(HEADERS
     src/Common/constants.h
@@ -54,8 +60,8 @@ set(HEADERS
     src/GUI/progress_gui.h
     src/GUI/mode_button.h
     src/GUI/pw_line_edit.h
-    src/Utils/library.h
     src/Utils/password.h
+    src/Utils/platform.h
 )
 
 add_library(FileEncryption-lib STATIC ${LIB_SOURCES} ${HEADERS})

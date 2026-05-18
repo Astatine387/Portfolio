@@ -7,7 +7,7 @@
 #include <cstring>
 
 #include "Core/aes_gcm.h"
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
 int AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw,
                     size_t plen) {

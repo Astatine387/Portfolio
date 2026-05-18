@@ -89,10 +89,10 @@ void MainGUI::OnLoginRequested(const LoginInput& input) {
   /* Create or open vault */
 
   if (input.mode == 0) {
-    res = vault_.NewVault(input.path);
+    res = vault_.NewVault(input.path.toStdString());
   }
   else {
-    res = vault_.OpenVault(input.path);
+    res = vault_.OpenVault(input.path.toStdString());
   }
 
   if (res) {
@@ -231,7 +231,7 @@ void MainGUI::OnCopyPWRequested(const std::string& site,
 }
 
 void MainGUI::OnSaveRequested() {
-  if (vault_.SaveVault(vault_path_)) {
+  if (vault_.SaveVault(vault_path_.toStdString())) {
     pw_gui_->SetErrMsg(QString::fromStdString(last_error_));
     return;
   }
@@ -255,7 +255,7 @@ void MainGUI::OnChangePWRequested() {
 
     change_pw_gui_->GetInput(cur_pw, new_pw);
 
-    if (vault_.ChangePW(new_pw, vault_path_)) {
+    if (vault_.ChangePW(new_pw, vault_path_.toStdString())) {
       list_gui_->SetErrMsg("Failed to save vault");
       return;
     }

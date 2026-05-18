@@ -6,10 +6,10 @@
 
 #include <benchmark/benchmark.h>
 
-#include <QString>
+#include <string>
 
 #include "Core/aes_gcm.h"
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
 #define FILE_SIZE 4LL * 1024 * 1024 * 1024
 
@@ -19,9 +19,9 @@
  */
 class Benchmark : public benchmark::Fixture {
  protected:
-  QString src_path_ = "bench_src.tmp";
-  QString enc_path_ = "bench_enc.tmp";
-  QString dec_path_ = "bench_dec.tmp";
+  std::string src_path_ = "bench_src.tmp";
+  std::string enc_path_ = "bench_enc.tmp";
+  std::string dec_path_ = "bench_dec.tmp";
   const char* pw_ = "password";
   size_t psize_ = strlen(pw_);
 

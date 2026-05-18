@@ -7,7 +7,7 @@
 #include "GUI/entry_gui.h"
 
 #include "Common/constants.h"
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
 EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
   /* Create layouts and components */

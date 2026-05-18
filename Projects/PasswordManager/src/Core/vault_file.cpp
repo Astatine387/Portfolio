@@ -5,9 +5,9 @@
  */
 
 #include "Core/vault.h"
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
-int Vault::NewVault(const QString& path) {
+int Vault::NewVault(const std::string& path) {
   uint32_t entry_cnt = 0;
 
   last_error_.clear();
@@ -63,7 +63,7 @@ int Vault::NewVault(const QString& path) {
   return 0;
 }
 
-int Vault::OpenVault(const QString& path) {
+int Vault::OpenVault(const std::string& path) {
   std::set<Entry, EntryCmp> tmp;
   size_t cur = 0;
   uint32_t entry_cnt = 0;
@@ -168,7 +168,7 @@ int Vault::OpenVault(const QString& path) {
   return 0;
 }
 
-int Vault::SaveVault(const QString& path) {
+int Vault::SaveVault(const std::string& path) {
   size_t src_cur = 0, dst_cur = 0;
   uint32_t entry_cnt = static_cast<uint32_t>(entry_set_.size());
 
@@ -211,7 +211,7 @@ int Vault::SaveVault(const QString& path) {
 
   /* Save to temporary file */
 
-  QString tmp_path = path + ".tmp";
+  std::string tmp_path = path + ".tmp";
 
   OpenFile(&file_, tmp_path, "wb");
 
@@ -269,7 +269,7 @@ bool Vault::VerifyPW(const Password& cur_pw) const {
   return pw_.Equal(cur_pw);
 }
 
-int Vault::ChangePW(const Password& new_pw, const QString& path) {
+int Vault::ChangePW(const Password& new_pw, const std::string& path) {
   last_error_.clear();
 
   if (pw_.SetData(new_pw)) {

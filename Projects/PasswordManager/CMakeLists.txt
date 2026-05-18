@@ -46,9 +46,15 @@ set(LIB_SOURCES
     src/GUI/main_gui.cpp
     src/GUI/password_gui.cpp
     src/GUI/pw_line_edit.cpp
-    src/Utils/library.cpp
     src/Utils/password.cpp
+    src/Utils/platform.cpp
 )
+
+if(WIN32)
+    list(APPEND LIB_SOURCES src/Utils/platform_win32.cpp)
+else()
+    list(APPEND LIB_SOURCES src/Utils/platform_linux.cpp)
+endif()
 
 set(HEADERS
     src/Common/constants.h
@@ -62,8 +68,8 @@ set(HEADERS
     src/GUI/main_gui.h
     src/GUI/password_gui.h
     src/GUI/pw_line_edit.h
-    src/Utils/library.h
     src/Utils/password.h
+    src/Utils/platform.h
 )
 
 add_library(PasswordManager-lib STATIC ${LIB_SOURCES} ${HEADERS})

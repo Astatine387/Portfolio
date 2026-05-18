@@ -8,9 +8,9 @@
 
 #include <gtest/gtest.h>
 
-#include <QString>
+#include <string>
 
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
 /**
  * @class   AES_GCM_Test
@@ -18,9 +18,9 @@
  */
 class TEST : public ::testing::Test {
  protected:
-  QString src_path_ = "test_src.tmp";
-  QString enc_path_ = "test_enc.tmp";
-  QString dec_path_ = "test_dec.tmp";
+  std::string src_path_ = "test_src.tmp";
+  std::string enc_path_ = "test_enc.tmp";
+  std::string dec_path_ = "test_dec.tmp";
 
   /**
    * @brief   Clean up temporary files after each test
@@ -37,7 +37,7 @@ class TEST : public ::testing::Test {
    * @param   data    File content
    * @param   size    File size
    */
-  void Create(QString& path, std::vector<uint8_t>& data, int size) {
+  void Create(const std::string& path, std::vector<uint8_t>& data, int size) {
     FILE* file = nullptr;
 
     OpenFile(&file, path, "wb");
@@ -53,7 +53,7 @@ class TEST : public ::testing::Test {
    * @param   path    Source file path
    * @param   vec     Destination buffer
    */
-  void Read(QString& path, std::vector<uint8_t>& vec) {
+  void Read(std::string& path, std::vector<uint8_t>& vec) {
     FILE* file = nullptr;
     uint64_t size;
 

@@ -6,7 +6,7 @@
 
 #include "GUI/pw_line_edit.h"
 
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
 PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
   /* Create layout and components */

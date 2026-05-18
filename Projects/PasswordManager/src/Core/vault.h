@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include <QString>
 #include <functional>
 #include <memory>
 #include <set>
@@ -45,21 +44,21 @@ class Vault {
    * @param   path    Vault file path
    * @return  0 on success, 1 on failure
    */
-  int NewVault(const QString& path);
+  int NewVault(const std::string& path);
 
   /**
    * @brief	Open a vault and read its data
    * @param   path    Vault file path
    * @return  0 on success, 1 on failure
    */
-  int OpenVault(const QString& path);
+  int OpenVault(const std::string& path);
 
   /**
    * @brief	Save the current vault
    * @param   path    Vault file path
    * @return	0 on success, 1 on failure
    */
-  int SaveVault(const QString& path);
+  int SaveVault(const std::string& path);
 
   /**
    * @brief	Close the vault and wipe all data
@@ -83,7 +82,7 @@ class Vault {
    * @param	path	Vault file path
    * @return	0 on success, 1 on save failure
    */
-  int ChangePW(const Password& new_pw, const QString& path);
+  int ChangePW(const Password& new_pw, const std::string& path);
 
   /**
    * @brief	Set the master password of vault

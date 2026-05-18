@@ -6,7 +6,7 @@
 
 #include "Core/vault.h"
 
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
 Vault::Vault() {
   aes_.SetErrorCallback([this](const char* msg) { last_error_ = msg; });

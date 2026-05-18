@@ -6,9 +6,9 @@
 
 #include <gtest/gtest.h>
 
-#include <QString>
+#include <string>
 
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
 /* ==================================================
  * GetFileSize Test
@@ -21,7 +21,7 @@
 class GetFileSizeTest : public ::testing::Test {
  protected:
   FILE* file_ = nullptr;
-  QString path_ = "test.tmp";
+  std::string path_ = "test.tmp";
 
   /**
    * @brief   Clean up temporary files after each test
@@ -84,7 +84,7 @@ TEST_F(GetFileSizeTest, ArbitSizeFile) {
  */
 class FileExistsTest : public ::testing::Test {
  protected:
-  QString path_ = "test_exists.tmp";
+  std::string path_ = "test_exists.tmp";
 
   /**
    * @brief   Clean up temporary files after each test
@@ -237,7 +237,7 @@ TEST(GetProcNumTest, ReturnPositive) {
 class OpenFileTest : public ::testing::Test {
  protected:
   FILE* file_ = nullptr;
-  QString path_ = "test.tmp";
+  std::string path_ = "test.tmp";
 
   /**
    * @brief   Clean up temporary files after each test

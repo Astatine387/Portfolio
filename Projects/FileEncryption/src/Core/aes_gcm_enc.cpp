@@ -5,7 +5,7 @@
  */
 
 #include "Core/aes_gcm.h"
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
 int AesGcm::Encrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
   src_file_ = src;

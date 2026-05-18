@@ -8,7 +8,7 @@
 
 #include <QFileInfo>
 
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
 MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
   /* Create layouts and components */
@@ -111,7 +111,7 @@ int MainGUI::OpenFiles() {
 
   CloseFiles();
 
-  OpenFile(&src_file_, user_input_.src, "rb");
+  OpenFile(&src_file_, user_input_.src.toStdString(), "rb");
 
   if (src_file_ == nullptr) {
     input_gui_->SetErrMsg("ERROR: Failed to open source file");
@@ -123,12 +123,12 @@ int MainGUI::OpenFiles() {
     return 1;
   }
 
-  if (FileExists(user_input_.dst)) {
+  if (FileExists(user_input_.dst.toStdString())) {
     input_gui_->SetErrMsg("Destination file already exists");
     return 1;
   }
 
-  OpenFile(&dst_file_, user_input_.dst, "wb+");
+  OpenFile(&dst_file_, user_input_.dst.toStdString(), "wb+");
 
   if (dst_file_ == nullptr) {
     input_gui_->SetErrMsg("ERROR: Failed to create destination file");
@@ -165,7 +165,7 @@ void MainGUI::Clean() {
   CloseFiles();
 
   if (should_delete_) {
-    RemoveFile(user_input_.dst);
+    RemoveFile(user_input_.dst.toStdString());
     should_delete_ = false;
   }
 }

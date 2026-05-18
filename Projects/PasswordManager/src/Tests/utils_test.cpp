@@ -6,9 +6,10 @@
 
 #include <gtest/gtest.h>
 
-#include <QString>
+#include <algorithm>
+#include <string>
 
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
 /* ==================================================
  * GetFileSize Test
@@ -21,7 +22,7 @@
 class GetFileSizeTest : public ::testing::Test {
  protected:
   FILE* file_ = nullptr;
-  QString path_ = "test.tmp";
+  std::string path_ = "test.tmp";
 
   /**
    * @brief   Clean up temporary files after each test
@@ -84,7 +85,7 @@ TEST_F(GetFileSizeTest, ArbitSizeFile) {
  */
 class FileExistsTest : public ::testing::Test {
  protected:
-  QString path_ = "test_exists.tmp";
+  std::string path_ = "test_exists.tmp";
 
   /**
    * @brief   Clean up temporary files after each test
@@ -223,7 +224,7 @@ TEST(Argon2Test, EmptyPassword) {
 class OpenFileTest : public ::testing::Test {
  protected:
   FILE* file_ = nullptr;
-  QString path_ = "test.tmp";
+  std::string path_ = "test.tmp";
 
   /**
    * @brief   Clean up temporary files after each test
@@ -342,8 +343,8 @@ TEST(RandomRangeTest, MinEqualsMax) {
  * @brief   Verify renaming a file succeeds
  */
 TEST(UtilsTest, RenameFileBasic) {
-  QString src = "rename_src.tmp";
-  QString dst = "rename_dst.tmp";
+  std::string src = "rename_src.tmp";
+  std::string dst = "rename_dst.tmp";
 
   /* Create source file */
 
@@ -381,8 +382,8 @@ TEST(UtilsTest, RenameFileNonExistent) {
  * @brief   Verify renaming overwrites existing destination file
  */
 TEST(UtilsTest, RenameFileOverwrite) {
-  QString src = "src.tmp";
-  QString dst = "dst.tmp";
+  std::string src = "src.tmp";
+  std::string dst = "dst.tmp";
 
   /* Create source file */
 

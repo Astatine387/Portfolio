@@ -13,7 +13,7 @@
 
 #include <cstring>
 
-#include "Utils/library.h"
+#include "Utils/platform.h"
 
 AesGcm::AesGcm() {
   for (int i = 0; i < kBuffNum; i++) {
