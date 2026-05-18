@@ -59,10 +59,7 @@ int RemoveFile(const std::string& path) {
 }
 
 int RenameFile(const std::string& src, const std::string& dst) {
-  QByteArray qsrc = src.toUtf8();
-  QByteArray qdst = dst.toUtf8();
-
-  return rename(qsrc.constData(), qdst.constData());
+  return rename(src.c_str(), dst.c_str());
 }
 
 int Seek(FILE* file, int64_t offset, int origin) {
