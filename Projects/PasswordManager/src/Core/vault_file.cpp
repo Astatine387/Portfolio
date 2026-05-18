@@ -4,6 +4,8 @@
  * @author	Astatine387
  */
 
+#include <cstring>
+
 #include "Core/vault.h"
 #include "Utils/platform.h"
 
