@@ -70,10 +70,15 @@ jobs:
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 
+      - name: Build (generate AUTOMOC files)
+        run: |
+          cd Projects/FileEncryption
+          cmake --build build
+
       - name: Run clang-tidy
         run: |
           cd Projects/FileEncryption
-          run-clang-tidy -p build
+          run-clang-tidy -p build "^(?!.*_autogen).*\.(cpp|cxx)$"
 
   # ============================================================
   # Windows
