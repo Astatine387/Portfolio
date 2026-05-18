@@ -53,7 +53,7 @@ BENCHMARK_DEFINE_F(Benchmark, Encrypt)(benchmark::State& state) {
 
   Create(size);
 
-  for (auto _ : state) {
+  for ([[maybe_unused]] auto _ : state) {
     AesGcm aes;
     FILE *src = nullptr, *dst = nullptr;
 
