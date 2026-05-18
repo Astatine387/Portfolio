@@ -73,8 +73,7 @@ jobs:
       - name: Run clang-tidy
         run: |
           cd Projects/FileEncryption
-          find src -name '*.cpp' -o -name '*.h' \
-            | xargs clang-tidy -p build
+          run-clang-tidy -p build
 
   # ============================================================
   # Windows
