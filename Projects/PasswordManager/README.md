@@ -97,29 +97,32 @@ Site Name Length (4 Bytes) | Site Name | Account Length (4 Bytes) | Account | Pa
 ## 3-2. Source Code Architecture
 
 ```
-Source
+Src
 ├── Common
-│   ├── constants.h        # Constant values
-│   └── main.cpp           # Application entry point
+│   ├── constants.h          # Constant values
+│   └── main.cpp             # Application entry point
 ├── Core
-│   ├── aes_gcm.h/cpp      # AES-GCM engine
-│   ├── aes_gcm_enc.cpp    # Encryption implementation
-│   ├── aes_gcm_dec.cpp    # Decryption implementation
-│   ├── entry.h/cpp        # Password entry struct with serialization
-│   ├── vault.cpp          # Vault basic functions
-│   ├── vault_file.cpp     # Vault file management (new, open, save)
-│   └── vault_entry.cpp    # Vault entry CRUD operations
+│   ├── aes_gcm.h/cpp        # AES-GCM engine
+│   ├── aes_gcm_enc.cpp      # Encryption implementation
+│   ├── aes_gcm_dec.cpp      # Decryption implementation
+│   ├── entry.h/cpp          # Password entry struct with serialization
+│   ├── vault.cpp            # Vault basic functions
+│   ├── vault_file.cpp       # Vault file management (new, open, save)
+│   └── vault_entry.cpp      # Vault entry CRUD operations
 ├── GUI
-│   ├── main_gui.h/cpp      # Main workflow controller
-│   ├── login_gui.h/cpp     # Vault file selection
-│   ├── password_gui.h/cpp  # Master password input
-│   ├── list_gui.h/cpp      # Entry list with search line
-│   ├── entry_gui.h/cpp     # Entry add/edit dialog with password generator
+│   ├── main_gui.h/cpp       # Main workflow controller
+│   ├── login_gui.h/cpp      # Vault file selection
+│   ├── password_gui.h/cpp   # Master password input
+│   ├── list_gui.h/cpp       # Entry list with search line
+│   ├── entry_gui.h/cpp      # Entry add/edit dialog with password generator
 │   ├── change_pw_gui.h/cpp  # Master password change dialog
 │   └── pw_line_edit.h/cpp   # Password input component with show/hide toggle
 └── Utils
-    ├── password.h/cpp     # Secure password container
-    └── library.h/cpp        # Utility functions
+    ├── password.h/cpp       # Secure password container
+    ├── platform.h           # Utility function declarations
+    ├── platform_linux.cpp   # Common utility functions
+    ├── platform_linux.cpp   # Linux utility functions
+    └── platform_win32.cpp   # Windows utility functions
 ```
 
 ## 3-3. Limitations
