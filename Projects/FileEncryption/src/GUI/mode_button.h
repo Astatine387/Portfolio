@@ -10,6 +10,9 @@
 #include <QHBoxLayout>
 #include <QRadioButton>
 #include <QWidget>
+#include <optional>
+
+#include "Common/constants.h"
 
 /**
  * @class   ModeButton
@@ -27,7 +30,7 @@ class ModeButton : public QWidget {
    * @brief   Get the currently selected mode
    * @return  0 for encrypt, 1 for decrypt, -1 if neither is selected
    */
-  int GetMode();
+  std::optional<CryptoMode> GetMode();
 
  private:
   QButtonGroup* btn_group_;

@@ -1,5 +1,5 @@
 /**
- * @file	worker.h
+ * @file	crypto_worker.h
  * @brief	Worker class for asynchronous encryption/decryption
  * @author	Astatine387
  */
@@ -9,6 +9,7 @@
 #include <QObject>
 #include <QString>
 
+#include "Common/constants.h"
 #include "Core/aes_gcm.h"
 #include "Utils/password.h"
 
@@ -16,7 +17,7 @@
  * @class	Worker
  * @brief	Worker class for asynchronous encryption/decryption
  */
-class Worker : public QObject {
+class CryptoWorker : public QObject {
   Q_OBJECT
 
  public:
@@ -28,8 +29,8 @@ class Worker : public QObject {
    * @param   pw          Password
    * @param   mode        Encryption/decryption mode
    */
-  Worker(FILE* src_file, FILE* dst_file, const QString& dst_path,
-         const Password& pw, int mode)
+  CryptoWorker(FILE* src_file, FILE* dst_file, const QString& dst_path,
+               const Password& pw, CryptoMode mode)
       : src_file_(src_file),
         dst_file_(dst_file),
         dst_path_(dst_path),
@@ -63,9 +64,9 @@ class Worker : public QObject {
   void Work();
 
  private:
+  CryptoMode mode_;
   FILE *src_file_ = nullptr, *dst_file_ = nullptr;
   QString err_ = "", dst_path_;
   Password pw_;
   std::atomic<bool> should_cancel_{ false };
-  int mode_;
 };

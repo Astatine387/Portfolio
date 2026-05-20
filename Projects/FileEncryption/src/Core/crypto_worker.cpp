@@ -4,13 +4,13 @@
  * @author	Astatine387
  */
 
-#include "worker.h"
+#include "crypto_worker.h"
 
-void Worker::RequestCancel() {
+void CryptoWorker::RequestCancel() {
   should_cancel_.store(true, std::memory_order_release);
 }
 
-void Worker::Work() {
+void CryptoWorker::Work() {
   AesGcm aes;
   QString msg;
   bool should_delete = false;
@@ -21,7 +21,7 @@ void Worker::Work() {
   aes.SetProgressCallback([this](int perc, bool* cancelled) {
     QString status;
 
-    if (mode_ == 0) {
+    if (mode_ == CryptoMode::kEncrypt) {
       status = QString("Encrypting... %1%\n").arg(perc);
     }
     else {
@@ -33,7 +33,7 @@ void Worker::Work() {
     *cancelled = should_cancel_.load(std::memory_order_acquire);
   });
 
-  if (mode_ == 0) {
+  if (mode_ == CryptoMode::kEncrypt) {
     res = aes.Encrypt(src_file_, dst_file_, pw_.GetData(), pw_.GetSize());
 
     if (should_cancel_) {

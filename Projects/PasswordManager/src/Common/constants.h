@@ -38,3 +38,8 @@ inline constexpr int kMaxPWLen = 256;    /// Maximum length of password
 
 inline constexpr size_t kMinEntrySize =
     (sizeof(uint32_t) + 1) * 3;  // Minimum serialized entry size
+
+enum class VaultAction {
+  kCreate,
+  kOpen,
+};

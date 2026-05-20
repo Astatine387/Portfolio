@@ -13,6 +13,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include "Common/constants.h"
 #include "GUI/mode_button.h"
 #include "GUI/pw_line_edit.h"
 #include "Utils/password.h"
@@ -21,9 +22,8 @@
  * @struct     UserInput
  * @brief      Container for user input parameters
  */
-struct UserInput {
-  bool valid = false;
-  int mode = -1;
+struct CryptoRequest {
+  CryptoMode mode;
   QString src;
   QString dst;
   Password pw;
@@ -54,7 +54,7 @@ class InputGUI : public QWidget {
    * @brief   Signal when start button clicked
    * @param   input   User inputs
    */
-  void StartRequested(const UserInput& input);
+  void StartRequested(const CryptoRequest& input);
 
  private slots:
   /**

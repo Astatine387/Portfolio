@@ -35,7 +35,7 @@ set(LIB_SOURCES
     src/Core/aes_gcm.cpp
     src/Core/aes_gcm_dec.cpp
     src/Core/aes_gcm_enc.cpp
-    src/Core/worker.cpp
+    src/Core/crypto_worker.cpp
     src/GUI/input_gui.cpp
     src/GUI/main_gui.cpp
     src/GUI/progress_gui.cpp
@@ -54,7 +54,7 @@ endif()
 set(HEADERS
     src/Common/constants.h
     src/Core/aes_gcm.h
-    src/Core/worker.h
+    src/Core/crypto_worker.h
     src/GUI/input_gui.h
     src/GUI/main_gui.h
     src/GUI/progress_gui.h

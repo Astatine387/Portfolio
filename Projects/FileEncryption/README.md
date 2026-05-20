@@ -72,25 +72,25 @@ Salt (16 Bytes) │ IV (12 Bytes) │ Encrypted Data │ Tag (16 Bytes)
 ```
 Src
 ├── Common
-│   ├── constants.h         # Constant values
-│   └── main.cpp            # Application entry point
+│   ├── constants.h          # Constant values
+│   └── main.cpp             # Application entry point
 ├── Core
-│   ├── aes_gcm.h/cpp       # AES-GCM engine
-│   ├── aes_gcm_enc.cpp     # Encryption implementation
-│   ├── aes_gcm_dec.cpp     # Decryption implementation
-│   └── worker.h/cpp        # Asynchronous worker thread
+│   ├── aes_gcm.h/cpp        # AES-GCM engine
+│   ├── aes_gcm_enc.cpp      # Encryption implementation
+│   ├── aes_gcm_dec.cpp      # Decryption implementation
+│   └── crypto_worker.h/cpp  # Asynchronous worker thread
 ├── GUI
-│   ├── input_gui.h/cpp     # Main workflow controller
-│   ├── input_gui.h/cpp     # Source, destination, and password input
-│   ├── progress_gui.h/cpp  # Progress tracking
-│   ├── mode_button.h/cpp   # Encrypt/Decrypt mode selection widget
-│   └── pw_line_edit.h/cpp  # Password input widget
+│   ├── input_gui.h/cpp      # Main workflow controller
+│   ├── input_gui.h/cpp      # Source, destination, and password input
+│   ├── progress_gui.h/cpp   # Progress tracking
+│   ├── mode_button.h/cpp    # Encrypt/Decrypt mode selection widget
+│   └── pw_line_edit.h/cpp   # Password input widget
 └── Utils
-    ├── password.h/cpp      # Secure password container
-    ├── platform.h          # Utility function declarations
-    ├── platform_linux.cpp  # Common utility functions
-    ├── platform_linux.cpp  # Linux utility functions
-    └── platform_win32.cpp  # Windows utility functions
+    ├── password.h/cpp       # Secure password container
+    ├── platform.h           # Utility function declarations
+    ├── platform_linux.cpp   # Common utility functions
+    ├── platform_linux.cpp   # Linux utility functions
+    └── platform_win32.cpp   # Windows utility functions
 ```
 
 ## 3-3. Limitations

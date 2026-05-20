@@ -11,7 +11,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
-#include "Core/worker.h"
+#include "Core/crypto_worker.h"
 #include "GUI/input_gui.h"
 #include "GUI/progress_gui.h"
 
@@ -38,20 +38,14 @@ class MainGUI : public QWidget {
    * @brief   Get the current user input
    * @return  Current user input
    */
-  UserInput GetUserInput();
-
-  /**
-   * @brief   Check the current user input is valid
-   * @return  true if valid
-   */
-  bool IsInputValid();
+  CryptoRequest GetUserInput();
 
  private slots:
   /**
    * @brief	Start encryption/decryption process
    * @param   input   User input parameters
    */
-  void OnStartRequested(const UserInput& input);
+  void OnStartRequested(const CryptoRequest& input);
 
   /**
    * @brief	Update progress bar and status message
@@ -84,8 +78,8 @@ class MainGUI : public QWidget {
   QStackedWidget* widget_;
   QThread* thread_;
   QVBoxLayout* vbox_;
-  UserInput user_input_;
-  Worker* worker_;
+  CryptoRequest req_;
+  CryptoWorker* worker_;
   bool should_delete_ =
       false;  // Destination file deletion flag for cancellation or failure
 

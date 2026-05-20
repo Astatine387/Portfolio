@@ -13,6 +13,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include "Common/constants.h"
 #include "GUI/pw_line_edit.h"
 #include "Utils/password.h"
 
@@ -20,8 +21,8 @@
  * @struct	LoginInput
  * @brief	Container for login input parameters
  */
-struct LoginInput {
-  int mode = -1;  // 0: new, 1: open
+struct LoginRequest {
+  VaultAction action;
   QString path;
   Password pw;
 };
@@ -45,7 +46,7 @@ class PasswordGUI : public QWidget {
    * @param	mode	0 for new, 1 for open
    * @param	path	Vault file path
    */
-  void SetVaultInfo(int mode, const QString& path);
+  void SetVaultInfo(VaultAction action, const QString& path);
 
   /**
    * @brief	Display error message
@@ -58,7 +59,7 @@ class PasswordGUI : public QWidget {
    * @brief	Signal when login is confirmed
    * @param	input	Login input parameters
    */
-  void LoginRequested(const LoginInput& input);
+  void LoginRequested(const LoginRequest& req);
 
   /**
    * @brief	Signal when back button is clicked
@@ -81,5 +82,5 @@ class PasswordGUI : public QWidget {
   QHBoxLayout* btn_box_;
   QVBoxLayout* vbox_;
 
-  int mode_ = -1;
+  VaultAction action_ = VaultAction::kCreate;
 };

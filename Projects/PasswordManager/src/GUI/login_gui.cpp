@@ -36,7 +36,7 @@ void LoginGUI::OnNewClicked() {
                                               "Vault Files (*.vault)");
 
   if (!path.isEmpty())
-    emit VaultSelected(0, path);
+    emit VaultSelected(VaultAction::kCreate, path);
 }
 
 void LoginGUI::OnOpenClicked() {
@@ -44,5 +44,5 @@ void LoginGUI::OnOpenClicked() {
                                               "Vault Files (*.vault)");
 
   if (!path.isEmpty())
-    emit VaultSelected(1, path);
+    emit VaultSelected(VaultAction::kOpen, path);
 }

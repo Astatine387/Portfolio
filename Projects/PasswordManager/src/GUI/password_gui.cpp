@@ -48,11 +48,11 @@ PasswordGUI::PasswordGUI(QWidget* parent) : QWidget(parent) {
   connect(back_btn_, &QPushButton::clicked, this, &PasswordGUI::BackRequested);
 }
 
-void PasswordGUI::SetVaultInfo(int mode, const QString& path) {
-  this->mode_ = mode;
-  this->path_ = path;
+void PasswordGUI::SetVaultInfo(VaultAction action, const QString& path) {
+  action_ = action;
+  path_ = path;
 
-  QString mode_str = (mode == 0) ? "New" : "Open";
+  QString mode_str = action == VaultAction::kCreate ? "Create" : "Open";
 
   path_label_->setText(mode_str + ": " + path);
 
@@ -69,22 +69,22 @@ void PasswordGUI::OnConfirmClicked() {
 
   /* Check password is input */
 
-  LoginInput input;
+  LoginRequest req;
 
-  if (pw_line_->Extract(input.pw)) {
+  if (pw_line_->Extract(req.pw)) {
     err_msg_->setText("Password exceeds maximum length (256 characters)");
     return;
   }
 
-  if (input.pw.IsEmpty()) {
+  if (req.pw.IsEmpty()) {
     err_msg_->setText("Password is not input");
     return;
   }
 
   /* Emit login request */
 
-  input.mode = mode_;
-  input.path = path_;
+  req.action = action_;
+  req.path = path_;
 
-  emit LoginRequested(input);
+  emit LoginRequested(req);
 }

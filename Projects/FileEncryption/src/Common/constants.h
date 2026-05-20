@@ -25,3 +25,8 @@ inline constexpr size_t kTagSize = 16;     /// Authentication tag size in bytes
 inline constexpr int64_t kMaxSize =
     64ULL * 1024 * 1024 *
     1024;  /// Maximum source file size that can be processed
+
+enum class CryptoMode {
+  kEncrypt,
+  kDecrypt,
+};

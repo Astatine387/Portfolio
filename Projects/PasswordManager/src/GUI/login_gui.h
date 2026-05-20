@@ -11,6 +11,8 @@
 #include <QString>
 #include <QWidget>
 
+#include "Common/constants.h"
+
 /**
  * @class	LoginGUI
  * @brief	Login window for vault file selection
@@ -31,7 +33,7 @@ class LoginGUI : public QWidget {
    * @param	mode	0 for new, 1 for open
    * @param	path	Selected vault file path
    */
-  void VaultSelected(int mode, const QString& path);
+  void VaultSelected(VaultAction action, const QString& path);
 
  private slots:
   /**

@@ -54,33 +54,34 @@ void InputGUI::SetErrMsg(const QString& msg) {
 }
 
 void InputGUI::OnStartClicked() {
-  UserInput input;
-
-  if ((input.mode = mode_btn_->GetMode()) == -1) {
+  if (!mode_btn_->GetMode().has_value()) {
     err_msg_->setText("Mode is not selected");
     return;
   }
 
-  if ((input.src = src_line_->text()).isEmpty()) {
+  if (src_line_->text().isEmpty()) {
     err_msg_->setText("Source file is not input");
     return;
   }
 
-  if ((input.dst = dst_line_->text()).isEmpty()) {
+  if (dst_line_->text().isEmpty()) {
     err_msg_->setText("Destination file is not input");
     return;
   }
 
-  pw_line_->Extract(input.pw);
+  Password tmp;
 
-  if (input.pw.IsEmpty()) {
+  pw_line_->Extract(tmp);
+
+  if (tmp.IsEmpty()) {
     err_msg_->setText("Password is not input");
     return;
   }
 
   pw_line_->Clear();
 
-  input.valid = true;
+  CryptoRequest req{ mode_btn_->GetMode().value(), src_line_->text(),
+                     dst_line_->text(), std::move(tmp) };
 
-  emit StartRequested(input);
+  emit StartRequested(req);
 }

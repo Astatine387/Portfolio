@@ -6,6 +6,10 @@
 
 #include "mode_button.h"
 
+#include <optional>
+
+#include "Common/constants.h"
+
 ModeButton::ModeButton(QWidget* parent) : QWidget(parent) {
   /* Create layout and components */
 
@@ -36,7 +40,14 @@ ModeButton::ModeButton(QWidget* parent) : QWidget(parent) {
   setLayout(hbox_);
 }
 
-int ModeButton::GetMode() {
-  QAbstractButton* btn = btn_group_->checkedButton();
-  return btn ? btn_group_->id(btn) : -1;
+std::optional<CryptoMode> ModeButton::GetMode() {
+  if (enc_btn_->isChecked()) {
+    return CryptoMode::kEncrypt;
+  }
+
+  if (dec_btn_->isChecked()) {
+    return CryptoMode::kDecrypt;
+  }
+
+  return std::nullopt;
 }

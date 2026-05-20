@@ -71,28 +71,28 @@ MainGUI::~MainGUI() {
   ;
 }
 
-void MainGUI::OnVaultSelected(int mode, const QString& path) {
-  pw_gui_->SetVaultInfo(mode, path);
+void MainGUI::OnVaultSelected(VaultAction action, const QString& path) {
+  pw_gui_->SetVaultInfo(action, path);
 
   stack_->setCurrentWidget(pw_gui_);
 }
 
-void MainGUI::OnLoginRequested(const LoginInput& input) {
+void MainGUI::OnLoginRequested(const LoginRequest& req) {
   int res;
 
   /* Set master password */
 
   Password pw;
-  pw.SetData(input.pw);
+  pw.SetData(req.pw);
   vault_.SetPW(pw);
 
   /* Create or open vault */
 
-  if (input.mode == 0) {
-    res = vault_.NewVault(input.path.toStdString());
+  if (req.action == VaultAction::kCreate) {
+    res = vault_.NewVault(req.path.toStdString());
   }
   else {
-    res = vault_.OpenVault(input.path.toStdString());
+    res = vault_.OpenVault(req.path.toStdString());
   }
 
   if (res) {
@@ -102,7 +102,7 @@ void MainGUI::OnLoginRequested(const LoginInput& input) {
 
   /* Switch to list screen */
 
-  vault_path_ = input.path;
+  vault_path_ = req.path;
 
   RefreshList();
 

@@ -61,13 +61,13 @@ class MainGUI : public QWidget {
    * @param	mode	0 for new, 1 for open
    * @param	path	Vault file path
    */
-  void OnVaultSelected(int mode, const QString& path);
+  void OnVaultSelected(VaultAction action, const QString& path);
 
   /**
    * @brief	Process vault login request
    * @param	input	Login input parameters
    */
-  void OnLoginRequested(const LoginInput& input);
+  void OnLoginRequested(const LoginRequest& req);
 
   /**
    * @brief	Return to login screen

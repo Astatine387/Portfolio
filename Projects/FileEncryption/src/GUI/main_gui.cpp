@@ -42,22 +42,17 @@ MainGUI::~MainGUI() {
   Clean();
 }
 
-UserInput MainGUI::GetUserInput() {
-  return user_input_;
+CryptoRequest MainGUI::GetUserInput() {
+  return req_;
 }
 
-bool MainGUI::IsInputValid() {
-  return user_input_.valid;
-}
-
-void MainGUI::OnStartRequested(const UserInput& input) {
+void MainGUI::OnStartRequested(const CryptoRequest& input) {
   /* Copy user input parameters */
 
-  user_input_.valid = input.valid;
-  user_input_.mode = input.mode;
-  user_input_.src = input.src;
-  user_input_.dst = input.dst;
-  user_input_.pw.SetData(input.pw);
+  req_.mode = input.mode;
+  req_.src = input.src;
+  req_.dst = input.dst;
+  req_.pw.SetData(input.pw);
 
   if (OpenFiles() == 0) {
     /* Switch to progress window */
@@ -67,19 +62,19 @@ void MainGUI::OnStartRequested(const UserInput& input) {
     /* Create worker thread */
 
     thread_ = new QThread(this);
-    worker_ = new Worker(src_file_, dst_file_, user_input_.dst, user_input_.pw,
-                         user_input_.mode);
+    worker_ =
+        new CryptoWorker(src_file_, dst_file_, req_.dst, req_.pw, req_.mode);
     worker_->moveToThread(thread_);
 
     /* Connect signals */
 
-    connect(thread_, &QThread::started, worker_, &Worker::Work);
-    connect(worker_, &Worker::ProgressUpdate, this,
+    connect(thread_, &QThread::started, worker_, &CryptoWorker::Work);
+    connect(worker_, &CryptoWorker::ProgressUpdate, this,
             &MainGUI::OnProgressUpdated);
-    connect(worker_, &Worker::Finished, this, &MainGUI::OnWorkFinished);
+    connect(worker_, &CryptoWorker::Finished, this, &MainGUI::OnWorkFinished);
     connect(prg_gui_, &ProgressGUI::CancelRequested, worker_,
-            &Worker::RequestCancel, Qt::DirectConnection);
-    connect(worker_, &Worker::Finished, thread_, &QThread::quit);
+            &CryptoWorker::RequestCancel, Qt::DirectConnection);
+    connect(worker_, &CryptoWorker::Finished, thread_, &QThread::quit);
     connect(thread_, &QThread::finished, this, &MainGUI::OnThreadFinished);
 
     /* Start worker thread */
@@ -106,12 +101,12 @@ void MainGUI::OnCloseRequested() {
 }
 
 int MainGUI::OpenFiles() {
-  QFileInfo src_info(user_input_.src);
-  QFileInfo dst_info(user_input_.dst);
+  QFileInfo src_info(req_.src);
+  QFileInfo dst_info(req_.dst);
 
   CloseFiles();
 
-  OpenFile(&src_file_, user_input_.src.toStdString(), "rb");
+  OpenFile(&src_file_, req_.src.toStdString(), "rb");
 
   if (src_file_ == nullptr) {
     input_gui_->SetErrMsg("ERROR: Failed to open source file");
@@ -123,12 +118,12 @@ int MainGUI::OpenFiles() {
     return 1;
   }
 
-  if (FileExists(user_input_.dst.toStdString())) {
+  if (FileExists(req_.dst.toStdString())) {
     input_gui_->SetErrMsg("Destination file already exists");
     return 1;
   }
 
-  OpenFile(&dst_file_, user_input_.dst.toStdString(), "wb+");
+  OpenFile(&dst_file_, req_.dst.toStdString(), "wb+");
 
   if (dst_file_ == nullptr) {
     input_gui_->SetErrMsg("ERROR: Failed to create destination file");
@@ -165,7 +160,7 @@ void MainGUI::Clean() {
   CloseFiles();
 
   if (should_delete_) {
-    RemoveFile(user_input_.dst.toStdString());
+    RemoveFile(req_.dst.toStdString());
     should_delete_ = false;
   }
 }
