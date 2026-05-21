@@ -33,8 +33,7 @@ MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
 
   /* Connect functions to buttons */
 
-  connect(input_gui_, &InputGUI::StartRequested, this,
-          &MainGUI::OnStartRequested);
+  connect(input_gui_, &InputGUI::StartRequested, this, &MainGUI::OnStartRequested);
   connect(prg_gui_, &ProgressGUI::CloseRequested, this, &QWidget::close);
 }
 
@@ -62,18 +61,15 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
     /* Create worker thread */
 
     thread_ = new QThread(this);
-    worker_ =
-        new CryptoWorker(src_file_, dst_file_, req_.dst, req_.pw, req_.mode);
+    worker_ = new CryptoWorker(src_file_, dst_file_, req_.dst, req_.pw, req_.mode);
     worker_->moveToThread(thread_);
 
     /* Connect signals */
 
     connect(thread_, &QThread::started, worker_, &CryptoWorker::Work);
-    connect(worker_, &CryptoWorker::ProgressUpdate, this,
-            &MainGUI::OnProgressUpdated);
+    connect(worker_, &CryptoWorker::ProgressUpdate, this, &MainGUI::OnProgressUpdated);
     connect(worker_, &CryptoWorker::Finished, this, &MainGUI::OnWorkFinished);
-    connect(prg_gui_, &ProgressGUI::CancelRequested, worker_,
-            &CryptoWorker::RequestCancel, Qt::DirectConnection);
+    connect(prg_gui_, &ProgressGUI::CancelRequested, worker_, &CryptoWorker::RequestCancel, Qt::DirectConnection);
     connect(worker_, &CryptoWorker::Finished, thread_, &QThread::quit);
     connect(thread_, &QThread::finished, this, &MainGUI::OnThreadFinished);
 

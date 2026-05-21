@@ -35,8 +35,7 @@ int GetProcNum() {
 }
 
 int Random(uint8_t* dst, size_t size) {
-  return BCryptGenRandom(NULL, dst, static_cast<ULONG>(size),
-                         BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+  return BCryptGenRandom(NULL, dst, static_cast<ULONG>(size), BCRYPT_USE_SYSTEM_PREFERRED_RNG);
 }
 
 int RemoveFile(const std::string& path) {
@@ -48,8 +47,7 @@ int RenameFile(const std::string& src, const std::string& dst) {
   std::filesystem::path src_path = std::filesystem::u8path(src);
   std::filesystem::path dst_path = std::filesystem::u8path(dst);
 
-  if (!MoveFileExW(src_path.c_str(), dst_path.c_str(),
-                   MOVEFILE_REPLACE_EXISTING)) {
+  if (!MoveFileExW(src_path.c_str(), dst_path.c_str(), MOVEFILE_REPLACE_EXISTING)) {
     return 1;  // LCOV_EXCL_LINE
   }
 

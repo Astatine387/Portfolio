@@ -9,8 +9,7 @@
 #include <cstring>
 
 size_t Entry::Size() const {
-  return sizeof(uint32_t) + site.size() + sizeof(uint32_t) + acc.size() +
-         sizeof(uint32_t) + pw.GetSize();
+  return sizeof(uint32_t) + site.size() + sizeof(uint32_t) + acc.size() + sizeof(uint32_t) + pw.GetSize();
 }
 
 size_t Entry::Ser(uint8_t* dst) const {

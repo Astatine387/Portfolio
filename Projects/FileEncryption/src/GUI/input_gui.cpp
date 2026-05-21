@@ -80,8 +80,7 @@ void InputGUI::OnStartClicked() {
 
   pw_line_->Clear();
 
-  CryptoRequest req{ mode_btn_->GetMode().value(), src_line_->text(),
-                     dst_line_->text(), std::move(tmp) };
+  CryptoRequest req{ mode_btn_->GetMode().value(), src_line_->text(), dst_line_->text(), std::move(tmp) };
 
   emit StartRequested(req);
 }

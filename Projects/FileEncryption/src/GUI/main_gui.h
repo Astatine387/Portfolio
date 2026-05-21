@@ -80,8 +80,7 @@ class MainGUI : public QWidget {
   QVBoxLayout* vbox_;
   CryptoRequest req_;
   CryptoWorker* worker_;
-  bool should_delete_ =
-      false;  // Destination file deletion flag for cancellation or failure
+  bool should_delete_ = false;  // Destination file deletion flag for cancellation or failure
 
   /**
    * @brief   Open file pointers

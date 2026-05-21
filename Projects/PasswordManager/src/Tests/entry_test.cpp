@@ -30,8 +30,7 @@ TEST(EntryTest, SizeCalculation) {
   entry.acc = acc;
   entry.pw.SetData(pw, pw_len);
 
-  size_t expected = sizeof(uint32_t) + site_len + sizeof(uint32_t) + acc_len +
-                    sizeof(uint32_t) + pw_len;
+  size_t expected = sizeof(uint32_t) + site_len + sizeof(uint32_t) + acc_len + sizeof(uint32_t) + pw_len;
 
   EXPECT_EQ(entry.Size(), expected);
 }
@@ -189,13 +188,10 @@ TEST(EntryTest, SerializeMultipleEntries) {
   Entry entry0, entry1;
 
   const char *site0 = "Google", *acc0 = "user@google.com", *pw0 = "password";
-  const char *site1 = "Microsoft", *acc1 = "account@microsoft.com",
-             *pw1 = "asdf1234!";
+  const char *site1 = "Microsoft", *acc1 = "account@microsoft.com", *pw1 = "asdf1234!";
 
-  size_t site0_len = strlen(site0), acc0_len = strlen(acc0),
-         pw0_len = strlen(pw0);
-  size_t site1_len = strlen(site1), acc1_len = strlen(acc1),
-         pw1_len = strlen(pw1);
+  size_t site0_len = strlen(site0), acc0_len = strlen(acc0), pw0_len = strlen(pw0);
+  size_t site1_len = strlen(site1), acc1_len = strlen(acc1), pw1_len = strlen(pw1);
 
   entry0.site = site0, entry0.acc = acc0, entry0.pw.SetData(pw0, pw0_len);
   entry1.site = site1, entry1.acc = acc1, entry1.pw.SetData(pw1, pw0_len);
@@ -300,22 +296,20 @@ TEST(EntryTest, DeserializationBoundaryCheck) {
 
   /* Buffer truncated before account data */
 
-  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) +
-         src.acc.size() - 1;
+  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() - 1;
 
   EXPECT_EQ(dst.Deser(vec.data(), size), 0);
 
   /* Buffer truncated before password length */
 
-  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) +
-         src.acc.size() + sizeof(uint32_t) - 1;
+  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() + sizeof(uint32_t) - 1;
 
   EXPECT_EQ(dst.Deser(vec.data(), size), 0);
 
   /* Buffer truncated before password length */
 
-  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) +
-         src.acc.size() + sizeof(uint32_t) + src.pw.GetSize() - 1;
+  size =
+      sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() + sizeof(uint32_t) + src.pw.GetSize() - 1;
 
   EXPECT_EQ(dst.Deser(vec.data(), size), 0);
 }
@@ -333,10 +327,8 @@ TEST(EntryTest, DeserializationBoundaryCheck) {
  * @param   pwLen       Password length
  * @return  Number of bytes read on success, 0 on failure
  */
-static size_t BuildAndDeser(Entry& entry, uint32_t site_len, uint32_t acc_len,
-                            uint32_t pw_len) {
-  size_t total_size = sizeof(uint32_t) + site_len + sizeof(uint32_t) + acc_len +
-                      sizeof(uint32_t) + pw_len;
+static size_t BuildAndDeser(Entry& entry, uint32_t site_len, uint32_t acc_len, uint32_t pw_len) {
+  size_t total_size = sizeof(uint32_t) + site_len + sizeof(uint32_t) + acc_len + sizeof(uint32_t) + pw_len;
 
   std::vector<uint8_t> vec(total_size, 'a');
 

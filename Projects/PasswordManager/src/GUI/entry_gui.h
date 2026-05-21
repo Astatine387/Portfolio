@@ -47,8 +47,7 @@ class EntryGUI : public QDialog {
    * @param	acc		Current account
    * @param	pw		Current password
    */
-  void SetEditMode(const std::string& site, const std::string& acc,
-                   const Password& pw);
+  void SetEditMode(const std::string& site, const std::string& acc, const Password& pw);
 
   /**
    * @brief	Get the entry input from the dialog

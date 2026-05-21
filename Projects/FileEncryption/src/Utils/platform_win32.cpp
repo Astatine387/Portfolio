@@ -34,8 +34,7 @@ int GetProcNum() {
 }
 
 int Random(uint8_t* dst, size_t size) {
-  return BCryptGenRandom(NULL, dst, static_cast<ULONG>(size),
-                         BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+  return BCryptGenRandom(NULL, dst, static_cast<ULONG>(size), BCRYPT_USE_SYSTEM_PREFERRED_RNG);
 }
 
 int RemoveFile(const std::string& path) {

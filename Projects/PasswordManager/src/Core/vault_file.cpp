@@ -27,8 +27,7 @@ int Vault::NewVault(const std::string& path) {
 
   /* Encrypt */
 
-  if (aes_.Encrypt(src_buff_.get(), dst_buff_.get() + kMagicSize, src_size_,
-                   pw_.GetData(), pw_.GetSize())) {
+  if (aes_.Encrypt(src_buff_.get(), dst_buff_.get() + kMagicSize, src_size_, pw_.GetData(), pw_.GetSize())) {
     ReportError("[Crypto] Encryption failed - Cannot encrypt vault data\n");
     return 1;
   }
@@ -95,14 +94,12 @@ int Vault::OpenVault(const std::string& path) {
   }
 
   if (src_size_ < kMinSize) {
-    ReportError(
-        "[File] Validation failed - File is too small to be a valid vault\n");
+    ReportError("[File] Validation failed - File is too small to be a valid vault\n");
     return 1;
   }
 
   if (src_size_ > kMaxSize) {
-    ReportError(
-        "[File] Validation failed - File exceeds maximum size (2 GiB)\n");
+    ReportError("[File] Validation failed - File exceeds maximum size (2 GiB)\n");
     return 1;
   }
 
@@ -130,10 +127,9 @@ int Vault::OpenVault(const std::string& path) {
 
   dst_buff_ = std::make_unique<uint8_t[]>(dst_size_);
 
-  if (aes_.Decrypt(src_buff_.get() + kMagicSize, dst_buff_.get(),
-                   src_size_ - kMagicSize, pw_.GetData(), pw_.GetSize())) {
-    ReportError(
-        "[Auth] Decryption failed - Invalid password or corrupted vault\n");
+  if (aes_.Decrypt(src_buff_.get() + kMagicSize, dst_buff_.get(), src_size_ - kMagicSize, pw_.GetData(),
+                   pw_.GetSize())) {
+    ReportError("[Auth] Decryption failed - Invalid password or corrupted vault\n");
     return 1;
   }
 
@@ -143,8 +139,7 @@ int Vault::OpenVault(const std::string& path) {
   cur += kCountSize;
 
   if (entry_cnt * kMinEntrySize > dst_size_ - kCountSize) {
-    ReportError(
-        "[Data] Validation failed - Entry count exceeds available data\n");
+    ReportError("[Data] Validation failed - Entry count exceeds available data\n");
     return 1;
   }
 
@@ -205,8 +200,7 @@ int Vault::SaveVault(const std::string& path) {
 
   /* Encrypt */
 
-  if (aes_.Encrypt(src_buff_.get(), dst_buff_.get() + dst_cur, src_size_,
-                   pw_.GetData(), pw_.GetSize())) {
+  if (aes_.Encrypt(src_buff_.get(), dst_buff_.get() + dst_cur, src_size_, pw_.GetData(), pw_.GetSize())) {
     ReportError("[Crypto] Encryption failed - Cannot encrypt vault data\n");
     return 1;
   }
@@ -219,8 +213,7 @@ int Vault::SaveVault(const std::string& path) {
 
   if (file_ == nullptr) {
     // LCOV_EXCL_START
-    ReportError(
-        "[File] Open failed - Cannot open temporary file for writing\n");
+    ReportError("[File] Open failed - Cannot open temporary file for writing\n");
     return 1;
     // LCOV_EXCL_STOP
   }

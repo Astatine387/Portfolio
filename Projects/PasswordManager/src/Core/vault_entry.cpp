@@ -6,8 +6,7 @@
 
 #include "Core/vault.h"
 
-int Vault::CreateEntry(const std::string& site, const std::string& acc,
-                       const Password& pw) {
+int Vault::CreateEntry(const std::string& site, const std::string& acc, const Password& pw) {
   Entry new_entry = { site, acc, pw };
 
   auto res = entry_set_.insert(new_entry);
@@ -20,9 +19,8 @@ int Vault::CreateEntry(const std::string& site, const std::string& acc,
   return 0;
 }
 
-int Vault::UpdateEntry(const std::string& old_site, const std::string& old_acc,
-                       const std::string& new_site, const std::string& new_acc,
-                       const Password& new_pw) {
+int Vault::UpdateEntry(const std::string& old_site, const std::string& old_acc, const std::string& new_site,
+                       const std::string& new_acc, const Password& new_pw) {
   /* Check whether the target entry exists */
 
   Entry old_entry = { old_site, old_acc };

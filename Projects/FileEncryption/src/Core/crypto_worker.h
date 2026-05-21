@@ -29,13 +29,8 @@ class CryptoWorker : public QObject {
    * @param   pw          Password
    * @param   mode        Encryption/decryption mode
    */
-  CryptoWorker(FILE* src_file, FILE* dst_file, const QString& dst_path,
-               const Password& pw, CryptoMode mode)
-      : src_file_(src_file),
-        dst_file_(dst_file),
-        dst_path_(dst_path),
-        pw_(pw),
-        mode_(mode) {}
+  CryptoWorker(FILE* src_file, FILE* dst_file, const QString& dst_path, const Password& pw, CryptoMode mode)
+      : src_file_(src_file), dst_file_(dst_file), dst_path_(dst_path), pw_(pw), mode_(mode) {}
 
  signals:
   /**

@@ -99,24 +99,21 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
 
   if (EVP_EncryptInit_ex(ctx_, EVP_aes_256_gcm(), NULL, NULL, NULL) != 1) {
     // LCOV_EXCL_START
-    ReportError(
-        "[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
+    ReportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, kIVSize, NULL) != 1) {
     // LCOV_EXCL_START
-    ReportError(
-        "[Crypto] Initialization failed - Cannot set initial vector size\n");
+    ReportError("[Crypto] Initialization failed - Cannot set initial vector size\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   if (EVP_EncryptInit_ex(ctx_, NULL, NULL, key_, iv_) != 1) {
     // LCOV_EXCL_START
-    ReportError(
-        "[Crypto] Initialization failed - Cannot set key and initial vector\n");
+    ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
     return 1;
     // LCOV_EXCL_STOP
   }
@@ -125,8 +122,7 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
 
   if (fwrite(salt_, sizeof(uint8_t), kSaltSize, dst_file_) != kSaltSize) {
     // LCOV_EXCL_START
-    ReportError(
-        "[File] Write failed - Cannot write salt to destination file header\n");
+    ReportError("[File] Write failed - Cannot write salt to destination file header\n");
     return 1;
     // LCOV_EXCL_STOP
   }
@@ -146,8 +142,8 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
 int AesGcm::EncryptBuff(void* src, void* dst, int srclen) {
   int dstlen;
 
-  if (EVP_EncryptUpdate(ctx_, static_cast<unsigned char*>(dst), &dstlen,
-                        static_cast<unsigned char*>(src), srclen) != 1) {
+  if (EVP_EncryptUpdate(ctx_, static_cast<unsigned char*>(dst), &dstlen, static_cast<unsigned char*>(src), srclen) !=
+      1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
     return 1;
@@ -188,9 +184,8 @@ int AesGcm::EncryptBatch() {
 
     /* Asynchronous write in another thread */
 
-    write_res_ = std::async(std::launch::async, [this, cur]() {
-      return WriteFile(buff_[cur], kBuffSize * kBlockSize);
-    });
+    write_res_ =
+        std::async(std::launch::async, [this, cur]() { return WriteFile(buff_[cur], kBuffSize * kBlockSize); });
 
     writing_ = true;
 

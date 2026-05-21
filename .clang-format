@@ -8,8 +8,8 @@ IndentWidth: 2
 TabWidth: 2
 UseTab: Never
 
-# Maximum 80 characters per line
-ColumnLimit: 80
+# Maximum 120 characters per line
+ColumnLimit: 120
 
 # Left alignment for pointers and references
 DerivePointerAlignment: false

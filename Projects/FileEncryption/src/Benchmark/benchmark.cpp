@@ -53,8 +53,7 @@ BENCHMARK_DEFINE_F(Benchmark, Encrypt)(benchmark::State& state) {
 
   Create(size);
 
-  for ([[maybe_unused]] auto _ :
-       state) {  // NOLINT(clang-analyzer-deadcode.DeadStores)
+  for ([[maybe_unused]] auto _ : state) {  // NOLINT(clang-analyzer-deadcode.DeadStores)
     AesGcm aes;
     FILE *src = nullptr, *dst = nullptr;
 

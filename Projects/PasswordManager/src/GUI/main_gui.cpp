@@ -36,25 +36,19 @@ MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
 
   /* Connect login signals */
 
-  connect(login_gui_, &LoginGUI::VaultSelected, this,
-          &MainGUI::OnVaultSelected);
-  connect(pw_gui_, &PasswordGUI::LoginRequested, this,
-          &MainGUI::OnLoginRequested);
+  connect(login_gui_, &LoginGUI::VaultSelected, this, &MainGUI::OnVaultSelected);
+  connect(pw_gui_, &PasswordGUI::LoginRequested, this, &MainGUI::OnLoginRequested);
   connect(pw_gui_, &PasswordGUI::BackRequested, this, &MainGUI::OnBackToLogin);
 
   /* Connect list signals */
 
   connect(list_gui_, &ListGUI::AddRequested, this, &MainGUI::OnAddRequested);
   connect(list_gui_, &ListGUI::EditRequested, this, &MainGUI::OnEditRequested);
-  connect(list_gui_, &ListGUI::DeleteRequested, this,
-          &MainGUI::OnDeleteRequested);
-  connect(list_gui_, &ListGUI::CopyPWRequested, this,
-          &MainGUI::OnCopyPWRequested);
+  connect(list_gui_, &ListGUI::DeleteRequested, this, &MainGUI::OnDeleteRequested);
+  connect(list_gui_, &ListGUI::CopyPWRequested, this, &MainGUI::OnCopyPWRequested);
   connect(list_gui_, &ListGUI::SaveRequested, this, &MainGUI::OnSaveRequested);
-  connect(list_gui_, &ListGUI::CloseRequested, this,
-          &MainGUI::OnCloseRequested);
-  connect(list_gui_, &ListGUI::ChangePWRequested, this,
-          &MainGUI::OnChangePWRequested);
+  connect(list_gui_, &ListGUI::CloseRequested, this, &MainGUI::OnCloseRequested);
+  connect(list_gui_, &ListGUI::ChangePWRequested, this, &MainGUI::OnChangePWRequested);
 
   /* Set error callback */
 
@@ -62,9 +56,7 @@ MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
 
   /* Set verify callback for password change */
 
-  change_pw_gui_->SetVerifyCb([this](const Password& cur_pw) -> bool {
-    return vault_.VerifyPW(cur_pw);
-  });
+  change_pw_gui_->SetVerifyCb([this](const Password& cur_pw) -> bool { return vault_.VerifyPW(cur_pw); });
 }
 
 MainGUI::~MainGUI() {
@@ -151,8 +143,7 @@ void MainGUI::OnEditRequested(const std::string& site, const std::string& acc) {
 
   if (entry_gui_->exec() == QDialog::Accepted) {
     Entry entry = entry_gui_->GetInput();
-    int res = vault_.UpdateEntry(orig_site_, orig_acc_, entry.site, entry.acc,
-                                 entry.pw);
+    int res = vault_.UpdateEntry(orig_site_, orig_acc_, entry.site, entry.acc, entry.pw);
 
     if (res == 1) {
       list_gui_->SetErrMsg("Original entry not found");
@@ -168,8 +159,7 @@ void MainGUI::OnEditRequested(const std::string& site, const std::string& acc) {
   }
 }
 
-void MainGUI::OnDeleteRequested(const std::string& site,
-                                const std::string& acc) {
+void MainGUI::OnDeleteRequested(const std::string& site, const std::string& acc) {
   if (vault_.DeleteEntry(site, acc)) {
     list_gui_->SetErrMsg("Failed to delete entry");
     return;
@@ -178,8 +168,7 @@ void MainGUI::OnDeleteRequested(const std::string& site,
   RefreshList();
 }
 
-void MainGUI::OnCopyPWRequested(const std::string& site,
-                                const std::string& acc) {
+void MainGUI::OnCopyPWRequested(const std::string& site, const std::string& acc) {
   Entry target = { site, acc };
   const auto& entries = vault_.GetEntries();
   auto it = entries.find(target);
@@ -193,8 +182,7 @@ void MainGUI::OnCopyPWRequested(const std::string& site,
 
   QClipboard* board = QGuiApplication::clipboard();
 
-  board->setText(
-      QString::fromUtf8(it->pw.GetData(), static_cast<int>(it->pw.GetSize())));
+  board->setText(QString::fromUtf8(it->pw.GetData(), static_cast<int>(it->pw.GetSize())));
 
   /* Auto-clear clipboard after 30 seconds */
 
@@ -214,8 +202,7 @@ void MainGUI::OnCopyPWRequested(const std::string& site,
     countdown_--;
 
     if (countdown_ > 0) {
-      list_gui_->SetErrMsg(
-          QString("Password copied (clears after %1s)").arg(countdown_));
+      list_gui_->SetErrMsg(QString("Password copied (clears after %1s)").arg(countdown_));
     }
     else {
       timer_->stop();

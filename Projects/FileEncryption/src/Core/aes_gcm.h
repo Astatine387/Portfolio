@@ -113,7 +113,7 @@ class AesGcm {
 
   std::atomic<bool> cancelled_{ false };  // Is the program cancelled?
   std::future<int> write_res_;            // Asynchronous write result
-  bool writing_ = false;  // Is there currently ongoing asynchronous write?
+  bool writing_ = false;                  // Is there currently ongoing asynchronous write?
 
   /* ==================================================
    * I/O helper functions
