@@ -1,5 +1,5 @@
 /**
- * @file	Worker.cpp
+ * @file	crypto_worker.cpp
  * @brief	Implementation of Worker class
  * @author	Astatine387
  */

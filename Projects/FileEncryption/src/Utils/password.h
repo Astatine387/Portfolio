@@ -1,5 +1,5 @@
 /**
- * @file	Password.h
+ * @file	password.h
  * @brief	RAII class that securely handles password
  * @author	Astatine387
  */
@@ -52,7 +52,7 @@ class Password {
 
   /**
    * @brief   Move constructor
-   * @param	other	Source password to copy
+   * @param	other	Source password to move from
    */
   Password(Password&& other) noexcept : data_(other.data_), size_(other.size_) {
     other.data_ = nullptr;
@@ -60,8 +60,8 @@ class Password {
   }
 
   /**
-   * @brief   Move assignment constructor
-   * @param	other	Source password to copy
+   * @brief   Move assignment operator
+   * @param	other	Source password to move from
    */
   Password& operator=(Password&& other) noexcept {
     if (this != &other) {

@@ -1,5 +1,5 @@
 ﻿/**
- * @file    Benchmark.cpp
+ * @file    benchmark.cpp
  * @brief   AES-GCM and Argon2id peformance test
  * @author  Astatine387
  */

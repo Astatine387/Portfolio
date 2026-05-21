@@ -1,5 +1,5 @@
 /**
- * @file	input_gui.cpp
+ * @file	main_gui.cpp
  * @brief	Implementation of MainGUI class
  * @author	Astatine387
  */

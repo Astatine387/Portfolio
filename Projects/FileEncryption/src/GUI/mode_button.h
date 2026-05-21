@@ -28,7 +28,8 @@ class ModeButton : public QWidget {
 
   /**
    * @brief   Get the currently selected mode
-   * @return  0 for encrypt, 1 for decrypt, -1 if neither is selected
+   * @return  CryptoMode::kEncrypt or kDecrypt, or std::nullopt if neither is
+   * selected
    */
   std::optional<CryptoMode> GetMode();
 

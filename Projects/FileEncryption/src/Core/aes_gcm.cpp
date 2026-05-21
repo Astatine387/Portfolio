@@ -1,10 +1,10 @@
 ﻿/**
  * @file	aes_gcm.cpp
- * @brief	Implementation of basic functions of AES_GCM class
+ * @brief	Implementation of basic functions of AesGcm class
  * @author	Astatine387
  *
  * Contents:
- *	- Implementation of destructor and helper functions of AES_GCM class
+ *	- Implementation of destructor and helper functions of AesGcm class
  */
 
 #include "Core/aes_gcm.h"

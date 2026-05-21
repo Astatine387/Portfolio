@@ -1,5 +1,5 @@
 /**
- * @file    AES_GCM_Test.cpp
+ * @file    aes_gcm_test.cpp
  * @brief   Unit tests for AES-GCM class
  * @author  Astatine387
  */
@@ -13,8 +13,8 @@
 #include "Utils/platform.h"
 
 /**
- * @class   AES_GCM_Test
- * @brief   Test fixture for AES_GCM encryption/decryption tests
+ * @class   TEST
+ * @brief   Test fixture for AesGcm encryption/decryption tests
  */
 class TEST : public ::testing::Test {
  protected:

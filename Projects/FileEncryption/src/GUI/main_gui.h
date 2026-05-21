@@ -1,5 +1,5 @@
 /**
- * @file	input_gui.h
+ * @file	main_gui.h
  * @brief	Main GUI class that controls entire workflow
  * @author	Astatine387
  */

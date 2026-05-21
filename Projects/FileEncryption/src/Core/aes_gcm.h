@@ -27,12 +27,12 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief	DDefault constructor of AES_GCM
+   * @brief	Default constructor of AesGcm
    */
   AesGcm();
 
   /**
-   * @brief	 Destructor of AES_GCM
+   * @brief	 Destructor of AesGcm
    */
   ~AesGcm();
 
@@ -51,10 +51,9 @@ class AesGcm {
    * @param		dst		Destination file
    * @param		pw		Password
    * @param		plen	Password length
-   * @return		0 on success, 1 on failure
+   * @return    0 on success, 1 on failure
    */
-  int Decrypt(FILE* source, FILE* destination, const char* password,
-              size_t password_length);
+  int Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen);
 
   /**
    * @brief		Encrypt a file
@@ -62,7 +61,7 @@ class AesGcm {
    * @param		dst		Destination file
    * @param		pw		Password
    * @param		plen	Password length
-   * @return		0 on success, 1 on failure
+   * @return    0 on success, 1 on failure
    */
   int Encrypt(FILE* src, FILE* dst, const char* pw, size_t plen);
 
@@ -71,21 +70,21 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief	Callback function for error reporting
-   * @param	errMsg	Error message string
+   * @brief		Callback function for error reporting
+   * @param		msg		Error message string
    */
   using ErrorCallback = std::function<void(const char* msg)>;
 
   /**
-   * @brief	Callback function for progress reporting
-   * @param	perc		Current progress in percentage
-   * @param	cancelled	Pointer of cancellation flag
+   * @brief		Callback function for progress reporting
+   * @param		perc		Current progress in percentage
+   * @param		cancelled	Pointer of cancellation flag
    */
   using ProgressCallback = std::function<void(int perc, bool* cancelled)>;
 
   /**
-   * @brief	Set error callback function
-   * @param	ecb		Error callback function
+   * @brief		Set error callback function
+   * @param		ecb		Error callback function
    */
   void SetErrorCallback(ErrorCallback ecb) { ecb_ = ecb; }
 
@@ -121,18 +120,18 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief	Read data from source file into buffer
-   * @param	buff	Destination buffer
-   * @param	size	Number of bytes to read
+   * @brief	    Read data from source file into buffer
+   * @param	    buff	Destination buffer
+   * @param	    size	Number of bytes to read
    * @return	0 on success, 1 on failure
    */
   int ReadFile(void* buff, int size);
 
   /**
-   * @brief	Write data from buffer to destination file
-   * @param	buff	Source buffer
-   * @param	size	Number of bytes to write
-   * @return	0 on success, 1 on failure
+   * @brief	    Write data from buffer to destination file
+   * @param	    buff	Source buffer
+   * @param	    size	Number of bytes to write
+   * @return    0 on success, 1 on failure
    */
   int WriteFile(const void* buff, int size);
 
@@ -141,9 +140,9 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief	Intialize decryption context
-   * @param	pw		Password
-   * @param	plen	Password length
+   * @brief	    Intialize decryption context
+   * @param	    pw		Password
+   * @param	    plen	Password length
    * @return	0 on success, 1 on failure
    */
   int DecryptInit(const char* pw, size_t plen);
@@ -155,10 +154,10 @@ class AesGcm {
   int DecryptTag();
 
   /**
-   * @brief	Decrypt buffer
-   * @param	src		Source buffer
-   * @param	dst		Destination buffer
-   * @param	srcLen	Source buffer length
+   * @brief	    Decrypt buffer
+   * @param	    src		Source buffer
+   * @param	    dst		Destination buffer
+   * @param	    srclen	Source buffer length
    * @return	0 on success, 1 on failure
    */
   int DecryptBuff(void* src, void* dst, int srclen);
@@ -186,42 +185,42 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief	Intialize encryption context
-   * @param	pw		Password
-   * @param	plen	Password length
+   * @brief		Intialize encryption context
+   * @param		pw		Password
+   * @param		plen	Password length
    * @return	0 on success, 1 on failure
    */
   int EncryptInit(const char* pw, size_t plen);
 
   /**
-   * @brief	Encrypt buffer
-   * @param	src		Source buffer
-   * @param	dst		Destination buffer
-   * @param	srcLen	Source buffer length
+   * @brief		Encrypt buffer
+   * @param		src		Source buffer
+   * @param		dst		Destination buffer
+   * @param		srclen	Source buffer length
    * @return	0 on success, 1 on failure
    */
   int EncryptBuff(void* src, void* dst, int srclen);
 
   /**
-   * @brief	Encrypt multiple blocks in a batch
+   * @brief		Encrypt multiple blocks in a batch
    * @return	0 on success, 1 on failure
    */
   int EncryptBatch();
 
   /**
-   * @brief	Encrypt remaining data smaller than buffer
+   * @brief		Encrypt remaining data smaller than buffer
    * @return	0 on success, 1 on failure
    */
   int EncryptRemain();
 
   /**
-   * @brief	Finialize encryption
+   * @brief		Finialize encryption
    * @return	0 on success, 1 on failure
    */
   int EncryptFinal();
 
   /**
-   * @brief	Generate and write authentication tag
+   * @brief		Generate and write authentication tag
    * @return	0 on success, 1 on failure
    */
   int EncryptTag();
@@ -237,8 +236,8 @@ class AesGcm {
   int ReportProgress();
 
   /**
-   * @brief	Report error via callback
-   * @param	msg		Error message string
+   * @brief		Report error via callback
+   * @param		msg		Error message string
    */
   void ReportError(const char* msg);
 };

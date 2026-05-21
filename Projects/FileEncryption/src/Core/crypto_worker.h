@@ -14,7 +14,7 @@
 #include "Utils/password.h"
 
 /**
- * @class	Worker
+ * @class	CryptoWorker
  * @brief	Worker class for asynchronous encryption/decryption
  */
 class CryptoWorker : public QObject {

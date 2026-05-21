@@ -1,5 +1,5 @@
 /**
- * @file	platform_win32.h
+ * @file	platform_win32.cpp
  * @brief	Implementation of utility functions for Windows
  * @author	Astatine387
  */
