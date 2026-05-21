@@ -90,7 +90,7 @@ int SyncFile(FILE* file);
 
 /**
  * @brief	Lock memory space so that it cannot be swapped
- * @param	buff	Buffer to lock
+ * @param	ptr	Buffer to lock
  * @param	size	Buffer size in bytes
  */
 void Lock(void* ptr, size_t size);
@@ -119,14 +119,14 @@ void Swap(uint8_t* a, uint8_t* b);
 
 /**
  * @brief	Unlock memory space so that it can be swapped
- * @param	buff	Buffer to unlock
+ * @param	ptr	Buffer to unlock
  * @param	size	Buffer size in bytes
  */
 void Unlock(void* ptr, size_t size);
 
 /**
  * @brief	Securely wipe data in memory
- * @param	buff	Buffer to wipe
+ * @param	ptr	Buffer to wipe
  * @param	size	Buffer size in bytes
  */
 void Wipe(void* buff, size_t size);

@@ -1,6 +1,6 @@
 /**
- * @file	AES_GCM.cpp
- * @brief	Implementation of basic functions AES_GCM class
+ * @file	aes_gcm.cpp
+ * @brief	Implementation of basic functions of AesGcm class
  * @author	Astatine387
  */
 

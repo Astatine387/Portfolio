@@ -1,5 +1,5 @@
 /**
- * @file	PasswordGUI.h
+ * @file	password_gui.h
  * @brief	Password input window for vault authentication
  * @author	Astatine387
  */
@@ -18,7 +18,7 @@
 #include "Utils/password.h"
 
 /**
- * @struct	LoginInput
+ * @struct	LoginRequest
  * @brief	Container for login input parameters
  */
 struct LoginRequest {
@@ -43,7 +43,7 @@ class PasswordGUI : public QWidget {
 
   /**
    * @brief	Set vault mode and path from LoginGUI
-   * @param	mode	0 for new, 1 for open
+   * @param	action	Vault action (kCreate or kOpen)
    * @param	path	Vault file path
    */
   void SetVaultInfo(VaultAction action, const QString& path);

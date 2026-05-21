@@ -58,7 +58,7 @@ class MainGUI : public QWidget {
  private slots:
   /**
    * @brief	Switch to password input screen
-   * @param	mode	0 for new, 1 for open
+   * @param	action	Vault action (kCreate or kOpen)
    * @param	path	Vault file path
    */
   void OnVaultSelected(VaultAction action, const QString& path);

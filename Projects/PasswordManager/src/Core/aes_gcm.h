@@ -1,5 +1,5 @@
 /**
- * @file	AES_GCM.h
+ * @file	aes_gcm.h
  * @brief	AES-GCM encryption/decryption engine
  * @author	Astatine387
  */
@@ -20,12 +20,12 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief	Default constructor of AES_GCM class
+   * @brief	Default constructor of AesGcm class
    */
   AesGcm();
 
   /**
-   * @brief	Destructor of AES_GCM class
+   * @brief	Destructor of AesGcm class
    */
   ~AesGcm();
 

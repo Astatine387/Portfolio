@@ -1,5 +1,5 @@
 /**
- * @file	platform_linux.h
+ * @file	platform_linux.cpp
  * @brief	Implementation of utility functions for Linux
  * @author	Astatine387
  */

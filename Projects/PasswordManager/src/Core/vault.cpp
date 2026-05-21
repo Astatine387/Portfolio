@@ -1,6 +1,6 @@
 /**
  * @file	vault.cpp
- * @brief	Implementation of basic functions Vault class
+ * @brief	Implementation of basic functions of Vault class
  * @author	Astatine387
  */
 

@@ -1,5 +1,5 @@
 /**
- * @file	Entry.cpp
+ * @file	entry.cpp
  * @brief	Implementation of Entry struct
  * @author	Astatine387
  */

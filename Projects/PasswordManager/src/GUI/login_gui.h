@@ -30,7 +30,7 @@ class LoginGUI : public QWidget {
  signals:
   /**
    * @brief	Signal when vault file is selected
-   * @param	mode	0 for new, 1 for open
+   * @param	action	Vault action (kCreate or kOpen)
    * @param	path	Selected vault file path
    */
   void VaultSelected(VaultAction action, const QString& path);

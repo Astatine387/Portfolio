@@ -1,5 +1,5 @@
 /**
- * @file	PWLineEdit.cpp
+ * @file	pw_line_edit.cpp
  * @brief	Implementation of PWLineEdit class
  * @author	Astatine387
  */

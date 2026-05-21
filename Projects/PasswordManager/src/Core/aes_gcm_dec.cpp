@@ -1,6 +1,6 @@
 /**
- * @file	AES_GCM_dec.cpp
- * @brief	Implementation of decryption functions AES_GCM class
+ * @file	aes_gcm_dec.cpp
+ * @brief	Implementation of decryption functions of AesGcm class
  * @author	Astatine387
  */
 
