@@ -158,15 +158,16 @@ cmake --build build
 
 ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=fileencryption)
 
-| File                 | Tracked Lines | Covered | Partial | Missed | Coverage % |
-| -------------------- | ------------- | ------- | ------- | ------ | ---------- |
-| Core/aes_gcm.cpp     | 40            | 36      | 0       | 4      | 90.00%     |
-| Core/aes_gcm.h       | 4             | 4       | 0       | 0      | 100.00%    |
-| Core/aes_gcm_dec.cpp | 76            | 74      | 0       | 2      | 97.37%     |
-| Core/aes_gcm_enc.cpp | 74            | 72      | 0       | 2      | 97.30%     |
-| Utils/password.cpp   | 23            | 23      | 0       | 0      | 100.00%    |
-| Utils/password.h     | 21            | 21      | 0       | 0      | 100.00%    |
-| Utils/library.h      | 36            | 34      | 0       | 2      | 94.44%     |
+| File                     | Tracked Lines | Covered | Partial | Missed | Coverage % |
+| ------------------------ | ------------- | ------- | ------- | ------ | ---------- |
+| Core/aes_gcm.cpp         | 44            | 40      | 0       | 4      | 90.91%     |
+| Core/aes_gcm.h           | 2             | 2       | 0       | 0      | 100.00%    |
+| Core/aes_gcm_dec.cpp     | 76            | 73      | 0       | 2      | 96.05%     |
+| Core/aes_gcm_enc.cpp     | 72            | 70      | 0       | 2      | 97.22%     |
+| Utils/password.cpp       | 23            | 23      | 0       | 0      | 100.00%    |
+| Utils/password.h         | 22            | 22      | 0       | 0      | 100.00%    |
+| Utils/platform.cpp       | 2             | 2       | 0       | 2      | 94.44%     |
+| Utils/platform_linux.cpp | 33            | 29      | 0       | 4      | 87.88%     |
 
 | Module   | Test File          | Test Cases                                                             |
 | -------- | ------------------ | ---------------------------------------------------------------------- |
