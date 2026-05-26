@@ -8,6 +8,7 @@
 
 #include <QFileInfo>
 
+#include "GUI/crypto_wrapper.h"
 #include "Utils/platform.h"
 
 MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
@@ -61,16 +62,16 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
     /* Create worker thread */
 
     thread_ = new QThread(this);
-    worker_ = new CryptoWorker(src_file_, dst_file_, req_.dst, req_.pw, req_.mode);
-    worker_->moveToThread(thread_);
+    wrapper_ = new CryptoWrapper(src_file_, dst_file_, req_.dst, req_.pw, req_.mode);
+    wrapper_->moveToThread(thread_);
 
     /* Connect signals */
 
-    connect(thread_, &QThread::started, worker_, &CryptoWorker::Work);
-    connect(worker_, &CryptoWorker::ProgressUpdate, this, &MainGUI::OnProgressUpdated);
-    connect(worker_, &CryptoWorker::Finished, this, &MainGUI::OnWorkFinished);
-    connect(prg_gui_, &ProgressGUI::CancelRequested, worker_, &CryptoWorker::RequestCancel, Qt::DirectConnection);
-    connect(worker_, &CryptoWorker::Finished, thread_, &QThread::quit);
+    connect(thread_, &QThread::started, wrapper_, &CryptoWrapper::Run);
+    connect(wrapper_, &CryptoWrapper::ProgressUpdate, this, &MainGUI::OnProgressUpdated);
+    connect(wrapper_, &CryptoWrapper::Finished, this, &MainGUI::OnWorkFinished);
+    connect(prg_gui_, &ProgressGUI::CancelRequested, wrapper_, &CryptoWrapper::RequestCancel, Qt::DirectConnection);
+    connect(wrapper_, &CryptoWrapper::Finished, thread_, &QThread::quit);
     connect(thread_, &QThread::finished, this, &MainGUI::OnThreadFinished);
 
     /* Start worker thread */
@@ -131,8 +132,8 @@ int MainGUI::OpenFiles() {
 
 void MainGUI::Clean() {
   if (thread_ && thread_->isRunning()) {
-    if (worker_) {
-      worker_->RequestCancel();
+    if (wrapper_) {
+      wrapper_->RequestCancel();
     }
 
     thread_->quit();
@@ -143,9 +144,9 @@ void MainGUI::Clean() {
     }
   }
 
-  if (worker_) {
-    worker_->deleteLater();
-    worker_ = nullptr;
+  if (wrapper_) {
+    wrapper_->deleteLater();
+    wrapper_ = nullptr;
   }
 
   if (thread_) {

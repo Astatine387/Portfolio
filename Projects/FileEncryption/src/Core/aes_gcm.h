@@ -89,8 +89,8 @@ class AesGcm {
   void SetErrorCallback(ErrorCallback ecb) { ecb_ = ecb; }
 
   /**
-   * @brief	Set progress callback function
-   * @param	pcb		Progress callback function
+   * @brief		Set progress callback function
+   * @param		pcb		Progress callback function
    */
   void SetProgressCallback(ProgressCallback pcb) { pcb_ = pcb; }
 

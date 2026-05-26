@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-# Converage
 option(COVERAGE "Enable coverage reporting" OFF)
 
 if(COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -14,16 +13,12 @@ if(COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
 endif()
 
-# Qt6
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
-# OpenSSL
 find_package(OpenSSL 3.0 REQUIRED)
 
-# GoogleTest
 find_package(GTest CONFIG REQUIRED)
 
-# Argon2
 find_library(ARGON2_LIBRARY NAMES argon2)
 find_path(ARGON2_INCLUDE_DIR argon2.h)
 
@@ -31,60 +26,74 @@ if(NOT ARGON2_LIBRARY OR NOT ARGON2_INCLUDE_DIR)
     message(FATAL_ERROR "Argon2 library not found")
 endif()
 
-set(LIB_SOURCES
+set(CORE_SOURCES
     src/Core/aes_gcm.cpp
     src/Core/aes_gcm_dec.cpp
     src/Core/aes_gcm_enc.cpp
     src/Core/crypto_worker.cpp
-    src/GUI/input_gui.cpp
-    src/GUI/main_gui.cpp
-    src/GUI/progress_gui.cpp
-    src/GUI/mode_button.cpp
-    src/GUI/pw_line_edit.cpp
     src/Utils/password.cpp
     src/Utils/platform.cpp
 )
 
 if(WIN32)
-    list(APPEND LIB_SOURCES src/Utils/platform_win32.cpp)
+    list(APPEND CORE_SOURCES src/Utils/platform_win32.cpp)
 else()
-    list(APPEND LIB_SOURCES src/Utils/platform_linux.cpp)
+    list(APPEND CORE_SOURCES src/Utils/platform_linux.cpp)
 endif()
 
-set(HEADERS
+set(CORE_HEADERS
     src/Common/constants.h
     src/Core/aes_gcm.h
     src/Core/crypto_worker.h
-    src/GUI/input_gui.h
-    src/GUI/main_gui.h
-    src/GUI/progress_gui.h
-    src/GUI/mode_button.h
-    src/GUI/pw_line_edit.h
     src/Utils/password.h
     src/Utils/platform.h
 )
 
-add_library(FileEncryption-lib STATIC ${LIB_SOURCES} ${HEADERS})
+add_library(FileEncryption-core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
 
-target_include_directories(FileEncryption-lib PUBLIC
+target_include_directories(FileEncryption-core PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${ARGON2_INCLUDE_DIR}
 )
 
-target_link_libraries(FileEncryption-lib PUBLIC
-    Qt6::Core
-    Qt6::Gui
-    Qt6::Widgets
+target_link_libraries(FileEncryption-core PUBLIC
     OpenSSL::Crypto
     ${ARGON2_LIBRARY}
 )
 
 if(WIN32)
-    target_link_libraries(FileEncryption-lib PUBLIC bcrypt)
+    target_link_libraries(FileEncryption-core PUBLIC bcrypt)
 endif()
 
+set(GUI_SOURCES
+    src/GUI/crypto_wrapper.cpp
+    src/GUI/input_gui.cpp
+    src/GUI/main_gui.cpp
+    src/GUI/progress_gui.cpp
+    src/GUI/mode_button.cpp
+    src/GUI/pw_line_edit.cpp
+)
+
+set(GUI_HEADERS
+    src/GUI/crypto_wrapper.h
+    src/GUI/input_gui.h
+    src/GUI/main_gui.h
+    src/GUI/progress_gui.h
+    src/GUI/mode_button.h
+    src/GUI/pw_line_edit.h
+)
+
+add_library(FileEncryption-gui STATIC ${GUI_SOURCES} ${GUI_HEADERS})
+
+target_link_libraries(FileEncryption-gui PUBLIC
+    FileEncryption-core
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+)
+
 add_executable(${PROJECT_NAME} src/Common/main.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE FileEncryption-lib)
+target_link_libraries(${PROJECT_NAME} PRIVATE FileEncryption-gui)
 
 enable_testing()
 
@@ -97,7 +106,7 @@ set(TEST_SOURCES
 add_executable(FileEncryption-tests ${TEST_SOURCES})
 
 target_link_libraries(FileEncryption-tests PRIVATE
-    FileEncryption-lib
+    FileEncryption-core
     GTest::gtest
     GTest::gtest_main
 )
@@ -110,7 +119,7 @@ if(WIN32)
             $<TARGET_RUNTIME_DLLS:FileEncryption-tests>
             $<TARGET_FILE_DIR:FileEncryption-tests>
         COMMAND_EXPAND_LISTS
-        COMMENT "Copying runtime DLLs next to FileEncryption-tests")
+    )
 endif()
 
 gtest_discover_tests(FileEncryption-tests)
@@ -124,7 +133,7 @@ if(benchmark_FOUND)
 
     add_executable(FileEncryption-bench ${BENCH_SOURCES})
     target_link_libraries(FileEncryption-bench PRIVATE
-        FileEncryption-lib
+        FileEncryption-core
         benchmark::benchmark
         benchmark::benchmark_main
     )

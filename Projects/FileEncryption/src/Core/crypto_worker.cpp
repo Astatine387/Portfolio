@@ -1,6 +1,6 @@
 /**
  * @file	crypto_worker.cpp
- * @brief	Implementation of Worker class
+ * @brief	Implementation of CryptoWorker class
  * @author	Astatine387
  */
 
@@ -12,23 +12,25 @@ void CryptoWorker::RequestCancel() {
 
 void CryptoWorker::Work() {
   AesGcm aes;
-  QString msg;
+  std::string err, msg;
   bool should_delete = false;
   int res;
 
-  aes.SetErrorCallback([this](const char* msg) { err_ = QString(msg); });
+  aes.SetErrorCallback([&err](const char* m) { err = m; });
 
   aes.SetProgressCallback([this](int perc, bool* cancelled) {
-    QString status;
+    if (pcb_) {
+      std::string status;
 
-    if (mode_ == CryptoMode::kEncrypt) {
-      status = QString("Encrypting... %1%\n").arg(perc);
-    }
-    else {
-      status = QString("Decrypting... %1%\n").arg(perc);
-    }
+      if (mode_ == CryptoMode::kEncrypt) {
+        status = "Encrypting... " + std::to_string(perc) + "%\n";
+      }
+      else {
+        status = "Decrypting... " + std::to_string(perc) + "%\n";
+      }
 
-    emit ProgressUpdate(perc, status);
+      pcb_(perc, status);
+    }
 
     *cancelled = should_cancel_.load(std::memory_order_acquire);
   });
@@ -41,7 +43,7 @@ void CryptoWorker::Work() {
       should_delete = true;
     }
     else if (res) {
-      msg = err_ + "Encryption failed\n";
+      msg = err + "Encryption failed\n";
       should_delete = true;
     }
     else {
@@ -56,7 +58,7 @@ void CryptoWorker::Work() {
       should_delete = true;
     }
     else if (res) {
-      msg = err_ + "Decryption failed\n";
+      msg = err + "Decryption failed\n";
       should_delete = true;
     }
     else {
@@ -64,5 +66,7 @@ void CryptoWorker::Work() {
     }
   }
 
-  emit Finished(msg, should_delete);
+  if (fcb_) {
+    fcb_(msg, should_delete);
+  }
 }

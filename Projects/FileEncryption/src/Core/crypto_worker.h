@@ -6,8 +6,10 @@
 
 #pragma once
 
-#include <QObject>
-#include <QString>
+#include <atomic>
+#include <cstdio>
+#include <functional>
+#include <string>
 
 #include "Common/constants.h"
 #include "Core/aes_gcm.h"
@@ -17,37 +19,33 @@
  * @class	CryptoWorker
  * @brief	Worker class for asynchronous encryption/decryption
  */
-class CryptoWorker : public QObject {
-  Q_OBJECT
-
+class CryptoWorker {
  public:
   /**
-   * @brief	Constructor for Worker class
-   * @param   srcFile     Source file
-   * @param   dstFile     Destination file
-   * @param   dstPath     Destination file path
-   * @param   pw          Password
-   * @param   mode        Encryption/decryption mode
+   * @brief	Constructor for CryptoWorker class
+   * @param     src_file    Source file
+   * @param     dst_file    Destination file
+   * @param     dst_path    Destination file path
+   * @param     pw          Password
+   * @param     mode        Encryption/decryption mode
    */
-  CryptoWorker(FILE* src_file, FILE* dst_file, const QString& dst_path, const Password& pw, CryptoMode mode)
+  CryptoWorker(FILE* src_file, FILE* dst_file, const std::string& dst_path, const Password& pw, CryptoMode mode)
       : src_file_(src_file), dst_file_(dst_file), dst_path_(dst_path), pw_(pw), mode_(mode) {}
 
- signals:
   /**
-   * @brief	Signal when encryption/decryption is completed
-   * @param   msg             Result message
-   * @param   shouldDelete    Destination file deletion flag value
+   * @brief		Callback function for progress reporting
+   * @param     perc    Progress percentage
+   * @param     status  Status message
    */
-  void Finished(QString msg, bool should_delete);
+  using ProgressCallback = std::function<void(int perc, const std::string& status)>;
 
   /**
-   * @brief   Update progress bar and status message
-   * @param   perc     Progress percentage
-   * @param   status  Status message
+   * @brief		Callback function for job finished
+   * @param		msg             Result message
+   * @param		should_delete   Destination file deletion flag value
    */
-  void ProgressUpdate(int perc, QString status);
+  using FinishedCallback = std::function<void(const std::string& msg, bool should_delete)>;
 
- public slots:
   /**
    * @brief   Cancel the process
    */
@@ -58,10 +56,24 @@ class CryptoWorker : public QObject {
    */
   void Work();
 
+  /**
+   * @brief		Set progress callback function
+   * @param		pcb		Progress callback function
+   */
+  void SetProgressCallback(ProgressCallback pcb) { pcb_ = std::move(pcb); }
+
+  /**
+   * @brief		Set finished callback function
+   * @param		fcb		Finished callback function
+   */
+  void SetFinishedCallback(FinishedCallback fcb) { fcb_ = std::move(fcb); }
+
  private:
   CryptoMode mode_;
   FILE *src_file_ = nullptr, *dst_file_ = nullptr;
-  QString err_ = "", dst_path_;
+  std::string dst_path_;
   Password pw_;
   std::atomic<bool> should_cancel_{ false };
+  ProgressCallback pcb_;
+  FinishedCallback fcb_;
 };

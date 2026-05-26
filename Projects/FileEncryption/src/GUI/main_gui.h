@@ -11,7 +11,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
-#include "Core/crypto_worker.h"
+#include "GUI/crypto_wrapper.h"
 #include "GUI/input_gui.h"
 #include "GUI/progress_gui.h"
 
@@ -79,7 +79,7 @@ class MainGUI : public QWidget {
   QThread* thread_;
   QVBoxLayout* vbox_;
   CryptoRequest req_;
-  CryptoWorker* worker_;
+  CryptoWrapper* wrapper_;
   bool should_delete_ = false;  // Destination file deletion flag for cancellation or failure
 
   /**
