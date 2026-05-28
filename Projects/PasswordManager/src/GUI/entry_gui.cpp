@@ -119,11 +119,11 @@ void EntryGUI::SetAddMode() {
   err_msg_->clear();
 }
 
-void EntryGUI::SetEditMode(const std::string& site, const std::string& acc, const Password& pw) {
+void EntryGUI::SetEditMode(const QString& site, const QString& acc, const Password& pw) {
   setWindowTitle("Edit Entry");
 
-  site_line_->setText(QString::fromStdString(site));
-  acc_line_->setText(QString::fromStdString(acc));
+  site_line_->setText(site);
+  acc_line_->setText(acc);
   pwline_->SetPassword(pw);
   err_msg_->clear();
 }

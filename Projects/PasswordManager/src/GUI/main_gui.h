@@ -11,7 +11,6 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
-#include <string>
 
 #include "Core/vault.h"
 #include "GUI/change_pw_gui.h"
@@ -84,21 +83,21 @@ class MainGUI : public QWidget {
    * @param	site	Site of entry to be edited
    * @param	acc		Account of entry to be edited
    */
-  void OnEditRequested(const std::string& site, const std::string& acc);
+  void OnEditRequested(const QString& site, const QString& acc);
 
   /**
    * @brief	Process entry delete request
    * @param	site	Site of entry to be deleted
    * @param	acc		Account of entry to be deleted
    */
-  void OnDeleteRequested(const std::string& site, const std::string& acc);
+  void OnDeleteRequested(const QString& site, const QString& acc);
 
   /**
    * @brief	Process copy password request
    * @param	site	Site of entry to copy password from
    * @param	acc		Account of entry to copy password from
    */
-  void OnCopyPWRequested(const std::string& site, const std::string& acc);
+  void OnCopyPWRequested(const QString& site, const QString& acc);
 
   /**
    * @brief	Process vault save request
@@ -129,9 +128,9 @@ class MainGUI : public QWidget {
 
   int countdown_ = 0;
 
-  std::string last_error_;
-  std::string orig_site_;
-  std::string orig_acc_;
+  QString last_error_;
+  QString orig_site_;
+  QString orig_acc_;
   bool is_edit_mode_ = false;
 
   ErrorCallback ecb_ = nullptr;

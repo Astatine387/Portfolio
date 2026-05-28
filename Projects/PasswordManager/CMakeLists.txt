@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-# Coverage
 option(COVERAGE "Enable coverage reporting" OFF)
 
 if(COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -14,16 +13,12 @@ if(COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
 endif()
 
-# Qt6
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
-# OpenSSL
 find_package(OpenSSL 3.0 REQUIRED)
 
-# GoogleTest
 find_package(GTest CONFIG REQUIRED)
 
-# Argon2
 find_library(ARGON2_LIBRARY NAMES argon2)
 find_path(ARGON2_INCLUDE_DIR argon2.h)
 
@@ -31,7 +26,7 @@ if(NOT ARGON2_LIBRARY OR NOT ARGON2_INCLUDE_DIR)
     message(FATAL_ERROR "Argon2 library not found")
 endif()
 
-set(LIB_SOURCES
+set(CORE_SOURCES
     src/Core/aes_gcm.cpp
     src/Core/aes_gcm_dec.cpp
     src/Core/aes_gcm_enc.cpp
@@ -39,6 +34,42 @@ set(LIB_SOURCES
     src/Core/vault.cpp
     src/Core/vault_file.cpp
     src/Core/vault_entry.cpp
+    src/Utils/password.cpp
+    src/Utils/platform.cpp
+)
+
+if(WIN32)
+    list(APPEND CORE_SOURCES src/Utils/platform_win32.cpp)
+else()
+    list(APPEND CORE_SOURCES src/Utils/platform_linux.cpp)
+endif()
+
+set(CORE_HEADERS
+    src/Common/constants.h
+    src/Core/aes_gcm.h
+    src/Core/entry.h
+    src/Core/vault.h
+    src/Utils/password.h
+    src/Utils/platform.h
+)
+
+add_library(PasswordManager-core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
+
+target_include_directories(PasswordManager-core PUBLIC
+    ${CMAKE_SOURCE_DIR}/src
+    ${ARGON2_INCLUDE_DIR}
+)
+
+target_link_libraries(PasswordManager-core PUBLIC
+    OpenSSL::Crypto
+    ${ARGON2_LIBRARY}
+)
+
+if(WIN32)
+    target_link_libraries(PasswordManager-core PUBLIC bcrypt)
+endif()
+
+set(GUI_SOURCES
     src/GUI/change_pw_gui.cpp
     src/GUI/entry_gui.cpp
     src/GUI/list_gui.cpp
@@ -46,21 +77,9 @@ set(LIB_SOURCES
     src/GUI/main_gui.cpp
     src/GUI/password_gui.cpp
     src/GUI/pw_line_edit.cpp
-    src/Utils/password.cpp
-    src/Utils/platform.cpp
 )
 
-if(WIN32)
-    list(APPEND LIB_SOURCES src/Utils/platform_win32.cpp)
-else()
-    list(APPEND LIB_SOURCES src/Utils/platform_linux.cpp)
-endif()
-
-set(HEADERS
-    src/Common/constants.h
-    src/Core/aes_gcm.h
-    src/Core/entry.h
-    src/Core/vault.h
+set(GUI_HEADERS
     src/GUI/change_pw_gui.h
     src/GUI/entry_gui.h
     src/GUI/list_gui.h
@@ -68,31 +87,19 @@ set(HEADERS
     src/GUI/main_gui.h
     src/GUI/password_gui.h
     src/GUI/pw_line_edit.h
-    src/Utils/password.h
-    src/Utils/platform.h
 )
 
-add_library(PasswordManager-lib STATIC ${LIB_SOURCES} ${HEADERS})
+add_library(PasswordManager-gui STATIC ${GUI_SOURCES} ${GUI_HEADERS})
 
-target_include_directories(PasswordManager-lib PUBLIC
-    ${CMAKE_SOURCE_DIR}/src
-    ${ARGON2_INCLUDE_DIR}
-)
-
-target_link_libraries(PasswordManager-lib PUBLIC
+target_link_libraries(PasswordManager-gui PUBLIC
+    PasswordManager-core
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
-    OpenSSL::Crypto
-    ${ARGON2_LIBRARY}
 )
 
-if(WIN32)
-    target_link_libraries(PasswordManager-lib PUBLIC bcrypt)
-endif()
-
 add_executable(${PROJECT_NAME} src/Common/main.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE PasswordManager-lib)
+target_link_libraries(${PROJECT_NAME} PRIVATE PasswordManager-gui)
 
 enable_testing()
 
@@ -108,7 +115,7 @@ set(TEST_SOURCES
 add_executable(PasswordManager-tests ${TEST_SOURCES})
 
 target_link_libraries(PasswordManager-tests PRIVATE
-    PasswordManager-lib
+    PasswordManager-core
     GTest::gtest
     GTest::gtest_main
 )

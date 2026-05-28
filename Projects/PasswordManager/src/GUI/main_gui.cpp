@@ -52,7 +52,7 @@ MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
 
   /* Set error callback */
 
-  vault_.SetErrorCallback([this](const char* msg) { last_error_ = msg; });
+  vault_.SetErrorCallback([this](const char* msg) { last_error_ = QString::fromUtf8(msg); });
 
   /* Set verify callback for password change */
 
@@ -88,7 +88,7 @@ void MainGUI::OnLoginRequested(const LoginRequest& req) {
   }
 
   if (res) {
-    pw_gui_->SetErrMsg(QString::fromStdString(last_error_));
+    pw_gui_->SetErrMsg(last_error_);
     return;
   }
 
@@ -123,14 +123,14 @@ void MainGUI::OnAddRequested() {
   }
 }
 
-void MainGUI::OnEditRequested(const std::string& site, const std::string& acc) {
+void MainGUI::OnEditRequested(const QString& site, const QString& acc) {
   is_edit_mode_ = true;
   orig_site_ = site;
   orig_acc_ = acc;
 
   /* Find the entry to get its password */
 
-  Entry target = { site, acc };
+  Entry target = { site.toStdString(), acc.toStdString() };
   const auto& entries = vault_.GetEntries();
   auto it = entries.find(target);
 
@@ -143,7 +143,7 @@ void MainGUI::OnEditRequested(const std::string& site, const std::string& acc) {
 
   if (entry_gui_->exec() == QDialog::Accepted) {
     Entry entry = entry_gui_->GetInput();
-    int res = vault_.UpdateEntry(orig_site_, orig_acc_, entry.site, entry.acc, entry.pw);
+    int res = vault_.UpdateEntry(orig_site_.toStdString(), orig_acc_.toStdString(), entry.site, entry.acc, entry.pw);
 
     if (res == 1) {
       list_gui_->SetErrMsg("Original entry not found");
@@ -159,8 +159,8 @@ void MainGUI::OnEditRequested(const std::string& site, const std::string& acc) {
   }
 }
 
-void MainGUI::OnDeleteRequested(const std::string& site, const std::string& acc) {
-  if (vault_.DeleteEntry(site, acc)) {
+void MainGUI::OnDeleteRequested(const QString& site, const QString& acc) {
+  if (vault_.DeleteEntry(site.toStdString(), acc.toStdString())) {
     list_gui_->SetErrMsg("Failed to delete entry");
     return;
   }
@@ -168,8 +168,8 @@ void MainGUI::OnDeleteRequested(const std::string& site, const std::string& acc)
   RefreshList();
 }
 
-void MainGUI::OnCopyPWRequested(const std::string& site, const std::string& acc) {
-  Entry target = { site, acc };
+void MainGUI::OnCopyPWRequested(const QString& site, const QString& acc) {
+  Entry target = { site.toStdString(), acc.toStdString() };
   const auto& entries = vault_.GetEntries();
   auto it = entries.find(target);
 
@@ -219,7 +219,7 @@ void MainGUI::OnCopyPWRequested(const std::string& site, const std::string& acc)
 
 void MainGUI::OnSaveRequested() {
   if (vault_.SaveVault(vault_path_.toStdString())) {
-    pw_gui_->SetErrMsg(QString::fromStdString(last_error_));
+    pw_gui_->SetErrMsg(last_error_);
     return;
   }
 
@@ -266,11 +266,12 @@ void MainGUI::CloseEvent(QCloseEvent* event) {
 }
 
 void MainGUI::RefreshList() {
-  std::vector<std::pair<std::string, std::string>> entry_vec;
+  QVector<QPair<QString, QString>> entry_vec;
   const auto& entry_set = vault_.GetEntries();
 
-  for (auto it = entry_set.begin(); it != entry_set.end(); it++)
-    entry_vec.emplace_back(it->site, it->acc);
+  for (auto it = entry_set.begin(); it != entry_set.end(); it++) {
+    entry_vec.append({ QString::fromStdString(it->site), QString::fromStdString(it->acc) });
+  }
 
   list_gui_->LoadEntries(entry_vec);
 }

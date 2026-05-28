@@ -87,7 +87,7 @@ ListGUI::ListGUI(QWidget* parent) : QWidget(parent) {
   connect(search_line_, &QLineEdit::textChanged, this, &ListGUI::OnSearchChanged);
 }
 
-void ListGUI::LoadEntries(const std::vector<std::pair<std::string, std::string>>& entries) {
+void ListGUI::LoadEntries(const QVector<QPair<QString, QString>>& entries) {
   size_t size = entries.size();
 
   table_->setRowCount(0);
@@ -96,8 +96,8 @@ void ListGUI::LoadEntries(const std::vector<std::pair<std::string, std::string>>
     int row = table_->rowCount();
 
     table_->insertRow(row);
-    table_->setItem(row, 0, new QTableWidgetItem(QString::fromStdString(entries[i].first)));
-    table_->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(entries[i].second)));
+    table_->setItem(row, 0, new QTableWidgetItem(entries[i].first));
+    table_->setItem(row, 1, new QTableWidgetItem(entries[i].second));
   }
 
   err_msg_->clear();
@@ -114,7 +114,7 @@ void ListGUI::OnAddClicked() {
 }
 
 void ListGUI::OnEditClicked() {
-  std::string site, acc;
+  QString site, acc;
 
   if (!GetSelectedEntry(site, acc))
     return;
@@ -123,7 +123,7 @@ void ListGUI::OnEditClicked() {
 }
 
 void ListGUI::OnDeleteClicked() {
-  std::string site, acc;
+  QString site, acc;
 
   if (!GetSelectedEntry(site, acc))
     return;
@@ -132,7 +132,7 @@ void ListGUI::OnDeleteClicked() {
 }
 
 void ListGUI::OnCopyPWClicked() {
-  std::string site, acc;
+  QString site, acc;
 
   if (!GetSelectedEntry(site, acc))
     return;
@@ -159,7 +159,7 @@ void ListGUI::OnSearchChanged(const QString& text) {
   }
 }
 
-bool ListGUI::GetSelectedEntry(std::string& site, std::string& acc) {
+bool ListGUI::GetSelectedEntry(QString& site, QString& acc) {
   int row = table_->currentRow();
 
   if (row < 0) {
@@ -169,8 +169,8 @@ bool ListGUI::GetSelectedEntry(std::string& site, std::string& acc) {
 
   err_msg_->clear();
 
-  site = table_->item(row, 0)->text().toStdString();
-  acc = table_->item(row, 1)->text().toStdString();
+  site = table_->item(row, 0)->text();
+  acc = table_->item(row, 1)->text();
 
   return true;
 }

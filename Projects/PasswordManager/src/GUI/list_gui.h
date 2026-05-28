@@ -34,7 +34,7 @@ class ListGUI : public QWidget {
    * @brief	Refresh the table with current entry data
    * @param	entries		List of entries as (site, account) pairs
    */
-  void LoadEntries(const std::vector<std::pair<std::string, std::string>>& entries);
+  void LoadEntries(const QVector<QPair<QString, QString>>& entries);
 
   /**
    * @brief	Display error message
@@ -53,21 +53,21 @@ class ListGUI : public QWidget {
    * @param	site	Site name of the selected entry
    * @param	acc		Account of the selected entry
    */
-  void EditRequested(const std::string& site, const std::string& acc);
+  void EditRequested(const QString& site, const QString& acc);
 
   /**
    * @brief	Signal when delete button is clicked
    * @param	site	Site name of the selected entry
    * @param	acc		Account of the selected entry
    */
-  void DeleteRequested(const std::string& site, const std::string& acc);
+  void DeleteRequested(const QString& site, const QString& acc);
 
   /**
    * @brief	Signal when copy password button is clicked
    * @param	site	Site name of the selected entry
    * @param	acc		Account of the selected entry
    */
-  void CopyPWRequested(const std::string& site, const std::string& acc);
+  void CopyPWRequested(const QString& site, const QString& acc);
 
   /**
    * @brief	Signal when save button is clicked
@@ -132,5 +132,5 @@ class ListGUI : public QWidget {
    * @param	acc		Destination for account
    * @return	true if a row is selected
    */
-  bool GetSelectedEntry(std::string& site, std::string& acc);
+  bool GetSelectedEntry(QString& site, QString& acc);
 };

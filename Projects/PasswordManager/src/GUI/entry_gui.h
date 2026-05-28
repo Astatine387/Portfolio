@@ -13,9 +13,9 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QSlider>
+#include <QString>
 #include <QVBoxLayout>
 #include <QWidget>
-#include <string>
 #include <vector>
 
 #include "Core/entry.h"
@@ -47,7 +47,7 @@ class EntryGUI : public QDialog {
    * @param	acc		Current account
    * @param	pw		Current password
    */
-  void SetEditMode(const std::string& site, const std::string& acc, const Password& pw);
+  void SetEditMode(const QString& site, const QString& acc, const Password& pw);
 
   /**
    * @brief	Get the entry input from the dialog
@@ -103,14 +103,15 @@ class EntryGUI : public QDialog {
 
   static constexpr char kSpcs[] = "`~!@#$%^&*()-_=+[{]}\\|;:\'\",<.>/?";
 
-  static constexpr bool kDefaultSpcs[32] = { //    `  ~  !  @  #  $  %  ^
-                                             0, 1, 1, 1, 0, 0, 1, 1,
-                                             //    &  *  (  )  -  _  =  +
-                                             0, 0, 0, 0, 0, 1, 1, 1,
-                                             //    [  {  ]  }  \  |  ;  :
-                                             1, 1, 1, 1, 0, 0, 0, 1,
-                                             //    '  "  ,  <  .  >  /  ?
-                                             0, 0, 1, 0, 0, 0, 0, 1
+  static constexpr bool kDefaultSpcs[32] = {
+    0, 1, 1, 1, 0, 0, 1, 1,
+    // `  ~  !  @  #  $  %  ^
+    0, 0, 0, 0, 0, 1, 1, 1,
+    // &  *  (  )  -  _  =  +
+    1, 1, 1, 1, 0, 0, 0, 1,
+    // [  {  ]  }  \  |  ;  :
+    0, 0, 1, 0, 0, 0, 0, 1
+    // '  "  ,  <  .  >  /  ?
   };
 
   /**
