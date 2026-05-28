@@ -260,14 +260,14 @@ void Vault::CloseVault() {
   Clear();
 }
 
-bool Vault::VerifyPW(const Password& cur_pw) const {
-  return pw_.Equal(cur_pw);
+bool Vault::VerifyPW(const Password& pw) const {
+  return pw_.Equal(pw);
 }
 
-int Vault::ChangePW(const Password& new_pw, const std::string& path) {
+int Vault::ChangePW(const Password& pw, const std::string& path) {
   last_error_.clear();
 
-  if (pw_.SetData(new_pw)) {
+  if (pw_.SetData(pw)) {
     ReportError(
         "[Auth] Password change failed - Password exceeds maximum length (256 "
         "characters)\n");

@@ -18,7 +18,7 @@
 #include <QWidget>
 #include <vector>
 
-#include "Core/entry.h"
+#include "GUI/entry_interface.h"
 #include "GUI/pw_line_edit.h"
 #include "Utils/password.h"
 
@@ -53,7 +53,7 @@ class EntryGUI : public QDialog {
    * @brief	Get the entry input from the dialog
    * @return	Entry input parameters
    */
-  Entry GetInput();
+  EntryInput GetInput();
 
  private slots:
   /**

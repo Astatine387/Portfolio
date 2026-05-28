@@ -16,6 +16,8 @@
 #include <QWidget>
 #include <vector>
 
+#include "GUI/entry_interface.h"
+
 /**
  * @class	ListGUI
  * @brief	Entry list window with CRUD operations
@@ -32,9 +34,9 @@ class ListGUI : public QWidget {
 
   /**
    * @brief	Refresh the table with current entry data
-   * @param	entries		List of entries as (site, account) pairs
+   * @param	entries		List of entries
    */
-  void LoadEntries(const QVector<QPair<QString, QString>>& entries);
+  void LoadEntries(const QVector<EntryView>& entries);
 
   /**
    * @brief	Display error message

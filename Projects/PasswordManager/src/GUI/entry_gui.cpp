@@ -128,14 +128,14 @@ void EntryGUI::SetEditMode(const QString& site, const QString& acc, const Passwo
   err_msg_->clear();
 }
 
-Entry EntryGUI::GetInput() {
-  Entry entry;
+EntryInput EntryGUI::GetInput() {
+  EntryInput res;
 
-  entry.site = site_line_->text().toStdString();
-  entry.acc = acc_line_->text().toStdString();
-  pwline_->Extract(entry.pw);
+  res.site = site_line_->text();
+  res.acc = acc_line_->text();
+  pwline_->Extract(res.pw);
 
-  return entry;
+  return res;
 }
 
 void EntryGUI::OnOKClicked() {

@@ -18,6 +18,7 @@
 #include "GUI/list_gui.h"
 #include "GUI/login_gui.h"
 #include "GUI/password_gui.h"
+#include "GUI/vault_interface.h"
 
 /**
  * @class	MainGUI
@@ -124,11 +125,10 @@ class MainGUI : public QWidget {
   QString vault_path_;
   QTimer* timer_ = nullptr;
   QVBoxLayout* vbox_;
-  Vault vault_;
+  VaultInterface vault_;
 
   int countdown_ = 0;
 
-  QString last_error_;
   QString orig_site_;
   QString orig_acc_;
   bool is_edit_mode_ = false;

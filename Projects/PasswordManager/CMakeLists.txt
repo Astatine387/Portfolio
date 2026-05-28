@@ -77,16 +77,19 @@ set(GUI_SOURCES
     src/GUI/main_gui.cpp
     src/GUI/password_gui.cpp
     src/GUI/pw_line_edit.cpp
+    src/GUI/vault_interface.cpp
 )
 
 set(GUI_HEADERS
     src/GUI/change_pw_gui.h
     src/GUI/entry_gui.h
+    src/GUI/entry_interface.h
     src/GUI/list_gui.h
     src/GUI/login_gui.h
     src/GUI/main_gui.h
     src/GUI/password_gui.h
     src/GUI/pw_line_edit.h
+    src/GUI/vault_interface.h
 )
 
 add_library(PasswordManager-gui STATIC ${GUI_SOURCES} ${GUI_HEADERS})

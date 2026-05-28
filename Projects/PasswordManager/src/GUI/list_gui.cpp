@@ -87,7 +87,7 @@ ListGUI::ListGUI(QWidget* parent) : QWidget(parent) {
   connect(search_line_, &QLineEdit::textChanged, this, &ListGUI::OnSearchChanged);
 }
 
-void ListGUI::LoadEntries(const QVector<QPair<QString, QString>>& entries) {
+void ListGUI::LoadEntries(const QVector<EntryView>& entries) {
   size_t size = entries.size();
 
   table_->setRowCount(0);
@@ -96,8 +96,8 @@ void ListGUI::LoadEntries(const QVector<QPair<QString, QString>>& entries) {
     int row = table_->rowCount();
 
     table_->insertRow(row);
-    table_->setItem(row, 0, new QTableWidgetItem(entries[i].first));
-    table_->setItem(row, 1, new QTableWidgetItem(entries[i].second));
+    table_->setItem(row, 0, new QTableWidgetItem(entries[i].site));
+    table_->setItem(row, 1, new QTableWidgetItem(entries[i].acc));
   }
 
   err_msg_->clear();

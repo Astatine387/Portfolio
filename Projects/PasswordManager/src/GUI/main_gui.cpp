@@ -9,6 +9,8 @@
 #include <QClipboard>
 #include <QGuiApplication>
 
+#include "GUI/entry_interface.h"
+
 MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
   /* Create layouts and components */
 
@@ -50,13 +52,9 @@ MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
   connect(list_gui_, &ListGUI::CloseRequested, this, &MainGUI::OnCloseRequested);
   connect(list_gui_, &ListGUI::ChangePWRequested, this, &MainGUI::OnChangePWRequested);
 
-  /* Set error callback */
-
-  vault_.SetErrorCallback([this](const char* msg) { last_error_ = QString::fromUtf8(msg); });
-
   /* Set verify callback for password change */
 
-  change_pw_gui_->SetVerifyCb([this](const Password& cur_pw) -> bool { return vault_.VerifyPW(cur_pw); });
+  change_pw_gui_->SetVerifyCb([this](const Password& pw) -> bool { return vault_.VerifyPW(pw); });
 }
 
 MainGUI::~MainGUI() {
@@ -81,14 +79,14 @@ void MainGUI::OnLoginRequested(const LoginRequest& req) {
   /* Create or open vault */
 
   if (req.action == VaultAction::kCreate) {
-    res = vault_.NewVault(req.path.toStdString());
+    res = vault_.NewVault(req.path);
   }
   else {
-    res = vault_.OpenVault(req.path.toStdString());
+    res = vault_.OpenVault(req.path);
   }
 
   if (res) {
-    pw_gui_->SetErrMsg(last_error_);
+    pw_gui_->SetErrMsg(vault_.GetLastError());
     return;
   }
 
@@ -112,9 +110,9 @@ void MainGUI::OnAddRequested() {
   entry_gui_->SetAddMode();
 
   if (entry_gui_->exec() == QDialog::Accepted) {
-    Entry entry = entry_gui_->GetInput();
+    EntryInput input = entry_gui_->GetInput();
 
-    if (vault_.CreateEntry(entry.site, entry.acc, entry.pw)) {
+    if (vault_.CreateEntry(input.site, input.acc, input.pw)) {
       list_gui_->SetErrMsg("Entry already exists");
       return;
     }
@@ -130,20 +128,18 @@ void MainGUI::OnEditRequested(const QString& site, const QString& acc) {
 
   /* Find the entry to get its password */
 
-  Entry target = { site.toStdString(), acc.toStdString() };
-  const auto& entries = vault_.GetEntries();
-  auto it = entries.find(target);
+  Password pw;
 
-  if (it == entries.end()) {
+  if (!vault_.GetPW(site, acc, pw)) {
     list_gui_->SetErrMsg("Entry not found");
     return;
   }
 
-  entry_gui_->SetEditMode(site, acc, it->pw);
+  entry_gui_->SetEditMode(site, acc, pw);
 
   if (entry_gui_->exec() == QDialog::Accepted) {
-    Entry entry = entry_gui_->GetInput();
-    int res = vault_.UpdateEntry(orig_site_.toStdString(), orig_acc_.toStdString(), entry.site, entry.acc, entry.pw);
+    EntryInput input = entry_gui_->GetInput();
+    int res = vault_.UpdateEntry(orig_site_, orig_acc_, input.site, input.acc, input.pw);
 
     if (res == 1) {
       list_gui_->SetErrMsg("Original entry not found");
@@ -160,7 +156,7 @@ void MainGUI::OnEditRequested(const QString& site, const QString& acc) {
 }
 
 void MainGUI::OnDeleteRequested(const QString& site, const QString& acc) {
-  if (vault_.DeleteEntry(site.toStdString(), acc.toStdString())) {
+  if (vault_.DeleteEntry(site, acc)) {
     list_gui_->SetErrMsg("Failed to delete entry");
     return;
   }
@@ -169,11 +165,9 @@ void MainGUI::OnDeleteRequested(const QString& site, const QString& acc) {
 }
 
 void MainGUI::OnCopyPWRequested(const QString& site, const QString& acc) {
-  Entry target = { site.toStdString(), acc.toStdString() };
-  const auto& entries = vault_.GetEntries();
-  auto it = entries.find(target);
+  Password pw;
 
-  if (it == entries.end()) {
+  if (!vault_.GetPW(site, acc, pw)) {
     list_gui_->SetErrMsg("Entry not found");
     return;
   }
@@ -182,7 +176,7 @@ void MainGUI::OnCopyPWRequested(const QString& site, const QString& acc) {
 
   QClipboard* board = QGuiApplication::clipboard();
 
-  board->setText(QString::fromUtf8(it->pw.GetData(), static_cast<int>(it->pw.GetSize())));
+  board->setText(QString::fromUtf8(pw.GetData(), static_cast<int>(pw.GetSize())));
 
   /* Auto-clear clipboard after 30 seconds */
 
@@ -218,8 +212,8 @@ void MainGUI::OnCopyPWRequested(const QString& site, const QString& acc) {
 }
 
 void MainGUI::OnSaveRequested() {
-  if (vault_.SaveVault(vault_path_.toStdString())) {
-    pw_gui_->SetErrMsg(last_error_);
+  if (vault_.SaveVault()) {
+    list_gui_->SetErrMsg(vault_.GetLastError());
     return;
   }
 
@@ -228,7 +222,6 @@ void MainGUI::OnSaveRequested() {
 
 void MainGUI::OnCloseRequested() {
   vault_.CloseVault();
-  vault_path_.clear();
 
   stack_->setCurrentWidget(login_gui_);
   resize(300, 150);
@@ -242,7 +235,7 @@ void MainGUI::OnChangePWRequested() {
 
     change_pw_gui_->GetInput(cur_pw, new_pw);
 
-    if (vault_.ChangePW(new_pw, vault_path_.toStdString())) {
+    if (vault_.ChangePW(new_pw)) {
       list_gui_->SetErrMsg("Failed to save vault");
       return;
     }
@@ -266,12 +259,5 @@ void MainGUI::CloseEvent(QCloseEvent* event) {
 }
 
 void MainGUI::RefreshList() {
-  QVector<QPair<QString, QString>> entry_vec;
-  const auto& entry_set = vault_.GetEntries();
-
-  for (auto it = entry_set.begin(); it != entry_set.end(); it++) {
-    entry_vec.append({ QString::fromStdString(it->site), QString::fromStdString(it->acc) });
-  }
-
-  list_gui_->LoadEntries(entry_vec);
+  list_gui_->LoadEntries(vault_.GetEntries());
 }

@@ -70,23 +70,23 @@ class Vault {
    * ================================================== */
 
   /**
-   * @brief	Verify the master password
-   * @param	curPW	Password to verify
+   * @brief		Verify the master password
+   * @param		pw  Password to verify
    * @return	true if password is correct
    */
-  bool VerifyPW(const Password& cur_pw) const;
+  bool VerifyPW(const Password& pw) const;
 
   /**
-   * @brief	Change the master password and re-encrypt vault
-   * @param	newPW	New password
-   * @param	path	Vault file path
+   * @brief		Change the master password and re-encrypt vault
+   * @param		pw      New password
+   * @param		path	Vault file path
    * @return	0 on success, 1 on save failure
    */
-  int ChangePW(const Password& new_pw, const std::string& path);
+  int ChangePW(const Password& pw, const std::string& path);
 
   /**
-   * @brief	Set the master password of vault
-   * @param	pw	Master password
+   * @brief     Set the master password of vault
+   * @param     pw	Master password
    */
   void SetPW(const Password& pw);
 
@@ -95,37 +95,33 @@ class Vault {
    * ================================================== */
 
   /**
-   * @brief	Create a new entry
-   * @param	site	Site name of the new entry
-   * @param	acc		Account of the new entry
-   * @param	pw		Password of the new entry
+   * @brief		Create a new entry
+   * @param		site	Site name of the new entry
+   * @param		acc		Account of the new entry
+   * @param		pw		Password of the new entry
    * @return	0 on success, 1 on failure
    */
   int CreateEntry(const std::string& site, const std::string& acc, const Password& pw);
 
   /**
-   * @brief	Update an entry
-   * @param	oldSite		Site name of the target entry
-   * @param	oldAcc		Account of the target entry
-   * @param	newSite		New site name
-   * @param	newAcc		New account
-   * @param	newPw		New password
+   * @brief     Update an entry
+   * @param     old_site    Site name of the target entry
+   * @param     old_acc		Account of the target entry
+   * @param     new_site    New site name
+   * @param     new_acc		New account
+   * @param     new_pw		New password
    * @return	0 on success, 1 on failure
    */
   int UpdateEntry(const std::string& old_site, const std::string& old_acc, const std::string& new_site,
                   const std::string& new_acc, const Password& new_pw);
 
   /**
-   * @brief	Delete an entry
-   * @param	site	Site name of the target entry
-   * @param	acc		Account of the target entry
-   * @return	0 on success, 1 on failure
+   * @brief     Delete an entry
+   * @param     site	Site name of the target entry
+   * @param     acc		Account of the target entry
+   * @return    0 on success, 1 on failure
    */
   int DeleteEntry(const std::string& site, const std::string& acc);
-
-  /* ==================================================
-   * Accessor functions
-   * ================================================== */
 
   /**
    * @brief	Get a reference to the entry set
@@ -156,7 +152,7 @@ class Vault {
   void SetErrorCallback(ErrorCallback ecb) { ecb_ = ecb; };
 
   /**
-   * @brief	Get the last error message
+   * @brief     Get the last error message
    * @return	Last error message
    */
   const std::string& GetLastError() const;
