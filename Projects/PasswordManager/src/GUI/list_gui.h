@@ -14,7 +14,6 @@
 #include <QTableWidget>
 #include <QVBoxLayout>
 #include <QWidget>
-#include <vector>
 
 #include "GUI/entry_interface.h"
 
