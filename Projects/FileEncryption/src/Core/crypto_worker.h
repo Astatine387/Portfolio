@@ -7,7 +7,6 @@
 #pragma once
 
 #include <atomic>
-#include <cstdio>
 #include <functional>
 #include <string>
 
@@ -23,14 +22,13 @@ class CryptoWorker {
  public:
   /**
    * @brief	Constructor for CryptoWorker class
-   * @param     src_file    Source file
-   * @param     dst_file    Destination file
+   * @param     src_path    Source file path
    * @param     dst_path    Destination file path
    * @param     pw          Password
    * @param     mode        Encryption/decryption mode
    */
-  CryptoWorker(FILE* src_file, FILE* dst_file, const std::string& dst_path, const Password& pw, CryptoMode mode)
-      : src_file_(src_file), dst_file_(dst_file), dst_path_(dst_path), pw_(pw), mode_(mode) {}
+  CryptoWorker(const std::string& src_path, const std::string& dst_path, const Password& pw, CryptoMode mode)
+      : src_path_(src_path), dst_path_(dst_path), pw_(pw), mode_(mode) {}
 
   /**
    * @brief		Callback function for progress reporting
@@ -70,8 +68,7 @@ class CryptoWorker {
 
  private:
   CryptoMode mode_;
-  FILE *src_file_ = nullptr, *dst_file_ = nullptr;
-  std::string dst_path_;
+  std::string src_path_, dst_path_;
   Password pw_;
   std::atomic<bool> should_cancel_{ false };
   ProgressCallback pcb_;

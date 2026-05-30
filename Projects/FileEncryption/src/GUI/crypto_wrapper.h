@@ -17,14 +17,13 @@ class CryptoWrapper : public QObject {
 
  public:
   /**
-   * @brief	Constructor for CryptoWorker class
-   * @param     src_file    Source file
-   * @param     dst_file    Destination file
+   * @brief	Constructor for CryptoWrapper class
+   * @param     src_path    Source file path
    * @param     dst_path    Destination file path
    * @param     pw          Password
    * @param     mode        Encryption/decryption mode
    */
-  CryptoWrapper(FILE* src, FILE* dst, const QString& dst_path, const Password& pw, CryptoMode mode);
+  CryptoWrapper(const QString& src_path, const QString& dst_path, const Password& pw, CryptoMode mode);
 
  signals:
   /**

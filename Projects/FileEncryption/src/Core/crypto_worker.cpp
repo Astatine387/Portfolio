@@ -4,7 +4,9 @@
  * @author	Astatine387
  */
 
-#include "crypto_worker.h"
+#include "Core/crypto_worker.h"
+
+#include "Utils/platform.h"
 
 void CryptoWorker::RequestCancel() {
   should_cancel_.store(true, std::memory_order_release);
@@ -12,9 +14,37 @@ void CryptoWorker::RequestCancel() {
 
 void CryptoWorker::Work() {
   AesGcm aes;
+  FILE* src_file = nullptr;
+  FILE* dst_file = nullptr;
   std::string err, msg;
   bool should_delete = false;
   int res;
+
+  /* Open files */
+
+  OpenFile(&src_file, src_path_, "rb");
+
+  if (src_file == nullptr) {
+    if (fcb_) {
+      fcb_("[File] Open failed - Cannot open source file\n", false);
+    }
+
+    return;
+  }
+
+  OpenFile(&dst_file, dst_path_, "wb+");
+
+  if (dst_file == nullptr) {
+    fclose(src_file);
+
+    if (fcb_) {
+      fcb_("[File] Open failed - Cannot create destination file\n", false);
+    }
+
+    return;
+  }
+
+  /* Set up callbacks */
 
   aes.SetErrorCallback([&err](const char* m) { err = m; });
 
@@ -35,8 +65,10 @@ void CryptoWorker::Work() {
     *cancelled = should_cancel_.load(std::memory_order_acquire);
   });
 
+  /* Encrypt or decrypt */
+
   if (mode_ == CryptoMode::kEncrypt) {
-    res = aes.Encrypt(src_file_, dst_file_, pw_.GetData(), pw_.GetSize());
+    res = aes.Encrypt(src_file, dst_file, pw_.GetData(), pw_.GetSize());
 
     if (should_cancel_) {
       msg = "Encryption canceled\n";
@@ -51,7 +83,7 @@ void CryptoWorker::Work() {
     }
   }
   else {
-    res = aes.Decrypt(src_file_, dst_file_, pw_.GetData(), pw_.GetSize());
+    res = aes.Decrypt(src_file, dst_file, pw_.GetData(), pw_.GetSize());
 
     if (should_cancel_) {
       msg = "Decryption canceled\n";
@@ -66,7 +98,18 @@ void CryptoWorker::Work() {
     }
   }
 
+  /* Close files */
+
+  fclose(src_file);
+  fclose(dst_file);
+
+  /* Delete destination file on failure */
+
+  if (should_delete) {
+    RemoveFile(dst_path_);
+  }
+
   if (fcb_) {
-    fcb_(msg, should_delete);
+    fcb_(msg, false);
   }
 }

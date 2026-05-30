@@ -72,7 +72,6 @@ class MainGUI : public QWidget {
   void OnCloseRequested();
 
  private:
-  FILE *src_file_ = nullptr, *dst_file_ = nullptr;
   InputGUI* input_gui_;
   ProgressGUI* prg_gui_;
   QStackedWidget* widget_;
@@ -80,21 +79,11 @@ class MainGUI : public QWidget {
   QVBoxLayout* vbox_;
   CryptoRequest req_;
   CryptoWrapper* wrapper_;
-  bool should_delete_ = false;  // Destination file deletion flag for cancellation or failure
 
-  /**
-   * @brief   Open file pointers
-   * @return  0 on success, 1 on error
-   */
-  int OpenFiles();
+  int ValidatePaths();
 
   /**
    * @brief   Clean all resources
    */
   void Clean();
-
-  /**
-   * @brief   Clean file pointers
-   */
-  void CloseFiles();
 };

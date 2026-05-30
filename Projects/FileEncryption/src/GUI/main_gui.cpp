@@ -54,7 +54,7 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
   req_.dst = input.dst;
   req_.pw.SetData(input.pw);
 
-  if (OpenFiles() == 0) {
+  if (ValidatePaths() == 0) {
     /* Switch to progress window */
 
     widget_->setCurrentWidget(prg_gui_);
@@ -62,7 +62,7 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
     /* Create worker thread */
 
     thread_ = new QThread(this);
-    wrapper_ = new CryptoWrapper(src_file_, dst_file_, req_.dst, req_.pw, req_.mode);
+    wrapper_ = new CryptoWrapper(req_.src, req_.dst, req_.pw, req_.mode);
     wrapper_->moveToThread(thread_);
 
     /* Connect signals */
@@ -86,7 +86,6 @@ void MainGUI::OnProgressUpdated(int perc, const QString& status) {
 
 void MainGUI::OnWorkFinished(const QString& msg, bool should_delete) {
   prg_gui_->ShowResult(msg);
-  this->should_delete_ = should_delete;
 }
 
 void MainGUI::OnThreadFinished() {
@@ -97,16 +96,12 @@ void MainGUI::OnCloseRequested() {
   close();
 }
 
-int MainGUI::OpenFiles() {
+int MainGUI::ValidatePaths() {
   QFileInfo src_info(req_.src);
   QFileInfo dst_info(req_.dst);
 
-  CloseFiles();
-
-  OpenFile(&src_file_, req_.src.toStdString(), "rb");
-
-  if (src_file_ == nullptr) {
-    input_gui_->SetErrMsg("ERROR: Failed to open source file");
+  if (!src_info.exists()) {
+    input_gui_->SetErrMsg("Source file does not exist");
     return 1;
   }
 
@@ -115,15 +110,8 @@ int MainGUI::OpenFiles() {
     return 1;
   }
 
-  if (FileExists(req_.dst.toStdString())) {
+  if (dst_info.exists()) {
     input_gui_->SetErrMsg("Destination file already exists");
-    return 1;
-  }
-
-  OpenFile(&dst_file_, req_.dst.toStdString(), "wb+");
-
-  if (dst_file_ == nullptr) {
-    input_gui_->SetErrMsg("ERROR: Failed to create destination file");
     return 1;
   }
 
@@ -135,9 +123,7 @@ void MainGUI::Clean() {
     if (wrapper_) {
       wrapper_->RequestCancel();
     }
-
     thread_->quit();
-
     if (!thread_->wait(5000)) {
       thread_->terminate();
       thread_->wait();
@@ -152,24 +138,5 @@ void MainGUI::Clean() {
   if (thread_) {
     thread_->deleteLater();
     thread_ = nullptr;
-  }
-
-  CloseFiles();
-
-  if (should_delete_) {
-    RemoveFile(req_.dst.toStdString());
-    should_delete_ = false;
-  }
-}
-
-void MainGUI::CloseFiles() {
-  if (src_file_) {
-    fclose(src_file_);
-    src_file_ = nullptr;
-  }
-
-  if (dst_file_) {
-    fclose(dst_file_);
-    dst_file_ = nullptr;
   }
 }
