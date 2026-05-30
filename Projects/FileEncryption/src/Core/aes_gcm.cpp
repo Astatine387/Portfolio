@@ -22,6 +22,7 @@ AesGcm::AesGcm() {
 
   memset(iv_, 0, sizeof(uint8_t) * kIVSize);
   memset(salt_, 0, sizeof(uint8_t) * kSaltSize);
+  memset(tag_, 0, sizeof(uint8_t) * kTagSize);
 
   Lock(key_, kKeySize);
 }
@@ -38,6 +39,7 @@ AesGcm::~AesGcm() {
   Wipe(iv_, sizeof(uint8_t) * kIVSize);
   Wipe(key_, sizeof(uint8_t) * kKeySize);
   Wipe(salt_, sizeof(uint8_t) * kSaltSize);
+  Wipe(tag_, sizeof(uint8_t) * kTagSize);
 
   Unlock(key_, kKeySize);
 
