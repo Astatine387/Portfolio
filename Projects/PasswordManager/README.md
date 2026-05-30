@@ -97,7 +97,7 @@ Site Name Length (4 Bytes) | Site Name | Account Length (4 Bytes) | Account | Pa
 ## 3-2. Source Code Architecture
 
 ```
-Src
+src
 ├── Common
 │   ├── constants.h          # Constant values
 │   └── main.cpp             # Application entry point

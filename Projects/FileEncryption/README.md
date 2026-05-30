@@ -70,7 +70,7 @@ Salt (16 Bytes) │ IV (12 Bytes) │ Encrypted Data │ Tag (16 Bytes)
 ## 3-2. Source Code Architecture
 
 ```
-Src
+src
 ├── Common
 │   ├── constants.h          # Constant values
 │   └── main.cpp             # Application entry point
