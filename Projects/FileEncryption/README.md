@@ -80,7 +80,7 @@ Src
 │   ├── aes_gcm_dec.cpp      # Decryption implementation
 │   └── crypto_worker.h/cpp  # Asynchronous worker thread
 ├── GUI
-│   ├── input_gui.h/cpp      # Main workflow controller
+│   ├── main_gui.h/cpp      # Main workflow controller
 │   ├── input_gui.h/cpp      # Source, destination, and password input
 │   ├── progress_gui.h/cpp   # Progress tracking
 │   ├── mode_button.h/cpp    # Encrypt/Decrypt mode selection widget
@@ -88,7 +88,7 @@ Src
 └── Utils
     ├── password.h/cpp       # Secure password container
     ├── platform.h           # Utility function declarations
-    ├── platform_linux.cpp   # Common utility functions
+    ├── platform.cpp         # Common utility functions
     ├── platform_linux.cpp   # Linux utility functions
     └── platform_win32.cpp   # Windows utility functions
 ```
