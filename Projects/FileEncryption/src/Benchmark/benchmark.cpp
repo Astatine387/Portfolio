@@ -12,7 +12,7 @@
 #include "Core/aes_gcm.h"
 #include "Utils/platform.h"
 
-#define FILE_SIZE 4LL * 1024 * 1024 * 1024
+inline constexpr int64_t kFileSize = 4LL * 1024 * 1024 * 1024;
 
 /**
  * @class   Benchmark
@@ -145,11 +145,11 @@ static void BenchArgon2id(benchmark::State& state) {
 }
 
 BENCHMARK_REGISTER_F(Benchmark, Encrypt)
-    ->Arg(FILE_SIZE)  // 4 GiB
+    ->Arg(kFileSize)  // 4 GiB
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_REGISTER_F(Benchmark, Decrypt)
-    ->Arg(FILE_SIZE)  // 4 GiB
+    ->Arg(kFileSize)  // 4 GiB
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK(BenchArgon2id)->Unit(benchmark::kMillisecond)->Iterations(10);
