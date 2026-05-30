@@ -164,25 +164,23 @@ int AesGcm::EncryptBatch() {
   int cur = 0;
 
   while (progress_ + kBuffSize * kBlockSize <= src_size_) {
+    /* Read and encrypt current buffer */
+
+    if (ReadFile(buff_[cur], kBuffSize * kBlockSize)) {
+      return 1;  // LCOV_EXCL_LINE
+    }
+
+    if (EncryptBuff(buff_[cur], buff_[cur], kBuffSize * kBlockSize)) {
+      return 1;  // LCOV_EXCL_LINE
+    }
+
     /* Wait for the previous write to finish */
 
     if (writing_ && write_res_.get() != 0) {
       return 1;  // LCOV_EXCL_LINE
     }
 
-    /* Read in main thread */
-
-    if (ReadFile(buff_[cur], kBuffSize * kBlockSize)) {
-      return 1;  // LCOV_EXCL_LINE
-    }
-
-    /* Encrypt in main thread */
-
-    if (EncryptBuff(buff_[cur], buff_[cur], kBuffSize * kBlockSize)) {
-      return 1;  // LCOV_EXCL_LINE
-    }
-
-    /* Asynchronous write in another thread */
+    /* Begin asynchronous write */
 
     write_res_ =
         std::async(std::launch::async, [this, cur]() { return WriteFile(buff_[cur], kBuffSize * kBlockSize); });
