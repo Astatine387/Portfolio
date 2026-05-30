@@ -22,13 +22,13 @@ int AesGcm::Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
 
   /* Pass 1 - verify authentication tag */
 
-  if (DecryptPass(false)) {
+  if (DecryptBatch(DecryptMode::kVerify)) {
     return 1;
   }
 
   /* Pass 2 - write plaintext */
 
-  if (DecryptPass(true)) {
+  if (DecryptBatch(DecryptMode::kWrite)) {
     return 1;  // LCOV_EXCL_LINE
   }
 
@@ -182,7 +182,7 @@ int AesGcm::DecryptBuff(void* src, void* dst, int srclen) {
   return 0;
 }
 
-int AesGcm::DecryptPass(bool mode) {
+int AesGcm::DecryptBatch(DecryptMode mode) {
   if (SetupDecryptCtx()) {
     return 1;  // LCOV_EXCL_LINE
   }
@@ -200,7 +200,7 @@ int AesGcm::DecryptPass(bool mode) {
       return 1;  // LCOV_EXCL_LINE
     }
 
-    if (mode && WriteFile(buff_[0], chunk)) {
+    if (mode == DecryptMode::kWrite && WriteFile(buff_[0], chunk)) {
       return 1;  // LCOV_EXCL_LINE
     }
 

@@ -17,6 +17,14 @@
 #include "Common/constants.h"
 
 /**
+ * @brief   Whether a decryption pass writes or verifies
+ */
+enum class DecryptMode {
+  kVerify,
+  kWrite,
+};
+
+/**
  * @class	AesGcm
  * @brief	AES-256-GCM file encryption/decryption engine
  */
@@ -149,10 +157,10 @@ class AesGcm {
 
   /**
    * @brief   Run one decryption pass over the ciphertext
-   * @param   mode   If true, write plaintext; if false, discard (verify only)
+   * @param   mode   True for write, false for verify
    * @return  0 on success, 1 on failure or cancellation
    */
-  int DecryptPass(bool mode);
+  int DecryptBatch(DecryptMode mode);
 
   /**
    * @brief	    Intialize decryption context
