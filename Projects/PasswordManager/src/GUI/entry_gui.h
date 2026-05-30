@@ -15,8 +15,8 @@
 #include <QSlider>
 #include <QString>
 #include <QVBoxLayout>
+#include <QVector>
 #include <QWidget>
-#include <vector>
 
 #include "GUI/entry_interface.h"
 #include "GUI/pw_line_edit.h"
@@ -118,7 +118,7 @@ class EntryGUI : public QDialog {
    * @brief     Get the special character selection list
    * @return	Special character selection list
    */
-  std::vector<bool> GetSpecialsList();
+  QVector<bool> GetSpecialsList();
 
   /**
    * @brief	    Check whether the password has at least one special character
@@ -133,15 +133,13 @@ class EntryGUI : public QDialog {
   bool HasSpecialSelected() const;
 
   /**
-   * @brief	    Generate a random password
+   * @brief	    Generate a random password including at least one each of uppercase, lowercase, number, and special
+   * character
    *
-   * Generate a random password including at least one each of
-   * uppercase, lowercase, number, and special character
-   *
-   * @param	dst		    Destination password
-   * @param	spcList	    List of specials to be used
-   * @param	size	    Destination password size
-   * @return	        0 on success, 1 on failure
+   * @param     dst		    Destination password
+   * @param     spc_list    List of specials to be used
+   * @param     size	    Destination password size
+   * @return	            0 on success, 1 on failure
    */
-  int GenPW(Password& dst, const std::vector<bool>& spc_list, int pw_size);
+  int GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size);
 };

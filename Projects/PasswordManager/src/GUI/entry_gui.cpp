@@ -6,6 +6,8 @@
 
 #include "GUI/entry_gui.h"
 
+#include <string>
+
 #include "Common/constants.h"
 #include "Utils/platform.h"
 
@@ -181,16 +183,16 @@ void EntryGUI::OnGenerateClicked() {
 
   err_msg_->clear();
 
-  std::vector<bool> spc_list = GetSpecialsList();
+  QVector<bool> spc_list = GetSpecialsList();
+  Password res;
   int size = len_slider_->value();
-  Password generated;
 
-  if (GenPW(generated, spc_list, size)) {
+  if (GenPW(res, spc_list, size)) {
     err_msg_->setText("Failed to generate password");
     return;
   }
 
-  pwline_->SetPassword(generated);
+  pwline_->SetPassword(res);
 }
 
 void EntryGUI::OnCheckAllClicked() {
@@ -211,8 +213,8 @@ void EntryGUI::OnResetClicked() {
   }
 }
 
-std::vector<bool> EntryGUI::GetSpecialsList() {
-  std::vector<bool> list(32);
+QVector<bool> EntryGUI::GetSpecialsList() {
+  QVector<bool> list(32);
 
   for (int i = 0; i < 32; i++) {
     list[i] = spc_checks_[i]->isChecked();
@@ -249,7 +251,7 @@ bool EntryGUI::HasSpecialSelected() const {
   return false;
 }
 
-int EntryGUI::GenPW(Password& dst, const std::vector<bool>& spc_list, int pw_size) {
+int EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size) {
   std::string pool;
   size_t pool_size = 62;
   const char lower[] = "abcdefghijklmnopqrstuvwxyz";
