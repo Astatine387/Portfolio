@@ -103,13 +103,15 @@ class AesGcm {
   ErrorCallback ecb_ = nullptr;     // Error reporting callback function
   ProgressCallback pcb_ = nullptr;  // Progress reporting callback function
 
-  int64_t src_size_ = 0;   // Source file size
-  uint64_t progress_ = 0;  // Current progress
+  int64_t src_size_ = 0;      // Source file size
+  int64_t progress_cur_ = 0;  // Current progress
+  int64_t progress_max_ = 0;  // Total work for progress reporting
 
   uint8_t buff_[kBuffNum][kBuffSize][kBlockSize];  // Buffer
   uint8_t iv_[kIVSize];                            // Initial vector
   uint8_t key_[kKeySize];                          // Key derived from password
   uint8_t salt_[kSaltSize];                        // Key derivation salt
+  uint8_t tag_[kTagSize];                          // Authentication tag read from file
 
   std::atomic<bool> cancelled_{ false };  // Is the program cancelled?
   std::future<int> write_res_;            // Asynchronous write result
@@ -140,18 +142,25 @@ class AesGcm {
    * ================================================== */
 
   /**
+   * @brief   Set up decryption context and reset file cursor
+   * @return  0 on success, 1 on failure
+   */
+  int SetupDecryptCtx();
+
+  /**
+   * @brief   Run one decryption pass over the ciphertext
+   * @param   mode   If true, write plaintext; if false, discard (verify only)
+   * @return  0 on success, 1 on failure or cancellation
+   */
+  int DecryptPass(bool mode);
+
+  /**
    * @brief	    Intialize decryption context
    * @param	    pw		Password
    * @param	    plen	Password length
    * @return	0 on success, 1 on failure
    */
   int DecryptInit(const char* pw, size_t plen);
-
-  /**
-   * @brief	Read and verify authentication tag
-   * @return	0 on success, 1 on failure
-   */
-  int DecryptTag();
 
   /**
    * @brief	    Decrypt buffer
@@ -161,18 +170,6 @@ class AesGcm {
    * @return	0 on success, 1 on failure
    */
   int DecryptBuff(void* src, void* dst, int srclen);
-
-  /**
-   * @brief	Decrypt multiple blocks in a batch
-   * @return	0 on success, 1 on failure
-   */
-  int DecryptBatch();
-
-  /**
-   * @brief	Decrypt remaining data smaller than buffer
-   * @return	0 on success, 1 on failure
-   */
-  int DecryptRemain();
 
   /**
    * @brief	Finialize decryption

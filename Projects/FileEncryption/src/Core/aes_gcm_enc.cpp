@@ -11,7 +11,7 @@ int AesGcm::Encrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
   src_file_ = src;
   dst_file_ = dst;
   cancelled_ = false;
-  progress_ = 0;
+  progress_cur_ = 0;
   writing_ = false;
 
   if (EncryptInit(pw, plen)) {
@@ -62,6 +62,8 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
     return 1;
     // LCOV_EXCL_STOP
   }
+
+  progress_max_ = src_size_;
 
   /* Generate salt and IV */
 
@@ -163,7 +165,7 @@ int AesGcm::EncryptBuff(void* src, void* dst, int srclen) {
 int AesGcm::EncryptBatch() {
   int cur = 0;
 
-  while (progress_ + kBuffSize * kBlockSize <= src_size_) {
+  while (progress_cur_ + kBuffSize * kBlockSize <= src_size_) {
     /* Read and encrypt current buffer */
 
     if (ReadFile(buff_[cur], kBuffSize * kBlockSize)) {
@@ -193,7 +195,7 @@ int AesGcm::EncryptBatch() {
 
     /* Update progress */
 
-    progress_ += kBuffSize * kBlockSize;
+    progress_cur_ += kBuffSize * kBlockSize;
 
     if (ReportProgress()) {
       write_res_.wait();
@@ -223,14 +225,14 @@ int AesGcm::EncryptRemain() {
 
   /* Encrypt remaining full blocks */
 
-  while (progress_ + kBlockSize <= src_size_) {
+  while (progress_cur_ + kBlockSize <= src_size_) {
     if (EncryptBuff(buff_[0][crs], buff_[0][crs], kBlockSize)) {
       return 1;  // LCOV_EXCL_LINE
     }
 
     crs++;
 
-    progress_ += kBlockSize;
+    progress_cur_ += kBlockSize;
   }
 
   /* Encrypt remaining partial block */
@@ -242,7 +244,7 @@ int AesGcm::EncryptRemain() {
       return 1;  // LCOV_EXCL_LINE
     }
 
-    progress_ += rem;
+    progress_cur_ += rem;
   }
 
   if (WriteFile(buff_[0], kBlockSize * crs + rem)) {

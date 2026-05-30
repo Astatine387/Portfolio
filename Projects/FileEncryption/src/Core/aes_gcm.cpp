@@ -77,7 +77,7 @@ int AesGcm::WriteFile(const void* buff, int size) {
 
 int AesGcm::ReportProgress() {
   if (pcb_) {
-    uint64_t perc = src_size_ > 0 ? progress_ * 100 / src_size_ : 100;
+    uint64_t perc = progress_max_ > 0 ? progress_cur_ * 100 / progress_max_ : 100;
 
     bool should_cancel = false;
 

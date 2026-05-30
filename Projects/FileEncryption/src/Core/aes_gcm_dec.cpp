@@ -4,6 +4,8 @@
  * @author	Astatine387
  */
 
+#include <algorithm>
+
 #include "Core/aes_gcm.h"
 #include "Utils/platform.h"
 
@@ -11,26 +13,22 @@ int AesGcm::Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
   src_file_ = src;
   dst_file_ = dst;
   cancelled_ = false;
-  progress_ = 0;
+  progress_cur_ = 0;
   writing_ = false;
 
   if (DecryptInit(pw, plen)) {
     return 1;  // LCOV_EXCL_LINE
   }
 
-  if (DecryptTag()) {
-    return 1;  // LCOV_EXCL_LINE
+  /* Pass 1 - verify authentication tag */
+
+  if (DecryptPass(false)) {
+    return 1;
   }
 
-  if (DecryptBatch()) {
-    return 1;  // LCOV_EXCL_LINE
-  }
+  /* Pass 2 - write plaintext */
 
-  if (DecryptRemain()) {
-    return 1;  // LCOV_EXCL_LINE
-  }
-
-  if (DecryptFinal()) {
+  if (DecryptPass(true)) {
     return 1;  // LCOV_EXCL_LINE
   }
 
@@ -38,13 +36,6 @@ int AesGcm::Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
 }
 
 int AesGcm::DecryptInit(const char* pw, size_t plen) {
-  /* Clear existing context */
-
-  if (ctx_) {
-    EVP_CIPHER_CTX_free(ctx_);
-    ctx_ = nullptr;
-  }
-
   /* Get source file size */
 
   src_size_ = GetFileSize(src_file_);
@@ -65,7 +56,11 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
 
   src_size_ -= kSaltSize + kIVSize + kTagSize;
 
-  /* Read salt and IV */
+  /* Double the progress as there are two passes */
+
+  progress_max_ = 2 * src_size_;
+
+  /* Read salt and IV from header */
 
   if (fread(salt_, sizeof(uint8_t), kSaltSize, src_file_) != kSaltSize) {
     // LCOV_EXCL_START
@@ -83,6 +78,22 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
     // LCOV_EXCL_STOP
   }
 
+  /* Read authentication tag from the end of the file */
+
+  if (Seek(src_file_, -static_cast<int64_t>(kTagSize), SEEK_END)) {
+    // LCOV_EXCL_START
+    ReportError("[File] Seek failed - Cannot move file pointer to authentication tag\n");
+    return 1;
+    // LCOV_EXCL_STOP
+  }
+
+  if (fread(tag_, sizeof(uint8_t), kTagSize, src_file_) != kTagSize) {
+    // LCOV_EXCL_START
+    ReportError("[File] Read failed - Cannot read authentication tag\n");
+    return 1;
+    // LCOV_EXCL_STOP
+  }
+
   /* Derive key from password */
 
   if (Argon2id(salt_, pw, plen, key_)) {
@@ -92,7 +103,16 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
     // LCOV_EXCL_STOP
   }
 
-  /* Set decryption context */
+  return 0;
+}
+
+int AesGcm::SetupDecryptCtx() {
+  /* Clear existing context */
+
+  if (ctx_) {
+    EVP_CIPHER_CTX_free(ctx_);
+    ctx_ = nullptr;
+  }
 
   if (!(ctx_ = EVP_CIPHER_CTX_new())) {
     // LCOV_EXCL_START
@@ -122,34 +142,14 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
     // LCOV_EXCL_STOP
   }
 
-  return 0;
-}
-
-int AesGcm::DecryptTag() {
-  uint8_t tag[kTagSize];
-
-  if (Seek(src_file_, -kTagSize, SEEK_END)) {
-    // LCOV_EXCL_START
-    ReportError(
-        "[File] Seek failed - Cannot move file pointer to authentication "
-        "tag\n");
-    return 1;
-    // LCOV_EXCL_STOP
-  }
-
-  if (fread(tag, sizeof(uint8_t), kTagSize, src_file_) != kTagSize) {
-    // LCOV_EXCL_START
-    ReportError("[File] Read failed - Cannot read authentication tag\n");
-    return 1;
-    // LCOV_EXCL_STOP
-  }
-
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_TAG, kTagSize, tag) != 1) {
+  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_TAG, kTagSize, tag_) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Tag failed - Cannot set authentication tag\n");
     return 1;
     // LCOV_EXCL_STOP
   }
+
+  /* Move file pointer to the start of the ciphertext */
 
   if (Seek(src_file_, kSaltSize + kIVSize, SEEK_SET)) {
     // LCOV_EXCL_START
@@ -167,14 +167,14 @@ int AesGcm::DecryptBuff(void* src, void* dst, int srclen) {
   if (EVP_DecryptUpdate(ctx_, static_cast<unsigned char*>(dst), &dstlen, static_cast<unsigned char*>(src), srclen) !=
       1) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Decryption failed - Cannot decrypt block\n");
+    ReportError("[Crypto] Decryption failed - Cannot decrypt buffer\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
   if (dstlen != srclen) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Decryption failed - Cannot decrypt block\n");
+    ReportError("[Crypto] Decryption failed - Cannot decrypt buffer\n");
     return 1;
     // LCOV_EXCL_STOP
   }
@@ -182,98 +182,38 @@ int AesGcm::DecryptBuff(void* src, void* dst, int srclen) {
   return 0;
 }
 
-int AesGcm::DecryptBatch() {
-  int cur = 0;
+int AesGcm::DecryptPass(bool mode) {
+  if (SetupDecryptCtx()) {
+    return 1;  // LCOV_EXCL_LINE
+  }
 
-  while (progress_ + kBuffSize * kBlockSize <= src_size_) {
-    /* Wait for the previous write to finish */
+  int64_t rem = src_size_;
 
-    if (writing_ && write_res_.get() != 0) {
+  while (rem > 0) {
+    int chunk = static_cast<int>(std::min<int64_t>(rem, kBuffSize * kBlockSize));
+
+    if (ReadFile(buff_[0], chunk)) {
       return 1;  // LCOV_EXCL_LINE
     }
 
-    /* Read in main thread */
-
-    if (ReadFile(buff_[cur], kBuffSize * kBlockSize)) {
+    if (DecryptBuff(buff_[0], buff_[0], chunk)) {
       return 1;  // LCOV_EXCL_LINE
     }
 
-    /* Decrypt in main thread */
-
-    if (DecryptBuff(buff_[cur], buff_[cur], kBuffSize * kBlockSize)) {
+    if (mode && WriteFile(buff_[0], chunk)) {
       return 1;  // LCOV_EXCL_LINE
     }
 
-    /* Asynchronous write in another thread */
-
-    write_res_ =
-        std::async(std::launch::async, [this, cur]() { return WriteFile(buff_[cur], kBuffSize * kBlockSize); });
-
-    writing_ = true;
-
-    /* Swap buffer */
-
-    cur = 1 - cur;
-
-    /* Update progress */
-
-    progress_ += kBuffSize * kBlockSize;
+    rem -= chunk;
+    progress_cur_ += chunk;
 
     if (ReportProgress()) {
-      write_res_.wait();
       return 1;
     }
   }
 
-  /* Wait for the last write to finish */
-
-  if (writing_) {
-    if (write_res_.get() != 0) {
-      return 1;  // LCOV_EXCL_LINE
-    }
-
-    writing_ = false;
-  }
-
-  return 0;
-}
-
-int AesGcm::DecryptRemain() {
-  int crs = 0, rem = src_size_ % (kBuffSize * kBlockSize);
-
-  if (ReadFile(buff_[0], rem)) {
-    return 1;  // LCOV_EXCL_LINE
-  }
-
-  /* Decrypt remaining full blocks */
-
-  while (progress_ + kBlockSize <= src_size_) {
-    if (DecryptBuff(buff_[0][crs], buff_[0][crs], kBlockSize))
-      return 1;
-
-    crs++;
-
-    progress_ += kBlockSize;
-  }
-
-  /* Decrypt remaining partial block */
-
-  rem = src_size_ % kBlockSize;
-
-  if (rem) {
-    if (DecryptBuff(buff_[0][crs], buff_[0][crs], rem)) {
-      return 1;  // LCOV_EXCL_LINE
-    }
-
-    progress_ += rem;
-  }
-
-  if (WriteFile(buff_[0], kBlockSize * crs + rem)) {
-    return 1;  // LCOV_EXCL_LINE
-  }
-
-  if (ReportProgress()) {
-    return 1;  // LCOV_EXCL_LINE
+  if (DecryptFinal()) {
+    return 1;
   }
 
   return 0;
@@ -286,10 +226,6 @@ int AesGcm::DecryptFinal() {
   if (EVP_DecryptFinal_ex(ctx_, final, &final_len) != 1) {
     ReportError("[Auth] Verification failed - Invalid password or corrupted file\n");
     return 1;
-  }
-
-  if (final_len > 0 && WriteFile(final, final_len)) {
-    return 1;  // LCOV_EXCL_LINE
   }
 
   return 0;
