@@ -43,7 +43,10 @@ class TEST : public ::testing::Test {
     OpenFile(&file, path, "wb");
 
     if (file) {
-      fwrite(data.data(), sizeof(uint8_t), size, file);
+      if (size > 0) {
+        fwrite(data.data(), sizeof(uint8_t), size, file);
+      }
+
       fclose(file);
     }
   }

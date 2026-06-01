@@ -45,7 +45,9 @@ class GetFileSizeTest : public ::testing::Test {
     if (file_) {
       std::vector<char> vec(size, 'a');
 
-      fwrite(vec.data(), 1, size, file_);
+      if (size > 0) {
+        fwrite(vec.data(), 1, size, file_);
+      }
 
       fclose(file_);
 
