@@ -13,6 +13,14 @@ if(COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
 endif()
 
+option(SANITIZE "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+
+if(SANITIZE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    message(STATUS "Sanitizers enabled (address, undefined)")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address,undefined")
+endif()
+
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
 find_package(OpenSSL 3.0 REQUIRED)
