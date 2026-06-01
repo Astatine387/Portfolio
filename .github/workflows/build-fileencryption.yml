@@ -195,11 +195,11 @@ jobs:
             '/usr/*' \
             '*/gtest/*' \
             '*/Tests/*' \
-            '*/FileEncryption/Benchmark/Benchmark.cpp' \
-            '*/FileEncryption/Common/main.cpp' \
-            '*/FileEncryption/Core/Worker.cpp' \
-            '*/FileEncryption/Core/Worker.h' \
-            '*/FileEncryption/GUI/*' \
+            '*/FileEncryption/src/Benchmark/benchmark.cpp' \
+            '*/FileEncryption/src/Common/main.cpp' \
+            '*/FileEncryption/src/Core/crypto_worker.cpp' \
+            '*/FileEncryption/src/Core/crypto_worker.h' \
+            '*/FileEncryption/src/GUI/*' \
             --output-file coverage.info --ignore-errors mismatch,unused
           echo "=== Files in coverage report ==="
           lcov --list coverage.info
