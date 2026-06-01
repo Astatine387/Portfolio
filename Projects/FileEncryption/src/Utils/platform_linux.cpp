@@ -62,7 +62,7 @@ int Seek(FILE* file, int64_t offset, int origin) {
   return fseeko(file, offset, origin);
 }
 
-void Lock(void* ptr, size_t size) {
+int Lock(void* ptr, size_t size) {
   return mlock(ptr, size) == 0 ? 0 : 1;
 }
 
