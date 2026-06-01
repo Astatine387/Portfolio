@@ -46,8 +46,8 @@ int Seek(FILE* file, int64_t offset, int origin) {
   return _fseeki64(file, offset, origin);
 }
 
-void Lock(void* ptr, size_t size) {
-  VirtualLock(ptr, size);
+int Lock(void* ptr, size_t size) {
+  return VirtualLock(ptr, size) ? 0 : 1;
 }
 
 void OpenFile(FILE** file, const std::string& path, const char* mode) {

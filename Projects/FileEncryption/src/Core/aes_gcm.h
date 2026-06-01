@@ -123,7 +123,8 @@ class AesGcm {
 
   std::atomic<bool> cancelled_{ false };  // Is the program cancelled?
   std::future<int> write_res_;            // Asynchronous write result
-  bool writing_ = false;                  // Is there currently ongoing asynchronous write?
+  bool writing_ = false;                  // Whether there is ongoing asynchronous write
+  bool key_locked_ = false;               // Whether the key buffer is locked in memory
 
   /* ==================================================
    * I/O helper functions

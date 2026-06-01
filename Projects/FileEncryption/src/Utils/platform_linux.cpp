@@ -63,7 +63,7 @@ int Seek(FILE* file, int64_t offset, int origin) {
 }
 
 void Lock(void* ptr, size_t size) {
-  mlock(ptr, size);
+  return mlock(ptr, size) == 0 ? 0 : 1;
 }
 
 void OpenFile(FILE** file, const std::string& path, const char* mode) {

@@ -24,7 +24,7 @@ AesGcm::AesGcm() {
   memset(salt_, 0, sizeof(uint8_t) * kSaltSize);
   memset(tag_, 0, sizeof(uint8_t) * kTagSize);
 
-  Lock(key_, kKeySize);
+  key_locked_ = (Lock(key_, kKeySize) == 0);
 }
 
 AesGcm::~AesGcm() {
@@ -41,7 +41,9 @@ AesGcm::~AesGcm() {
   Wipe(salt_, sizeof(uint8_t) * kSaltSize);
   Wipe(tag_, sizeof(uint8_t) * kTagSize);
 
-  Unlock(key_, kKeySize);
+  if (key_locked_) {
+    Unlock(key_, kKeySize);
+  }
 
   if (ctx_) {
     EVP_CIPHER_CTX_free(ctx_);

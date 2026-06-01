@@ -69,8 +69,9 @@ int Seek(FILE* file, int64_t dist, int ref);
  * @brief	Lock memory space so that it cannot be swapped
  * @param	ptr	Buffer to lock
  * @param	size	Buffer size in bytes
+ * @return 0 on success, 1 on failure
  */
-void Lock(void* ptr, size_t size);
+int Lock(void* ptr, size_t size);
 
 /**
  * @brief	Open a file

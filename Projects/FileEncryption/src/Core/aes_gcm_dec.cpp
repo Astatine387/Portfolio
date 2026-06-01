@@ -36,6 +36,15 @@ int AesGcm::Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
 }
 
 int AesGcm::DecryptInit(const char* pw, size_t plen) {
+  /* Abort if the key buffer is not locked in memory */
+
+  if (!key_locked_) {
+    // LCOV_EXCL_START
+    ReportError("[Memory] Lock failed - Cannot lock key in memory\n");
+    return 1;
+    // LCOV_EXCL_STOP
+  }
+
   /* Get source file size */
 
   src_size_ = GetFileSize(src_file_);

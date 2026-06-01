@@ -54,9 +54,10 @@ class Password {
    * @brief   Move constructor
    * @param	other	Source password to move from
    */
-  Password(Password&& other) noexcept : data_(other.data_), size_(other.size_) {
+  Password(Password&& other) noexcept : data_(other.data_), size_(other.size_), locked_(other.locked_) {
     other.data_ = nullptr;
     other.size_ = 0;
+    other.locked_ = false;
   }
 
   /**
@@ -69,19 +70,27 @@ class Password {
 
       data_ = other.data_;
       size_ = other.size_;
+      locked_ = other.locked_;
 
       other.data_ = nullptr;
       other.size_ = 0;
+      other.locked_ = false;
     }
 
     return *this;
   }
 
   /**
-   * @brief   Check the password data is empty
+   * @brief   Check whether the password is empty
    * @return	true if empty
    */
   bool IsEmpty() const;
+
+  /**
+   * @brief   Check whether the password is locked in memory
+   * @return  true if locked
+   */
+  bool IsLocked() const;
 
   /**
    * @brief   Get password data
@@ -109,8 +118,9 @@ class Password {
   void SetData(const char* str, size_t len);
 
  private:
-  char* data_ = nullptr;
   size_t size_ = 0;
+  char* data_ = nullptr;
+  bool locked_ = false;
 
   /**
    * @brief   Securely wipe password data

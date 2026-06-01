@@ -20,6 +20,16 @@ void CryptoWorker::Work() {
   bool should_delete = false;
   int res;
 
+  /* Abort if the password is not locked in memory */
+
+  if (!pw_.IsLocked()) {
+    if (fcb_) {
+      fcb_("[Memory] Lock failed - Cannot lock password in memory\n", false);
+    }
+
+    return;
+  }
+
   /* Open files */
 
   OpenFile(&src_file, src_path_, "rb");
