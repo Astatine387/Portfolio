@@ -29,10 +29,6 @@ bool FileExists(const std::string& path) {
   return std::filesystem::exists(path);
 }
 
-int GetProcNum() {
-  return static_cast<int>(std::thread::hardware_concurrency());
-}
-
 int Random(uint8_t* dst, size_t size) {
   size_t remaining = size;
 

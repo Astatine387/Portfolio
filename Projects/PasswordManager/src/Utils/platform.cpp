@@ -22,7 +22,7 @@ uint32_t RandomRange(uint32_t min, uint32_t max) {
 }
 
 int Argon2id(uint8_t* salt, const char* pw, size_t plen, uint8_t* key) {
-  return argon2id_hash_raw(kTimeCost, kMemCost, GetProcNum(), pw, plen, salt, kSaltSize, key, kKeySize);
+  return argon2id_hash_raw(kTimeCost, kMemCost, kParellelism, pw, plen, salt, kSaltSize, key, kKeySize);
 }
 
 void Shuffle(uint8_t* arr, int size) {

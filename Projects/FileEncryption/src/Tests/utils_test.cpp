@@ -216,19 +216,6 @@ TEST(Argon2Test, EmptyPassword) {
 }
 
 /* ==================================================
- * GetProcNum Test
- * ================================================== */
-
-/**
- * @brief   Verify GetProcNum returns positive value
- */
-TEST(GetProcNumTest, ReturnPositive) {
-  int num_procs = GetProcNum();
-
-  EXPECT_GT(num_procs, 0);
-}
-
-/* ==================================================
  * OpenFile Test
  * ================================================== */
 

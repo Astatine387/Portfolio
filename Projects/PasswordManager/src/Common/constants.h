@@ -11,10 +11,11 @@
 
 inline constexpr double kFontScale = 1.2;  /// GUI font scale
 
-inline constexpr size_t kKeySize = 32;       /// AES-GCM key size in bytes
-inline constexpr size_t kSaltSize = 16;      /// Argon2id salt size in bytes
-inline constexpr int kMemCost = 512 * 1024;  /// Argon2id memory cost in KiB
-inline constexpr int kTimeCost = 4;          /// Argon2id time cost
+inline constexpr size_t kKeySize = 32;            /// AES-GCM key size in bytes
+inline constexpr size_t kSaltSize = 16;           /// Argon2id salt size in bytes
+inline constexpr uint32_t kMemCost = 512 * 1024;  /// Argon2id memory cost in KiB
+inline constexpr uint32_t kTimeCost = 4;          /// Argon2id time cost
+inline constexpr uint32_t kParellelism = 32;      /// Argon2id parallelism
 
 inline constexpr size_t kBlockSize = 16;  /// AES-GCM block size in bytes
 inline constexpr size_t kIVSize = 12;     /// Initial vector size in bytes

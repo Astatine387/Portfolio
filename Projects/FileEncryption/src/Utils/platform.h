@@ -36,12 +36,6 @@ bool FileExists(const std::string& path);
 int Argon2id(uint8_t* salt, const char* pw, size_t plen, uint8_t* key);
 
 /**
- * @brief	Get the number of processors available
- * @return	Number of logical processors available
- */
-int GetProcNum();
-
-/**
  * @brief	Generates cryptographically secure random bytes
  * @param	dst		Output buffer for random bytes
  * @param	size	Output buffer size

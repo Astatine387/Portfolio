@@ -28,12 +28,6 @@ bool FileExists(const std::string& path) {
   return std::filesystem::exists(fs_path);
 }
 
-int GetProcNum() {
-  SYSTEM_INFO info;
-  GetSystemInfo(&info);
-  return static_cast<int>(info.dwNumberOfProcessors);
-}
-
 int Random(uint8_t* dst, size_t size) {
   return BCryptGenRandom(NULL, dst, static_cast<ULONG>(size), BCRYPT_USE_SYSTEM_PREFERRED_RNG);
 }
