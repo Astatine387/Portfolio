@@ -115,61 +115,6 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
   return 0;
 }
 
-int AesGcm::SetupDecryptCtx() {
-  /* Clear existing context */
-
-  if (ctx_) {
-    EVP_CIPHER_CTX_free(ctx_);
-    ctx_ = nullptr;
-  }
-
-  if (!(ctx_ = EVP_CIPHER_CTX_new())) {
-    // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot create context\n");
-    return 1;
-    // LCOV_EXCL_STOP
-  }
-
-  if (EVP_DecryptInit_ex(ctx_, EVP_aes_256_gcm(), NULL, NULL, NULL) != 1) {
-    // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
-    return 1;
-    // LCOV_EXCL_STOP
-  }
-
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, kIVSize, NULL) != 1) {
-    // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot set initial vector size\n");
-    return 1;
-    // LCOV_EXCL_STOP
-  }
-
-  if (EVP_DecryptInit_ex(ctx_, NULL, NULL, key_, iv_) != 1) {
-    // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
-    return 1;
-    // LCOV_EXCL_STOP
-  }
-
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_TAG, kTagSize, tag_) != 1) {
-    // LCOV_EXCL_START
-    ReportError("[Crypto] Tag failed - Cannot set authentication tag\n");
-    return 1;
-    // LCOV_EXCL_STOP
-  }
-
-  /* Move file pointer to the start of the ciphertext */
-
-  if (Seek(src_file_, kSaltSize + kIVSize, SEEK_SET)) {
-    // LCOV_EXCL_START
-    ReportError("[File] Seek failed - Cannot move file pointer to data\n");
-    return 1;
-    // LCOV_EXCL_STOP
-  }
-
-  return 0;
-}
-
 int AesGcm::DecryptBuff(void* src, void* dst, int srclen) {
   int dstlen;
 
@@ -235,6 +180,61 @@ int AesGcm::DecryptFinal() {
   if (EVP_DecryptFinal_ex(ctx_, final, &final_len) != 1) {
     ReportError("[Auth] Verification failed - Invalid password or corrupted file\n");
     return 1;
+  }
+
+  return 0;
+}
+
+int AesGcm::SetupDecryptCtx() {
+  /* Clear existing context */
+
+  if (ctx_) {
+    EVP_CIPHER_CTX_free(ctx_);
+    ctx_ = nullptr;
+  }
+
+  if (!(ctx_ = EVP_CIPHER_CTX_new())) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Initialization failed - Cannot create context\n");
+    return 1;
+    // LCOV_EXCL_STOP
+  }
+
+  if (EVP_DecryptInit_ex(ctx_, EVP_aes_256_gcm(), NULL, NULL, NULL) != 1) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
+    return 1;
+    // LCOV_EXCL_STOP
+  }
+
+  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, kIVSize, NULL) != 1) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Initialization failed - Cannot set initial vector size\n");
+    return 1;
+    // LCOV_EXCL_STOP
+  }
+
+  if (EVP_DecryptInit_ex(ctx_, NULL, NULL, key_, iv_) != 1) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
+    return 1;
+    // LCOV_EXCL_STOP
+  }
+
+  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_TAG, kTagSize, tag_) != 1) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Tag failed - Cannot set authentication tag\n");
+    return 1;
+    // LCOV_EXCL_STOP
+  }
+
+  /* Move file pointer to the start of the ciphertext */
+
+  if (Seek(src_file_, kSaltSize + kIVSize, SEEK_SET)) {
+    // LCOV_EXCL_START
+    ReportError("[File] Seek failed - Cannot move file pointer to data\n");
+    return 1;
+    // LCOV_EXCL_STOP
   }
 
   return 0;

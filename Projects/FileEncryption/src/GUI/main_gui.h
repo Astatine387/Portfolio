@@ -59,7 +59,7 @@ class MainGUI : public QWidget {
    * @param   msg             Result message
    * @param   shouldDelete    Destination file deletion flag value
    */
-  void OnWorkFinished(const QString& msg, bool should_delete);
+  void OnWorkFinished(const QString& msg);
 
   /**
    * @brief	Clean resources on worker thread finished

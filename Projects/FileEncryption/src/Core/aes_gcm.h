@@ -151,12 +151,6 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief   Set up decryption context and reset file cursor
-   * @return  0 on success, 1 on failure
-   */
-  int SetupDecryptCtx();
-
-  /**
    * @brief   Run one decryption pass over the ciphertext
    * @param   mode   True for write, false for verify
    * @return  0 on success, 1 on failure or cancellation
@@ -185,6 +179,12 @@ class AesGcm {
    * @return	0 on success, 1 on failure
    */
   int DecryptFinal();
+
+  /**
+   * @brief   Set up decryption context and reset file cursor
+   * @return  0 on success, 1 on failure
+   */
+  int SetupDecryptCtx();
 
   /* ==================================================
    * Encryption functions

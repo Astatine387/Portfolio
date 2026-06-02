@@ -84,7 +84,7 @@ void MainGUI::OnProgressUpdated(int perc, const QString& status) {
   prg_gui_->Update(perc, status);
 }
 
-void MainGUI::OnWorkFinished(const QString& msg, bool should_delete) {
+void MainGUI::OnWorkFinished(const QString& msg) {
   prg_gui_->ShowResult(msg);
 }
 
