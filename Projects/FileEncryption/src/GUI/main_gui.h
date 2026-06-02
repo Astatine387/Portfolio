@@ -72,14 +72,18 @@ class MainGUI : public QWidget {
   void OnCloseRequested();
 
  private:
-  InputGUI* input_gui_;
-  ProgressGUI* prg_gui_;
-  QStackedWidget* widget_;
-  QThread* thread_;
-  QVBoxLayout* vbox_;
+  CryptoWrapper* wrapper_ = nullptr;
+  InputGUI* input_gui_ = nullptr;
+  ProgressGUI* prg_gui_ = nullptr;
+  QStackedWidget* widget_ = nullptr;
+  QThread* thread_ = nullptr;
+  QVBoxLayout* vbox_ = nullptr;
   CryptoRequest req_;
-  CryptoWrapper* wrapper_;
 
+  /**
+   * @brief   Check the file paths are valid
+   * @return  0 on valid, 1 on invalid
+   */
   int ValidatePaths();
 
   /**
