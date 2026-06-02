@@ -46,7 +46,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 
 # 3. Specifications
 
-* **Maximum File Size:** 64 GiB (2 ^ 32 blocks, limitation of 32-bit counter)
+* **Maximum File Size:** 68,719,476,704 bytes (Maximum of AES-GCM)
 
 * **AES-256-GCM**
 	* **IV Size:** 96 bits (recommended for AES-256-GCM)
@@ -57,7 +57,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * **Argon2id**
 	* **Memory Cost:** 512 MiB
 	* **Time Cost:** 4 iterations
-	* **Parallelism:** All available CPU cores
+	* **Parallelism:** 32
 	* **Salt Size:** 128 bits
 
 * **Buffer Size:** 4096 blocks (64 KiB)
@@ -96,7 +96,6 @@ src
 
 ## 3-3. Limitations
 
-* Maximum 64 GiB file
 * No batch encryption (Single file only)
 * No CLI mode (GUI only)
 * No key file support (Password only)
