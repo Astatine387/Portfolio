@@ -181,6 +181,13 @@ int Vault::SaveVault(const std::string& path) {
 
   dst_size_ = kMagicSize + kSaltSize + kIVSize + src_size_ + kTagSize;
 
+  /* Check whether the vault exceeds the maximum size */
+
+  if (dst_size_ > kMaxSize) {
+    ReportError("[Data] Validation failed - Vault exceeds maximum size (2 GiB)\n");
+    return 1;
+  }
+
   src_buff_ = std::make_unique<uint8_t[]>(src_size_);
   dst_buff_ = std::make_unique<uint8_t[]>(dst_size_);
 
