@@ -11,8 +11,7 @@ CryptoWrapper::CryptoWrapper(const QString& src_path, const QString& dst_path, c
   worker_.SetProgressCallback(
       [this](int perc, const std::string& s) { emit ProgressUpdate(perc, QString::fromStdString(s)); });
 
-  worker_.SetFinishedCallback(
-      [this](const std::string& msg) { emit Finished(QString::fromStdString(msg)); });
+  worker_.SetFinishedCallback([this](const std::string& msg) { emit Finished(QString::fromStdString(msg)); });
 }
 
 void CryptoWrapper::Run() {
