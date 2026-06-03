@@ -1,6 +1,10 @@
 ---
-Checks: readability-identifier-naming
-WarningsAsErrors: readability-identifier-naming
+Checks: >
+  readability-identifier-naming,
+  modernize-use-nullptr
+WarningsAsErrors: >
+  readability-identifier-naming,
+  modernize-use-nullptr
 HeaderFilterRegex: 'src/.*'
 FormatStyle: file
 
