@@ -51,7 +51,7 @@ AesGcm::~AesGcm() {
   }
 }
 
-int AesGcm::ReadFile(void* buff, int size) {
+int AesGcm::ReadFile(void* buff, size_t size) {
   if (fread(buff, sizeof(uint8_t), size, src_file_) != size) {
     // LCOV_EXCL_START
     ReportError("[File] Read failed - Cannot read source file data\n");
@@ -62,7 +62,7 @@ int AesGcm::ReadFile(void* buff, int size) {
   return 0;
 }
 
-int AesGcm::WriteFile(const void* buff, int size) {
+int AesGcm::WriteFile(const void* buff, size_t size) {
   if (fwrite(buff, sizeof(uint8_t), size, dst_file_) != size) {
     // LCOV_EXCL_START
     if (ferror(dst_file_)) {

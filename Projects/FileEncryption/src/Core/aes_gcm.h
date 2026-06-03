@@ -136,7 +136,7 @@ class AesGcm {
    * @param	    size	Number of bytes to read
    * @return	0 on success, 1 on failure
    */
-  int ReadFile(void* buff, int size);
+  int ReadFile(void* buff, size_t size);
 
   /**
    * @brief	    Write data from buffer to destination file
@@ -144,7 +144,7 @@ class AesGcm {
    * @param	    size	Number of bytes to write
    * @return    0 on success, 1 on failure
    */
-  int WriteFile(const void* buff, int size);
+  int WriteFile(const void* buff, size_t size);
 
   /* ==================================================
    * Decryption functions
