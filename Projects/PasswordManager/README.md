@@ -56,7 +56,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 * **Argon2id**
 	* **Memory Cost:** 512 MiB
 	* **Time Cost:** 4 iterations
-	* **Parallelism:** 32
+	* **Parallelism:** 4
 	* **Salt Size:** 128 bits
 
 * **Entry**

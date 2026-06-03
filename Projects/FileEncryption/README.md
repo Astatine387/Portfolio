@@ -57,7 +57,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * **Argon2id**
 	* **Memory Cost:** 512 MiB
 	* **Time Cost:** 4 iterations
-	* **Parallelism:** 32
+	* **Parallelism:** 4
 	* **Salt Size:** 128 bits
 
 * **Buffer Size:** 4096 blocks (64 KiB)
