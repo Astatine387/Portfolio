@@ -31,7 +31,7 @@ class CryptoWrapper : public QObject {
    * @param   msg             Result message
    * @param   should_delete     Destination file deletion flag value
    */
-  void Finished(const QString& msg, bool should_delete);
+  void Finished(const QString& msg);
 
   /**
    * @brief   Update progress bar and status message

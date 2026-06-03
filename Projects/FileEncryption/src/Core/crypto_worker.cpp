@@ -24,7 +24,7 @@ void CryptoWorker::Work() {
 
   if (!pw_.IsLocked()) {
     if (fcb_) {
-      fcb_("[Memory] Lock failed - Cannot lock password in memory\n", false);
+      fcb_("[Memory] Lock failed - Cannot lock password in memory\n");
     }
 
     return;
@@ -36,7 +36,7 @@ void CryptoWorker::Work() {
 
   if (src_file == nullptr) {
     if (fcb_) {
-      fcb_("[File] Open failed - Cannot open source file\n", false);
+      fcb_("[File] Open failed - Cannot open source file\n");
     }
 
     return;
@@ -48,7 +48,7 @@ void CryptoWorker::Work() {
     fclose(src_file);
 
     if (fcb_) {
-      fcb_("[File] Open failed - Cannot create destination file\n", false);
+      fcb_("[File] Open failed - Cannot create destination file\n");
     }
 
     return;
@@ -120,6 +120,6 @@ void CryptoWorker::Work() {
   }
 
   if (fcb_) {
-    fcb_(msg, false);
+    fcb_(msg);
   }
 }

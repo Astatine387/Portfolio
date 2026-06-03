@@ -12,7 +12,7 @@ CryptoWrapper::CryptoWrapper(const QString& src_path, const QString& dst_path, c
       [this](int perc, const std::string& s) { emit ProgressUpdate(perc, QString::fromStdString(s)); });
 
   worker_.SetFinishedCallback(
-      [this](const std::string& msg, bool del) { emit Finished(QString::fromStdString(msg), del); });
+      [this](const std::string& msg) { emit Finished(QString::fromStdString(msg)); });
 }
 
 void CryptoWrapper::Run() {

@@ -42,7 +42,7 @@ class CryptoWorker {
    * @param		msg             Result message
    * @param		should_delete   Destination file deletion flag value
    */
-  using FinishedCallback = std::function<void(const std::string& msg, bool should_delete)>;
+  using FinishedCallback = std::function<void(const std::string& msg)>;
 
   /**
    * @brief   Cancel the process
