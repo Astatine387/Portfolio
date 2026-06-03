@@ -69,21 +69,21 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_DecryptInit_ex(ctx_, EVP_aes_256_gcm(), NULL, NULL, NULL) != 1) {
+  if (EVP_DecryptInit_ex(ctx_, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, kIVSize, NULL) != 1) {
+  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, kIVSize, nullptr) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set initial vector size\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_DecryptInit_ex(ctx_, NULL, NULL, key_, iv_) != 1) {
+  if (EVP_DecryptInit_ex(ctx_, nullptr, nullptr, key_, iv_) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
     return 1;
