@@ -12,6 +12,8 @@
 
 #include <openssl/evp.h>
 
+#include <array>
+#include <cstdint>
 #include <future>
 
 #include "Common/constants.h"
@@ -115,11 +117,11 @@ class AesGcm {
   int64_t progress_cur_ = 0;  // Current progress
   int64_t progress_max_ = 0;  // Total work for progress reporting
 
-  uint8_t buff_[kBuffNum][kBuffSize][kBlockSize];  // Buffer
-  uint8_t iv_[kIVSize];                            // Initial vector
-  uint8_t key_[kKeySize];                          // Key derived from password
-  uint8_t salt_[kSaltSize];                        // Key derivation salt
-  uint8_t tag_[kTagSize];                          // Authentication tag read from file
+  std::array<std::array<std::array<uint8_t, kBlockSize>, kBuffSize>, kBuffNum> buff_{};  // Buffer
+  std::array<uint8_t, kIVSize> iv_{};                                                    // Initial vector
+  std::array<uint8_t, kKeySize> key_{};                                                  // Key derived from password
+  std::array<uint8_t, kSaltSize> salt_{};                                                // Key derivation salt
+  std::array<uint8_t, kTagSize> tag_{};  // Authentication tag read from file
 
   std::atomic<bool> cancelled_{ false };  // Is the program cancelled?
   std::future<int> write_res_;            // Asynchronous write result

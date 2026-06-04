@@ -86,16 +86,12 @@ class TEST : public ::testing::Test {
 TEST_F(TEST, EncryptDecryptBasic) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> orig, copy;
   const char* data = "Hello, world!";
   const char* pw = "password";
   int dsize = strlen(data);
   int psize = strlen(pw);
   int res;
-
-  for (int i = 0; i < dsize; i++) {
-    orig.push_back(data[i]);
-  }
+  std::vector<uint8_t> orig(data, data + dsize), copy;
 
   Create(src_path_, orig, dsize);
 
@@ -150,16 +146,12 @@ TEST_F(TEST, EncryptDecryptBasic) {
 TEST_F(TEST, WrongPasswordFails) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> orig;
   const char* data = "Hello, world!";
   const char *pw0 = "password", *pw1 = "asdf1234";
   int dsize = strlen(data);
   int psize0 = strlen(pw0), psize1 = strlen(pw1);
   int res;
-
-  for (int i = 0; i < dsize; i++) {
-    orig.push_back(data[i]);
-  }
+  std::vector<uint8_t> orig(data, data + dsize);
 
   Create(src_path_, orig, dsize);
 
@@ -202,16 +194,12 @@ TEST_F(TEST, WrongPasswordFails) {
 TEST_F(TEST, TamperedCipherFails) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> orig, copy;
   const char* data = "Hello, world!";
   const char* pw = "password";
   int dsize = strlen(data);
   int psize = strlen(pw);
   int res;
-
-  for (int i = 0; i < dsize; i++) {
-    orig.push_back(data[i]);
-  }
+  std::vector<uint8_t> orig(data, data + dsize), copy;
 
   Create(src_path_, orig, dsize);
 
@@ -481,15 +469,12 @@ TEST_F(TEST, ProgressCallback) {
 TEST_F(TEST, ErrorCallback) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> orig;
   bool b = false;
   const char* data = "Hello, world!";
   const char *pw0 = "password", *pw1 = "asdf1234";
   int dsize = strlen(data);
   int psize0 = strlen(pw0), psize1 = strlen(pw1);
-
-  for (int i = 0; i < dsize; i++)
-    orig.push_back(data[i]);
+  std::vector<uint8_t> orig(data, data + dsize);
 
   Create(src_path_, orig, dsize);
 

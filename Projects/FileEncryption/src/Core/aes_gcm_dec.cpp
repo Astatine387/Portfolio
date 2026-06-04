@@ -71,14 +71,14 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
 
   /* Read salt and IV from header */
 
-  if (fread(salt_, sizeof(uint8_t), kSaltSize, src_file_) != kSaltSize) {
+  if (fread(salt_.data(), sizeof(uint8_t), kSaltSize, src_file_) != kSaltSize) {
     // LCOV_EXCL_START
     ReportError("[File] Read failed - Cannot read salt from source file header\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
-  if (fread(iv_, sizeof(uint8_t), kIVSize, src_file_) != kIVSize) {
+  if (fread(iv_.data(), sizeof(uint8_t), kIVSize, src_file_) != kIVSize) {
     // LCOV_EXCL_START
     ReportError(
         "[File] Read failed - Cannot read initial vector from source file "
@@ -96,7 +96,7 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
     // LCOV_EXCL_STOP
   }
 
-  if (fread(tag_, sizeof(uint8_t), kTagSize, src_file_) != kTagSize) {
+  if (fread(tag_.data(), sizeof(uint8_t), kTagSize, src_file_) != kTagSize) {
     // LCOV_EXCL_START
     ReportError("[File] Read failed - Cannot read authentication tag\n");
     return 1;
@@ -105,7 +105,7 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
 
   /* Derive key from password */
 
-  if (Argon2id(salt_, pw, plen, key_)) {
+  if (Argon2id(salt_.data(), pw, plen, key_.data())) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Key derivation failed - Argon2id error\n");
     return 1;
@@ -146,15 +146,15 @@ int AesGcm::DecryptBatch(DecryptMode mode) {
   while (rem > 0) {
     int chunk = static_cast<int>(std::min<int64_t>(rem, kBuffSize * kBlockSize));
 
-    if (ReadFile(buff_[0], chunk)) {
+    if (ReadFile(buff_[0].data(), chunk)) {
       return 1;  // LCOV_EXCL_LINE
     }
 
-    if (DecryptBuff(buff_[0], buff_[0], chunk)) {
+    if (DecryptBuff(buff_[0].data(), buff_[0].data(), chunk)) {
       return 1;  // LCOV_EXCL_LINE
     }
 
-    if (mode == DecryptMode::kWrite && WriteFile(buff_[0], chunk)) {
+    if (mode == DecryptMode::kWrite && WriteFile(buff_[0].data(), chunk)) {
       return 1;  // LCOV_EXCL_LINE
     }
 
@@ -174,10 +174,10 @@ int AesGcm::DecryptBatch(DecryptMode mode) {
 }
 
 int AesGcm::DecryptFinal() {
-  uint8_t final[kBlockSize];
+  std::array<uint8_t, kBlockSize> final_block{};
   int final_len;
 
-  if (EVP_DecryptFinal_ex(ctx_, final, &final_len) != 1) {
+  if (EVP_DecryptFinal_ex(ctx_, final_block.data(), &final_len) != 1) {
     ReportError("[Auth] Verification failed - Invalid password or corrupted file\n");
     return 1;
   }
@@ -214,14 +214,14 @@ int AesGcm::SetupDecryptCtx() {
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_DecryptInit_ex(ctx_, nullptr, nullptr, key_, iv_) != 1) {
+  if (EVP_DecryptInit_ex(ctx_, nullptr, nullptr, key_.data(), iv_.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_TAG, kTagSize, tag_) != 1) {
+  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_TAG, kTagSize, tag_.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Tag failed - Cannot set authentication tag\n");
     return 1;

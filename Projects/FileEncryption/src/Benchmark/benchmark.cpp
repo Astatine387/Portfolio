@@ -6,6 +6,7 @@
 
 #include <benchmark/benchmark.h>
 
+#include <array>
 #include <cstring>
 #include <string>
 
@@ -71,7 +72,7 @@ BENCHMARK_DEFINE_F(Benchmark, Encrypt)(benchmark::State& state) {
     }
   }
 
-  state.SetBytesProcessed(int64_t(state.iterations()) * size);
+  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * size);
   state.SetLabel(std::to_string(size / (1024 * 1024)) + " MB");
 
   Clean();
@@ -122,7 +123,7 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
     }
   }
 
-  state.SetBytesProcessed(int64_t(state.iterations()) * size);
+  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * size);
 
   Clean();
 }
@@ -131,16 +132,18 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
  * @brief   Argon2id benchmark
  */
 static void BenchArgon2id(benchmark::State& state) {
-  uint8_t salt[kSaltSize], key[kKeySize];
+  std::array<uint8_t, kSaltSize> salt;
+  std::array<uint8_t, kKeySize> key;
+
   const char* pw = "password";
   int psize = strlen(pw);
 
-  for (int i = 0; i < kSaltSize; i++) {
+  for (size_t i = 0; i < kSaltSize; i++) {
     salt[i] = i;
   }
 
   for (auto _ : state) {
-    Argon2id(salt, pw, psize, key);
+    Argon2id(salt.data(), pw, psize, key.data());
   }
 }
 

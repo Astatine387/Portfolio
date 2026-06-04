@@ -6,7 +6,7 @@
 
 #include "GUI/progress_gui.h"
 
-ProgressGUI::ProgressGUI(QWidget* parent) : QWidget(parent), cancelled_(false) {
+ProgressGUI::ProgressGUI(QWidget* parent) : QWidget(parent) {
   /* Create layouts and components */
 
   prg_label_ = new QLabel("Initializing...\n");

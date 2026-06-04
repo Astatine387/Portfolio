@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <string>
 
 #include "Utils/platform.h"
@@ -144,75 +145,81 @@ TEST_F(FileExistsTest, AfterDeletion) {
  * @brief   Verify Argon2id derives same key for same input
  */
 TEST(Argon2idTest, SameInput) {
-  uint8_t salt[kSaltSize], key0[kKeySize], key1[kKeySize];
+  std::array<uint8_t, kSaltSize> salt;
+  std::array<uint8_t, kKeySize> key0;
+  std::array<uint8_t, kKeySize> key1;
   const char* pw = "password";
   int size = strlen(pw);
 
-  for (int i = 0; i < kSaltSize; i++) {
+  for (size_t i = 0; i < kSaltSize; i++) {
     salt[i] = i;
   }
 
-  EXPECT_EQ(Argon2id(salt, pw, size, key0), 0);
-  EXPECT_EQ(Argon2id(salt, pw, size, key1), 0);
+  EXPECT_EQ(Argon2id(salt.data(), pw, size, key0.data()), 0);
+  EXPECT_EQ(Argon2id(salt.data(), pw, size, key1.data()), 0);
 
-  EXPECT_EQ(memcmp(key0, key1, kKeySize), 0);
+  EXPECT_EQ(memcmp(key0.data(), key1.data(), kKeySize), 0);
 }
 
 /**
  * @brief   Verify different passwords produce different keys
  */
 TEST(Argon2idTest, DifferentPW) {
-  uint8_t salt[kSaltSize], key0[kKeySize], key1[kKeySize];
+  std::array<uint8_t, kSaltSize> salt;
+  std::array<uint8_t, kKeySize> key0;
+  std::array<uint8_t, kKeySize> key1;
   const char* pw0 = "password";
   const char* pw1 = "asdf1234";
   int size0 = strlen(pw0);
   int size1 = strlen(pw1);
 
-  for (int i = 0; i < kSaltSize; i++) {
+  for (size_t i = 0; i < kSaltSize; i++) {
     salt[i] = i;
   }
 
-  Argon2id(salt, pw0, size0, key0);
-  Argon2id(salt, pw1, size1, key1);
+  Argon2id(salt.data(), pw0, size0, key0.data());
+  Argon2id(salt.data(), pw1, size1, key1.data());
 
-  EXPECT_NE(memcmp(key0, key1, kKeySize), 0);
+  EXPECT_NE(memcmp(key0.data(), key1.data(), kKeySize), 0);
 }
 
 /**
  * @brief   Verify different salts produce different keys
  */
 TEST(Argon2idTest, DifferentSalt) {
-  uint8_t salt0[kSaltSize], salt1[kSaltSize];
-  uint8_t key0[kKeySize], key1[kKeySize];
+  std::array<uint8_t, kSaltSize> salt0;
+  std::array<uint8_t, kSaltSize> salt1;
+  std::array<uint8_t, kKeySize> key0;
+  std::array<uint8_t, kKeySize> key1;
   const char* pw = "password";
   int size = strlen(pw);
 
-  for (int i = 0; i < kSaltSize; i++) {
+  for (size_t i = 0; i < kSaltSize; i++) {
     salt0[i] = i;
   }
 
-  for (int i = 0; i < kSaltSize; i++) {
+  for (size_t i = 0; i < kSaltSize; i++) {
     salt1[i] = i + 16;
   }
 
-  Argon2id(salt0, pw, size, key0);
-  Argon2id(salt1, pw, size, key1);
+  Argon2id(salt0.data(), pw, size, key0.data());
+  Argon2id(salt1.data(), pw, size, key1.data());
 
-  EXPECT_NE(memcmp(key0, key1, kKeySize), 0);
+  EXPECT_NE(memcmp(key0.data(), key1.data(), kKeySize), 0);
 }
 
 /**
  * @brief   Verify Argon2id works with empty password
  */
 TEST(Argon2Test, EmptyPassword) {
-  uint8_t salt[kSaltSize];
-  uint8_t key[kKeySize];
+  std::array<uint8_t, kSaltSize> salt;
+  std::array<uint8_t, kKeySize> key;
 
-  for (int i = 0; i < kSaltSize; i++) {
+  for (size_t i = 0; i < kSaltSize; i++) {
     salt[i] = i;
   }
 
-  EXPECT_EQ(Argon2id(salt, "", 0, key), 0);
+  EXPECT_EQ(Argon2id(salt.data(), "", 0, key.data()), 0);
 }
 
 /* ==================================================
@@ -284,10 +291,10 @@ TEST_F(OpenFileTest, OpenExisting) {
  * The probability of 32 random bytes being all zero is negligible (2^-256)
  */
 TEST(RandomTest, GeneratesNonZero) {
-  uint8_t buff[32] = { 0 };
+  std::array<uint8_t, 32> buff{};
   bool all_zero = true;
 
-  EXPECT_EQ(Random(buff, 32), 0);
+  EXPECT_EQ(Random(buff.data(), 32), 0);
 
   for (int i = 0; i < 32; i++) {
     if (buff[i]) {
@@ -303,12 +310,13 @@ TEST(RandomTest, GeneratesNonZero) {
  * @brief   Verify Random generates different data each time
  */
 TEST(RandomTest, DifferentEachCall) {
-  uint8_t buff0[32], buff1[32];
+  std::array<uint8_t, 32> buff0;
+  std::array<uint8_t, 32> buff1;
 
-  Random(buff0, 32);
-  Random(buff1, 32);
+  Random(buff0.data(), 32);
+  Random(buff1.data(), 32);
 
-  EXPECT_NE(memcmp(buff0, buff1, 32), 0);
+  EXPECT_NE(memcmp(buff0.data(), buff1.data(), 32), 0);
 }
 
 /* ==================================================
@@ -460,11 +468,11 @@ TEST_F(SeekTest, SeekFromEnd) {
  * @brief   Verify Wipe works
  */
 TEST(WipeTest, WipeBuffer) {
-  uint8_t buff[32];
+  std::array<uint8_t, 32> buff;
 
-  memset(buff, 0xFF, 32);
+  memset(buff.data(), 0xFF, 32);
 
-  Wipe(buff, 32);
+  Wipe(buff.data(), 32);
 
   for (int i = 0; i < 32; i++) {
     EXPECT_EQ(buff[i], 0);
@@ -475,11 +483,11 @@ TEST(WipeTest, WipeBuffer) {
  * @brief   Verify Wipe works with partial buffer
  */
 TEST(WipeTest, WipePartial) {
-  uint8_t buff[32];
+  std::array<uint8_t, 32> buff;
 
-  memset(buff, 0xFF, 32);
+  memset(buff.data(), 0xFF, 32);
 
-  Wipe(buff, 16);  // Only wipe the first half
+  Wipe(buff.data(), 16);  // Only wipe the first half
 
   for (int i = 0; i < 16; i++) {
     EXPECT_EQ(buff[i], 0);

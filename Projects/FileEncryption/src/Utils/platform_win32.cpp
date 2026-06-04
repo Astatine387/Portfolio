@@ -23,7 +23,7 @@ int64_t GetFileSize(FILE* file) {
 }
 
 bool FileExists(const std::string& path) {
-  std::filesystem::path fs_path = std::filesystem::u8path(path);
+  std::filesystem::path fs_path(std::u8string(path.begin(), path.end()));
   return std::filesystem::exists(fs_path);
 }
 
@@ -32,7 +32,7 @@ int Random(uint8_t* dst, size_t size) {
 }
 
 int RemoveFile(const std::string& path) {
-  std::filesystem::path fs_path = std::filesystem::u8path(path);
+  std::filesystem::path fs_path(std::u8string(path.begin(), path.end()));
   return _wunlink(fs_path.c_str());
 }
 
@@ -45,7 +45,8 @@ int Lock(void* ptr, size_t size) {
 }
 
 void OpenFile(FILE** file, const std::string& path, const char* mode) {
-  std::filesystem::path fs_path = std::filesystem::u8path(path);
+  std::filesystem::path fs_path(std::u8string(path.begin(), path.end()));
+
   std::wstring wmode;
 
   for (const char* p = mode; *p; ++p) {

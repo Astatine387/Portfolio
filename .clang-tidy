@@ -1,10 +1,16 @@
 ---
 Checks: >
   readability-identifier-naming,
-  modernize-use-nullptr
+  performance-*,
+  modernize-*,
+  -modernize-use-auto,
+  -modernize-use-trailing-return-type
 WarningsAsErrors: >
   readability-identifier-naming,
-  modernize-use-nullptr
+  performance-*,
+  modernize-*,
+  -modernize-use-auto,
+  -modernize-use-trailing-return-type
 HeaderFilterRegex: 'src/.*'
 FormatStyle: file
 

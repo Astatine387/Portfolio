@@ -11,20 +11,13 @@
 
 #include <openssl/err.h>
 
-#include <cstring>
+#include <array>
+#include <string>
 
 #include "Utils/platform.h"
 
 AesGcm::AesGcm() {
-  for (int i = 0; i < kBuffNum; i++) {
-    memset(buff_[i], 0, sizeof(uint8_t) * kBuffSize * kBlockSize);
-  }
-
-  memset(iv_, 0, sizeof(uint8_t) * kIVSize);
-  memset(salt_, 0, sizeof(uint8_t) * kSaltSize);
-  memset(tag_, 0, sizeof(uint8_t) * kTagSize);
-
-  key_locked_ = (Lock(key_, kKeySize) == 0);
+  key_locked_ = (Lock(key_.data(), kKeySize) == 0);
 }
 
 AesGcm::~AesGcm() {
@@ -33,16 +26,16 @@ AesGcm::~AesGcm() {
   }
 
   for (int i = 0; i < kBuffNum; i++) {
-    Wipe(buff_[i], sizeof(uint8_t) * kBuffSize * kBlockSize);
+    Wipe(buff_[i].data(), sizeof(buff_[i]));
   }
 
-  Wipe(iv_, sizeof(uint8_t) * kIVSize);
-  Wipe(key_, sizeof(uint8_t) * kKeySize);
-  Wipe(salt_, sizeof(uint8_t) * kSaltSize);
-  Wipe(tag_, sizeof(uint8_t) * kTagSize);
+  Wipe(iv_.data(), sizeof(iv_));
+  Wipe(key_.data(), sizeof(key_));
+  Wipe(salt_.data(), sizeof(salt_));
+  Wipe(tag_.data(), sizeof(tag_));
 
   if (key_locked_) {
-    Unlock(key_, kKeySize);
+    Unlock(key_.data(), kKeySize);
   }
 
   if (ctx_) {
@@ -103,15 +96,15 @@ void AesGcm::ReportError(const char* msg) {
 
   std::string res;
   unsigned long code;
-  char err_str[256];
+  std::array<char, 256> err_str{};
 
   res += msg;
 
   while ((code = ERR_get_error()) != 0) {
-    ERR_error_string_n(code, err_str, sizeof(err_str));
+    ERR_error_string_n(code, err_str.data(), err_str.size());
 
     res += " -> ";
-    res += err_str;
+    res += err_str.data();
     res += '\n';
   }
 
