@@ -27,8 +27,8 @@ class CryptoWorker {
    * @param     pw          Password
    * @param     mode        Encryption/decryption mode
    */
-  CryptoWorker(const std::string& src_path, const std::string& dst_path, const Password& pw, CryptoMode mode)
-      : src_path_(src_path), dst_path_(dst_path), pw_(pw), mode_(mode) {}
+  CryptoWorker(std::string src_path, std::string dst_path, Password pw, CryptoMode mode)
+      : src_path_(std::move(src_path)), dst_path_(std::move(dst_path)), pw_(std::move(pw)), mode_(mode) {}
 
   /**
    * @brief		Callback function for progress reporting
