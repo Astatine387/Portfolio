@@ -71,7 +71,7 @@ void ChangePWGUI::SetErrMsg(const QString& msg) {
 }
 
 void ChangePWGUI::SetVerifyCb(VerifyCallback vcb) {
-  this->vcb_ = vcb;
+  this->vcb_ = std::move(vcb);
 }
 
 void ChangePWGUI::OnOKClicked() {

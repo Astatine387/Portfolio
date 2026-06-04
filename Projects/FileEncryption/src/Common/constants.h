@@ -25,7 +25,7 @@ inline constexpr int kBuffNum = 2;         /// Number of buffers for swapping
 
 inline constexpr int64_t kMaxSize = 64ULL * 1024 * 1024 * 1024 - 32;  /// Maximum source file size that can be processed
 
-enum class CryptoMode {
+enum class CryptoMode : std::uint8_t {
   kEncrypt,
   kDecrypt,
 };

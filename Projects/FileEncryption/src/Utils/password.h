@@ -84,25 +84,25 @@ class Password {
    * @brief   Check whether the password is empty
    * @return	true if empty
    */
-  bool IsEmpty() const;
+  [[nodiscard]] bool IsEmpty() const;
 
   /**
    * @brief   Check whether the password is locked in memory
    * @return  true if locked
    */
-  bool IsLocked() const;
+  [[nodiscard]] bool IsLocked() const;
 
   /**
    * @brief   Get password data
    * @return	Password data
    */
-  const char* GetData() const;
+  [[nodiscard]] const char* GetData() const;
 
   /**
    * @brief   Get password size
    * @return	Password size
    */
-  size_t GetSize() const;
+  [[nodiscard]] size_t GetSize() const;
 
   /**
    * @brief   Set password data

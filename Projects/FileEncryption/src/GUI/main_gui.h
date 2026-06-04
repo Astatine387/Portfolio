@@ -32,7 +32,7 @@ class MainGUI : public QWidget {
   /**
    * @brief	Destructor of MainGUI class
    */
-  ~MainGUI();
+  ~MainGUI() override;
 
   /**
    * @brief   Get the current user input

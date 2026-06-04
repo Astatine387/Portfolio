@@ -54,7 +54,9 @@ BENCHMARK_DEFINE_F(Benchmark, Encrypt)(benchmark::State& state) {
 
   Create(size);
 
-  for ([[maybe_unused]] auto _ : state) {  // NOLINT(clang-analyzer-deadcode.DeadStores)
+  for (auto _ : state) {
+    (void)_;
+
     AesGcm aes;
     FILE *src = nullptr, *dst = nullptr;
 
@@ -106,6 +108,8 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
   /* Decrypt and test performance */
 
   for (auto _ : state) {
+    (void)_;
+
     AesGcm aes;
     FILE *src = nullptr, *dst = nullptr;
 

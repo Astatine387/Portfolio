@@ -18,10 +18,7 @@
 
 #include "Common/constants.h"
 
-/**
- * @brief   Whether a decryption pass writes or verifies
- */
-enum class DecryptMode {
+enum class DecryptMode : std::uint8_t {
   kVerify,
   kWrite,
 };
@@ -96,13 +93,13 @@ class AesGcm {
    * @brief		Set error callback function
    * @param		ecb		Error callback function
    */
-  void SetErrorCallback(ErrorCallback ecb) { ecb_ = ecb; }
+  void SetErrorCallback(ErrorCallback ecb) { ecb_ = std::move(ecb); }
 
   /**
    * @brief		Set progress callback function
    * @param		pcb		Progress callback function
    */
-  void SetProgressCallback(ProgressCallback pcb) { pcb_ = pcb; }
+  void SetProgressCallback(ProgressCallback pcb) { pcb_ = std::move(pcb); }
 
  private:
   EVP_CIPHER_CTX* ctx_ = nullptr;  // OpenSSL encryption/decryption context

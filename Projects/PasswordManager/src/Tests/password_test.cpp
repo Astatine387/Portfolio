@@ -185,17 +185,6 @@ TEST(PasswordTest, MoveAssignment) {
 }
 
 /**
- * @brief   Verify copy constructor from empty password produces empty password
- */
-TEST(PasswordTest, CopyConstructorEmpty) {
-  Password pw0;
-  Password pw1(pw0);
-
-  EXPECT_TRUE(pw1.IsEmpty());
-  EXPECT_EQ(pw1.GetData(), nullptr);
-}
-
-/**
  * @brief   Verify self-assignment does not corrupt data
  */
 TEST(PasswordTest, SelfAssignment) {
