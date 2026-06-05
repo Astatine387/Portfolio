@@ -45,15 +45,15 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
 
   /* Read salt and IV */
 
-  memcpy(salt_, src_buff_ + src_crs_, kSaltSize);
+  memcpy(salt_.data(), src_buff_ + src_crs_, kSaltSize);
   src_crs_ += kSaltSize;
 
-  memcpy(iv_, src_buff_ + src_crs_, kIVSize);
+  memcpy(iv_.data(), src_buff_ + src_crs_, kIVSize);
   src_crs_ += kIVSize;
 
   /* Derive key from password */
 
-  if (Argon2id(salt_, pw, plen, key_)) {
+  if (Argon2id(salt_.data(), pw, plen, key_.data())) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Key derivation failed - Argon2id error\n");
     return 1;
@@ -83,7 +83,7 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_DecryptInit_ex(ctx_, nullptr, nullptr, key_, iv_) != 1) {
+  if (EVP_DecryptInit_ex(ctx_, nullptr, nullptr, key_.data(), iv_.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
     return 1;
@@ -94,11 +94,11 @@ int AesGcm::DecryptInit(const char* pw, size_t plen) {
 }
 
 int AesGcm::DecryptTag() {
-  uint8_t tag[kTagSize];
+  std::array<uint8_t, kTagSize> tag{};
 
-  memcpy(tag, src_buff_ + size_ - kTagSize, kTagSize);
+  memcpy(tag.data(), src_buff_ + size_ - kTagSize, kTagSize);
 
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_TAG, kTagSize, tag) != 1) {
+  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_TAG, kTagSize, tag.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Tag failed - Cannot set authentication tag\n");
     return 1;
@@ -132,10 +132,10 @@ int AesGcm::DecryptBuff() {
 }
 
 int AesGcm::DecryptFinal() {
-  uint8_t final_buff[kBlockSize];
+  std::array<uint8_t, kBlockSize> final_block{};
   int final_len;
 
-  if (EVP_DecryptFinal_ex(ctx_, final_buff, &final_len) != 1) {
+  if (EVP_DecryptFinal_ex(ctx_, final_block.data(), &final_len) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Finalization failed - Cannot finalize decryption\n");
     return 1;
@@ -149,7 +149,7 @@ int AesGcm::DecryptFinal() {
     // LCOV_EXCL_STOP
   }
 
-  memcpy(dst_buff_ + dst_crs_, final_buff, final_len);
+  memcpy(dst_buff_ + dst_crs_, final_block.data(), final_len);
   dst_crs_ += final_len;
 
   return 0;

@@ -34,14 +34,14 @@ void Vault::Clear() {
     file_ = nullptr;
   }
 
-  if (src_buff_) {
-    Wipe(src_buff_.get(), src_size_);
-    src_buff_.reset();
+  if (!src_buff_.empty()) {
+    Wipe(src_buff_.data(), src_buff_.size());
+    src_buff_.clear();
   }
 
-  if (dst_buff_) {
-    Wipe(dst_buff_.get(), dst_size_);
-    dst_buff_.reset();
+  if (!dst_buff_.empty()) {
+    Wipe(dst_buff_.data(), dst_buff_.size());
+    dst_buff_.clear();
   }
 
   src_size_ = 0;

@@ -13,18 +13,15 @@
 #include "Utils/platform.h"
 
 AesGcm::AesGcm() {
-  memset(iv_, 0, sizeof(uint8_t) * kIVSize);
-  memset(salt_, 0, sizeof(uint8_t) * kSaltSize);
-
-  Lock(key_, kKeySize);
+  Lock(key_.data(), kKeySize);
 }
 
 AesGcm::~AesGcm() {
-  Wipe(iv_, sizeof(uint8_t) * kIVSize);
-  Wipe(key_, sizeof(uint8_t) * kKeySize);
-  Wipe(salt_, sizeof(uint8_t) * kSaltSize);
+  Wipe(iv_.data(), sizeof(uint8_t) * kIVSize);
+  Wipe(key_.data(), sizeof(uint8_t) * kKeySize);
+  Wipe(salt_.data(), sizeof(uint8_t) * kSaltSize);
 
-  Unlock(key_, kKeySize);
+  Unlock(key_.data(), kKeySize);
 
   if (ctx_) {
     EVP_CIPHER_CTX_free(ctx_);
@@ -39,15 +36,15 @@ void AesGcm::ReportError(const char* msg) {
 
   std::string res;
   unsigned long code;
-  char err_str[256];
+  std::array<char, 256> err_str{};
 
   res += msg;
 
   while ((code = ERR_get_error()) != 0) {
-    ERR_error_string_n(code, err_str, sizeof(err_str));
+    ERR_error_string_n(code, err_str.data(), sizeof(err_str).size());
 
     res += " -> ";
-    res += err_str;
+    res += err_str.data();
     res += '\n';
   }
 

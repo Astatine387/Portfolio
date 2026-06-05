@@ -5,6 +5,7 @@
  */
 
 #include <cstring>
+#include <utility>
 
 #include "Core/aes_gcm.h"
 #include "Utils/platform.h"
@@ -45,14 +46,14 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
 
   /* Generate salt and IV */
 
-  if (Random(salt_, kSaltSize)) {
+  if (Random(salt_.data(), kSaltSize)) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Random failed - Cannot generate salt\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
-  if (Random(iv_, kIVSize)) {
+  if (Random(iv_.data(), kIVSize)) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Random failed - Cannot generate initial vector\n");
     return 1;
@@ -61,7 +62,7 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
 
   /* Derive key from password */
 
-  if (Argon2id(salt_, pw, plen, key_)) {
+  if (Argon2id(salt_.data(), pw, plen, key_.data())) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Key derivation failed - Argon2id error\n");
     return 1;
@@ -91,7 +92,7 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_EncryptInit_ex(ctx_, nullptr, nullptr, key_, iv_) != 1) {
+  if (EVP_EncryptInit_ex(ctx_, nullptr, nullptr, key_.data(), iv_.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
     return 1;
@@ -100,10 +101,10 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
 
   /* Write salt and IV */
 
-  memcpy(dst_buff_ + dst_crs_, salt_, kSaltSize);
+  memcpy(dst_buff_ + dst_crs_, salt_.data(), kSaltSize);
   dst_crs_ += kSaltSize;
 
-  memcpy(dst_buff_ + dst_crs_, iv_, kIVSize);
+  memcpy(dst_buff_ + dst_crs_, iv_.data(), kIVSize);
   dst_crs_ += kIVSize;
 
   return 0;
@@ -119,7 +120,7 @@ int AesGcm::EncryptBuff() {
     // LCOV_EXCL_STOP
   }
 
-  if (out_len != size_) {
+  if (std::cmp_not_equal(out_len, size_)) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
     return 1;
@@ -132,10 +133,10 @@ int AesGcm::EncryptBuff() {
 }
 
 int AesGcm::EncryptFinal() {
-  uint8_t final_buff[kBlockSize];
+  std::array<uint8_t, kBlockSize> final_block{};
   int final_len;
 
-  if (EVP_EncryptFinal_ex(ctx_, final_buff, &final_len) != 1) {
+  if (EVP_EncryptFinal_ex(ctx_, final_block.data(), &final_len) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Finalization failed - Cannot finalize encryption\n");
     return 1;
@@ -149,23 +150,23 @@ int AesGcm::EncryptFinal() {
     // LCOV_EXCL_STOP
   }
 
-  memcpy(dst_buff_ + dst_crs_, final_buff, final_len);
+  memcpy(dst_buff_ + dst_crs_, final_block.data(), final_len);
   dst_crs_ += final_len;
 
   return 0;
 }
 
 int AesGcm::EncryptTag() {
-  uint8_t tag[kTagSize];
+  std::array<uint8_t, kTagSize> tag{};
 
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_GET_TAG, kTagSize, tag) != 1) {
+  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_GET_TAG, kTagSize, tag.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Tag Error - Cannot get authentication tag\n");
     return 1;
     // LCOV_EXCL_STOP
   }
 
-  memcpy(dst_buff_ + dst_crs_, tag, kTagSize);
+  memcpy(dst_buff_ + dst_crs_, tag.data(), kTagSize);
   dst_crs_ += kTagSize;
 
   return 0;

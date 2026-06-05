@@ -7,9 +7,9 @@
 #pragma once
 
 #include <functional>
-#include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "Common/constants.h"
 #include "Core/aes_gcm.h"
@@ -165,10 +165,11 @@ class Vault {
 
   ErrorCallback ecb_ = nullptr;
 
+  std::vector<uint8_t> src_buff_;
+  std::vector<uint8_t> dst_buff_;
   FILE* file_ = nullptr;
-  std::unique_ptr<uint8_t[]> src_buff_;
-  std::unique_ptr<uint8_t[]> dst_buff_;
-  int64_t src_size_ = 0, dst_size_ = 0;
+  int64_t src_size_ = 0;
+  int64_t dst_size_ = 0;
   uint32_t magic_num_ = kMagicNum;
 
   /* ==================================================

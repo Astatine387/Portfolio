@@ -19,15 +19,15 @@ int Vault::NewVault(const std::string& path) {
   src_size_ = kCountSize;
   dst_size_ = kMagicSize + kSaltSize + kIVSize + src_size_ + kTagSize;
 
-  src_buff_ = std::make_unique<uint8_t[]>(src_size_);
-  dst_buff_ = std::make_unique<uint8_t[]>(dst_size_);
+  src_buff_.assign(src_size_, 0);
+  dst_buff_.assign(dst_size_, 0);
 
-  memcpy(src_buff_.get(), &entry_cnt, kCountSize);
-  memcpy(dst_buff_.get(), &magic_num_, kMagicSize);
+  memcpy(src_buff_.data(), &entry_cnt, kCountSize);
+  memcpy(dst_buff_.data(), &magic_num_, kMagicSize);
 
   /* Encrypt */
 
-  if (aes_.Encrypt(src_buff_.get(), dst_buff_.get() + kMagicSize, src_size_, pw_.GetData(), pw_.GetSize())) {
+  if (aes_.Encrypt(src_buff_.data(), dst_buff_.data() + kMagicSize, src_size_, pw_.GetData(), pw_.GetSize())) {
     ReportError("[Crypto] Encryption failed - Cannot encrypt vault data\n");
     return 1;
   }
@@ -43,7 +43,7 @@ int Vault::NewVault(const std::string& path) {
     // LCOV_EXCL_STOP
   }
 
-  if (fwrite(dst_buff_.get(), sizeof(uint8_t), dst_size_, file_) != dst_size_) {
+  if (fwrite(dst_buff_.data(), sizeof(uint8_t), dst_size_, file_) != dst_size_) {
     // LCOV_EXCL_START
     ReportError("[File] Write failed - Cannot write vault file\n");
     return 1;
@@ -105,9 +105,9 @@ int Vault::OpenVault(const std::string& path) {
 
   /* Read vault */
 
-  src_buff_ = std::make_unique<uint8_t[]>(src_size_);
+  src_buff_.assign(src_size_, 0);
 
-  if (fread(src_buff_.get(), sizeof(uint8_t), src_size_, file_) != src_size_) {
+  if (fread(src_buff_.data(), sizeof(uint8_t), src_size_, file_) != src_size_) {
     // LCOV_EXCL_START
     ReportError("[File] Read failed - Cannot read vault file data\n");
     return 1;
@@ -116,7 +116,7 @@ int Vault::OpenVault(const std::string& path) {
 
   /* Check magic number */
 
-  if (memcmp(src_buff_.get(), &magic_num_, kMagicSize) != 0) {
+  if (memcmp(src_buff_.data(), &magic_num_, kMagicSize) != 0) {
     ReportError("[File] Validation failed - Invalid vault file format\n");
     return 1;
   }
@@ -125,9 +125,9 @@ int Vault::OpenVault(const std::string& path) {
 
   dst_size_ = src_size_ - (kMagicSize + kSaltSize + kIVSize + kTagSize);
 
-  dst_buff_ = std::make_unique<uint8_t[]>(dst_size_);
+  dst_buff_.assign(dst_size_, 0);
 
-  if (aes_.Decrypt(src_buff_.get() + kMagicSize, dst_buff_.get(), src_size_ - kMagicSize, pw_.GetData(),
+  if (aes_.Decrypt(src_buff_.data() + kMagicSize, dst_buff_.data(), src_size_ - kMagicSize, pw_.GetData(),
                    pw_.GetSize())) {
     ReportError("[Auth] Decryption failed - Invalid password or corrupted vault\n");
     return 1;
@@ -135,7 +135,7 @@ int Vault::OpenVault(const std::string& path) {
 
   /* Deserialize */
 
-  memcpy(&entry_cnt, dst_buff_.get(), kCountSize);
+  memcpy(&entry_cnt, dst_buff_.data(), kCountSize);
   cur += kCountSize;
 
   if (entry_cnt * kMinEntrySize > dst_size_ - kCountSize) {
@@ -146,7 +146,7 @@ int Vault::OpenVault(const std::string& path) {
   for (uint32_t i = 0; i < entry_cnt; i++) {
     Entry entry;
 
-    size_t bytes = entry.Deser(dst_buff_.get() + cur, dst_size_ - cur);
+    size_t bytes = entry.Deser(dst_buff_.data() + cur, dst_size_ - cur);
 
     if (bytes == 0) {
       ReportError("[Data] Deserialization failed - Invalid entry data\n");
@@ -188,26 +188,26 @@ int Vault::SaveVault(const std::string& path) {
     return 1;
   }
 
-  src_buff_ = std::make_unique<uint8_t[]>(src_size_);
-  dst_buff_ = std::make_unique<uint8_t[]>(dst_size_);
+  src_buff_.assign(src_size_, 0);
+  dst_buff_.assign(dst_size_, 0);
 
   /* Write entry count to buffer */
 
-  memcpy(src_buff_.get() + src_cur, &entry_cnt, sizeof(uint32_t));
+  memcpy(src_buff_.data() + src_cur, &entry_cnt, sizeof(uint32_t));
   src_cur += sizeof(uint32_t);
 
   /* Write entries to buffer */
 
   for (auto it = entry_set_.begin(); it != entry_set_.end(); it++) {
-    src_cur += it->Ser(src_buff_.get() + src_cur);
+    src_cur += it->Ser(src_buff_.data() + src_cur);
   }
 
-  memcpy(dst_buff_.get() + dst_cur, &magic_num_, kMagicSize);
+  memcpy(dst_buff_.data() + dst_cur, &magic_num_, kMagicSize);
   dst_cur += kMagicSize;
 
   /* Encrypt */
 
-  if (aes_.Encrypt(src_buff_.get(), dst_buff_.get() + dst_cur, src_size_, pw_.GetData(), pw_.GetSize())) {
+  if (aes_.Encrypt(src_buff_.data(), dst_buff_.data() + dst_cur, src_size_, pw_.GetData(), pw_.GetSize())) {
     ReportError("[Crypto] Encryption failed - Cannot encrypt vault data\n");
     return 1;
   }
@@ -225,7 +225,7 @@ int Vault::SaveVault(const std::string& path) {
     // LCOV_EXCL_STOP
   }
 
-  if (fwrite(dst_buff_.get(), sizeof(uint8_t), dst_size_, file_) != dst_size_) {
+  if (fwrite(dst_buff_.data(), sizeof(uint8_t), dst_size_, file_) != dst_size_) {
     // LCOV_EXCL_START
     ReportError("[File] Write failed - Cannot write temporary file\n");
     RemoveFile(tmp_path);

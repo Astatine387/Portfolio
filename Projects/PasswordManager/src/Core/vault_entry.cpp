@@ -7,7 +7,7 @@
 #include "Core/vault.h"
 
 int Vault::CreateEntry(const std::string& site, const std::string& acc, const Password& pw) {
-  Entry new_entry = { site, acc, pw };
+  Entry new_entry = { .site = site, .acc = acc, .pw = pw };
 
   auto res = entry_set_.insert(new_entry);
 
@@ -23,7 +23,7 @@ int Vault::UpdateEntry(const std::string& old_site, const std::string& old_acc, 
                        const std::string& new_acc, const Password& new_pw) {
   /* Check whether the target entry exists */
 
-  Entry old_entry = { old_site, old_acc };
+  Entry old_entry = { .site = old_site, .acc = old_acc };
 
   auto old_it = entry_set_.find(old_entry);
 
@@ -34,7 +34,7 @@ int Vault::UpdateEntry(const std::string& old_site, const std::string& old_acc, 
 
   /* Check new entry data conflicts with existing entry */
 
-  Entry new_entry = { new_site, new_acc, new_pw };
+  Entry new_entry = { .site = new_site, .acc = new_acc, .pw = new_pw };
 
   auto new_it = entry_set_.find(new_entry);
 
@@ -56,7 +56,7 @@ int Vault::UpdateEntry(const std::string& old_site, const std::string& old_acc, 
 }
 
 int Vault::DeleteEntry(const std::string& site, const std::string& acc) {
-  Entry tar = { site, acc };
+  Entry tar = { .site = site, .acc = acc };
 
   auto it = entry_set_.find(tar);
 

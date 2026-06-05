@@ -60,14 +60,14 @@ QVector<EntryView> VaultInterface::GetEntries() const {
   const auto& entries = vault_->GetEntries();
 
   for (const auto& entry : entries) {
-    views.append({ QString::fromStdString(entry.site), QString::fromStdString(entry.acc) });
+    views.append({ .site = QString::fromStdString(entry.site), .acc = QString::fromStdString(entry.acc) });
   }
 
   return views;
 }
 
 bool VaultInterface::GetPW(const QString& site, const QString& acc, Password& pw) const {
-  Entry target = { site.toStdString(), acc.toStdString() };
+  Entry target = { .site = site.toStdString(), .acc = acc.toStdString() };
   const auto& entries = vault_->GetEntries();
   auto it = entries.find(target);
 

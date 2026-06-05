@@ -56,9 +56,9 @@ TEST(EntryTest, SizeEmpty) {
 TEST(EntryTest, ComparatorOrdering) {
   EntryCmp cmp;
 
-  Entry a = { "Amazon", "user0" };
-  Entry b = { "Amazon", "user1" };
-  Entry c = { "Google", "user0" };
+  Entry a = { .site = "Amazon", .acc = "user0" };
+  Entry b = { .site = "Amazon", .acc = "user1" };
+  Entry c = { .site = "Google", .acc = "user0" };
 
   EXPECT_TRUE(cmp(a, b));
   EXPECT_FALSE(cmp(b, a));
@@ -74,8 +74,8 @@ TEST(EntryTest, ComparatorOrdering) {
 TEST(EntryTest, ComparatorEqual) {
   EntryCmp cmp;
 
-  Entry a = { "Google", "user" };
-  Entry b = { "Google", "user" };
+  Entry a = { .site = "Google", .acc = "user" };
+  Entry b = { .site = "Google", .acc = "user" };
 
   EXPECT_FALSE(cmp(a, b));
   EXPECT_FALSE(cmp(b, a));
@@ -91,10 +91,10 @@ TEST(EntryTest, SetInsertion) {
 
   pw.SetData("password", 8);
 
-  Entry entry0 = { "Google", "user1", pw };
-  Entry entry1 = { "Google", "user2", pw };
-  Entry entry2 = { "Amazon", "user1", pw };
-  Entry entry3 = { "Google", "user1", pw };  // Duplicate
+  Entry entry0 = { .site = "Google", .acc = "user1", .pw = pw };
+  Entry entry1 = { .site = "Google", .acc = "user2", .pw = pw };
+  Entry entry2 = { .site = "Amazon", .acc = "user1", .pw = pw };
+  Entry entry3 = { .site = "Google", .acc = "user1", .pw = pw };  // Duplicate
 
   entry_set.insert(entry0);
   entry_set.insert(entry1);

@@ -98,7 +98,7 @@ TEST_F(VaultEntryTest, UpdateBasic) {
   /* Verify the updated entry exists */
 
   const auto& entries = vault_.GetEntries();
-  Entry target = { "Google", "new@google.com" };
+  Entry target = { .site = "Google", .acc = "new@google.com" };
 
   auto it = entries.find(target);
 
@@ -176,7 +176,7 @@ TEST_F(VaultEntryTest, DeletePreservesOthers) {
   EXPECT_EQ(vault_.GetEntryCount(), 1);
 
   const auto& entries = vault_.GetEntries();
-  Entry target = { "Microsoft", "user2@microsoft.com" };
+  Entry target = { .site = "Microsoft", .acc = "user2@microsoft.com" };
 
   EXPECT_NE(entries.find(target), entries.end());
 }

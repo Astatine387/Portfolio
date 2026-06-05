@@ -196,14 +196,14 @@ void EntryGUI::OnGenerateClicked() {
 }
 
 void EntryGUI::OnCheckAllClicked() {
-  for (int i = 0; i < 32; i++) {
-    spc_checks_[i]->setChecked(true);
+  for (auto spc : spc_checks_) {
+    spc->setChecked(true);
   }
 }
 
 void EntryGUI::OnUncheckAllClicked() {
-  for (int i = 0; i < 32; i++) {
-    spc_checks_[i]->setChecked(false);
+  for (auto spc : spc_checks_) {
+    spc->setChecked(false);
   }
 }
 
@@ -242,8 +242,8 @@ bool EntryGUI::HasSpecial(const Password& pw) const {
 }
 
 bool EntryGUI::HasSpecialSelected() const {
-  for (int i = 0; i < 32; i++) {
-    if (spc_checks_[i]->isChecked()) {
+  for (auto spc : spc_checks_) {
+    if (spc->isChecked()) {
       return true;
     }
   }
@@ -252,11 +252,11 @@ bool EntryGUI::HasSpecialSelected() const {
 }
 
 int EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size) {
+  std::string lower = "abcdefghijklmnopqrstuvwxyz";
+  std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  std::string num = "0123456789";
   std::string pool;
   size_t pool_size = 62;
-  const char lower[] = "abcdefghijklmnopqrstuvwxyz";
-  const char upper[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const char num[] = "0123456789";
   char* pw;
   int crs = 0, res = 0;
 

@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <string>
 
 #include "Utils/platform.h"
@@ -142,75 +143,81 @@ TEST_F(FileExistsTest, AfterDeletion) {
  * @brief   Verify Argon2id derives same key for same input
  */
 TEST(Argon2idTest, SameInput) {
-  uint8_t salt[kSaltSize], key0[kKeySize], key1[kKeySize];
+  std::array<uint8_t, kSaltSize> salt;
+  std::array<uint8_t, kKeySize> key0;
+  std::array<uint8_t, kKeySize> key1;
   const char* pw = "password";
   size_t size = strlen(pw);
 
-  for (int i = 0; i < kSaltSize; i++) {
+  for (size_t i = 0; i < kSaltSize; i++) {
     salt[i] = i;
   }
 
-  EXPECT_EQ(Argon2id(salt, pw, size, key0), 0);
-  EXPECT_EQ(Argon2id(salt, pw, size, key1), 0);
+  EXPECT_EQ(Argon2id(salt.data(), pw, size, key0.data()), 0);
+  EXPECT_EQ(Argon2id(salt.data(), pw, size, key1.data()), 0);
 
-  EXPECT_EQ(memcmp(key0, key1, kKeySize), 0);
+  EXPECT_EQ(memcmp(key0.data(), key1.data(), kKeySize), 0);
 }
 
 /**
  * @brief   Verify different passwords produce different keys
  */
 TEST(Argon2idTest, DifferentPW) {
-  uint8_t salt[kSaltSize], key0[kKeySize], key1[kKeySize];
+  std::array<uint8_t, kSaltSize> salt;
+  std::array<uint8_t, kKeySize> key0;
+  std::array<uint8_t, kKeySize> key1;
   const char* pw0 = "password";
   const char* pw1 = "asdf1234";
   size_t size0 = strlen(pw0);
   size_t size1 = strlen(pw1);
 
-  for (int i = 0; i < kSaltSize; i++) {
+  for (size_t i = 0; i < kSaltSize; i++) {
     salt[i] = i;
   }
 
-  Argon2id(salt, pw0, size0, key0);
-  Argon2id(salt, pw1, size1, key1);
+  Argon2id(salt.data(), pw0, size0, key0.data());
+  Argon2id(salt.data(), pw1, size1, key1.data());
 
-  EXPECT_NE(memcmp(key0, key1, kKeySize), 0);
+  EXPECT_NE(memcmp(key0.data(), key1.data(), kKeySize), 0);
 }
 
 /**
  * @brief   Verify different salts produce different keys
  */
 TEST(Argon2idTest, DifferentSalt) {
-  uint8_t salt0[kSaltSize], salt1[kSaltSize];
-  uint8_t key0[kKeySize], key1[kKeySize];
+  std::array<uint8_t, kSaltSize> salt0;
+  std::array<uint8_t, kSaltSize> salt1;
+  std::array<uint8_t, kKeySize> key0;
+  std::array<uint8_t, kKeySize> key1;
   const char* pw = "password";
   size_t size = strlen(pw);
 
-  for (int i = 0; i < kSaltSize; i++) {
+  for (size_t i = 0; i < kSaltSize; i++) {
     salt0[i] = i;
   }
 
-  for (int i = 0; i < kSaltSize; i++) {
+  for (size_t i = 0; i < kSaltSize; i++) {
     salt1[i] = i + 16;
   }
 
-  Argon2id(salt0, pw, size, key0);
-  Argon2id(salt1, pw, size, key1);
+  Argon2id(salt0.data(), pw, size, key0.data());
+  Argon2id(salt1.data(), pw, size, key1.data());
 
-  EXPECT_NE(memcmp(key0, key1, kKeySize), 0);
+  EXPECT_NE(memcmp(key0.data(), key1.data(), kKeySize), 0);
 }
 
 /**
  * @brief   Verify Argon2id works with empty password
  */
 TEST(Argon2Test, EmptyPassword) {
-  uint8_t salt[kSaltSize];
-  uint8_t key[kKeySize];
+  std::array<uint8_t, kSaltSize> salt;
+  std::array<uint8_t, kKeySize> key;
 
-  for (int i = 0; i < kSaltSize; i++) {
+  for (size_t i = 0; i < kSaltSize; i++) {
     salt[i] = i;
   }
 
-  EXPECT_EQ(Argon2id(salt, "", 0, key), 0);
+  EXPECT_EQ(Argon2id(salt.data(), "", 0, key.data()), 0);
 }
 
 /* ==================================================
@@ -282,13 +289,13 @@ TEST_F(OpenFileTest, OpenExisting) {
  * The probability of 32 random bytes being all zero is negligible (2^-256)
  */
 TEST(RandomTest, GeneratesNonZero) {
-  uint8_t buff[32] = { 0 };
+  std::array<uint8_t, 32> arr{};
   bool all_zero = true;
 
-  EXPECT_EQ(Random(buff, 32), 0);
+  EXPECT_EQ(Random(arr.data(), 32), 0);
 
   for (int i = 0; i < 32; i++) {
-    if (buff[i]) {
+    if (arr[i]) {
       all_zero = false;
       break;
     }
@@ -301,12 +308,13 @@ TEST(RandomTest, GeneratesNonZero) {
  * @brief   Verify Random generates different data each time
  */
 TEST(RandomTest, DifferentEachCall) {
-  uint8_t buff0[32], buff1[32];
+  std::array<uint8_t, 32> arr0;
+  std::array<uint8_t, 32> arr1;
 
-  Random(buff0, 32);
-  Random(buff1, 32);
+  Random(arr0.data(), 32);
+  Random(arr1.data(), 32);
 
-  EXPECT_NE(memcmp(buff0, buff1, 32), 0);
+  EXPECT_NE(memcmp(arr0.data(), arr1.data(), 32), 0);
 }
 
 /* ==================================================
@@ -425,12 +433,12 @@ TEST(UtilsTest, RenameFileOverwrite) {
 
   EXPECT_EQ(size, static_cast<int64_t>(strlen(src_data)));
 
-  char buff[32] = { 0 };
+  std::array<char, 32> arr{};
 
-  fread(buff, 1, size, file);
+  fread(arr.data(), 1, size, file);
   fclose(file);
 
-  EXPECT_EQ(memcmp(buff, src_data, strlen(src_data)), 0);
+  EXPECT_EQ(memcmp(arr.data(), src_data, strlen(src_data)), 0);
 
   /* Cleanup */
 
@@ -445,14 +453,14 @@ TEST(UtilsTest, RenameFileOverwrite) {
  * @brief   Verify Wipe zeroes out entire buffer
  */
 TEST(WipeTest, WipeBuffer) {
-  uint8_t buff[32];
+  std::array<uint8_t, 32> arr;
 
-  memset(buff, 0xFF, 32);
+  arr.fill(0xff);
 
-  Wipe(buff, 32);
+  Wipe(arr.data(), 32);
 
   for (int i = 0; i < 32; i++) {
-    EXPECT_EQ(buff[i], 0);
+    EXPECT_EQ(arr[i], 0);
   }
 }
 
@@ -460,18 +468,18 @@ TEST(WipeTest, WipeBuffer) {
  * @brief   Verify Wipe zeroes only the specified portion
  */
 TEST(WipeTest, WipePartial) {
-  uint8_t buff[32];
+  std::array<uint8_t, 32> arr;
 
-  memset(buff, 0xFF, 32);
+  arr.fill(0xff);
 
-  Wipe(buff, 16);
+  Wipe(arr.data(), 16);
 
   for (int i = 0; i < 16; i++) {
-    EXPECT_EQ(buff[i], 0);
+    EXPECT_EQ(arr[i], 0);
   }
 
   for (int i = 16; i < 32; i++) {
-    EXPECT_EQ(buff[i], 0xFF);
+    EXPECT_EQ(arr[i], 0xFF);
   }
 }
 
@@ -483,18 +491,19 @@ TEST(WipeTest, WipePartial) {
  * @brief   Verify Shuffle preserves all elements
  */
 TEST(ShuffleTest, PreservesElements) {
-  uint8_t arr[10];
+  std::array<uint8_t, 10> arr;
 
-  for (int i = 0; i < 10; i++)
+  for (uint8_t i = 0; i < 10; i++) {
     arr[i] = i;
+  }
 
-  Shuffle(arr, 10);
+  Shuffle(arr.data(), arr.size());
 
   /* Sort and verify all elements are preserved */
 
-  std::vector<uint8_t> sorted(arr, arr + 10);
+  std::vector<uint8_t> sorted(arr.begin(), arr.end());
 
-  std::sort(sorted.begin(), sorted.end());
+  std::ranges::sort(sorted);
 
   for (int i = 0; i < 10; i++) {
     EXPECT_EQ(sorted[i], i);

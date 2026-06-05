@@ -12,7 +12,7 @@
 
 #include "GUI/main_gui.h"
 
-int ShowGUI(int argc, char* argv[]) {
+int ShowGUI(int argc, char** argv) {
   QApplication app(argc, argv);
   MainGUI* gui = new MainGUI;
 
@@ -42,6 +42,6 @@ int ShowGUI(int argc, char* argv[]) {
   return app.exec();
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char** argv) {
   return ShowGUI(argc, argv);
 }

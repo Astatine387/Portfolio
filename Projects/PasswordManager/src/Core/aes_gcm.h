@@ -8,6 +8,7 @@
 
 #include <openssl/evp.h>
 
+#include <array>
 #include <functional>
 #include <future>
 
@@ -81,9 +82,9 @@ class AesGcm {
 
   ErrorCallback ecb_ = nullptr;  // Error reporting callback function
 
-  uint8_t iv_[kIVSize];      // Initial vector
-  uint8_t key_[kKeySize];    // Key derived from password
-  uint8_t salt_[kSaltSize];  // Key derivation salt
+  std::array<uint8_t, kIVSize> iv_{};      // Initial vector
+  std::array<uint8_t, kKeySize> key_{};    // Key derived from password
+  std::array<uint8_t, kSaltSize> salt_{};  // Key derivation salt
 
   uint8_t* src_buff_ = nullptr;  // Source buffer
   uint8_t* dst_buff_ = nullptr;  // Destination buffer
