@@ -74,7 +74,7 @@ class Vault {
    * @param		pw  Password to verify
    * @return	true if password is correct
    */
-  bool VerifyPW(const Password& pw) const;
+  [[nodiscard]] bool VerifyPW(const Password& pw) const;
 
   /**
    * @brief		Change the master password and re-encrypt vault
@@ -127,13 +127,13 @@ class Vault {
    * @brief	Get a reference to the entry set
    * @return	Reference to the entry set
    */
-  const std::set<Entry, EntryCmp>& GetEntries() const;
+  [[nodiscard]] const std::set<Entry, EntryCmp>& GetEntries() const;
 
   /**
    * @brief	Get the number of entries
    * @return	Number of entries
    */
-  int GetEntryCount() const;
+  [[nodiscard]] int GetEntryCount() const;
 
   /* ==================================================
    * Callback functions
@@ -149,13 +149,13 @@ class Vault {
    * @brief	Set error callback function
    * @param	ecb		Error callback function
    */
-  void SetErrorCallback(ErrorCallback ecb) { ecb_ = ecb; };
+  void SetErrorCallback(ErrorCallback ecb) { ecb_ = std::move(ecb); };
 
   /**
    * @brief     Get the last error message
    * @return	Last error message
    */
-  const std::string& GetLastError() const;
+  [[nodiscard]] const std::string& GetLastError() const;
 
  private:
   AesGcm aes_;

@@ -26,7 +26,7 @@ struct Entry {
    * @brief   Calculate serialized size in bytes
    * @return  Serialized size in bytes
    */
-  size_t Size() const;
+  [[nodiscard]] size_t Size() const;
 
   /**
    * @brief   Serialize entry to buffer

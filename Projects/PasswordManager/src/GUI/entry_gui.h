@@ -17,6 +17,8 @@
 #include <QVBoxLayout>
 #include <QVector>
 #include <QWidget>
+#include <array>
+#include <string>
 
 #include "GUI/entry_interface.h"
 #include "GUI/pw_line_edit.h"
@@ -82,8 +84,8 @@ class EntryGUI : public QDialog {
   void OnResetClicked();
 
  private:
+  std::array<QCheckBox*, 32> spc_checks_;
   PWLineEdit* pwline_;
-  QCheckBox* spc_checks_[32];
   QGridLayout* spc_grid_;
   QLabel* err_msg_;
   QLabel* len_label_;
@@ -101,19 +103,6 @@ class EntryGUI : public QDialog {
   QHBoxLayout* spc_btn_box_;
   QVBoxLayout* vbox_;
 
-  static constexpr char kSpcs[] = "`~!@#$%^&*()-_=+[{]}\\|;:\'\",<.>/?";
-
-  static constexpr bool kDefaultSpcs[32] = {
-    0, 1, 1, 1, 0, 0, 1, 1,
-    // `  ~  !  @  #  $  %  ^
-    0, 0, 0, 0, 0, 1, 1, 1,
-    // &  *  (  )  -  _  =  +
-    1, 1, 1, 1, 0, 0, 0, 1,
-    // [  {  ]  }  \  |  ;  :
-    0, 0, 1, 0, 0, 0, 0, 1
-    // '  "  ,  <  .  >  /  ?
-  };
-
   /**
    * @brief     Get the special character selection list
    * @return	Special character selection list
@@ -124,13 +113,13 @@ class EntryGUI : public QDialog {
    * @brief	    Check whether the password has at least one special character
    * @return	true if the password has at least one special character
    */
-  bool HasSpecial(const Password& pw) const;
+  [[nodiscard]] bool HasSpecial(const Password& pw) const;
 
   /**
    * @brief	    Check if at least one special character is selected
    * @return	true if at least one is checked
    */
-  bool HasSpecialSelected() const;
+  [[nodiscard]] bool HasSpecialSelected() const;
 
   /**
    * @brief	    Generate a random password including at least one each of uppercase, lowercase, number, and special

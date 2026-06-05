@@ -82,25 +82,25 @@ class Password {
    * @param	other	Password to compare
    * @return	true if equal
    */
-  bool Equal(const Password& other) const;
+  [[nodiscard]] bool Equal(const Password& other) const;
 
   /**
    * @brief   Check the password data is empty
    * @return	true if empty
    */
-  bool IsEmpty() const;
+  [[nodiscard]] bool IsEmpty() const;
 
   /**
    * @brief   Get password data
    * @return	Password data
    */
-  const char* GetData() const;
+  [[nodiscard]] const char* GetData() const;
 
   /**
    * @brief   Get password size
    * @return	Password size
    */
-  size_t GetSize() const;
+  [[nodiscard]] size_t GetSize() const;
 
   /**
    * @brief   Set password data

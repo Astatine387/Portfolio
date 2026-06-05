@@ -175,8 +175,8 @@ int Vault::SaveVault(const std::string& path) {
 
   src_size_ = sizeof(uint32_t);
 
-  for (auto it = entry_set_.begin(); it != entry_set_.end(); it++) {
-    src_size_ += it->Size();
+  for (const auto& entry : entry_set_) {
+    src_size_ += entry.Size();
   }
 
   dst_size_ = kMagicSize + kSaltSize + kIVSize + src_size_ + kTagSize;
@@ -198,8 +198,8 @@ int Vault::SaveVault(const std::string& path) {
 
   /* Write entries to buffer */
 
-  for (auto it = entry_set_.begin(); it != entry_set_.end(); it++) {
-    src_cur += it->Ser(src_buff_.data() + src_cur);
+  for (const auto& entry : entry_set_) {
+    src_cur += entry.Ser(src_buff_.data() + src_cur);
   }
 
   memcpy(dst_buff_.data() + dst_cur, &magic_num_, kMagicSize);

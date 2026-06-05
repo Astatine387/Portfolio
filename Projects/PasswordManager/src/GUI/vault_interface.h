@@ -67,7 +67,7 @@ class VaultInterface {
    * @param		pw  Password to verify
    * @return	true if password is correct
    */
-  bool VerifyPW(const Password& pw) const;
+  [[nodiscard]] bool VerifyPW(const Password& pw) const;
 
   /**
    * @brief		Change the master password and re-encrypt vault
@@ -119,7 +119,7 @@ class VaultInterface {
    * @brief	Get a reference to the entry set
    * @return	Reference to the entry set
    */
-  QVector<EntryView> GetEntries() const;
+  [[nodiscard]] QVector<EntryView> GetEntries() const;
 
   /**
    * @brief     Get the password of an entry
@@ -134,7 +134,7 @@ class VaultInterface {
    * @brief     Get the last error message
    * @return	Last error message
    */
-  QString GetLastError() const;
+  [[nodiscard]] QString GetLastError() const;
 
  private:
   std::unique_ptr<Vault> vault_;

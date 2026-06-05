@@ -37,7 +37,7 @@ class MainGUI : public QWidget {
   /**
    * @brief	Destructor of MainGUI class
    */
-  ~MainGUI();
+  ~MainGUI() override;
 
   /* ==================================================
    * Callback functions
@@ -53,7 +53,7 @@ class MainGUI : public QWidget {
    * @brief	Set error callback function
    * @param	ecb		Error callback function
    */
-  void SetErrorCb(ErrorCallback ecb) { this->ecb_ = ecb; }
+  void SetErrorCb(ErrorCallback ecb) { this->ecb_ = std::move(ecb); }
 
  private slots:
   /**

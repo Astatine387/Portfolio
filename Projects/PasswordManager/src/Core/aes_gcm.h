@@ -75,7 +75,7 @@ class AesGcm {
    * @brief	Set error callback function
    * @param	ecb		Error callback function
    */
-  void SetErrorCallback(ErrorCallback ecb) { ecb_ = ecb; }
+  void SetErrorCallback(ErrorCallback ecb) { ecb_ = std::move(ecb); }
 
  private:
   EVP_CIPHER_CTX* ctx_ = nullptr;  // OpenSSL encryption/decryption context

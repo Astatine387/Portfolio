@@ -11,6 +11,21 @@
 #include "Common/constants.h"
 #include "Utils/platform.h"
 
+namespace {
+const std::string kSpcs = R"(`~!@#$%^&*()-_=+[{]}\|;:'",<.>/?)";
+
+const std::array<bool, 32> kDefaultSpcs = {
+  false, true, true, true, false, false, true, true,
+  //  `     ~     !     @      #      $     %     ^
+  false, false, false, false, false, true, true, true,
+  //  &      *      (       )     -     _     =     +
+  true, true, true, true, false, false, false, true,
+  // [     {     ]     }      \      |      ;     :
+  false, false, true, false, false, false, false, true
+  //  '      "     ,      <      .      >      /     ?
+};
+}  // namespace
+
 EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
   /* Create layouts and components */
 
