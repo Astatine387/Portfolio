@@ -106,7 +106,7 @@ class VaultInterface {
    *          kDuplicate if the new site/account collides with another entry
    */
   UpdateResult UpdateEntry(const QString& old_site, const QString& old_acc, const QString& new_site,
-                           const QString& new_acc, const Password& new_pw); 
+                           const QString& new_acc, const Password& new_pw);
 
   /**
    * @brief     Delete an entry
