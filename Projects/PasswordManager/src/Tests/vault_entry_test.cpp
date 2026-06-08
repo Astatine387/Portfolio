@@ -51,9 +51,9 @@ class VaultEntryTest : public ::testing::Test {
  * @brief   Verify creating a single entry succeeds
  */
 TEST_F(VaultEntryTest, CreateSingle) {
-  int res = vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
+  Result res = vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
   EXPECT_EQ(vault_.GetEntryCount(), 1);
 }
 
@@ -74,9 +74,9 @@ TEST_F(VaultEntryTest, CreateMultiple) {
 TEST_F(VaultEntryTest, CreateDuplicate) {
   vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
 
-  int res = vault_.CreateEntry("Google", "user@google.com", MakePW("asdf1234"));
+  Result res = vault_.CreateEntry("Google", "user@google.com", MakePW("asdf1234"));
 
-  EXPECT_EQ(res, 1);
+  EXPECT_EQ(res, Result::kFailure);
   EXPECT_EQ(vault_.GetEntryCount(), 1);
 }
 
@@ -149,9 +149,9 @@ TEST_F(VaultEntryTest, UpdateSameKeySelf) {
 TEST_F(VaultEntryTest, DeleteBasic) {
   vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
 
-  int res = vault_.DeleteEntry("Google", "user@google.com");
+  Result res = vault_.DeleteEntry("Google", "user@google.com");
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
   EXPECT_EQ(vault_.GetEntryCount(), 0);
 }
 
@@ -159,9 +159,9 @@ TEST_F(VaultEntryTest, DeleteBasic) {
  * @brief   Verify deleting a non-existent entry fails
  */
 TEST_F(VaultEntryTest, DeleteNonExistent) {
-  int res = vault_.DeleteEntry("Google", "user@google.com");
+  Result res = vault_.DeleteEntry("Google", "user@google.com");
 
-  EXPECT_EQ(res, 1);
+  EXPECT_EQ(res, Result::kFailure);
 }
 
 /**

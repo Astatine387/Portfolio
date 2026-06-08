@@ -39,3 +39,12 @@ enum class VaultAction : std::uint8_t {
   kCreate,
   kOpen,
 };
+
+/**
+ * @enum	Result
+ * @brief	Generic success/failure outcome of an operation
+ */
+enum class Result : std::uint8_t {
+  kSuccess,
+  kFailure,
+};

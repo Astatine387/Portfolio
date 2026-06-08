@@ -55,9 +55,9 @@ class VaultFileTest : public ::testing::Test {
 
   /**
    * @brief   Close vault and reopen with master password
-   * @return  0 on success, non-zero on failure
+   * @return  kSuccess on success, kFailure on failure
    */
-  int Reload() {
+  Result Reload() {
     const char* pwstr = "password";
     size_t psize = strlen(pwstr);
 
@@ -68,9 +68,9 @@ class VaultFileTest : public ::testing::Test {
    * @brief   Close vault and reopen with specified password
    * @param   pwStr   Password string
    * @param   pwLen   Password length
-   * @return  0 on success, non-zero on failure
+   * @return  kSuccess on success, kFailure on failure
    */
-  int Reload(const char* pw_str, size_t pw_len) {
+  Result Reload(const char* pw_str, size_t pw_len) {
     vault_.CloseVault();
 
     Password pw;
@@ -97,7 +97,7 @@ TEST_F(VaultFileTest, NewVault) {
  * @brief   Verify new vault can be opened and is empty
  */
 TEST_F(VaultFileTest, NewVaultIsEmpty) {
-  EXPECT_EQ(Reload(), 0);
+  EXPECT_EQ(Reload(), Result::kSuccess);
   EXPECT_EQ(vault_.GetEntryCount(), 0);
 }
 
@@ -112,7 +112,7 @@ TEST_F(VaultFileTest, OpenWrongPassword) {
   const char* pwstr = "asdf1234";
   size_t psize = strlen(pwstr);
 
-  EXPECT_NE(Reload(pwstr, psize), 0);
+  EXPECT_EQ(Reload(pwstr, psize), Result::kFailure);
 }
 
 /**
@@ -129,7 +129,7 @@ TEST_F(VaultFileTest, OpenNonExistent) {
   pw.SetData(pwstr, psize);
   vault_.SetPW(pw);
 
-  EXPECT_NE(vault_.OpenVault("nonexistent.vault"), 0);
+  EXPECT_EQ(vault_.OpenVault("nonexistent.vault"), Result::kFailure);
 }
 
 /**
@@ -146,7 +146,7 @@ TEST_F(VaultFileTest, OpenCorruptedFile) {
     fclose(file);
   }
 
-  EXPECT_NE(Reload(), 0);
+  EXPECT_EQ(Reload(), Result::kFailure);
 }
 
 /**
@@ -160,7 +160,7 @@ TEST_F(VaultFileTest, OpenEmptyFile) {
   if (file)
     fclose(file);
 
-  EXPECT_NE(Reload(), 0);
+  EXPECT_EQ(Reload(), Result::kFailure);
 }
 
 /**
@@ -177,7 +177,7 @@ TEST_F(VaultFileTest, OpenUndersizedFile) {
     fclose(file);
   }
 
-  EXPECT_NE(Reload(), 0);
+  EXPECT_EQ(Reload(), Result::kFailure);
 }
 
 /**
@@ -201,7 +201,7 @@ TEST_F(VaultFileTest, OpenOversizedFile) {
     fclose(file);
   }
 
-  EXPECT_NE(Reload(), 0);
+  EXPECT_EQ(Reload(), Result::kFailure);
 }
 
 /**
@@ -243,7 +243,7 @@ TEST_F(VaultFileTest, OpenInflatedEntryCount) {
     fclose(file);
   }
 
-  EXPECT_NE(Reload(), 0);
+  EXPECT_EQ(Reload(), Result::kFailure);
 }
 
 /**
@@ -297,7 +297,7 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
     fclose(file);
   }
 
-  EXPECT_NE(Reload(), 0);
+  EXPECT_EQ(Reload(), Result::kFailure);
 }
 
 /* ==================================================
@@ -312,7 +312,7 @@ TEST_F(VaultFileTest, SaveAndReload) {
   vault_.CreateEntry("Microsoft", "user2@microsoft.com", MakePW("asdf1234"));
   vault_.SaveVault(path_);
 
-  EXPECT_EQ(Reload(), 0);
+  EXPECT_EQ(Reload(), Result::kSuccess);
   EXPECT_EQ(vault_.GetEntryCount(), 2);
 
   const auto& entries = vault_.GetEntries();
@@ -330,7 +330,7 @@ TEST_F(VaultFileTest, SavePreservesPasswords) {
   vault_.CreateEntry("Google", "user@google.com", pw);
   vault_.SaveVault(path_);
 
-  EXPECT_EQ(Reload(), 0);
+  EXPECT_EQ(Reload(), Result::kSuccess);
 
   const auto& entries = vault_.GetEntries();
 
@@ -343,7 +343,7 @@ TEST_F(VaultFileTest, SavePreservesPasswords) {
 TEST_F(VaultFileTest, SaveEmptyVault) {
   vault_.SaveVault(path_);
 
-  EXPECT_EQ(Reload(), 0);
+  EXPECT_EQ(Reload(), Result::kSuccess);
   EXPECT_EQ(vault_.GetEntryCount(), 0);
 }
 
@@ -361,8 +361,8 @@ TEST_F(VaultFileTest, ChangePW) {
 
   vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
 
-  EXPECT_EQ(vault_.ChangePW(MakePW(pwstr), path_), 0);
-  EXPECT_EQ(Reload(pwstr, psize), 0);
+  EXPECT_EQ(vault_.ChangePW(MakePW(pwstr), path_), Result::kSuccess);
+  EXPECT_EQ(Reload(pwstr, psize), Result::kSuccess);
   EXPECT_EQ(vault_.GetEntryCount(), 1);
 }
 
@@ -375,7 +375,7 @@ TEST_F(VaultFileTest, ChangePWOldFails) {
 
   vault_.ChangePW(MakePW("asdf1234"), path_);
 
-  EXPECT_NE(Reload(pwstr, psize), 0);
+  EXPECT_EQ(Reload(pwstr, psize), Result::kFailure);
 }
 
 /* ==================================================

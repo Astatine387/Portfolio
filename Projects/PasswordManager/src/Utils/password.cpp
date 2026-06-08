@@ -36,13 +36,13 @@ size_t Password::GetSize() const {
   return size_;
 }
 
-int Password::SetData(const Password& pw) {
+Result Password::SetData(const Password& pw) {
   return SetData(pw.GetData(), pw.GetSize());
 }
 
-int Password::SetData(const char* str, size_t len) {
+Result Password::SetData(const char* str, size_t len) {
   if (len > kMaxPWLen) {
-    return 1;
+    return Result::kFailure;
   }
 
   Clean();
@@ -57,7 +57,7 @@ int Password::SetData(const char* str, size_t len) {
     data_[size_] = '\0';
   }
 
-  return 0;
+  return Result::kSuccess;
 }
 
 void Password::Clean() {

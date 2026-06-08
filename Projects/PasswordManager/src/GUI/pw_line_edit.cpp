@@ -40,9 +40,10 @@ PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
   setLayout(hbox_);
 }
 
-int PWLineEdit::Extract(Password& pw) {
+Result PWLineEdit::Extract(Password& pw) {
   QByteArray data = pw_line_->text().toUtf8();
-  int size = data.size(), res;
+  int size = data.size();
+  Result res;
 
   Lock(data.data(), size);
 

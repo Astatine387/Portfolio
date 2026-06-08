@@ -170,7 +170,7 @@ void EntryGUI::OnOKClicked() {
 
   Password tmp;
 
-  if (pwline_->Extract(tmp)) {
+  if (pwline_->Extract(tmp) == Result::kFailure) {
     err_msg_->setText("Password exceeds maximum length (256 characters)");
     return;
   }
@@ -202,7 +202,7 @@ void EntryGUI::OnGenerateClicked() {
   Password res;
   int size = len_slider_->value();
 
-  if (GenPW(res, spc_list, size)) {
+  if (GenPW(res, spc_list, size) == Result::kFailure) {
     err_msg_->setText("Failed to generate password");
     return;
   }
@@ -266,25 +266,26 @@ bool EntryGUI::HasSpecialSelected() const {
   return false;
 }
 
-int EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size) {
+Result EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size) {
   std::string lower = "abcdefghijklmnopqrstuvwxyz";
   std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   std::string num = "0123456789";
   std::string pool;
   size_t pool_size = 62;
   char* pw;
-  int crs = 0, res = 0;
+  int crs = 0;
+  Result res = Result::kSuccess;
 
   /* Check the special character list size is valid */
 
   if (spc_list.size() != 32) {
-    return 1;
+    return Result::kFailure;
   }
 
   /* Check the password size is valid */
 
   if (pw_size < 8) {
-    return 1;
+    return Result::kFailure;
   }
 
   /* Add characters to pool */
@@ -318,7 +319,7 @@ int EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size) {
   /* Check at least one special character is selected */
 
   if (pool_size <= 62) {
-    return 1;
+    return Result::kFailure;
   }
 
   /* Generate password */

@@ -98,7 +98,7 @@ size_t Entry::Deser(const uint8_t* src, size_t srclen) {
     return 0;
   }
 
-  if (pw.SetData(reinterpret_cast<const char*>(src + cur), dlen)) {
+  if (pw.SetData(reinterpret_cast<const char*>(src + cur), dlen) == Result::kFailure) {
     return 0;
   }
 

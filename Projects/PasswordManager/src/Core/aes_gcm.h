@@ -46,9 +46,9 @@ class AesGcm {
    * @param		size	Source buffer size
    * @param		pw		Password
    * @param		plen	Password length
-   * @return		0 on success, 1 on failure
+   * @return		kSuccess on success, kFailure on failure
    */
-  int Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
+  Result Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
 
   /**
    * @brief		Encrypt a buffer
@@ -57,9 +57,9 @@ class AesGcm {
    * @param		size		Source buffer size
    * @param		pw			Password
    * @param		plen		Password length
-   * @return		0 on success, 1 on failure
+   * @return		kSuccess on success, kFailure on failure
    */
-  int Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
+  Result Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
 
   /* ==================================================
    * Callback functions
@@ -101,27 +101,27 @@ class AesGcm {
    * @brief	Initialize decryption context
    * @param	pw		Password
    * @param	plen	Password length
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int DecryptInit(const char* pw, size_t plen);
+  Result DecryptInit(const char* pw, size_t plen);
 
   /**
    * @brief	Read and verify authentication tag
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int DecryptTag();
+  Result DecryptTag();
 
   /**
    * @brief	Decrypt buffer
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int DecryptBuff();
+  Result DecryptBuff();
 
   /**
    * @brief	Finalize decryption
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int DecryptFinal();
+  Result DecryptFinal();
 
   /* ==================================================
    * Encryption functions
@@ -131,27 +131,27 @@ class AesGcm {
    * @brief	Initialize encryption context
    * @param	pw		Password
    * @param	plen	Password length
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int EncryptInit(const char* pw, size_t plen);
+  Result EncryptInit(const char* pw, size_t plen);
 
   /**
    * @brief	Encrypt buffer
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int EncryptBuff();
+  Result EncryptBuff();
 
   /**
    * @brief	Finalize encryption
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int EncryptFinal();
+  Result EncryptFinal();
 
   /**
    * @brief	Generate and write authentication tag
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int EncryptTag();
+  Result EncryptTag();
 
   /* ==================================================
    * Callback helper functions

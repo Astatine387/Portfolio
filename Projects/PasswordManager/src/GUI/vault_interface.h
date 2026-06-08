@@ -36,22 +36,22 @@ class VaultInterface {
   /**
    * @brief		Create an empty new vault
    * @param		path    Vault file path
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int NewVault(const QString& path);
+  Result NewVault(const QString& path);
 
   /**
    * @brief		Open a vault and read its data
    * @param		path	Vault file path
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int OpenVault(const QString& path);
+  Result OpenVault(const QString& path);
 
   /**
    * @brief		Save the current vault
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int SaveVault();
+  Result SaveVault();
 
   /**
    * @brief	Close the vault and wipe all data
@@ -72,9 +72,9 @@ class VaultInterface {
   /**
    * @brief		Change the master password and re-encrypt vault
    * @param		pw      New password
-   * @return	0 on success, 1 on save failure
+   * @return	kSuccess on success, kFailure on save failure
    */
-  int ChangePW(const Password& pw);
+  Result ChangePW(const Password& pw);
 
   /**
    * @brief     Set the master password of vault
@@ -91,9 +91,9 @@ class VaultInterface {
    * @param		site	Site name of the new entry
    * @param		acc		Account of the new entry
    * @param		pw		Password of the new entry
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int CreateEntry(const QString& site, const QString& acc, const Password& pw);
+  Result CreateEntry(const QString& site, const QString& acc, const Password& pw);
 
   /**
    * @brief     Update an entry
@@ -112,9 +112,9 @@ class VaultInterface {
    * @brief     Delete an entry
    * @param     site	Site name of the target entry
    * @param     acc		Account of the target entry
-   * @return    0 on success, 1 on failure
+   * @return    kSuccess on success, kFailure on failure
    */
-  int DeleteEntry(const QString& site, const QString& acc);
+  Result DeleteEntry(const QString& site, const QString& acc);
 
   /**
    * @brief	Get a reference to the entry set

@@ -6,17 +6,17 @@
 
 #include "Core/vault.h"
 
-int Vault::CreateEntry(const std::string& site, const std::string& acc, const Password& pw) {
+Result Vault::CreateEntry(const std::string& site, const std::string& acc, const Password& pw) {
   Entry new_entry = { .site = site, .acc = acc, .pw = pw };
 
   auto res = entry_set_.insert(new_entry);
 
   if (!res.second) {
     last_error_ = "[Entry] Insert failed - Entry already exists\n";
-    return 1;
+    return Result::kFailure;
   }
 
-  return 0;
+  return Result::kSuccess;
 }
 
 UpdateResult Vault::UpdateEntry(const std::string& old_site, const std::string& old_acc, const std::string& new_site,
@@ -51,17 +51,17 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site, const std::string& 
   return UpdateResult::kSuccess;
 }
 
-int Vault::DeleteEntry(const std::string& site, const std::string& acc) {
+Result Vault::DeleteEntry(const std::string& site, const std::string& acc) {
   Entry tar = { .site = site, .acc = acc };
 
   auto it = entry_set_.find(tar);
 
   if (it == entry_set_.end()) {
     last_error_ = "[Entry] Delete failed - Entry not found\n";
-    return 1;
+    return Result::kFailure;
   }
 
   entry_set_.erase(it);
 
-  return 0;
+  return Result::kSuccess;
 }

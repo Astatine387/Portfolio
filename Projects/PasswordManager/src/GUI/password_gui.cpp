@@ -70,7 +70,7 @@ void PasswordGUI::OnConfirmClicked() {
 
   LoginRequest req;
 
-  if (pw_line_->Extract(req.pw)) {
+  if (pw_line_->Extract(req.pw) == Result::kFailure) {
     err_msg_->setText("Password exceeds maximum length (256 characters)");
     return;
   }

@@ -153,8 +153,8 @@ TEST(Argon2idTest, SameInput) {
     salt[i] = i;
   }
 
-  EXPECT_EQ(Argon2id(salt.data(), pw, size, key0.data()), 0);
-  EXPECT_EQ(Argon2id(salt.data(), pw, size, key1.data()), 0);
+  EXPECT_EQ(Argon2id(salt.data(), pw, size, key0.data()), Result::kSuccess);
+  EXPECT_EQ(Argon2id(salt.data(), pw, size, key1.data()), Result::kSuccess);
 
   EXPECT_EQ(memcmp(key0.data(), key1.data(), kKeySize), 0);
 }
@@ -217,7 +217,7 @@ TEST(Argon2Test, EmptyPassword) {
     salt[i] = i;
   }
 
-  EXPECT_EQ(Argon2id(salt.data(), "", 0, key.data()), 0);
+  EXPECT_EQ(Argon2id(salt.data(), "", 0, key.data()), Result::kSuccess);
 }
 
 /* ==================================================
@@ -292,7 +292,7 @@ TEST(RandomTest, GeneratesNonZero) {
   std::array<uint8_t, 32> arr{};
   bool all_zero = true;
 
-  EXPECT_EQ(Random(arr.data(), 32), 0);
+  EXPECT_EQ(Random(arr.data(), 32), Result::kSuccess);
 
   for (int i = 0; i < 32; i++) {
     if (arr[i]) {
@@ -370,7 +370,7 @@ TEST(UtilsTest, RenameFileBasic) {
 
   /* Rename */
 
-  EXPECT_EQ(RenameFile(src, dst), 0);
+  EXPECT_EQ(RenameFile(src, dst), Result::kSuccess);
   EXPECT_FALSE(FileExists(src));
   EXPECT_TRUE(FileExists(dst));
 
@@ -383,7 +383,7 @@ TEST(UtilsTest, RenameFileBasic) {
  * @brief   Verify renaming a non-existent file fails
  */
 TEST(UtilsTest, RenameFileNonExistent) {
-  EXPECT_NE(RenameFile("nonexistent.tmp", "dst.tmp"), 0);
+  EXPECT_EQ(RenameFile("nonexistent.tmp", "dst.tmp"), Result::kFailure);
 }
 
 /**
@@ -420,7 +420,7 @@ TEST(UtilsTest, RenameFileOverwrite) {
 
   /* Rename (overwrite) */
 
-  EXPECT_EQ(RenameFile(src, dst), 0);
+  EXPECT_EQ(RenameFile(src, dst), Result::kSuccess);
   EXPECT_FALSE(FileExists(src));
   EXPECT_TRUE(FileExists(dst));
 

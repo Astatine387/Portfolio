@@ -8,6 +8,8 @@
 
 #include <cstddef>
 
+#include "Common/constants.h"
+
 /**
  * @class	Password
  * @brief	RAII class that securely handles password
@@ -105,15 +107,17 @@ class Password {
   /**
    * @brief   Set password data
    * @param	pw	Source
+   * @return	kSuccess on success, kFailure if password exceeds maximum length
    */
-  int SetData(const Password& pw);
+  Result SetData(const Password& pw);
 
   /**
    * @brief   Set password data
    * @param	str		Source
    * @param	len		Password length
+   * @return	kSuccess on success, kFailure if password exceeds maximum length
    */
-  int SetData(const char* str, size_t len);
+  Result SetData(const char* str, size_t len);
 
   /**
    * @brief   Securely wipe password data

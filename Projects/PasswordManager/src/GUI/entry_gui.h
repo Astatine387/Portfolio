@@ -128,7 +128,7 @@ class EntryGUI : public QDialog {
    * @param     dst		    Destination password
    * @param     spc_list    List of specials to be used
    * @param     size	    Destination password size
-   * @return	            0 on success, 1 on failure
+   * @return	            kSuccess on success, kFailure on failure
    */
-  int GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size);
+  Result GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size);
 };

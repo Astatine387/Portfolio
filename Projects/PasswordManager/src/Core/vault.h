@@ -53,23 +53,23 @@ class Vault {
   /**
    * @brief	Create an empty new vault
    * @param   path    Vault file path
-   * @return  0 on success, 1 on failure
+   * @return  kSuccess on success, kFailure on failure
    */
-  int NewVault(const std::string& path);
+  Result NewVault(const std::string& path);
 
   /**
    * @brief	Open a vault and read its data
    * @param   path    Vault file path
-   * @return  0 on success, 1 on failure
+   * @return  kSuccess on success, kFailure on failure
    */
-  int OpenVault(const std::string& path);
+  Result OpenVault(const std::string& path);
 
   /**
    * @brief	Save the current vault
    * @param   path    Vault file path
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int SaveVault(const std::string& path);
+  Result SaveVault(const std::string& path);
 
   /**
    * @brief	Close the vault and wipe all data
@@ -91,9 +91,9 @@ class Vault {
    * @brief		Change the master password and re-encrypt vault
    * @param		pw      New password
    * @param		path	Vault file path
-   * @return	0 on success, 1 on save failure
+   * @return	kSuccess on success, kFailure on save failure
    */
-  int ChangePW(const Password& pw, const std::string& path);
+  Result ChangePW(const Password& pw, const std::string& path);
 
   /**
    * @brief     Set the master password of vault
@@ -110,9 +110,9 @@ class Vault {
    * @param		site	Site name of the new entry
    * @param		acc		Account of the new entry
    * @param		pw		Password of the new entry
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int CreateEntry(const std::string& site, const std::string& acc, const Password& pw);
+  Result CreateEntry(const std::string& site, const std::string& acc, const Password& pw);
 
   /**
    * @brief     Update an entry
@@ -131,9 +131,9 @@ class Vault {
    * @brief     Delete an entry
    * @param     site	Site name of the target entry
    * @param     acc		Account of the target entry
-   * @return    0 on success, 1 on failure
+   * @return    kSuccess on success, kFailure on failure
    */
-  int DeleteEntry(const std::string& site, const std::string& acc);
+  Result DeleteEntry(const std::string& site, const std::string& acc);
 
   /**
    * @brief	Get a reference to the entry set

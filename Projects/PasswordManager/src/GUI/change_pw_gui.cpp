@@ -83,12 +83,12 @@ void ChangePWGUI::OnOKClicked() {
 
   cur_pwline_->Extract(cur_pw);
 
-  if (new_pwline_->Extract(new_pw)) {
+  if (new_pwline_->Extract(new_pw) == Result::kFailure) {
     err_msg_->setText("Password exceeds maximum length (256 characters)");
     return;
   }
 
-  if (confirm_pwline_->Extract(confirm_pw)) {
+  if (confirm_pwline_->Extract(confirm_pw) == Result::kFailure) {
     err_msg_->setText("Password exceeds maximum length (256 characters)");
     return;
   }

@@ -68,7 +68,7 @@ void MainGUI::OnVaultSelected(VaultAction action, const QString& path) {
 }
 
 void MainGUI::OnLoginRequested(const LoginRequest& req) {
-  int res;
+  Result res;
 
   /* Set master password */
 
@@ -85,7 +85,7 @@ void MainGUI::OnLoginRequested(const LoginRequest& req) {
     res = vault_.OpenVault(req.path);
   }
 
-  if (res) {
+  if (res == Result::kFailure) {
     pw_gui_->SetErrMsg(vault_.GetLastError());
     return;
   }
@@ -112,7 +112,7 @@ void MainGUI::OnAddRequested() {
   if (entry_gui_->exec() == QDialog::Accepted) {
     EntryInput input = entry_gui_->GetInput();
 
-    if (vault_.CreateEntry(input.site, input.acc, input.pw)) {
+    if (vault_.CreateEntry(input.site, input.acc, input.pw) == Result::kFailure) {
       list_gui_->SetErrMsg("Entry already exists");
       return;
     }
@@ -156,7 +156,7 @@ void MainGUI::OnEditRequested(const QString& site, const QString& acc) {
 }
 
 void MainGUI::OnDeleteRequested(const QString& site, const QString& acc) {
-  if (vault_.DeleteEntry(site, acc)) {
+  if (vault_.DeleteEntry(site, acc) == Result::kFailure) {
     list_gui_->SetErrMsg("Failed to delete entry");
     return;
   }
@@ -212,7 +212,7 @@ void MainGUI::OnCopyPWRequested(const QString& site, const QString& acc) {
 }
 
 void MainGUI::OnSaveRequested() {
-  if (vault_.SaveVault()) {
+  if (vault_.SaveVault() == Result::kFailure) {
     list_gui_->SetErrMsg(vault_.GetLastError());
     return;
   }
@@ -235,7 +235,7 @@ void MainGUI::OnChangePWRequested() {
 
     change_pw_gui_->GetInput(cur_pw, new_pw);
 
-    if (vault_.ChangePW(new_pw)) {
+    if (vault_.ChangePW(new_pw) == Result::kFailure) {
       list_gui_->SetErrMsg("Failed to save vault");
       return;
     }

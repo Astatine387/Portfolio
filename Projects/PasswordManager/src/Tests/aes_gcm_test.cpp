@@ -33,15 +33,15 @@ TEST(AES_GCM_Test, EncryptDecryptBasic) {
 
   /* Encrypt */
 
-  int res = aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
+  Result res = aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
 
   /* Decrypt */
 
   res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
   EXPECT_EQ(memcmp(src.data(), dec.data(), dsize), 0);
 }
 
@@ -94,9 +94,9 @@ TEST(AES_GCM_Test, DecryptWrongPassword) {
 
   aes.Encrypt(src.data(), enc.data(), dsize, pw0, psize0);
 
-  int res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw1, psize1);
+  Result res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw1, psize1);
 
-  EXPECT_NE(res, 0);
+  EXPECT_EQ(res, Result::kFailure);
 }
 
 /**
@@ -124,9 +124,9 @@ TEST(AES_GCM_Test, TamperedCiphertext) {
 
   enc[kSaltSize + kIVSize] ^= 0x01;
 
-  int res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
+  Result res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
 
-  EXPECT_NE(res, 0);
+  EXPECT_EQ(res, Result::kFailure);
 }
 
 /**
@@ -154,9 +154,9 @@ TEST(AES_GCM_Test, TamperedTag) {
 
   enc[enc_size - 1] ^= 0x01;
 
-  int res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
+  Result res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
 
-  EXPECT_NE(res, 0);
+  EXPECT_EQ(res, Result::kFailure);
 }
 
 /* ==================================================
@@ -181,15 +181,15 @@ TEST(AES_GCM_Test, SingleByte) {
 
   /* Encrypt */
 
-  int res = aes.Encrypt(&src, enc.data(), dsize, pw, psize);
+  Result res = aes.Encrypt(&src, enc.data(), dsize, pw, psize);
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
 
   /* Decrypt */
 
   res = aes.Decrypt(enc.data(), &dec, enc_size, pw, psize);
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
   EXPECT_EQ(dec, src);
 }
 
@@ -211,15 +211,15 @@ TEST(AES_GCM_Test, LargeData) {
 
   /* Encrypt */
 
-  int res = aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
+  Result res = aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
 
   /* Decrypt */
 
   res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
   EXPECT_EQ(memcmp(src.data(), dec.data(), dsize), 0);
 }
 
