@@ -45,8 +45,8 @@ int VaultInterface::CreateEntry(const QString& site, const QString& acc, const P
   return vault_->CreateEntry(site.toStdString(), acc.toStdString(), pw);
 }
 
-int VaultInterface::UpdateEntry(const QString& old_site, const QString& old_acc, const QString& new_site,
-                                const QString& new_acc, const Password& new_pw) {
+UpdateResult VaultInterface::UpdateEntry(const QString& old_site, const QString& old_acc, const QString& new_site,
+                                         const QString& new_acc, const Password& new_pw) {
   return vault_->UpdateEntry(old_site.toStdString(), old_acc.toStdString(), new_site.toStdString(),
                              new_acc.toStdString(), new_pw);
 }

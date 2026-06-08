@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <set>
 #include <string>
@@ -14,6 +15,16 @@
 #include "Common/constants.h"
 #include "Core/aes_gcm.h"
 #include "Core/entry.h"
+
+/**
+ * @enum	UpdateResult
+ * @brief	Outcome of an entry update operation
+ */
+enum class UpdateResult : std::uint8_t {
+  kSuccess,
+  kNotFound,
+  kDuplicate,
+};
 
 /**
  * @class	Vault
@@ -110,10 +121,11 @@ class Vault {
    * @param     new_site    New site name
    * @param     new_acc		New account
    * @param     new_pw		New password
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kNotFound if original entry is missing,
+   *          kDuplicate if the new site/account collides with another entry
    */
-  int UpdateEntry(const std::string& old_site, const std::string& old_acc, const std::string& new_site,
-                  const std::string& new_acc, const Password& new_pw);
+  UpdateResult UpdateEntry(const std::string& old_site, const std::string& old_acc, const std::string& new_site,
+                           const std::string& new_acc, const Password& new_pw);
 
   /**
    * @brief     Delete an entry

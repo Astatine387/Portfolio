@@ -139,14 +139,14 @@ void MainGUI::OnEditRequested(const QString& site, const QString& acc) {
 
   if (entry_gui_->exec() == QDialog::Accepted) {
     EntryInput input = entry_gui_->GetInput();
-    int res = vault_.UpdateEntry(orig_site_, orig_acc_, input.site, input.acc, input.pw);
+    UpdateResult res = vault_.UpdateEntry(orig_site_, orig_acc_, input.site, input.acc, input.pw);
 
-    if (res == 1) {
+    if (res == UpdateResult::kNotFound) {
       list_gui_->SetErrMsg("Original entry not found");
       return;
     }
 
-    if (res == 2) {
+    if (res == UpdateResult::kDuplicate) {
       list_gui_->SetErrMsg("Entry already exists");
       return;
     }

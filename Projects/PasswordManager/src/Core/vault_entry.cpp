@@ -19,8 +19,8 @@ int Vault::CreateEntry(const std::string& site, const std::string& acc, const Pa
   return 0;
 }
 
-int Vault::UpdateEntry(const std::string& old_site, const std::string& old_acc, const std::string& new_site,
-                       const std::string& new_acc, const Password& new_pw) {
+UpdateResult Vault::UpdateEntry(const std::string& old_site, const std::string& old_acc, const std::string& new_site,
+                                const std::string& new_acc, const Password& new_pw) {
   /* Check whether the target entry exists */
 
   Entry old_entry = { .site = old_site, .acc = old_acc };
@@ -29,7 +29,7 @@ int Vault::UpdateEntry(const std::string& old_site, const std::string& old_acc, 
 
   if (old_it == entry_set_.end()) {
     last_error_ = "[Entry] Update failed - Original entry not found\n";
-    return 1;
+    return UpdateResult::kNotFound;
   }
 
   /* Check new entry data conflicts with existing entry */
@@ -40,19 +40,15 @@ int Vault::UpdateEntry(const std::string& old_site, const std::string& old_acc, 
 
   if (new_it != entry_set_.end() && new_it != old_it) {
     last_error_ = "[Entry] Update failed - Entry already exists\n";
-    return 2;
+    return UpdateResult::kDuplicate;
   }
+
+  /* The duplicate check above guarantees the insert cannot collide */
 
   entry_set_.erase(old_it);
+  entry_set_.insert(new_entry);
 
-  auto res = entry_set_.insert(new_entry);
-
-  if (!res.second) {
-    last_error_ = "[Entry] Update failed - Cannot insert entry\n";
-    return 1;
-  }
-
-  return 0;
+  return UpdateResult::kSuccess;
 }
 
 int Vault::DeleteEntry(const std::string& site, const std::string& acc) {

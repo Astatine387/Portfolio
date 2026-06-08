@@ -102,10 +102,11 @@ class VaultInterface {
    * @param     new_site    New site name
    * @param     new_acc		New account
    * @param     new_pw		New password
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kNotFound if original entry is missing,
+   *          kDuplicate if the new site/account collides with another entry
    */
-  int UpdateEntry(const QString& old_site, const QString& old_acc, const QString& new_site, const QString& new_acc,
-                  const Password& new_pw);
+  UpdateResult UpdateEntry(const QString& old_site, const QString& old_acc, const QString& new_site,
+                           const QString& new_acc, const Password& new_pw); 
 
   /**
    * @brief     Delete an entry
