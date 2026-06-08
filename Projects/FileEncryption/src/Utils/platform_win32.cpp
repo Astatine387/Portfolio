@@ -27,21 +27,34 @@ bool FileExists(const std::string& path) {
   return std::filesystem::exists(fs_path);
 }
 
-int Random(uint8_t* dst, size_t size) {
-  return BCryptGenRandom(nullptr, dst, static_cast<ULONG>(size), BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+Result Random(uint8_t* dst, size_t size) {
+  if (BCryptGenRandom(nullptr, dst, static_cast<ULONG>(size), BCRYPT_USE_SYSTEM_PREFERRED_RNG)) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  return Result::kSuccess;
 }
 
-int RemoveFile(const std::string& path) {
+Result RemoveFile(const std::string& path) {
   std::filesystem::path fs_path(std::u8string(path.begin(), path.end()));
-  return _wunlink(fs_path.c_str());
+
+  if (_wunlink(fs_path.c_str())) {
+    return Result::kFailure;
+  }
+
+  return Result::kSuccess;
 }
 
-int Seek(FILE* file, int64_t offset, int origin) {
-  return _fseeki64(file, offset, origin);
+Result Seek(FILE* file, int64_t offset, int origin) {
+  if (_fseeki64(file, offset, origin)) {
+    return Result::kFailure;
+  }
+
+  return Result::kSuccess;
 }
 
-int Lock(void* ptr, size_t size) {
-  return VirtualLock(ptr, size) ? 0 : 1;
+Result Lock(void* ptr, size_t size) {
+  return VirtualLock(ptr, size) ? Result::kSuccess : Result::kFailure;
 }
 
 void OpenFile(FILE** file, const std::string& path, const char* mode) {

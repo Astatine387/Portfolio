@@ -24,6 +24,15 @@ enum class DecryptMode : std::uint8_t {
 };
 
 /**
+ * @enum	Progress
+ * @brief	Whether processing should continue or was cancelled by the user
+ */
+enum class Progress : std::uint8_t {
+  kContinue,
+  kCancelled,
+};
+
+/**
  * @class	AesGcm
  * @brief	AES-256-GCM file encryption/decryption engine
  */
@@ -58,9 +67,9 @@ class AesGcm {
    * @param		dst		Destination file
    * @param		pw		Password
    * @param		plen	Password length
-   * @return    0 on success, 1 on failure
+   * @return    kSuccess on success, kFailure on failure
    */
-  int Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen);
+  Result Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen);
 
   /**
    * @brief		Encrypt a file
@@ -68,9 +77,9 @@ class AesGcm {
    * @param		dst		Destination file
    * @param		pw		Password
    * @param		plen	Password length
-   * @return    0 on success, 1 on failure
+   * @return    kSuccess on success, kFailure on failure
    */
-  int Encrypt(FILE* src, FILE* dst, const char* pw, size_t plen);
+  Result Encrypt(FILE* src, FILE* dst, const char* pw, size_t plen);
 
   /* ==================================================
    * Callback functions
@@ -121,7 +130,7 @@ class AesGcm {
   std::array<uint8_t, kTagSize> tag_{};  // Authentication tag read from file
 
   std::atomic<bool> cancelled_{ false };  // Is the program cancelled?
-  std::future<int> write_res_;            // Asynchronous write result
+  std::future<Result> write_res_;         // Asynchronous write result
   bool writing_ = false;                  // Whether there is ongoing asynchronous write
   bool key_locked_ = false;               // Whether the key buffer is locked in memory
 
@@ -133,17 +142,17 @@ class AesGcm {
    * @brief	    Read data from source file into buffer
    * @param	    buff	Destination buffer
    * @param	    size	Number of bytes to read
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int ReadFile(void* buff, size_t size);
+  Result ReadFile(void* buff, size_t size);
 
   /**
    * @brief	    Write data from buffer to destination file
    * @param	    buff	Source buffer
    * @param	    size	Number of bytes to write
-   * @return    0 on success, 1 on failure
+   * @return    kSuccess on success, kFailure on failure
    */
-  int WriteFile(const void* buff, size_t size);
+  Result WriteFile(const void* buff, size_t size);
 
   /* ==================================================
    * Decryption functions
@@ -152,38 +161,38 @@ class AesGcm {
   /**
    * @brief   Run one decryption pass over the ciphertext
    * @param   mode   True for write, false for verify
-   * @return  0 on success, 1 on failure or cancellation
+   * @return  kSuccess on success, kFailure on failure or cancellation
    */
-  int DecryptBatch(DecryptMode mode);
+  Result DecryptBatch(DecryptMode mode);
 
   /**
    * @brief	    Intialize decryption context
    * @param	    pw		Password
    * @param	    plen	Password length
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int DecryptInit(const char* pw, size_t plen);
+  Result DecryptInit(const char* pw, size_t plen);
 
   /**
    * @brief	    Decrypt buffer
    * @param	    src		Source buffer
    * @param	    dst		Destination buffer
    * @param	    srclen	Source buffer length
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int DecryptBuff(void* src, void* dst, int srclen);
+  Result DecryptBuff(void* src, void* dst, int srclen);
 
   /**
    * @brief	Finialize decryption
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int DecryptFinal();
+  Result DecryptFinal();
 
   /**
    * @brief   Set up decryption context and reset file cursor
-   * @return  0 on success, 1 on failure
+   * @return  kSuccess on success, kFailure on failure
    */
-  int SetupDecryptCtx();
+  Result SetupDecryptCtx();
 
   /* ==================================================
    * Encryption functions
@@ -193,42 +202,42 @@ class AesGcm {
    * @brief		Intialize encryption context
    * @param		pw		Password
    * @param		plen	Password length
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int EncryptInit(const char* pw, size_t plen);
+  Result EncryptInit(const char* pw, size_t plen);
 
   /**
    * @brief		Encrypt buffer
    * @param		src		Source buffer
    * @param		dst		Destination buffer
    * @param		srclen	Source buffer length
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int EncryptBuff(void* src, void* dst, int srclen);
+  Result EncryptBuff(void* src, void* dst, int srclen);
 
   /**
    * @brief		Encrypt multiple blocks in a batch
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int EncryptBatch();
+  Result EncryptBatch();
 
   /**
    * @brief		Encrypt remaining data smaller than buffer
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int EncryptRemain();
+  Result EncryptRemain();
 
   /**
    * @brief		Finialize encryption
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int EncryptFinal();
+  Result EncryptFinal();
 
   /**
    * @brief		Generate and write authentication tag
-   * @return	0 on success, 1 on failure
+   * @return	kSuccess on success, kFailure on failure
    */
-  int EncryptTag();
+  Result EncryptTag();
 
   /* ==================================================
    * Callback helper functions
@@ -236,9 +245,9 @@ class AesGcm {
 
   /**
    * @brief		Report current progress via callback
-   * @return	0 on continue, 1 on cancelled
+   * @return	kContinue to continue, kCancelled if the user cancelled
    */
-  int ReportProgress();
+  Progress ReportProgress();
 
   /**
    * @brief		Report error via callback

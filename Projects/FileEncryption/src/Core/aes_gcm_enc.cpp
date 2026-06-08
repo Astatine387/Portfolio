@@ -9,37 +9,37 @@
 #include "Core/aes_gcm.h"
 #include "Utils/platform.h"
 
-int AesGcm::Encrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
+Result AesGcm::Encrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
   src_file_ = src;
   dst_file_ = dst;
   cancelled_ = false;
   progress_cur_ = 0;
   writing_ = false;
 
-  if (EncryptInit(pw, plen)) {
-    return 1;  // LCOV_EXCL_LINE
+  if (EncryptInit(pw, plen) == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  if (EncryptBatch()) {
-    return 1;  // LCOV_EXCL_LINE
+  if (EncryptBatch() == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  if (EncryptRemain()) {
-    return 1;  // LCOV_EXCL_LINE
+  if (EncryptRemain() == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  if (EncryptFinal()) {
-    return 1;  // LCOV_EXCL_LINE
+  if (EncryptFinal() == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  if (EncryptTag()) {
-    return 1;  // LCOV_EXCL_LINE
+  if (EncryptTag() == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  return 0;
+  return Result::kSuccess;
 }
 
-int AesGcm::EncryptInit(const char* pw, size_t plen) {
+Result AesGcm::EncryptInit(const char* pw, size_t plen) {
   /* Clear existing context */
 
   if (ctx_) {
@@ -52,7 +52,7 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
   if (!key_locked_) {
     // LCOV_EXCL_START
     ReportError("[Memory] Lock failed - Cannot lock key in memory\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
@@ -63,14 +63,14 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
   if (src_size_ == -1) {
     // LCOV_EXCL_START
     ReportError("[File] Size check failed - Cannot read source file size\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
   if (src_size_ > kMaxSize) {
     // LCOV_EXCL_START
     ReportError("[File] Validation failed - File should be at most 64 GiB\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
@@ -78,26 +78,26 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
 
   /* Generate salt and IV */
 
-  if (Random(salt_.data(), kSaltSize)) {
+  if (Random(salt_.data(), kSaltSize) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Random failed - Cannot generate salt\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  if (Random(iv_.data(), kIVSize)) {
+  if (Random(iv_.data(), kIVSize) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Random failed - Cannot generate initial vector\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
   /* Derive key from password */
 
-  if (Argon2id(salt_.data(), pw, plen, key_.data())) {
+  if (Argon2id(salt_.data(), pw, plen, key_.data()) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Key derivation failed - Argon2id error\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
@@ -106,28 +106,28 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
   if (!(ctx_ = EVP_CIPHER_CTX_new())) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot create context\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
   if (EVP_EncryptInit_ex(ctx_, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
   if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, kIVSize, nullptr) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set initial vector size\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
   if (EVP_EncryptInit_ex(ctx_, nullptr, nullptr, key_.data(), iv_.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
@@ -136,59 +136,59 @@ int AesGcm::EncryptInit(const char* pw, size_t plen) {
   if (fwrite(salt_.data(), sizeof(uint8_t), kSaltSize, dst_file_) != kSaltSize) {
     // LCOV_EXCL_START
     ReportError("[File] Write failed - Cannot write salt to destination file header\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
   if (fwrite(iv_.data(), sizeof(uint8_t), kIVSize, dst_file_) != kIVSize) {
     // LCOV_EXCL_START
     ReportError("[File] Write failed - Cannot write IV to destination file header\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  return 0;
+  return Result::kSuccess;
 }
 
-int AesGcm::EncryptBuff(void* src, void* dst, int srclen) {
+Result AesGcm::EncryptBuff(void* src, void* dst, int srclen) {
   int dstlen;
 
   if (EVP_EncryptUpdate(ctx_, static_cast<unsigned char*>(dst), &dstlen, static_cast<unsigned char*>(src), srclen) !=
       1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
   if (dstlen != srclen) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  return 0;
+  return Result::kSuccess;
 }
 
-int AesGcm::EncryptBatch() {
+Result AesGcm::EncryptBatch() {
   int cur = 0;
 
   while (progress_cur_ + kBuffSize * kBlockSize <= src_size_) {
     /* Read and encrypt current buffer */
 
-    if (ReadFile(buff_[cur].data(), kBuffSize * kBlockSize)) {
-      return 1;  // LCOV_EXCL_LINE
+    if (ReadFile(buff_[cur].data(), kBuffSize * kBlockSize) == Result::kFailure) {
+      return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
-    if (EncryptBuff(buff_[cur].data(), buff_[cur].data(), kBuffSize * kBlockSize)) {
-      return 1;  // LCOV_EXCL_LINE
+    if (EncryptBuff(buff_[cur].data(), buff_[cur].data(), kBuffSize * kBlockSize) == Result::kFailure) {
+      return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
     /* Wait for the previous write to finish */
 
-    if (writing_ && write_res_.get() != 0) {
-      return 1;  // LCOV_EXCL_LINE
+    if (writing_ && write_res_.get() != Result::kSuccess) {
+      return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
     /* Begin asynchronous write */
@@ -206,37 +206,37 @@ int AesGcm::EncryptBatch() {
 
     progress_cur_ += kBuffSize * kBlockSize;
 
-    if (ReportProgress()) {
+    if (ReportProgress() == Progress::kCancelled) {
       write_res_.wait();
-      return 1;
+      return Result::kFailure;
     }
   }
 
   /* Wait for the last write to finish */
 
   if (writing_) {
-    if (write_res_.get() != 0) {
-      return 1;  // LCOV_EXCL_LINE
+    if (write_res_.get() != Result::kSuccess) {
+      return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
     writing_ = false;
   }
 
-  return 0;
+  return Result::kSuccess;
 }
 
-int AesGcm::EncryptRemain() {
+Result AesGcm::EncryptRemain() {
   int crs = 0, rem = src_size_ % (kBuffSize * kBlockSize);
 
-  if (ReadFile(buff_[0].data(), rem)) {
-    return 1;  // LCOV_EXCL_LINE
+  if (ReadFile(buff_[0].data(), rem) == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
   /* Encrypt remaining full blocks */
 
   while (progress_cur_ + kBlockSize <= src_size_) {
-    if (EncryptBuff(buff_[0][crs].data(), buff_[0][crs].data(), kBlockSize)) {
-      return 1;  // LCOV_EXCL_LINE
+    if (EncryptBuff(buff_[0][crs].data(), buff_[0][crs].data(), kBlockSize) == Result::kFailure) {
+      return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
     crs++;
@@ -249,58 +249,58 @@ int AesGcm::EncryptRemain() {
   rem = src_size_ % kBlockSize;
 
   if (rem) {
-    if (EncryptBuff(buff_[0][crs].data(), buff_[0][crs].data(), rem)) {
-      return 1;  // LCOV_EXCL_LINE
+    if (EncryptBuff(buff_[0][crs].data(), buff_[0][crs].data(), rem) == Result::kFailure) {
+      return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
     progress_cur_ += rem;
   }
 
-  if (WriteFile(buff_[0].data(), kBlockSize * crs + rem)) {
-    return 1;  // LCOV_EXCL_LINE
+  if (WriteFile(buff_[0].data(), kBlockSize * crs + rem) == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  if (ReportProgress()) {
-    return 1;  // LCOV_EXCL_LINE
+  if (ReportProgress() == Progress::kCancelled) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  return 0;
+  return Result::kSuccess;
 }
 
-int AesGcm::EncryptFinal() {
+Result AesGcm::EncryptFinal() {
   std::array<uint8_t, kBlockSize> final_block{};
   int final_len;
 
   if (EVP_EncryptFinal_ex(ctx_, final_block.data(), &final_len) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Finalization failed - Cannot finalize encryption\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  if (final_len > 0 && WriteFile(final_block.data(), final_len)) {
-    return 1;  // LCOV_EXCL_LINE
+  if (final_len > 0 && WriteFile(final_block.data(), final_len) == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  return 0;
+  return Result::kSuccess;
 }
 
-int AesGcm::EncryptTag() {
+Result AesGcm::EncryptTag() {
   std::array<uint8_t, kTagSize> tag{};
 
   if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_GET_TAG, kTagSize, tag.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Tag Error - Cannot get auth tag\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
   if (fwrite(tag.data(), sizeof(uint8_t), kTagSize, dst_file_) != kTagSize) {
     // LCOV_EXCL_START
     ReportError("[File] Write failed - Cannot write auth tag on destination file\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  return 0;
+  return Result::kSuccess;
 }

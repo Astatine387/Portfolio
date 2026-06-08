@@ -29,7 +29,7 @@ bool FileExists(const std::string& path) {
   return std::filesystem::exists(path);
 }
 
-int Random(uint8_t* dst, size_t size) {
+Result Random(uint8_t* dst, size_t size) {
   size_t remaining = size;
 
   while (remaining > 0) {
@@ -40,26 +40,34 @@ int Random(uint8_t* dst, size_t size) {
         continue;
       }
 
-      return -1;
+      return Result::kFailure;
     }
 
     dst += result;
     remaining -= result;
   }
 
-  return 0;
+  return Result::kSuccess;
 }
 
-int RemoveFile(const std::string& path) {
-  return unlink(path.c_str());
+Result RemoveFile(const std::string& path) {
+  if (unlink(path.c_str())) {
+    return Result::kFailure;
+  }
+
+  return Result::kSuccess;
 }
 
-int Seek(FILE* file, int64_t offset, int origin) {
-  return fseeko(file, offset, origin);
+Result Seek(FILE* file, int64_t offset, int origin) {
+  if (fseeko(file, offset, origin)) {
+    return Result::kFailure;
+  }
+
+  return Result::kSuccess;
 }
 
-int Lock(void* ptr, size_t size) {
-  return mlock(ptr, size) == 0 ? 0 : 1;
+Result Lock(void* ptr, size_t size) {
+  return mlock(ptr, size) == 0 ? Result::kSuccess : Result::kFailure;
 }
 
 void OpenFile(FILE** file, const std::string& path, const char* mode) {

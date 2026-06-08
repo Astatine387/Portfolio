@@ -18,7 +18,7 @@ void CryptoWorker::Work() {
   FILE* dst_file = nullptr;
   std::string err, msg;
   bool should_delete = false;
-  int res;
+  Result res;
 
   /* Abort if the password is not locked in memory */
 
@@ -84,7 +84,7 @@ void CryptoWorker::Work() {
       msg = "Encryption canceled\n";
       should_delete = true;
     }
-    else if (res) {
+    else if (res == Result::kFailure) {
       msg = err + "Encryption failed\n";
       should_delete = true;
     }
@@ -99,7 +99,7 @@ void CryptoWorker::Work() {
       msg = "Decryption canceled\n";
       should_delete = true;
     }
-    else if (res) {
+    else if (res == Result::kFailure) {
       msg = err + "Decryption failed\n";
       should_delete = true;
     }

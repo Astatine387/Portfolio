@@ -90,7 +90,7 @@ TEST_F(TEST, EncryptDecryptBasic) {
   const char* pw = "password";
   int dsize = strlen(data);
   int psize = strlen(pw);
-  int res;
+  Result res;
   std::vector<uint8_t> orig(data, data + dsize), copy;
 
   Create(src_path_, orig, dsize);
@@ -110,7 +110,7 @@ TEST_F(TEST, EncryptDecryptBasic) {
     fclose(dst);
   }
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
 
   /* Decrypt */
 
@@ -127,7 +127,7 @@ TEST_F(TEST, EncryptDecryptBasic) {
     fclose(dst);
   }
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
 
   /* Compare with original */
 
@@ -150,7 +150,7 @@ TEST_F(TEST, WrongPasswordFails) {
   const char *pw0 = "password", *pw1 = "asdf1234";
   int dsize = strlen(data);
   int psize0 = strlen(pw0), psize1 = strlen(pw1);
-  int res;
+  Result res;
   std::vector<uint8_t> orig(data, data + dsize);
 
   Create(src_path_, orig, dsize);
@@ -185,7 +185,7 @@ TEST_F(TEST, WrongPasswordFails) {
     fclose(dst);
   }
 
-  EXPECT_NE(res, 0);
+  EXPECT_EQ(res, Result::kFailure);
 }
 
 /**
@@ -198,7 +198,7 @@ TEST_F(TEST, TamperedCipherFails) {
   const char* pw = "password";
   int dsize = strlen(data);
   int psize = strlen(pw);
-  int res;
+  Result res;
   std::vector<uint8_t> orig(data, data + dsize), copy;
 
   Create(src_path_, orig, dsize);
@@ -241,7 +241,7 @@ TEST_F(TEST, TamperedCipherFails) {
     fclose(dst);
   }
 
-  EXPECT_NE(res, 0);
+  EXPECT_EQ(res, Result::kFailure);
 }
 
 /* ==================================================
@@ -258,7 +258,7 @@ TEST_F(TEST, EmptyFile) {
   const char* pw = "password";
   int dsize = 0;
   int psize = strlen(pw);
-  int res;
+  Result res;
 
   Create(src_path_, orig, dsize);
 
@@ -277,7 +277,7 @@ TEST_F(TEST, EmptyFile) {
     fclose(dst);
   }
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
 
   /* Decrypt */
 
@@ -294,7 +294,7 @@ TEST_F(TEST, EmptyFile) {
     fclose(dst);
   }
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
 
   /* Compare with original */
 
@@ -313,7 +313,7 @@ TEST_F(TEST, ExactBuffSizeFile) {
   const char* pw = "password";
   int dsize = kBlockSize * kBuffSize;
   int psize = strlen(pw);
-  int res;
+  Result res;
 
   orig.resize(dsize, 'a');
 
@@ -334,7 +334,7 @@ TEST_F(TEST, ExactBuffSizeFile) {
     fclose(dst);
   }
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
 
   /* Decrypt */
 
@@ -351,7 +351,7 @@ TEST_F(TEST, ExactBuffSizeFile) {
     fclose(dst);
   }
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
 
   /* Compare with original */
 
@@ -370,7 +370,7 @@ TEST_F(TEST, ArbitrarySizeFile) {
   const char* pw = "password";
   int dsize = 50000;
   int psize = strlen(pw);
-  int res;
+  Result res;
 
   orig.resize(dsize, 'a');
 
@@ -391,7 +391,7 @@ TEST_F(TEST, ArbitrarySizeFile) {
     fclose(dst);
   }
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
 
   /* Decrypt */
 
@@ -408,7 +408,7 @@ TEST_F(TEST, ArbitrarySizeFile) {
     fclose(dst);
   }
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
 
   /* Compare with original */
 
@@ -527,7 +527,8 @@ TEST_F(TEST, Cancellation) {
   const char* pw = "password";
   int dsize = kBlockSize * kBuffSize * 10;
   int psize = strlen(pw);
-  int cnt = 0, res;
+  int cnt = 0;
+  Result res;
 
   orig.resize(dsize, 'a');
 
@@ -556,7 +557,7 @@ TEST_F(TEST, Cancellation) {
     fclose(dst);
   }
 
-  EXPECT_NE(res, 0);
+  EXPECT_EQ(res, Result::kFailure);
   EXPECT_GE(cnt, 2);
   EXPECT_LE(cnt, 3);
 }

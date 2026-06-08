@@ -274,7 +274,6 @@ Result EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size
   size_t pool_size = 62;
   char* pw;
   int crs = 0;
-  Result res = Result::kSuccess;
 
   /* Check the special character list size is valid */
 
@@ -337,7 +336,7 @@ Result EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size
 
   Shuffle(reinterpret_cast<uint8_t*>(pw), pw_size);
 
-  res = dst.SetData(pw, pw_size);
+  Result res = dst.SetData(pw, pw_size);
 
   /* Cleanup */
 

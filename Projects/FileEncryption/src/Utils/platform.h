@@ -31,41 +31,41 @@ bool FileExists(const std::string& path);
  * @param	pw		Input buffer for password
  * @param	plen	Password length in bytes
  * @param	key		Output buffer for key
- * @return	0 on success, non-zero on failure
+ * @return	kSuccess on success, kFailure on failure
  */
-int Argon2id(uint8_t* salt, const char* pw, size_t plen, uint8_t* key);
+Result Argon2id(uint8_t* salt, const char* pw, size_t plen, uint8_t* key);
 
 /**
  * @brief	Generates cryptographically secure random bytes
  * @param	dst		Output buffer for random bytes
  * @param	size	Output buffer size
- * @return	0 on success, non-zero on failure
+ * @return	kSuccess on success, kFailure on failure
  */
-int Random(uint8_t* dst, size_t size);
+Result Random(uint8_t* dst, size_t size);
 
 /**
  * @brief	Delete a file
  * @param	path	File path
- * @return	0 on success, non-zero on failure
+ * @return	kSuccess on success, kFailure on failure
  */
-int RemoveFile(const std::string& path);
+Result RemoveFile(const std::string& path);
 
 /**
  * @brief	Move file pointer to specific position
  * @param	file	File pointer
  * @param	dist	Distance from reference point
  * @param	ref		Reference point
- * @return	0 on success, non-zero on failure
+ * @return	kSuccess on success, kFailure on failure
  */
-int Seek(FILE* file, int64_t dist, int ref);
+Result Seek(FILE* file, int64_t dist, int ref);
 
 /**
  * @brief	Lock memory space so that it cannot be swapped
  * @param	ptr	Buffer to lock
  * @param	size	Buffer size in bytes
- * @return 0 on success, 1 on failure
+ * @return kSuccess on success, kFailure on failure
  */
-int Lock(void* ptr, size_t size);
+Result Lock(void* ptr, size_t size);
 
 /**
  * @brief	Open a file

@@ -17,7 +17,7 @@
 #include "Utils/platform.h"
 
 AesGcm::AesGcm() {
-  key_locked_ = (Lock(key_.data(), kKeySize) == 0);
+  key_locked_ = (Lock(key_.data(), kKeySize) == Result::kSuccess);
 }
 
 AesGcm::~AesGcm() {
@@ -44,18 +44,18 @@ AesGcm::~AesGcm() {
   }
 }
 
-int AesGcm::ReadFile(void* buff, size_t size) {
+Result AesGcm::ReadFile(void* buff, size_t size) {
   if (fread(buff, sizeof(uint8_t), size, src_file_) != size) {
     // LCOV_EXCL_START
     ReportError("[File] Read failed - Cannot read source file data\n");
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  return 0;
+  return Result::kSuccess;
 }
 
-int AesGcm::WriteFile(const void* buff, size_t size) {
+Result AesGcm::WriteFile(const void* buff, size_t size) {
   if (fwrite(buff, sizeof(uint8_t), size, dst_file_) != size) {
     // LCOV_EXCL_START
     if (ferror(dst_file_)) {
@@ -65,14 +65,14 @@ int AesGcm::WriteFile(const void* buff, size_t size) {
       ReportError("[File] Write failed - Cannot write destination file data\n");
     }
 
-    return 1;
+    return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  return 0;
+  return Result::kSuccess;
 }
 
-int AesGcm::ReportProgress() {
+Progress AesGcm::ReportProgress() {
   if (pcb_) {
     uint64_t perc = progress_max_ > 0 ? progress_cur_ * 100 / progress_max_ : 100;
 
@@ -82,11 +82,11 @@ int AesGcm::ReportProgress() {
 
     if (should_cancel) {
       cancelled_.store(true);
-      return 1;
+      return Progress::kCancelled;
     }
   }
 
-  return 0;
+  return Progress::kContinue;
 }
 
 void AesGcm::ReportError(const char* msg) {

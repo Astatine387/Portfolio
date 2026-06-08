@@ -155,8 +155,8 @@ TEST(Argon2idTest, SameInput) {
     salt[i] = i;
   }
 
-  EXPECT_EQ(Argon2id(salt.data(), pw, size, key0.data()), 0);
-  EXPECT_EQ(Argon2id(salt.data(), pw, size, key1.data()), 0);
+  EXPECT_EQ(Argon2id(salt.data(), pw, size, key0.data()), Result::kSuccess);
+  EXPECT_EQ(Argon2id(salt.data(), pw, size, key1.data()), Result::kSuccess);
 
   EXPECT_EQ(memcmp(key0.data(), key1.data(), kKeySize), 0);
 }
@@ -219,7 +219,7 @@ TEST(Argon2Test, EmptyPassword) {
     salt[i] = i;
   }
 
-  EXPECT_EQ(Argon2id(salt.data(), "", 0, key.data()), 0);
+  EXPECT_EQ(Argon2id(salt.data(), "", 0, key.data()), Result::kSuccess);
 }
 
 /* ==================================================
@@ -294,7 +294,7 @@ TEST(RandomTest, GeneratesNonZero) {
   std::array<uint8_t, 32> buff{};
   bool all_zero = true;
 
-  EXPECT_EQ(Random(buff.data(), 32), 0);
+  EXPECT_EQ(Random(buff.data(), 32), Result::kSuccess);
 
   for (int i = 0; i < 32; i++) {
     if (buff[i]) {
@@ -376,9 +376,9 @@ TEST_F(RemoveFileTest, DeleteExisting) {
 
   ASSERT_TRUE(FileExists(path_));
 
-  int res = RemoveFile(path_);
+  Result res = RemoveFile(path_);
 
-  EXPECT_EQ(res, 0);
+  EXPECT_EQ(res, Result::kSuccess);
   EXPECT_FALSE(FileExists(path_));
 }
 
@@ -388,9 +388,9 @@ TEST_F(RemoveFileTest, DeleteExisting) {
 TEST_F(RemoveFileTest, DeleteNonExistent) {
   const char* fake = "fake.tmp";
 
-  int res = RemoveFile(fake);
+  Result res = RemoveFile(fake);
 
-  EXPECT_NE(res, 0);
+  EXPECT_EQ(res, Result::kFailure);
 }
 
 /* ==================================================
@@ -436,28 +436,28 @@ class SeekTest : public ::testing::Test {
  * @brief   Verify Seek moves to beginning of file
  */
 TEST_F(SeekTest, SeekToBeginning) {
-  EXPECT_EQ(Seek(file_, 0, SEEK_SET), 0);
+  EXPECT_EQ(Seek(file_, 0, SEEK_SET), Result::kSuccess);
 }
 
 /**
  * @brief   Verify Seek moves to end of file
  */
 TEST_F(SeekTest, SeekToEnd) {
-  EXPECT_EQ(Seek(file_, 0, SEEK_END), 0);
+  EXPECT_EQ(Seek(file_, 0, SEEK_END), Result::kSuccess);
 }
 
 /**
  * @brief   Verify Seek moves to specific position
  */
 TEST_F(SeekTest, SeekToMiddle) {
-  EXPECT_EQ(Seek(file_, 50, SEEK_SET), 0);
+  EXPECT_EQ(Seek(file_, 50, SEEK_SET), Result::kSuccess);
 }
 
 /**
  * @brief   Verify Seek with negative offset from end
  */
 TEST_F(SeekTest, SeekFromEnd) {
-  EXPECT_EQ(Seek(file_, -10, SEEK_END), 0);
+  EXPECT_EQ(Seek(file_, -10, SEEK_END), Result::kSuccess);
 }
 
 /* ==================================================

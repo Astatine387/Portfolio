@@ -10,6 +10,10 @@
 
 #include "Common/constants.h"
 
-int Argon2id(uint8_t* salt, const char* pw, size_t plen, uint8_t* key) {
-  return argon2id_hash_raw(kTimeCost, kMemCost, kParallelism, pw, plen, salt, kSaltSize, key, kKeySize);
+Result Argon2id(uint8_t* salt, const char* pw, size_t plen, uint8_t* key) {
+  if (argon2id_hash_raw(kTimeCost, kMemCost, kParallelism, pw, plen, salt, kSaltSize, key, kKeySize) != ARGON2_OK) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  return Result::kSuccess;
 }
