@@ -23,12 +23,12 @@ flags:
     carryforward: true
 
 ignore:
-  - "Projects/FileEncryption/src/Benchmark/benchmark.cpp"
-  - "Projects/FileEncryption/src/Common/main.cpp"
-  - "Projects/FileEncryption/src/Core/crypto_worker.cpp"
-  - "Projects/FileEncryption/src/Core/crypto_worker.h"
-  - "Projects/FileEncryption/src/GUI/"
-  - "Projects/FileEncryption/src/Tests/"
-  - "Projects/PasswordManager/src/Common/main.cpp"
-  - "Projects/PasswordManager/src/GUI/"
-  - "Projects/PasswordManager/src/Tests/"
+  - "Projects/FileEncryption/src/benchmark/benchmark.cpp"
+  - "Projects/FileEncryption/src/common/main.cpp"
+  - "Projects/FileEncryption/src/core/crypto_worker.cpp"
+  - "Projects/FileEncryption/src/core/crypto_worker.h"
+  - "Projects/FileEncryption/src/gui/"
+  - "Projects/FileEncryption/src/tests/"
+  - "Projects/PasswordManager/src/common/main.cpp"
+  - "Projects/PasswordManager/src/gui/"
+  - "Projects/PasswordManager/src/tests/"

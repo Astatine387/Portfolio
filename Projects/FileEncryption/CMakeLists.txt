@@ -35,26 +35,26 @@ if(NOT ARGON2_LIBRARY OR NOT ARGON2_INCLUDE_DIR)
 endif()
 
 set(CORE_SOURCES
-    src/Core/aes_gcm.cpp
-    src/Core/aes_gcm_dec.cpp
-    src/Core/aes_gcm_enc.cpp
-    src/Core/crypto_worker.cpp
-    src/Utils/password.cpp
-    src/Utils/platform.cpp
+    src/core/aes_gcm.cpp
+    src/core/aes_gcm_dec.cpp
+    src/core/aes_gcm_enc.cpp
+    src/core/crypto_worker.cpp
+    src/utils/password.cpp
+    src/utils/platform.cpp
 )
 
 if(WIN32)
-    list(APPEND CORE_SOURCES src/Utils/platform_win32.cpp)
+    list(APPEND CORE_SOURCES src/utils/platform_win32.cpp)
 else()
-    list(APPEND CORE_SOURCES src/Utils/platform_linux.cpp)
+    list(APPEND CORE_SOURCES src/utils/platform_linux.cpp)
 endif()
 
 set(CORE_HEADERS
-    src/Common/constants.h
-    src/Core/aes_gcm.h
-    src/Core/crypto_worker.h
-    src/Utils/password.h
-    src/Utils/platform.h
+    src/common/constants.h
+    src/core/aes_gcm.h
+    src/core/crypto_worker.h
+    src/utils/password.h
+    src/utils/platform.h
 )
 
 add_library(FileEncryption-core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
@@ -74,21 +74,21 @@ if(WIN32)
 endif()
 
 set(GUI_SOURCES
-    src/GUI/crypto_wrapper.cpp
-    src/GUI/input_gui.cpp
-    src/GUI/main_gui.cpp
-    src/GUI/progress_gui.cpp
-    src/GUI/mode_button.cpp
-    src/GUI/pw_line_edit.cpp
+    src/gui/crypto_wrapper.cpp
+    src/gui/input_gui.cpp
+    src/gui/main_gui.cpp
+    src/gui/progress_gui.cpp
+    src/gui/mode_button.cpp
+    src/gui/pw_line_edit.cpp
 )
 
 set(GUI_HEADERS
-    src/GUI/crypto_wrapper.h
-    src/GUI/input_gui.h
-    src/GUI/main_gui.h
-    src/GUI/progress_gui.h
-    src/GUI/mode_button.h
-    src/GUI/pw_line_edit.h
+    src/gui/crypto_wrapper.h
+    src/gui/input_gui.h
+    src/gui/main_gui.h
+    src/gui/progress_gui.h
+    src/gui/mode_button.h
+    src/gui/pw_line_edit.h
 )
 
 add_library(FileEncryption-gui STATIC ${GUI_SOURCES} ${GUI_HEADERS})
@@ -100,15 +100,15 @@ target_link_libraries(FileEncryption-gui PUBLIC
     Qt6::Widgets
 )
 
-add_executable(${PROJECT_NAME} src/Common/main.cpp)
+add_executable(${PROJECT_NAME} src/common/main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE FileEncryption-gui)
 
 enable_testing()
 
 set(TEST_SOURCES
-    src/Tests/aes_gcm_test.cpp
-    src/Tests/password_test.cpp
-    src/Tests/utils_test.cpp
+    src/tests/aes_gcm_test.cpp
+    src/tests/password_test.cpp
+    src/tests/utils_test.cpp
 )
 
 add_executable(FileEncryption-tests ${TEST_SOURCES})
@@ -136,7 +136,7 @@ find_package(benchmark CONFIG QUIET)
 
 if(benchmark_FOUND)
     set(BENCH_SOURCES
-        src/Benchmark/benchmark.cpp
+        src/benchmark/benchmark.cpp
     )
 
     add_executable(FileEncryption-bench ${BENCH_SOURCES})

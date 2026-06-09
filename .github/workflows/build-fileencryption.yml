@@ -171,10 +171,10 @@ jobs:
             --suppress=missingIncludeSystem \
             --inline-suppr \
             -I Projects/FileEncryption/src \
-            Projects/FileEncryption/src/Core \
-            Projects/FileEncryption/src/GUI \
-            Projects/FileEncryption/src/Utils \
-            Projects/FileEncryption/src/Common
+            Projects/FileEncryption/src/core \
+            Projects/FileEncryption/src/gui \
+            Projects/FileEncryption/src/utils \
+            Projects/FileEncryption/src/common
 
       - name: Build with Coverage (Debug)
         run: |
@@ -195,11 +195,11 @@ jobs:
             '/usr/*' \
             '*/gtest/*' \
             '*/Tests/*' \
-            '*/FileEncryption/src/Benchmark/benchmark.cpp' \
-            '*/FileEncryption/src/Common/main.cpp' \
-            '*/FileEncryption/src/Core/crypto_worker.cpp' \
-            '*/FileEncryption/src/Core/crypto_worker.h' \
-            '*/FileEncryption/src/GUI/*' \
+            '*/FileEncryption/src/benchmark/benchmark.cpp' \
+            '*/FileEncryption/src/common/main.cpp' \
+            '*/FileEncryption/src/core/crypto_worker.cpp' \
+            '*/FileEncryption/src/core/crypto_worker.h' \
+            '*/FileEncryption/src/gui/*' \
             --output-file coverage.info --ignore-errors mismatch,unused
           echo "=== Files in coverage report ==="
           lcov --list coverage.info

@@ -1,0 +1,165 @@
+/**
+ * @file	aes_gcm.h
+ * @brief	AES-GCM encryption/decryption engine
+ * @author	Astatine387
+ */
+
+#pragma once
+
+#include <openssl/evp.h>
+
+#include <array>
+#include <functional>
+#include <future>
+
+#include "common/constants.h"
+
+class AesGcm {
+ public:
+  /* ==================================================
+   * Constructor, destructor, operators
+   * ================================================== */
+
+  /**
+   * @brief	Default constructor of AesGcm class
+   */
+  AesGcm();
+
+  /**
+   * @brief	Destructor of AesGcm class
+   */
+  ~AesGcm();
+
+  AesGcm(const AesGcm&) = delete;             // Delete copy constructor
+  AesGcm& operator=(const AesGcm&) = delete;  // Delete copy assignment operator
+  AesGcm(AesGcm&&) = delete;                  // Delete move constructor
+  AesGcm& operator=(AesGcm&&) = delete;       // Delete move assignment operator
+
+  /* ==================================================
+   * Interface functions
+   * ================================================== */
+
+  /**
+   * @brief		Decrypt a buffer
+   * @param		src		Source buffer
+   * @param		dst		Destination buffer
+   * @param		size	Source buffer size
+   * @param		pw		Password
+   * @param		plen	Password length
+   * @return		kSuccess on success, kFailure on failure
+   */
+  Result Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
+
+  /**
+   * @brief		Encrypt a buffer
+   * @param		src			Source buffer
+   * @param		dst			Destination buffer
+   * @param		size		Source buffer size
+   * @param		pw			Password
+   * @param		plen		Password length
+   * @return		kSuccess on success, kFailure on failure
+   */
+  Result Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
+
+  /* ==================================================
+   * Callback functions
+   * ================================================== */
+
+  /**
+   * @brief	Callback function for error reporting
+   * @param	errMsg	Error message string
+   */
+  using ErrorCallback = std::function<void(const char* msg)>;
+
+  /**
+   * @brief	Set error callback function
+   * @param	ecb		Error callback function
+   */
+  void SetErrorCallback(ErrorCallback ecb) { ecb_ = std::move(ecb); }
+
+ private:
+  EVP_CIPHER_CTX* ctx_ = nullptr;  // OpenSSL encryption/decryption context
+
+  ErrorCallback ecb_ = nullptr;  // Error reporting callback function
+
+  std::array<uint8_t, kIVSize> iv_{};      // Initial vector
+  std::array<uint8_t, kKeySize> key_{};    // Key derived from password
+  std::array<uint8_t, kSaltSize> salt_{};  // Key derivation salt
+
+  uint8_t* src_buff_ = nullptr;  // Source buffer
+  uint8_t* dst_buff_ = nullptr;  // Destination buffer
+
+  size_t src_crs_ = 0;  // Current read position in buffer
+  size_t dst_crs_ = 0;  // Current write position in buffer
+  size_t size_ = 0;     // Source buffer size
+
+  /* ==================================================
+   * Decryption functions
+   * ================================================== */
+
+  /**
+   * @brief	Initialize decryption context
+   * @param	pw		Password
+   * @param	plen	Password length
+   * @return	kSuccess on success, kFailure on failure
+   */
+  Result DecryptInit(const char* pw, size_t plen);
+
+  /**
+   * @brief	Read and verify authentication tag
+   * @return	kSuccess on success, kFailure on failure
+   */
+  Result DecryptTag();
+
+  /**
+   * @brief	Decrypt buffer
+   * @return	kSuccess on success, kFailure on failure
+   */
+  Result DecryptBuff();
+
+  /**
+   * @brief	Finalize decryption
+   * @return	kSuccess on success, kFailure on failure
+   */
+  Result DecryptFinal();
+
+  /* ==================================================
+   * Encryption functions
+   * ================================================== */
+
+  /**
+   * @brief	Initialize encryption context
+   * @param	pw		Password
+   * @param	plen	Password length
+   * @return	kSuccess on success, kFailure on failure
+   */
+  Result EncryptInit(const char* pw, size_t plen);
+
+  /**
+   * @brief	Encrypt buffer
+   * @return	kSuccess on success, kFailure on failure
+   */
+  Result EncryptBuff();
+
+  /**
+   * @brief	Finalize encryption
+   * @return	kSuccess on success, kFailure on failure
+   */
+  Result EncryptFinal();
+
+  /**
+   * @brief	Generate and write authentication tag
+   * @return	kSuccess on success, kFailure on failure
+   */
+  Result EncryptTag();
+
+  /* ==================================================
+   * Callback helper functions
+   * ================================================== */
+
+  /**
+   * @brief	Report error via callback
+   * @param	msg		Error message string
+   */
+  void ReportError(const char* msg);
+};

@@ -27,30 +27,30 @@ if(NOT ARGON2_LIBRARY OR NOT ARGON2_INCLUDE_DIR)
 endif()
 
 set(CORE_SOURCES
-    src/Core/aes_gcm.cpp
-    src/Core/aes_gcm_dec.cpp
-    src/Core/aes_gcm_enc.cpp
-    src/Core/entry.cpp
-    src/Core/vault.cpp
-    src/Core/vault_file.cpp
-    src/Core/vault_entry.cpp
-    src/Utils/password.cpp
-    src/Utils/platform.cpp
+    src/core/aes_gcm.cpp
+    src/core/aes_gcm_dec.cpp
+    src/core/aes_gcm_enc.cpp
+    src/core/entry.cpp
+    src/core/vault.cpp
+    src/core/vault_file.cpp
+    src/core/vault_entry.cpp
+    src/utils/password.cpp
+    src/utils/platform.cpp
 )
 
 if(WIN32)
-    list(APPEND CORE_SOURCES src/Utils/platform_win32.cpp)
+    list(APPEND CORE_SOURCES src/utils/platform_win32.cpp)
 else()
-    list(APPEND CORE_SOURCES src/Utils/platform_linux.cpp)
+    list(APPEND CORE_SOURCES src/utils/platform_linux.cpp)
 endif()
 
 set(CORE_HEADERS
-    src/Common/constants.h
-    src/Core/aes_gcm.h
-    src/Core/entry.h
-    src/Core/vault.h
-    src/Utils/password.h
-    src/Utils/platform.h
+    src/common/constants.h
+    src/core/aes_gcm.h
+    src/core/entry.h
+    src/core/vault.h
+    src/utils/password.h
+    src/utils/platform.h
 )
 
 add_library(PasswordManager-core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
@@ -70,26 +70,26 @@ if(WIN32)
 endif()
 
 set(GUI_SOURCES
-    src/GUI/change_pw_gui.cpp
-    src/GUI/entry_gui.cpp
-    src/GUI/list_gui.cpp
-    src/GUI/login_gui.cpp
-    src/GUI/main_gui.cpp
-    src/GUI/password_gui.cpp
-    src/GUI/pw_line_edit.cpp
-    src/GUI/vault_interface.cpp
+    src/gui/change_pw_gui.cpp
+    src/gui/entry_gui.cpp
+    src/gui/list_gui.cpp
+    src/gui/login_gui.cpp
+    src/gui/main_gui.cpp
+    src/gui/password_gui.cpp
+    src/gui/pw_line_edit.cpp
+    src/gui/vault_interface.cpp
 )
 
 set(GUI_HEADERS
-    src/GUI/change_pw_gui.h
-    src/GUI/entry_gui.h
-    src/GUI/entry_interface.h
-    src/GUI/list_gui.h
-    src/GUI/login_gui.h
-    src/GUI/main_gui.h
-    src/GUI/password_gui.h
-    src/GUI/pw_line_edit.h
-    src/GUI/vault_interface.h
+    src/gui/change_pw_gui.h
+    src/gui/entry_gui.h
+    src/gui/entry_interface.h
+    src/gui/list_gui.h
+    src/gui/login_gui.h
+    src/gui/main_gui.h
+    src/gui/password_gui.h
+    src/gui/pw_line_edit.h
+    src/gui/vault_interface.h
 )
 
 add_library(PasswordManager-gui STATIC ${GUI_SOURCES} ${GUI_HEADERS})
@@ -101,18 +101,18 @@ target_link_libraries(PasswordManager-gui PUBLIC
     Qt6::Widgets
 )
 
-add_executable(${PROJECT_NAME} src/Common/main.cpp)
+add_executable(${PROJECT_NAME} src/common/main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE PasswordManager-gui)
 
 enable_testing()
 
 set(TEST_SOURCES
-    src/Tests/aes_gcm_test.cpp
-    src/Tests/entry_test.cpp
-    src/Tests/password_test.cpp
-    src/Tests/utils_test.cpp
-    src/Tests/vault_entry_test.cpp
-    src/Tests/vault_file_test.cpp
+    src/tests/aes_gcm_test.cpp
+    src/tests/entry_test.cpp
+    src/tests/password_test.cpp
+    src/tests/utils_test.cpp
+    src/tests/vault_entry_test.cpp
+    src/tests/vault_file_test.cpp
 )
 
 add_executable(PasswordManager-tests ${TEST_SOURCES})

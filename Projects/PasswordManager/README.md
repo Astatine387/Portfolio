@@ -195,20 +195,20 @@ cmake --build build
 
 | File                     | Tracked Lines | Covered | Partial | Missed | Coverage % |
 | ------------------------ | ------------- | ------- | ------- | ------ | ---------- |
-| Core/aes_gcm.cpp         | 23            | 19      | 0       | 4      | 82.61%     |
-| Core/aes_gcm.h           | 1             | 1       | 0       | 0      | 100.00%    |
-| Core/aes_gcm_dec.cpp     | 41            | 41      | 0       | 0      | 100.00%    |
-| Core/aes_gcm_enc.cpp     | 43            | 43      | 0       | 0      | 100.00%    |
-| Core/entry.cpp           | 48            | 47      | 0       | 1      | 97.92%     |
-| Core/entry.h             | 4             | 4       | 0       | 0      | 100.00%    |
-| Core/vault.cpp           | 27            | 27      | 0       | 0      | 100.00%    |
-| Core/vault.h             | 1             | 1       | 0       | 0      | 100.00%    |
-| Core/vault_entry.cpp     | 32            | 30      | 0       | 2      | 93.75%     |
-| Core/vault_file.cpp      | 103           | 97      | 0       | 6      | 94.17%     |
-| Utils/password.cpp       | 33            | 33      | 0       | 0      | 100.00%    |
-| Utils/password.h         | 21            | 21      | 0       | 0      | 100.00%    |
-| Utils/platform.cpp       | 14            | 14      | 0       | 0      | 100.00%    |
-| Utils/platform_linux.cpp | 41            | 33      | 0       | 8      | 80.49%     |
+| core/aes_gcm.cpp         | 23            | 19      | 0       | 4      | 82.61%     |
+| core/aes_gcm.h           | 1             | 1       | 0       | 0      | 100.00%    |
+| core/aes_gcm_dec.cpp     | 41            | 41      | 0       | 0      | 100.00%    |
+| core/aes_gcm_enc.cpp     | 43            | 43      | 0       | 0      | 100.00%    |
+| core/entry.cpp           | 48            | 47      | 0       | 1      | 97.92%     |
+| core/entry.h             | 4             | 4       | 0       | 0      | 100.00%    |
+| core/vault.cpp           | 27            | 27      | 0       | 0      | 100.00%    |
+| core/vault.h             | 1             | 1       | 0       | 0      | 100.00%    |
+| core/vault_entry.cpp     | 32            | 30      | 0       | 2      | 93.75%     |
+| core/vault_file.cpp      | 103           | 97      | 0       | 6      | 94.17%     |
+| utils/password.cpp       | 33            | 33      | 0       | 0      | 100.00%    |
+| utils/password.h         | 21            | 21      | 0       | 0      | 100.00%    |
+| utils/platform.cpp       | 14            | 14      | 0       | 0      | 100.00%    |
+| utils/platform_linux.cpp | 41            | 33      | 0       | 8      | 80.49%     |
 
 | Module   | Test File            | Test Cases                                                                 |
 | -------- | -------------------- | -------------------------------------------------------------------------- |

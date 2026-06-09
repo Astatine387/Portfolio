@@ -160,14 +160,14 @@ cmake --build build
 
 | File                     | Tracked Lines | Covered | Partial | Missed | Coverage % |
 | ------------------------ | ------------- | ------- | ------- | ------ | ---------- |
-| Core/aes_gcm.cpp         | 44            | 40      | 0       | 4      | 90.91%     |
-| Core/aes_gcm.h           | 2             | 2       | 0       | 0      | 100.00%    |
-| Core/aes_gcm_dec.cpp     | 76            | 73      | 0       | 2      | 96.05%     |
-| Core/aes_gcm_enc.cpp     | 72            | 70      | 0       | 2      | 97.22%     |
-| Utils/password.cpp       | 23            | 23      | 0       | 0      | 100.00%    |
-| Utils/password.h         | 22            | 22      | 0       | 0      | 100.00%    |
-| Utils/platform.cpp       | 2             | 2       | 0       | 2      | 94.44%     |
-| Utils/platform_linux.cpp | 33            | 29      | 0       | 4      | 87.88%     |
+| core/aes_gcm.cpp         | 44            | 40      | 0       | 4      | 90.91%     |
+| core/aes_gcm.h           | 2             | 2       | 0       | 0      | 100.00%    |
+| core/aes_gcm_dec.cpp     | 76            | 73      | 0       | 2      | 96.05%     |
+| core/aes_gcm_enc.cpp     | 72            | 70      | 0       | 2      | 97.22%     |
+| utils/password.cpp       | 23            | 23      | 0       | 0      | 100.00%    |
+| utils/password.h         | 22            | 22      | 0       | 0      | 100.00%    |
+| utils/platform.cpp       | 2             | 2       | 0       | 2      | 94.44%     |
+| utils/platform_linux.cpp | 33            | 29      | 0       | 4      | 87.88%     |
 
 | Module   | Test File          | Test Cases                                                             |
 | -------- | ------------------ | ---------------------------------------------------------------------- |
