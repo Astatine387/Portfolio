@@ -4,13 +4,17 @@ Checks: >
   performance-*,
   modernize-*,
   -modernize-use-auto,
-  -modernize-use-trailing-return-type
+  -modernize-use-trailing-return-type,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters
 WarningsAsErrors: >
   readability-identifier-naming,
   performance-*,
   modernize-*,
   -modernize-use-auto,
-  -modernize-use-trailing-return-type
+  -modernize-use-trailing-return-type,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters
 HeaderFilterRegex: 'src/.*'
 FormatStyle: file
 

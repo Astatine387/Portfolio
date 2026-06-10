@@ -74,8 +74,8 @@ BENCHMARK_DEFINE_F(Benchmark, Encrypt)(benchmark::State& state) {
     }
   }
 
-  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * size);
-  state.SetLabel(std::to_string(size / (1024 * 1024)) + " MB");
+  state.SetBytesProcessed(state.iterations() * static_cast<int64_t>(size));
+  state.SetLabel(std::to_string(size / (size_t{ 1024 } * 1024)) + " MB");
 
   Clean();
 }
@@ -127,7 +127,7 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
     }
   }
 
-  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) * size);
+  state.SetBytesProcessed(state.iterations() * static_cast<int64_t>(size));
 
   Clean();
 }
@@ -140,7 +140,7 @@ static void BenchArgon2id(benchmark::State& state) {
   std::array<uint8_t, kKeySize> key;
 
   const char* pw = "password";
-  int psize = strlen(pw);
+  size_t psize = strlen(pw);
 
   for (size_t i = 0; i < kSaltSize; i++) {
     salt[i] = i;

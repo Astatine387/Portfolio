@@ -71,7 +71,9 @@ Result AesGcm::EncryptInit(const char* pw, size_t plen) {
 
   /* Set encryption context */
 
-  if (!(ctx_ = EVP_CIPHER_CTX_new())) {
+  ctx_ = EVP_CIPHER_CTX_new();
+
+  if (!ctx_) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot create context\n");
     return Result::kFailure;
@@ -113,7 +115,7 @@ Result AesGcm::EncryptInit(const char* pw, size_t plen) {
 Result AesGcm::EncryptBuff() {
   int out_len;
 
-  if (EVP_EncryptUpdate(ctx_, dst_buff_ + dst_crs_, &out_len, src_buff_, size_) != 1) {
+  if (EVP_EncryptUpdate(ctx_, dst_buff_ + dst_crs_, &out_len, src_buff_, static_cast<int>(size_)) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
     return Result::kFailure;

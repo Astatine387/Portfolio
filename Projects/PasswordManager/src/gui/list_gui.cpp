@@ -88,11 +88,11 @@ ListGUI::ListGUI(QWidget* parent) : QWidget(parent) {
 }
 
 void ListGUI::LoadEntries(const QVector<EntryView>& entries) {
-  size_t size = entries.size();
+  int size = static_cast<int>(entries.size());
 
   table_->setRowCount(0);
 
-  for (size_t i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++) {
     int row = table_->rowCount();
 
     table_->insertRow(row);

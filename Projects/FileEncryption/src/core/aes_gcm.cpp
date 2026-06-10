@@ -20,6 +20,7 @@ AesGcm::AesGcm() {
   key_locked_ = (Lock(key_.data(), kKeySize) == Result::kSuccess);
 }
 
+// NOLINTNEXTLINE(bugprone-exception-escape)
 AesGcm::~AesGcm() {
   if (write_res_.valid()) {
     write_res_.wait();
@@ -74,7 +75,7 @@ Result AesGcm::WriteFile(const void* buff, size_t size) {
 
 Progress AesGcm::ReportProgress() {
   if (pcb_) {
-    uint64_t perc = progress_max_ > 0 ? progress_cur_ * 100 / progress_max_ : 100;
+    int perc = static_cast<int>(progress_max_ > 0 ? progress_cur_ * 100 / progress_max_ : 100);
 
     bool should_cancel = false;
 

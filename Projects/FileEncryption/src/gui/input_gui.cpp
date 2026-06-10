@@ -54,7 +54,9 @@ void InputGUI::SetErrMsg(const QString& msg) {
 }
 
 void InputGUI::OnStartClicked() {
-  if (!mode_btn_->GetMode().has_value()) {
+  auto mode = mode_btn_->GetMode();
+
+  if (!mode.has_value()) {
     err_msg_->setText("Mode is not selected");
     return;
   }
@@ -80,9 +82,7 @@ void InputGUI::OnStartClicked() {
 
   pw_line_->Clear();
 
-  CryptoRequest req{
-    .mode = mode_btn_->GetMode().value(), .src = src_line_->text(), .dst = dst_line_->text(), .pw = std::move(tmp)
-  };
+  CryptoRequest req{ .mode = mode.value(), .src = src_line_->text(), .dst = dst_line_->text(), .pw = std::move(tmp) };
 
   emit StartRequested(req);
 }

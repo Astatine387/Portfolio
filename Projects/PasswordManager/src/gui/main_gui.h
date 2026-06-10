@@ -138,7 +138,7 @@ class MainGUI : public QWidget {
   /**
    * @brief	Clean timer and clipboard when GUI is closed
    */
-  void CloseEvent(QCloseEvent* event);
+  void closeEvent(QCloseEvent* event) override;
 
   /**
    * @brief	Refresh list GUI

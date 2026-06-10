@@ -62,7 +62,9 @@ Result AesGcm::DecryptInit(const char* pw, size_t plen) {
 
   /* Set decryption context */
 
-  if (!(ctx_ = EVP_CIPHER_CTX_new())) {
+  ctx_ = EVP_CIPHER_CTX_new();
+
+  if (!ctx_) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot create context\n");
     return Result::kFailure;
@@ -109,7 +111,7 @@ Result AesGcm::DecryptTag() {
 }
 
 Result AesGcm::DecryptBuff() {
-  int in_len = size_ - kSaltSize - kIVSize - kTagSize;
+  int in_len = static_cast<int>(size_ - kSaltSize - kIVSize - kTagSize);
   int out_len;
 
   if (EVP_DecryptUpdate(ctx_, dst_buff_, &out_len, src_buff_ + src_crs_, in_len) != 1) {

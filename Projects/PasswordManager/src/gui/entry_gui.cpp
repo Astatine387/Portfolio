@@ -7,12 +7,13 @@
 #include "gui/entry_gui.h"
 
 #include <string>
+#include <string_view>
 
 #include "common/constants.h"
 #include "utils/platform.h"
 
 namespace {
-const std::string kSpcs = R"(`~!@#$%^&*()-_=+[{]}\|;:'",<.>/?)";
+constexpr std::string_view kSpcs = R"(`~!@#$%^&*()-_=+[{]}\|;:'",<.>/?)";
 
 const std::array<bool, 32> kDefaultSpcs = {
   false, true, true, true, false, false, true, true,

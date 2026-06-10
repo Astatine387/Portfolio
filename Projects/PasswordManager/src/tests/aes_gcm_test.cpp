@@ -202,7 +202,7 @@ TEST(AES_GCM_Test, LargeData) {
   const char* pw = "password";
 
   size_t psize = strlen(pw);
-  size_t dsize = 1024 * 1024;  // 1 MiB
+  size_t dsize = 1024ULL * 1024;  // 1 MiB
   size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize, 0x00);

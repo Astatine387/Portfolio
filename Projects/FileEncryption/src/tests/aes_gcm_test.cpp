@@ -88,8 +88,8 @@ TEST_F(TEST, EncryptDecryptBasic) {
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
   const char* pw = "password";
-  int dsize = strlen(data);
-  int psize = strlen(pw);
+  int dsize = static_cast<int>(strlen(data));
+  int psize = static_cast<int>(strlen(pw));
   Result res;
   std::vector<uint8_t> orig(data, data + dsize), copy;
 
@@ -148,8 +148,9 @@ TEST_F(TEST, WrongPasswordFails) {
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
   const char *pw0 = "password", *pw1 = "asdf1234";
-  int dsize = strlen(data);
-  int psize0 = strlen(pw0), psize1 = strlen(pw1);
+  int dsize = static_cast<int>(strlen(data));
+  int psize0 = static_cast<int>(strlen(pw0));
+  int psize1 = static_cast<int>(strlen(pw1));
   Result res;
   std::vector<uint8_t> orig(data, data + dsize);
 
@@ -196,8 +197,8 @@ TEST_F(TEST, TamperedCipherFails) {
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
   const char* pw = "password";
-  int dsize = strlen(data);
-  int psize = strlen(pw);
+  int dsize = static_cast<int>(strlen(data));
+  int psize = static_cast<int>(strlen(pw));
   Result res;
   std::vector<uint8_t> orig(data, data + dsize), copy;
 
@@ -224,7 +225,7 @@ TEST_F(TEST, TamperedCipherFails) {
 
   copy[kSaltSize + kIVSize] ^= 0xFF;
 
-  Create(enc_path_, copy, copy.size());
+  Create(enc_path_, copy, static_cast<int>(copy.size()));
 
   /* Decrypt */
 
@@ -257,7 +258,7 @@ TEST_F(TEST, EmptyFile) {
   std::vector<uint8_t> orig, copy;
   const char* pw = "password";
   int dsize = 0;
-  int psize = strlen(pw);
+  int psize = static_cast<int>(strlen(pw));
   Result res;
 
   Create(src_path_, orig, dsize);
@@ -312,7 +313,7 @@ TEST_F(TEST, ExactBuffSizeFile) {
   std::vector<uint8_t> orig, copy;
   const char* pw = "password";
   int dsize = kBlockSize * kBuffSize;
-  int psize = strlen(pw);
+  int psize = static_cast<int>(strlen(pw));
   Result res;
 
   orig.resize(dsize, 'a');
@@ -369,7 +370,7 @@ TEST_F(TEST, ArbitrarySizeFile) {
   std::vector<uint8_t> orig, copy;
   const char* pw = "password";
   int dsize = 50000;
-  int psize = strlen(pw);
+  int psize = static_cast<int>(strlen(pw));
   Result res;
 
   orig.resize(dsize, 'a');
@@ -430,7 +431,7 @@ TEST_F(TEST, ProgressCallback) {
   std::vector<uint8_t> orig;
   const char* pw = "password";
   int dsize = kBlockSize * kBuffSize * 10;
-  int psize = strlen(pw);
+  int psize = static_cast<int>(strlen(pw));
   int cnt = 0, last = -1;
 
   orig.resize(dsize, 'a');
@@ -472,8 +473,9 @@ TEST_F(TEST, ErrorCallback) {
   bool b = false;
   const char* data = "Hello, world!";
   const char *pw0 = "password", *pw1 = "asdf1234";
-  int dsize = strlen(data);
-  int psize0 = strlen(pw0), psize1 = strlen(pw1);
+  int dsize = static_cast<int>(strlen(data));
+  int psize0 = static_cast<int>(strlen(pw0));
+  int psize1 = static_cast<int>(strlen(pw1));
   std::vector<uint8_t> orig(data, data + dsize);
 
   Create(src_path_, orig, dsize);
@@ -526,7 +528,7 @@ TEST_F(TEST, Cancellation) {
   std::vector<uint8_t> orig;
   const char* pw = "password";
   int dsize = kBlockSize * kBuffSize * 10;
-  int psize = strlen(pw);
+  int psize = static_cast<int>(strlen(pw));
   int cnt = 0;
   Result res;
 

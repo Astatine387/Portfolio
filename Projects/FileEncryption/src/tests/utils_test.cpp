@@ -149,7 +149,7 @@ TEST(Argon2idTest, SameInput) {
   std::array<uint8_t, kKeySize> key0;
   std::array<uint8_t, kKeySize> key1;
   const char* pw = "password";
-  int size = strlen(pw);
+  int size = static_cast<int>(strlen(pw));
 
   for (size_t i = 0; i < kSaltSize; i++) {
     salt[i] = i;
@@ -170,8 +170,8 @@ TEST(Argon2idTest, DifferentPW) {
   std::array<uint8_t, kKeySize> key1;
   const char* pw0 = "password";
   const char* pw1 = "asdf1234";
-  int size0 = strlen(pw0);
-  int size1 = strlen(pw1);
+  int size0 = static_cast<int>(strlen(pw0));
+  int size1 = static_cast<int>(strlen(pw1));
 
   for (size_t i = 0; i < kSaltSize; i++) {
     salt[i] = i;
@@ -192,7 +192,7 @@ TEST(Argon2idTest, DifferentSalt) {
   std::array<uint8_t, kKeySize> key0;
   std::array<uint8_t, kKeySize> key1;
   const char* pw = "password";
-  int size = strlen(pw);
+  int size = static_cast<int>(strlen(pw));
 
   for (size_t i = 0; i < kSaltSize; i++) {
     salt0[i] = i;

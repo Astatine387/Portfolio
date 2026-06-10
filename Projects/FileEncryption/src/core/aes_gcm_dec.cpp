@@ -193,7 +193,9 @@ Result AesGcm::SetupDecryptCtx() {
     ctx_ = nullptr;
   }
 
-  if (!(ctx_ = EVP_CIPHER_CTX_new())) {
+  ctx_ = EVP_CIPHER_CTX_new();
+
+  if (!ctx_) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot create context\n");
     return Result::kFailure;

@@ -16,8 +16,8 @@ Result Vault::NewVault(const std::string& path) {
 
   /* Generate initial data */
 
-  src_size_ = kCountSize;
-  dst_size_ = kMagicSize + kSaltSize + kIVSize + src_size_ + kTagSize;
+  src_size_ = static_cast<int64_t>(kCountSize);
+  dst_size_ = static_cast<int64_t>(kMagicSize + kSaltSize + kIVSize + src_size_ + kTagSize);
 
   src_buff_.assign(src_size_, 0);
   dst_buff_.assign(dst_size_, 0);
@@ -124,7 +124,7 @@ Result Vault::OpenVault(const std::string& path) {
 
   /* Decrypt */
 
-  dst_size_ = src_size_ - (kMagicSize + kSaltSize + kIVSize + kTagSize);
+  dst_size_ = static_cast<int64_t>(src_size_ - (kMagicSize + kSaltSize + kIVSize + kTagSize));
 
   dst_buff_.assign(dst_size_, 0);
 
@@ -177,10 +177,10 @@ Result Vault::SaveVault(const std::string& path) {
   src_size_ = sizeof(uint32_t);
 
   for (const auto& entry : entry_set_) {
-    src_size_ += entry.Size();
+    src_size_ += static_cast<int64_t>(entry.Size());
   }
 
-  dst_size_ = kMagicSize + kSaltSize + kIVSize + src_size_ + kTagSize;
+  dst_size_ = static_cast<int64_t>(kMagicSize + kSaltSize + kIVSize + src_size_ + kTagSize);
 
   /* Check whether the vault exceeds the maximum size */
 

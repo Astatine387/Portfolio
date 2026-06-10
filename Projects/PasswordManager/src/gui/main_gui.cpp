@@ -244,7 +244,7 @@ void MainGUI::OnChangePWRequested() {
   }
 }
 
-void MainGUI::CloseEvent(QCloseEvent* event) {
+void MainGUI::closeEvent(QCloseEvent* event) {
   if (timer_) {
     timer_->stop();
     timer_->disconnect();

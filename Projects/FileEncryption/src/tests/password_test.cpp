@@ -149,7 +149,7 @@ TEST(PasswordTest, MoveConstructor) {
 
   EXPECT_STREQ(pw1.GetData(), data);
   EXPECT_EQ(pw1.GetData(), ptr);
-  EXPECT_TRUE(pw0.IsEmpty());
+  EXPECT_TRUE(pw0.IsEmpty());  // NOLINT(bugprone-use-after-move)
 }
 
 /**
@@ -172,7 +172,7 @@ TEST(PasswordTest, MoveAssignment) {
 
   EXPECT_STREQ(pw1.GetData(), data);
   EXPECT_EQ(pw1.GetData(), ptr);
-  EXPECT_TRUE(pw0.IsEmpty());
+  EXPECT_TRUE(pw0.IsEmpty());  // NOLINT(bugprone-use-after-move)
 }
 
 /* ==================================================

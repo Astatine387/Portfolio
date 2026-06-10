@@ -42,7 +42,7 @@ PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
 
 Result PWLineEdit::Extract(Password& pw) {
   QByteArray data = pw_line_->text().toUtf8();
-  int size = data.size();
+  int size = static_cast<int>(data.size());
   Result res;
 
   Lock(data.data(), size);

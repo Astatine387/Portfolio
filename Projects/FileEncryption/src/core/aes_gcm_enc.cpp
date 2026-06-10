@@ -103,7 +103,9 @@ Result AesGcm::EncryptInit(const char* pw, size_t plen) {
 
   /* Set encryption context */
 
-  if (!(ctx_ = EVP_CIPHER_CTX_new())) {
+  ctx_ = EVP_CIPHER_CTX_new();
+
+  if (!ctx_) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot create context\n");
     return Result::kFailure;
@@ -226,7 +228,7 @@ Result AesGcm::EncryptBatch() {
 }
 
 Result AesGcm::EncryptRemain() {
-  int crs = 0, rem = src_size_ % (kBuffSize * kBlockSize);
+  int crs = 0, rem = static_cast<int>(src_size_ % (kBuffSize * kBlockSize));
 
   if (ReadFile(buff_[0].data(), rem) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
@@ -246,7 +248,7 @@ Result AesGcm::EncryptRemain() {
 
   /* Encrypt remaining partial block */
 
-  rem = src_size_ % kBlockSize;
+  rem = static_cast<int>(src_size_ % kBlockSize);
 
   if (rem) {
     if (EncryptBuff(buff_[0][crs].data(), buff_[0][crs].data(), rem) == Result::kFailure) {

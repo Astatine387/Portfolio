@@ -21,7 +21,11 @@ int64_t GetFileSize(FILE* file) {
   }
 
   int64_t size = ftello(file);
-  rewind(file);
+
+  if (_fseeki64(file, 0, SEEK_SET)) {
+    return -1;
+  }
+
   return size;
 }
 
