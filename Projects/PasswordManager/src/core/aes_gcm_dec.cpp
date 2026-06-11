@@ -4,6 +4,7 @@
  * @author	Astatine387
  */
 
+#include <algorithm>
 #include <cstring>
 
 #include "core/aes_gcm.h"
@@ -13,22 +14,21 @@ Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, 
   src_buff_ = src;
   dst_buff_ = dst;
   size_ = size;
-  src_crs_ = 0;
   dst_crs_ = 0;
 
   if (DecryptInit(pw, plen) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  if (DecryptTag() == Result::kFailure) {
-    return Result::kFailure;  // LCOV_EXCL_LINE
+  /* Pass 1 - verify authentication tag */
+
+  if (DecryptBatch(DecryptMode::kVerify) == Result::kFailure) {
+    return Result::kFailure;
   }
 
-  if (DecryptBuff() == Result::kFailure) {
-    return Result::kFailure;  // LCOV_EXCL_LINE
-  }
+  /* Pass 2 - write plaintext */
 
-  if (DecryptFinal() == Result::kFailure) {
+  if (DecryptBatch(DecryptMode::kWrite) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
@@ -36,20 +36,14 @@ Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, 
 }
 
 Result AesGcm::DecryptInit(const char* pw, size_t plen) {
-  /* Clear existing context */
+  /* Read salt and IV from header */
 
-  if (ctx_) {
-    EVP_CIPHER_CTX_free(ctx_);
-    ctx_ = nullptr;
-  }
+  memcpy(salt_.data(), src_buff_, kSaltSize);
+  memcpy(iv_.data(), src_buff_ + kSaltSize, kIVSize);
 
-  /* Read salt and IV */
+  /* Read authentication tag from the end of the buffer */
 
-  memcpy(salt_.data(), src_buff_ + src_crs_, kSaltSize);
-  src_crs_ += kSaltSize;
-
-  memcpy(iv_.data(), src_buff_ + src_crs_, kIVSize);
-  src_crs_ += kIVSize;
+  memcpy(tag_.data(), src_buff_ + size_ - kTagSize, kTagSize);
 
   /* Derive key from password */
 
@@ -60,7 +54,49 @@ Result AesGcm::DecryptInit(const char* pw, size_t plen) {
     // LCOV_EXCL_STOP
   }
 
-  /* Set decryption context */
+  return Result::kSuccess;
+}
+
+Result AesGcm::DecryptBatch(DecryptMode mode) {
+  if (SetupDecryptCtx() == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  int64_t rem = static_cast<int64_t>(size_ - kSaltSize - kIVSize - kTagSize);
+  size_t src_crs = kSaltSize + kIVSize;
+  size_t dst_crs = 0;
+
+  while (rem > 0) {
+    int chunk = static_cast<int>(std::min<int64_t>(rem, kBuffSize * kBlockSize));
+
+    /* The verify pass decrypts into a scratch buffer so that unverified
+       plaintext is never written into the destination buffer */
+
+    uint8_t* dst = (mode == DecryptMode::kWrite) ? dst_buff_ + dst_crs : verify_buff_.data();
+
+    if (DecryptBuff(src_buff_ + src_crs, dst, chunk) == Result::kFailure) {
+      return Result::kFailure;  // LCOV_EXCL_LINE
+    }
+
+    src_crs += chunk;
+    dst_crs += chunk;
+    rem -= chunk;
+  }
+
+  if (DecryptFinal() == Result::kFailure) {
+    return Result::kFailure;
+  }
+
+  return Result::kSuccess;
+}
+
+Result AesGcm::SetupDecryptCtx() {
+  /* Clear existing context */
+
+  if (ctx_) {
+    EVP_CIPHER_CTX_free(ctx_);
+    ctx_ = nullptr;
+  }
 
   ctx_ = EVP_CIPHER_CTX_new();
 
@@ -92,15 +128,7 @@ Result AesGcm::DecryptInit(const char* pw, size_t plen) {
     // LCOV_EXCL_STOP
   }
 
-  return Result::kSuccess;
-}
-
-Result AesGcm::DecryptTag() {
-  std::array<uint8_t, kTagSize> tag{};
-
-  memcpy(tag.data(), src_buff_ + size_ - kTagSize, kTagSize);
-
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_TAG, kTagSize, tag.data()) != 1) {
+  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_TAG, kTagSize, tag_.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Tag failed - Cannot set authentication tag\n");
     return Result::kFailure;
@@ -110,25 +138,22 @@ Result AesGcm::DecryptTag() {
   return Result::kSuccess;
 }
 
-Result AesGcm::DecryptBuff() {
-  int in_len = static_cast<int>(size_ - kSaltSize - kIVSize - kTagSize);
+Result AesGcm::DecryptBuff(const uint8_t* src, uint8_t* dst, int len) {
   int out_len;
 
-  if (EVP_DecryptUpdate(ctx_, dst_buff_, &out_len, src_buff_ + src_crs_, in_len) != 1) {
+  if (EVP_DecryptUpdate(ctx_, dst, &out_len, src, len) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Decryption failed - Cannot decrypt buffer\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  if (out_len != in_len) {
+  if (out_len != len) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Decryption failed - Cannot decrypt buffer\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
-
-  dst_crs_ += in_len;
 
   return Result::kSuccess;
 }
@@ -138,21 +163,9 @@ Result AesGcm::DecryptFinal() {
   int final_len;
 
   if (EVP_DecryptFinal_ex(ctx_, final_block.data(), &final_len) != 1) {
-    // LCOV_EXCL_START
-    ReportError("[Crypto] Finalization failed - Cannot finalize decryption\n");
+    ReportError("[Auth] Verification failed - Invalid password or corrupted vault\n");
     return Result::kFailure;
-    // LCOV_EXCL_STOP
   }
-
-  if (final_len > 0) {
-    // LCOV_EXCL_START
-    ReportError("[Crypto] Finalization failed - Unexpected output from finalization\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
-
-  memcpy(dst_buff_ + dst_crs_, final_block.data(), final_len);
-  dst_crs_ += final_len;
 
   return Result::kSuccess;
 }

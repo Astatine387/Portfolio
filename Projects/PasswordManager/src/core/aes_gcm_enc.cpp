@@ -14,7 +14,6 @@ Result AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, 
   src_buff_ = src;
   dst_buff_ = dst;
   size_ = size;
-  src_crs_ = 0;
   dst_crs_ = 0;
 
   if (EncryptInit(pw, plen) == Result::kFailure) {

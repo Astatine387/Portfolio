@@ -14,6 +14,15 @@
 
 #include "common/constants.h"
 
+/**
+ * @enum	DecryptMode
+ * @brief	Whether a decryption pass verifies the tag or writes plaintext
+ */
+enum class DecryptMode : std::uint8_t {
+  kVerify,
+  kWrite,
+};
+
 class AesGcm {
  public:
   /* ==================================================
@@ -85,11 +94,13 @@ class AesGcm {
   std::array<uint8_t, kIVSize> iv_{};      // Initial vector
   std::array<uint8_t, kKeySize> key_{};    // Key derived from password
   std::array<uint8_t, kSaltSize> salt_{};  // Key derivation salt
+  std::array<uint8_t, kTagSize> tag_{};    // Authentication tag read from buffer
+
+  std::array<uint8_t, kBuffSize * kBlockSize> verify_buff_{};  // Scratch buffer for the verify pass
 
   uint8_t* src_buff_ = nullptr;  // Source buffer
   uint8_t* dst_buff_ = nullptr;  // Destination buffer
 
-  size_t src_crs_ = 0;  // Current read position in buffer
   size_t dst_crs_ = 0;  // Current write position in buffer
   size_t size_ = 0;     // Source buffer size
 
@@ -98,7 +109,7 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief	Initialize decryption context
+   * @brief	Read salt, IV, and tag, then derive the key
    * @param	pw		Password
    * @param	plen	Password length
    * @return	kSuccess on success, kFailure on failure
@@ -106,19 +117,29 @@ class AesGcm {
   Result DecryptInit(const char* pw, size_t plen);
 
   /**
-   * @brief	Read and verify authentication tag
+   * @brief	Run one decryption pass over the ciphertext
+   * @param	mode	kVerify to only check the tag, kWrite to emit plaintext
    * @return	kSuccess on success, kFailure on failure
    */
-  Result DecryptTag();
+  Result DecryptBatch(DecryptMode mode);
 
   /**
-   * @brief	Decrypt buffer
+   * @brief	Create the decryption context and set key, IV, and tag
    * @return	kSuccess on success, kFailure on failure
    */
-  Result DecryptBuff();
+  Result SetupDecryptCtx();
 
   /**
-   * @brief	Finalize decryption
+   * @brief	Decrypt a buffer
+   * @param	src		Source buffer
+   * @param	dst		Destination buffer
+   * @param	len		Source buffer length
+   * @return	kSuccess on success, kFailure on failure
+   */
+  Result DecryptBuff(const uint8_t* src, uint8_t* dst, int len);
+
+  /**
+   * @brief	Finalize decryption and verify the authentication tag
    * @return	kSuccess on success, kFailure on failure
    */
   Result DecryptFinal();

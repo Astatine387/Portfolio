@@ -20,6 +20,7 @@ AesGcm::~AesGcm() {
   Wipe(iv_.data(), sizeof(uint8_t) * kIVSize);
   Wipe(key_.data(), sizeof(uint8_t) * kKeySize);
   Wipe(salt_.data(), sizeof(uint8_t) * kSaltSize);
+  Wipe(verify_buff_.data(), verify_buff_.size());
 
   Unlock(key_.data(), kKeySize);
 
