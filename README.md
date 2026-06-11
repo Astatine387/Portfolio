@@ -4,23 +4,24 @@ I'm Astatine387, a C/C++ software engineer building cross-platform desktop appli
 
 # 2. Tech Stack
 
-| Category                   | Tools                                                  |
-| -------------------------- | ------------------------------------------------------ |
-| **Languages**              | C, C++20                                               |
-| **Libraries & Frameworks** | C++ STL, Argon2, OpenSSL, Qt6                          |
-| **Build & Package**        | CMake, vcpkg                                           |
-| **Testing & Quality**      | Google Test, Google Benchmark, cppcheck, Codecov, lcov |
-| **CI/CD**                  | GitHub Actions                                         |
-| **Platforms**              | Windows, Linux                                         |
+| Category                   | Tools                                                                            |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| **Languages**              | C, C++20                                                                         |
+| **Libraries & Frameworks** | C++ STL, Argon2, OpenSSL, Qt6                                                    |
+| **Build & Package**        | CMake, vcpkg                                                                     |
+| **Testing & Quality**      | Codecov, Google Test, Google Benchmark, lcov, clang-format, clang-tidy, cppcheck |
+| **CI/CD**                  | GitHub Actions                                                                   |
+| **Platforms**              | Windows, Linux                                                                   |
 
 # 3. Projects
 
 **All Projects Feature:**
 * Cross-platform support (Windows, Linux)
 * CI/CD via GitHub Actions
-	* Static analysis (cppcheck)
+	* Formatting (clang-format, based on Google C++ Style Guide)
+	* Runtime memory safety check (AddressSanitizer)
+	* Static analysis and Linting (clang-tidy, cppcheck)
 	* Unit tests (Google Test)
-	* Runtime memory safety validation (AddressSanitizer)
 	* Coverage report (Codecov)
 
 ## 3-1. [FileEncryption](./Projects/FileEncryption)
