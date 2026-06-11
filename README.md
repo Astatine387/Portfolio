@@ -35,14 +35,15 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * AES-256-GCM for file encryption and integrity check
 * Argon2id for key derivation from password
 * Qt6 graphical user interface
-* Double buffering and asynchronous write for better performance 
+* Double buffering and asynchronous write for better performance
+* Two-pass decryption that never writes unverified plaintext into disk
 * Asynchronous, multithread processing for non-blocking UI
 * Real-time progress tracking and cancellation support
 * Error report and automatic stop when error occurs
 
 **Security Considerations**
 * Argon2id memory hard and data independent key derivation, resistant to both brute force attacks and side channel attacks
-* GCM tag provides integrity check; corrupted or tampered ciphertext files are rejected before decryption starts
+* GCM tag provides integrity check, and two-pass decryption procedure verifies it before writing any plaintext into disk
 * Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
 * Keys are locked in memory using `VirtualLock`/`mlock` to prevent them from being swapped to disk
 * Randomized salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
@@ -56,12 +57,13 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id.
 **Features**
 * AES-256-GCM for vault encryption and integrity check
 * Qt6 graphical user interface
+* Two-pass decryption that never writes unverified plaintext into disk
 * Random password generator with customizable length and special characters
 * Search and filter entries by keyword
 
 **Security Considerations**
 * Argon2id memory hard and data independent key derivation, resistant to both brute force attacks and side channel attacks
-* GCM tag checks integrity; corrupted or tampered vault files are rejected before decryption starts
+* GCM tag provides integrity check, and two-pass decryption procedure verifies it before writing any plaintext into disk
 * Automatic clipboard clear after 30 seconds of password copy
 * Constant time password comparison
 * Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`

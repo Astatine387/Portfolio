@@ -13,6 +13,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * Argon2id for key derivation from password
 * Qt6 graphical user interface
 * Double buffering and asynchronous write for better performance 
+* Two-pass decryption that never writes unverified plaintext into disk
 * Asynchronous, multithread processing for non-blocking UI
 * Real-time progress tracking and cancellation support
 * Error report and automatic stop when error occurs
@@ -39,7 +40,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 
 ## 2-2. Security Considerations
 
-* GCM tag provides integrity check; corrupted or tampered ciphertext files are rejected before decryption starts
+* GCM tag provides integrity check, and two-pass decryption procedure verifies it before writing any plaintext into disk
 * Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
 * Keys are locked in memory using `VirtualLock`/`mlock` to prevent them from being swapped to disk
 * Newly and randomly generated salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
