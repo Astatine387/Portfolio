@@ -82,7 +82,6 @@ Progress AesGcm::ReportProgress() {
     pcb_(perc, &should_cancel);
 
     if (should_cancel) {
-      cancelled_.store(true);
       return Progress::kCancelled;
     }
   }

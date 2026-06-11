@@ -12,7 +12,6 @@
 Result AesGcm::Encrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
   src_file_ = src;
   dst_file_ = dst;
-  cancelled_ = false;
   progress_cur_ = 0;
   writing_ = false;
 
