@@ -67,6 +67,8 @@ target_link_libraries(PasswordManager-core PUBLIC
 
 if(WIN32)
     target_link_libraries(PasswordManager-core PUBLIC bcrypt)
+else()
+    target_compile_definitions(PasswordManager-core PRIVATE _GNU_SOURCE)
 endif()
 
 set(GUI_SOURCES

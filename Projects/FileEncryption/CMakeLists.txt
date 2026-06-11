@@ -71,6 +71,8 @@ target_link_libraries(FileEncryption-core PUBLIC
 
 if(WIN32)
     target_link_libraries(FileEncryption-core PUBLIC bcrypt)
+else()
+    target_compile_definitions(FileEncryption-core PRIVATE _GNU_SOURCE)
 endif()
 
 set(GUI_SOURCES
