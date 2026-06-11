@@ -227,39 +227,23 @@ Result AesGcm::EncryptBatch() {
 }
 
 Result AesGcm::EncryptRemain() {
-  int crs = 0, rem = static_cast<int>(src_size_ % (kBuffSize * kBlockSize));
+  int rem = static_cast<int>(src_size_ % (kBuffSize * kBlockSize));
 
   if (ReadFile(buff_[0].data(), rem) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  /* Encrypt remaining full blocks */
+  /* Encrypt all remaining data at once */
 
-  while (progress_cur_ + kBlockSize <= src_size_) {
-    if (EncryptBuff(buff_[0][crs].data(), buff_[0][crs].data(), kBlockSize) == Result::kFailure) {
-      return Result::kFailure;  // LCOV_EXCL_LINE
-    }
-
-    crs++;
-
-    progress_cur_ += kBlockSize;
-  }
-
-  /* Encrypt remaining partial block */
-
-  rem = static_cast<int>(src_size_ % kBlockSize);
-
-  if (rem) {
-    if (EncryptBuff(buff_[0][crs].data(), buff_[0][crs].data(), rem) == Result::kFailure) {
-      return Result::kFailure;  // LCOV_EXCL_LINE
-    }
-
-    progress_cur_ += rem;
-  }
-
-  if (WriteFile(buff_[0].data(), kBlockSize * crs + rem) == Result::kFailure) {
+  if (EncryptBuff(buff_[0].data(), buff_[0].data(), rem) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
+
+  if (WriteFile(buff_[0].data(), rem) == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  progress_cur_ += rem;
 
   if (ReportProgress() == Progress::kCancelled) {
     return Result::kFailure;  // LCOV_EXCL_LINE
