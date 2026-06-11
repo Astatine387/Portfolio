@@ -141,28 +141,60 @@ Result AesGcm::DecryptBatch(DecryptMode mode) {
   }
 
   int64_t rem = src_size_;
+  int cur = 0;
 
   while (rem > 0) {
     int chunk = static_cast<int>(std::min<int64_t>(rem, kBuffSize * kBlockSize));
 
-    if (ReadFile(buff_[0].data(), chunk) == Result::kFailure) {
+    /* Read and decrypt current buffer */
+
+    if (ReadFile(buff_[cur].data(), chunk) == Result::kFailure) {
       return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
-    if (DecryptBuff(buff_[0].data(), buff_[0].data(), chunk) == Result::kFailure) {
+    if (DecryptBuff(buff_[cur].data(), buff_[cur].data(), chunk) == Result::kFailure) {
       return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
-    if (mode == DecryptMode::kWrite && WriteFile(buff_[0].data(), chunk) == Result::kFailure) {
-      return Result::kFailure;  // LCOV_EXCL_LINE
+    if (mode == DecryptMode::kWrite) {
+      /* Wait for the previous write to finish */
+
+      if (writing_ && write_res_.get() != Result::kSuccess) {
+        return Result::kFailure;  // LCOV_EXCL_LINE
+      }
+
+      /* Begin asynchronous write */
+
+      write_res_ = std::async(std::launch::async, [this, cur, chunk]() { return WriteFile(buff_[cur].data(), chunk); });
+
+      writing_ = true;
+
+      /* Swap buffer */
+
+      cur = 1 - cur;
     }
+
+    /* Update progress */
 
     rem -= chunk;
     progress_cur_ += chunk;
 
     if (ReportProgress() == Progress::kCancelled) {
+      if (writing_) {
+        write_res_.wait();
+      }
       return Result::kFailure;
     }
+  }
+
+  /* Wait for the last write to finish */
+
+  if (writing_) {
+    if (write_res_.get() != Result::kSuccess) {
+      return Result::kFailure;  // LCOV_EXCL_LINE
+    }
+
+    writing_ = false;
   }
 
   if (DecryptFinal() == Result::kFailure) {
