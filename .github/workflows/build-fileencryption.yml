@@ -194,7 +194,7 @@ jobs:
           lcov --remove coverage.info \
             '/usr/*' \
             '*/gtest/*' \
-            '*/Tests/*' \
+            '*/tests/*' \
             '*/FileEncryption/src/benchmark/benchmark.cpp' \
             '*/FileEncryption/src/common/main.cpp' \
             '*/FileEncryption/src/core/crypto_worker.cpp' \
