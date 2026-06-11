@@ -103,7 +103,7 @@ void Unlock(void* ptr, size_t size) {
 }
 
 void Wipe(void* ptr, size_t size) {
-#if defined(__GLIBC__) && __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 25
+#if defined(__GLIBC__) && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25))
   explicit_bzero(ptr, size);
 #else
   volatile uint8_t* p = static_cast<volatile uint8_t*>(ptr);
