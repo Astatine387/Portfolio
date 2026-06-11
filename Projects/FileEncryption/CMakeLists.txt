@@ -109,6 +109,7 @@ enable_testing()
 
 set(TEST_SOURCES
     src/tests/aes_gcm_test.cpp
+    src/tests/crypto_worker_test.cpp
     src/tests/password_test.cpp
     src/tests/utils_test.cpp
 )

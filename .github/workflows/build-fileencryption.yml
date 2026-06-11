@@ -197,8 +197,6 @@ jobs:
             '*/tests/*' \
             '*/FileEncryption/src/benchmark/benchmark.cpp' \
             '*/FileEncryption/src/common/main.cpp' \
-            '*/FileEncryption/src/core/crypto_worker.cpp' \
-            '*/FileEncryption/src/core/crypto_worker.h' \
             '*/FileEncryption/src/gui/*' \
             --output-file coverage.info --ignore-errors mismatch,unused
           echo "=== Files in coverage report ==="

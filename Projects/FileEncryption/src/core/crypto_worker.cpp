@@ -24,7 +24,7 @@ void CryptoWorker::Work() {
 
   if (!pw_.IsLocked()) {
     if (fcb_) {
-      fcb_("[Memory] Lock failed - Cannot lock password in memory\n");
+      fcb_("[Memory] Lock failed - Cannot lock password in memory\n");  // LCOV_EXCL_LINE
     }
 
     return;
