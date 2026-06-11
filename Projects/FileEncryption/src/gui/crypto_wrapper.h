@@ -29,7 +29,6 @@ class CryptoWrapper : public QObject {
   /**
    * @brief	Signal when encryption/decryption is completed
    * @param   msg             Result message
-   * @param   should_delete     Destination file deletion flag value
    */
   void Finished(const QString& msg);
 

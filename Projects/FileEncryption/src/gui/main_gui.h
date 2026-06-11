@@ -57,7 +57,6 @@ class MainGUI : public QWidget {
   /**
    * @brief	Show result and set deletion flag
    * @param   msg             Result message
-   * @param   shouldDelete    Destination file deletion flag value
    */
   void OnWorkFinished(const QString& msg);
 
