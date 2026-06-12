@@ -110,12 +110,6 @@ class EntryGUI : public QDialog {
   QVector<bool> GetSpecialsList();
 
   /**
-   * @brief	    Check whether the password has at least one special character
-   * @return	true if the password has at least one special character
-   */
-  [[nodiscard]] bool HasSpecial(const Password& pw) const;
-
-  /**
    * @brief	    Check if at least one special character is selected
    * @return	true if at least one is checked
    */

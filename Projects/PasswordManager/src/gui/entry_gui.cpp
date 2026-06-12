@@ -181,11 +181,6 @@ void EntryGUI::OnOKClicked() {
     return;
   }
 
-  if (!HasSpecial(tmp)) {
-    err_msg_->setText("Password must contain at least one special character");
-    return;
-  }
-
   pwline_->SetPassword(tmp);
 
   accept();
@@ -237,24 +232,6 @@ QVector<bool> EntryGUI::GetSpecialsList() {
   }
 
   return list;
-}
-
-bool EntryGUI::HasSpecial(const Password& pw) const {
-  const char* data = pw.GetData();
-  size_t size = pw.GetSize();
-
-  if (!data || size == 0) {
-    return false;
-  }
-
-  for (size_t i = 0; i < size; i++) {
-    for (int j = 0; j < 32; j++)
-      if (data[i] == kSpcs[j]) {
-        return true;
-      }
-  }
-
-  return false;
 }
 
 bool EntryGUI::HasSpecialSelected() const {
