@@ -121,7 +121,7 @@ src
 └── Utils
     ├── password.h/cpp       # Secure password container
     ├── platform.h           # Utility function declarations
-    ├── platform_linux.cpp   # Common utility functions
+    ├── platform.cpp         # Common utility functions
     ├── platform_linux.cpp   # Linux utility functions
     └── platform_win32.cpp   # Windows utility functions
 ```
@@ -196,20 +196,20 @@ cmake --build build
 
 | File                     | Tracked Lines | Covered | Partial | Missed | Coverage % |
 | ------------------------ | ------------- | ------- | ------- | ------ | ---------- |
-| core/aes_gcm.cpp         | 23            | 19      | 0       | 4      | 82.61%     |
+| core/aes_gcm.cpp         | 23            | 23      | 0       | 0      | 100.00%    |
 | core/aes_gcm.h           | 1             | 1       | 0       | 0      | 100.00%    |
-| core/aes_gcm_dec.cpp     | 41            | 41      | 0       | 0      | 100.00%    |
-| core/aes_gcm_enc.cpp     | 43            | 43      | 0       | 0      | 100.00%    |
-| core/entry.cpp           | 48            | 47      | 0       | 1      | 97.92%     |
+| core/aes_gcm_dec.cpp     | 53            | 53      | 0       | 0      | 100.00%    |
+| core/aes_gcm_enc.cpp     | 46            | 46      | 0       | 0      | 100.00%    |
+| core/entry.cpp           | 47            | 47      | 0       | 0      | 100.00%    |
 | core/entry.h             | 4             | 4       | 0       | 0      | 100.00%    |
 | core/vault.cpp           | 27            | 27      | 0       | 0      | 100.00%    |
 | core/vault.h             | 1             | 1       | 0       | 0      | 100.00%    |
-| core/vault_entry.cpp     | 32            | 30      | 0       | 2      | 93.75%     |
-| core/vault_file.cpp      | 103           | 97      | 0       | 6      | 94.17%     |
-| utils/password.cpp       | 33            | 33      | 0       | 0      | 100.00%    |
-| utils/password.h         | 21            | 21      | 0       | 0      | 100.00%    |
-| utils/platform.cpp       | 14            | 14      | 0       | 0      | 100.00%    |
-| utils/platform_linux.cpp | 41            | 33      | 0       | 8      | 80.49%     |
+| core/vault_entry.cpp     | 29            | 29      | 0       | 0      | 100.00%    |
+| core/vault_file.cpp      | 104           | 102     | 0       | 2      | 98.08%     |
+| utils/password.cpp       | 36            | 36      | 0       | 0      | 100.00%    |
+| utils/password.h         | 25            | 25      | 0       | 0      | 100.00%    |
+| utils/platform.cpp       | 15            | 15      | 0       | 0      | 100.00%    |
+| utils/platform_linux.cpp | 39            | 35      | 0       | 8      | 89.74%     |
 
 | Module   | Test File            | Test Cases                                                                 |
 | -------- | -------------------- | -------------------------------------------------------------------------- |
