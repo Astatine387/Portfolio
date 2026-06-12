@@ -11,7 +11,21 @@
 #include "common/constants.h"
 
 Result RandomRange(uint32_t* dst, uint32_t min, uint32_t max) {
-  uint32_t range = max - min + 1, limit = UINT32_MAX - UINT32_MAX % range;
+  /* Reject an inverted range */
+
+  if (min > max) {
+    return Result::kFailure;
+  }
+
+  uint32_t range = max - min + 1;
+
+  /* Reject a range that overflows to zero, to avoid division by zero */
+
+  if (range == 0) {
+    return Result::kFailure;
+  }
+
+  uint32_t limit = UINT32_MAX - UINT32_MAX % range;
   uint32_t tmp;
 
   do {

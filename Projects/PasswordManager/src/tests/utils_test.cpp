@@ -346,6 +346,24 @@ TEST(RandomRangeTest, MinEqualsMax) {
   }
 }
 
+/**
+ * @brief   Verify RandomRange fails when the range overflows to zero
+ */
+TEST(RandomRangeTest, ZeroRange) {
+  uint32_t val;
+
+  EXPECT_EQ(RandomRange(&val, 0, UINT32_MAX), Result::kFailure);
+}
+
+/**
+ * @brief   Verify RandomRange fails when min is greater than max
+ */
+TEST(RandomRangeTest, MinGreaterThanMax) {
+  uint32_t val;
+
+  EXPECT_EQ(RandomRange(&val, 10, 5), Result::kFailure);
+}
+
 /* ==================================================
  * RenameFile Test
  * ================================================== */
