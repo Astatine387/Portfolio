@@ -326,8 +326,9 @@ TEST(RandomTest, DifferentEachCall) {
  */
 TEST(RandomRangeTest, WithinRange) {
   for (int i = 0; i < 100; i++) {
-    uint32_t val = RandomRange(0, 9);
+    uint32_t val;
 
+    EXPECT_EQ(RandomRange(&val, 0, 9), Result::kSuccess);
     EXPECT_GE(val, 0u);
     EXPECT_LE(val, 9u);
   }
@@ -338,7 +339,9 @@ TEST(RandomRangeTest, WithinRange) {
  */
 TEST(RandomRangeTest, MinEqualsMax) {
   for (int i = 0; i < 10; i++) {
-    uint32_t val = RandomRange(0, 0);
+    uint32_t val;
+
+    EXPECT_EQ(RandomRange(&val, 0, 0), Result::kSuccess);
     EXPECT_EQ(val, 0u);
   }
 }
@@ -497,7 +500,7 @@ TEST(ShuffleTest, PreservesElements) {
     arr[i] = i;
   }
 
-  Shuffle(arr.data(), arr.size());
+  EXPECT_EQ(Shuffle(arr.data(), arr.size()), Result::kSuccess);
 
   /* Sort and verify all elements are preserved */
 

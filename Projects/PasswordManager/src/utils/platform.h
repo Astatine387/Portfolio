@@ -20,11 +20,12 @@ int64_t GetFileSize(FILE* file);
 
 /**
  * @brief	Generate CSPRN in given range
+ * @param	dst		Output buffer for the generated number
  * @param	min		Minimum value
  * @param	max		Maximum value
- * @return	CSPRN
+ * @return	kSuccess on success, kFailure on failure
  */
-uint32_t RandomRange(uint32_t min, uint32_t max);
+Result RandomRange(uint32_t* dst, uint32_t min, uint32_t max);
 
 /**
  * @brief	Check a file exists
@@ -93,8 +94,9 @@ void OpenFile(FILE** file, const std::string& path, const char* mode);
  * @brief	Shuffle an array
  * @param	arr		Array to shuffle
  * @param	size	Array size
+ * @return	kSuccess on success, kFailure on failure
  */
-void Shuffle(uint8_t* arr, int size);
+Result Shuffle(uint8_t* arr, int size);
 
 /**
  * @brief	Swap two data

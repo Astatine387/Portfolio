@@ -10,15 +10,19 @@
 
 #include "common/constants.h"
 
-uint32_t RandomRange(uint32_t min, uint32_t max) {
+Result RandomRange(uint32_t* dst, uint32_t min, uint32_t max) {
   uint32_t range = max - min + 1, limit = UINT32_MAX - UINT32_MAX % range;
   uint32_t tmp;
 
   do {
-    Random(reinterpret_cast<uint8_t*>(&tmp), sizeof(uint32_t));
+    if (Random(reinterpret_cast<uint8_t*>(&tmp), sizeof(uint32_t)) == Result::kFailure) {
+      return Result::kFailure;  // LCOV_EXCL_LINE
+    }
   } while (tmp >= limit);
 
-  return min + tmp % range;
+  *dst = min + tmp % range;
+
+  return Result::kSuccess;
 }
 
 Result Argon2id(uint8_t* salt, const char* pw, size_t plen, uint8_t* key) {
@@ -29,10 +33,18 @@ Result Argon2id(uint8_t* salt, const char* pw, size_t plen, uint8_t* key) {
   return Result::kSuccess;
 }
 
-void Shuffle(uint8_t* arr, int size) {
+Result Shuffle(uint8_t* arr, int size) {
+  uint32_t idx;
+
   for (int i = 0; i < size; i++) {
-    Swap(&arr[i], &arr[RandomRange(i, size - 1)]);
+    if (RandomRange(&idx, i, size - 1) == Result::kFailure) {
+      return Result::kFailure;  // LCOV_EXCL_LINE
+    }
+
+    Swap(&arr[i], &arr[idx]);
   }
+
+  return Result::kSuccess;
 }
 
 void Swap(uint8_t* a, uint8_t* b) {

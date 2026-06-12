@@ -315,18 +315,45 @@ Result EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size
 
   pw = new char[pw_size]{};
 
-  pw[0] = lower[RandomRange(0, 25)];
-  pw[1] = upper[RandomRange(0, 25)];
-  pw[2] = num[RandomRange(0, 9)];
-  pw[3] = pool[RandomRange(62, static_cast<uint32_t>(pool_size) - 1)];
+  Result res = Result::kSuccess;
+
+  /* Pick a random character from src into out, flagging failure if the CSPRNG fails */
+
+  auto fill = [&res](char& out, const std::string& src, uint32_t lo, uint32_t hi) {
+    uint32_t idx;
+
+    if (RandomRange(&idx, lo, hi) == Result::kFailure) {
+      // LCOV_EXCL_START
+      res = Result::kFailure;
+      return;
+      // LCOV_EXCL_STOP
+    }
+
+    out = src[idx];
+  };
+
+  /* Guarantee at least one lowercase, uppercase, number, and special character */
+
+  fill(pw[0], lower, 0, 25);
+  fill(pw[1], upper, 0, 25);
+  fill(pw[2], num, 0, 9);
+  fill(pw[3], pool, 62, static_cast<uint32_t>(pool_size) - 1);
+
+  /* Fill the remaining positions from the full pool */
 
   for (int i = 4; i < pw_size; i++) {
-    pw[i] = pool[RandomRange(0, static_cast<uint32_t>(pool_size) - 1)];
+    fill(pw[i], pool, 0, static_cast<uint32_t>(pool_size) - 1);
   }
 
-  Shuffle(reinterpret_cast<uint8_t*>(pw), pw_size);
+  /* Shuffle and store only if every draw succeeded */
 
-  Result res = dst.SetData(pw, pw_size);
+  if (res == Result::kSuccess) {
+    res = Shuffle(reinterpret_cast<uint8_t*>(pw), pw_size);
+  }
+
+  if (res == Result::kSuccess) {
+    res = dst.SetData(pw, pw_size);
+  }
 
   /* Cleanup */
 
