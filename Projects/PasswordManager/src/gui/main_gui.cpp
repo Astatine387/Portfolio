@@ -92,8 +92,6 @@ void MainGUI::OnLoginRequested(const LoginRequest& req) {
 
   /* Switch to list screen */
 
-  vault_path_ = req.path;
-
   RefreshList();
 
   stack_->setCurrentWidget(list_gui_);

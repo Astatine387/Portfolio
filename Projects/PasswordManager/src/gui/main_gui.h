@@ -122,7 +122,6 @@ class MainGUI : public QWidget {
   LoginGUI* login_gui_;
   PasswordGUI* pw_gui_;
   QStackedWidget* stack_;
-  QString vault_path_;
   QTimer* timer_ = nullptr;
   QVBoxLayout* vbox_;
   VaultInterface vault_;
