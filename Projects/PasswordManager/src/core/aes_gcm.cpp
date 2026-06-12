@@ -42,7 +42,7 @@ void AesGcm::ReportError(const char* msg) {
   res += msg;
 
   while ((code = ERR_get_error()) != 0) {
-    ERR_error_string_n(code, err_str.data(), sizeof(err_str).size());
+    ERR_error_string_n(code, err_str.data(), err_str.size());
 
     res += " -> ";
     res += err_str.data();
