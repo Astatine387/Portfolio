@@ -25,8 +25,6 @@ flags:
 ignore:
   - "Projects/FileEncryption/src/benchmark/benchmark.cpp"
   - "Projects/FileEncryption/src/common/main.cpp"
-  - "Projects/FileEncryption/src/core/crypto_worker.cpp"
-  - "Projects/FileEncryption/src/core/crypto_worker.h"
   - "Projects/FileEncryption/src/gui/"
   - "Projects/FileEncryption/src/tests/"
   - "Projects/PasswordManager/src/common/main.cpp"
