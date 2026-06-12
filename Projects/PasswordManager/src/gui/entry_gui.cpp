@@ -257,10 +257,12 @@ bool EntryGUI::HasSpecialSelected() const {
 }
 
 Result EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size) {
+  constexpr size_t kPoolMax = 62 + 32;  // 62 alphanumeric + up to 32 special characters
+
   std::string lower = "abcdefghijklmnopqrstuvwxyz";
   std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   std::string num = "0123456789";
-  std::string pool;
+  std::array<char, kPoolMax> pool{};
   size_t pool_size = 62;
   char* pw;
   int crs = 0;
@@ -284,8 +286,6 @@ Result EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size
       pool_size++;
     }
   }
-
-  pool.resize(pool_size);
 
   for (int i = 0; i < 26; i++) {
     pool[crs++] = lower[i];
@@ -315,11 +315,16 @@ Result EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size
 
   pw = new char[pw_size]{};
 
+  /* Lock the output buffer and the candidate pool so neither can be swapped to disk */
+
+  Lock(pw, pw_size);
+  Lock(pool.data(), pool.size());
+
   Result res = Result::kSuccess;
 
   /* Pick a random character from src into out, flagging failure if the CSPRNG fails */
 
-  auto fill = [&res](char& out, const std::string& src, uint32_t lo, uint32_t hi) {
+  auto fill = [&res](char& out, const auto& src, uint32_t lo, uint32_t hi) {
     uint32_t idx;
 
     if (RandomRange(&idx, lo, hi) == Result::kFailure) {
@@ -358,7 +363,9 @@ Result EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size
   /* Cleanup */
 
   Wipe(pool.data(), pool.size());
+  Unlock(pool.data(), pool.size());
   Wipe(pw, pw_size);
+  Unlock(pw, pw_size);
 
   delete[] pw;
 
