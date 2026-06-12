@@ -13,8 +13,11 @@
 #include <openssl/evp.h>
 
 #include <array>
+#include <condition_variable>
 #include <cstdint>
-#include <future>
+#include <functional>
+#include <mutex>
+#include <thread>
 
 #include "common/constants.h"
 
@@ -129,9 +132,15 @@ class AesGcm {
   std::array<uint8_t, kSaltSize> salt_{};                                                // Key derivation salt
   std::array<uint8_t, kTagSize> tag_{};  // Authentication tag read from file
 
-  std::future<Result> write_res_;  // Asynchronous write result
-  bool writing_ = false;           // Whether there is ongoing asynchronous write
-  bool key_locked_ = false;        // Whether the key buffer is locked in memory
+  std::thread writer_;                      // Long-lived asynchronous write worker
+  std::mutex write_mtx_;                    // Guards the write hand-off state below
+  std::condition_variable write_cv_;        // Signals job-ready and job-done transitions
+  const void* write_buff_ = nullptr;        // Buffer queued for writing
+  size_t write_size_ = 0;                   // Number of bytes queued for writing
+  bool write_pending_ = false;              // Whether a write job is queued or in progress
+  bool writer_stop_ = false;                // Whether the writer thread should exit
+  Result write_result_ = Result::kSuccess;  // Result of the most recent write
+  bool key_locked_ = false;                 // Whether the key buffer is locked in memory
 
   /* ==================================================
    * I/O helper functions
@@ -152,6 +161,25 @@ class AesGcm {
    * @return    kSuccess on success, kFailure on failure
    */
   Result WriteFile(const void* buff, size_t size);
+
+  /**
+   * @brief	    Body of the persistent asynchronous write thread
+   */
+  void WriterLoop();
+
+  /**
+   * @brief	    Queue a buffer for asynchronous writing
+   * @param	    buff	Source buffer (must stay valid until the next SubmitWrite or FlushWrite)
+   * @param	    size	Number of bytes to write
+   * @return    kSuccess if the previous write succeeded, kFailure otherwise
+   */
+  Result SubmitWrite(const void* buff, size_t size);
+
+  /**
+   * @brief	    Wait for the in-flight write to finish
+   * @return    kSuccess if every write so far succeeded, kFailure otherwise
+   */
+  Result FlushWrite();
 
   /* ==================================================
    * Decryption functions

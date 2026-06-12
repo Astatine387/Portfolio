@@ -18,12 +18,22 @@
 
 AesGcm::AesGcm() {
   key_locked_ = (Lock(key_.data(), kKeySize) == Result::kSuccess);
+  writer_ = std::thread(&AesGcm::WriterLoop, this);
 }
 
 // NOLINTNEXTLINE(bugprone-exception-escape)
 AesGcm::~AesGcm() {
-  if (write_res_.valid()) {
-    write_res_.wait();
+  /* Stop the writer thread, draining any in-flight write first */
+
+  {
+    std::scoped_lock lk(write_mtx_);
+    writer_stop_ = true;
+  }
+
+  write_cv_.notify_one();
+
+  if (writer_.joinable()) {
+    writer_.join();
   }
 
   for (int i = 0; i < kBuffNum; i++) {
@@ -71,6 +81,67 @@ Result AesGcm::WriteFile(const void* buff, size_t size) {
   }
 
   return Result::kSuccess;
+}
+
+void AesGcm::WriterLoop() {
+  std::unique_lock<std::mutex> lk(write_mtx_);
+
+  for (;;) {
+    write_cv_.wait(lk, [this] { return write_pending_ || writer_stop_; });
+
+    /* Exit once a shutdown was requested and no job is left to drain */
+
+    if (writer_stop_ && !write_pending_) {
+      break;
+    }
+
+    const void* buff = write_buff_;
+    size_t size = write_size_;
+
+    /* Write outside the lock so the producer can keep reading and encrypting */
+
+    lk.unlock();
+    Result res = WriteFile(buff, size);
+    lk.lock();
+
+    if (res != Result::kSuccess) {
+      write_result_ = res;  // Sticky: never mask a failure with a later success
+    }
+
+    write_pending_ = false;
+    write_cv_.notify_one();
+  }
+}
+
+Result AesGcm::SubmitWrite(const void* buff, size_t size) {
+  std::unique_lock<std::mutex> lk(write_mtx_);
+
+  /* Wait for the previous write to finish */
+
+  write_cv_.wait(lk, [this] { return !write_pending_; });
+
+  if (write_result_ != Result::kSuccess) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  /* Hand the new buffer to the writer thread */
+
+  write_buff_ = buff;
+  write_size_ = size;
+  write_pending_ = true;
+
+  lk.unlock();
+  write_cv_.notify_one();
+
+  return Result::kSuccess;
+}
+
+Result AesGcm::FlushWrite() {
+  std::unique_lock<std::mutex> lk(write_mtx_);
+
+  write_cv_.wait(lk, [this] { return !write_pending_; });
+
+  return write_result_;
 }
 
 Progress AesGcm::ReportProgress() {

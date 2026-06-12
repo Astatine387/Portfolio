@@ -13,7 +13,15 @@ Result AesGcm::Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
   src_file_ = src;
   dst_file_ = dst;
   progress_cur_ = 0;
-  writing_ = false;
+
+  /* Drain any write left over from a previous (possibly aborted) run, then arm a clean result */
+
+  FlushWrite();
+
+  {
+    std::scoped_lock lk(write_mtx_);
+    write_result_ = Result::kSuccess;
+  }
 
   if (DecryptInit(pw, plen) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
@@ -157,17 +165,11 @@ Result AesGcm::DecryptBatch(DecryptMode mode) {
     }
 
     if (mode == DecryptMode::kWrite) {
-      /* Wait for the previous write to finish */
+      /* Queue the buffer for asynchronous writing (waits for the previous write to finish) */
 
-      if (writing_ && write_res_.get() != Result::kSuccess) {
+      if (SubmitWrite(buff_[cur].data(), chunk) == Result::kFailure) {
         return Result::kFailure;  // LCOV_EXCL_LINE
       }
-
-      /* Begin asynchronous write */
-
-      write_res_ = std::async(std::launch::async, [this, cur, chunk]() { return WriteFile(buff_[cur].data(), chunk); });
-
-      writing_ = true;
 
       /* Swap buffer */
 
@@ -180,21 +182,15 @@ Result AesGcm::DecryptBatch(DecryptMode mode) {
     progress_cur_ += chunk;
 
     if (ReportProgress() == Progress::kCancelled) {
-      if (writing_) {
-        write_res_.wait();
-      }
+      FlushWrite();
       return Result::kFailure;
     }
   }
 
   /* Wait for the last write to finish */
 
-  if (writing_) {
-    if (write_res_.get() != Result::kSuccess) {
-      return Result::kFailure;  // LCOV_EXCL_LINE
-    }
-
-    writing_ = false;
+  if (FlushWrite() == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
   if (DecryptFinal() == Result::kFailure) {
