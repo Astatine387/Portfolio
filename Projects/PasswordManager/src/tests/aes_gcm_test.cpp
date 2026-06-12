@@ -7,6 +7,9 @@
 #include "core/aes_gcm.h"
 
 #include <gtest/gtest.h>
+#include <openssl/err.h>
+
+#include <string>
 
 /* ==================================================
  * Encryption/Decryption Tests
@@ -15,7 +18,7 @@
 /**
  * @brief   Verify encryption and decryption round-trip preserves data
  */
-TEST(AES_GCM_Test, EncryptDecryptBasic) {
+TEST(AesGcmTest, EncryptDecryptBasic) {
   AesGcm aes;
 
   const char* data = "Hello, world!";
@@ -49,7 +52,7 @@ TEST(AES_GCM_Test, EncryptDecryptBasic) {
  * @brief   Verify encryption produces different ciphertext each time (random
  * salt/IV)
  */
-TEST(AES_GCM_Test, EncryptProducesDifferentOutput) {
+TEST(AesGcmTest, EncryptProducesDifferentOutput) {
   AesGcm aes;
 
   const char* data = "Hello, world!";
@@ -74,7 +77,7 @@ TEST(AES_GCM_Test, EncryptProducesDifferentOutput) {
 /**
  * @brief   Verify decryption with wrong password fails
  */
-TEST(AES_GCM_Test, DecryptWrongPassword) {
+TEST(AesGcmTest, DecryptWrongPassword) {
   AesGcm aes;
 
   const char* data = "Hello, world!";
@@ -102,7 +105,7 @@ TEST(AES_GCM_Test, DecryptWrongPassword) {
 /**
  * @brief   Verify tampering with ciphertext causes decryption failure
  */
-TEST(AES_GCM_Test, TamperedCiphertext) {
+TEST(AesGcmTest, TamperedCiphertext) {
   AesGcm aes;
 
   const char* data = "Hello, world!";
@@ -132,7 +135,7 @@ TEST(AES_GCM_Test, TamperedCiphertext) {
 /**
  * @brief   Verify tampering with authentication tag causes decryption failure
  */
-TEST(AES_GCM_Test, TamperedTag) {
+TEST(AesGcmTest, TamperedTag) {
   AesGcm aes;
 
   const char* data = "Hello, world!";
@@ -166,7 +169,7 @@ TEST(AES_GCM_Test, TamperedTag) {
 /**
  * @brief   Verify encryption and decryption works with single byte
  */
-TEST(AES_GCM_Test, SingleByte) {
+TEST(AesGcmTest, SingleByte) {
   AesGcm aes;
 
   const char* pw = "password";
@@ -196,7 +199,7 @@ TEST(AES_GCM_Test, SingleByte) {
 /**
  * @brief   Verify encryption and decryption works with large data
  */
-TEST(AES_GCM_Test, LargeData) {
+TEST(AesGcmTest, LargeData) {
   AesGcm aes;
 
   const char* pw = "password";
@@ -230,7 +233,7 @@ TEST(AES_GCM_Test, LargeData) {
 /**
  * @brief   Verify error callback is invoked on decryption failure
  */
-TEST(AES_GCM_Test, ErrorCallback) {
+TEST(AesGcmTest, ErrorCallback) {
   AesGcm aes;
   bool cb_called = false;
 
@@ -256,4 +259,47 @@ TEST(AES_GCM_Test, ErrorCallback) {
   aes.Decrypt(enc.data(), dec.data(), enc_size, pw1, psize1);
 
   EXPECT_TRUE(cb_called);
+}
+
+/**
+ * @brief   Verify ReportError formats and appends queued OpenSSL errors
+ */
+TEST(AesGcmTest, ErrorCallbackFormatsQueue) {
+  AesGcm aes;
+  bool called = false;
+  std::string captured;
+
+  const char* data = "Hello, world!";
+  const char* pw0 = "password";
+  const char* pw1 = "asdf1234";
+
+  size_t dsize = strlen(data);
+  size_t psize0 = strlen(pw0);
+  size_t psize1 = strlen(pw1);
+  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+
+  std::vector<uint8_t> src(dsize);
+  std::vector<uint8_t> enc(enc_size);
+  std::vector<uint8_t> dec(dsize);
+
+  memcpy(src.data(), data, dsize);
+
+  /* Encrypt with the correct password */
+
+  aes.Encrypt(src.data(), enc.data(), dsize, pw0, psize0);
+
+  aes.SetErrorCallback([&](const char* msg) {
+    called = true;
+    captured = msg;
+  });
+
+  /* Seed the OpenSSL error queue, then fail decryption with a wrong password */
+
+  ERR_clear_error();
+  ERR_raise(ERR_LIB_USER, ERR_R_INTERNAL_ERROR);
+
+  aes.Decrypt(enc.data(), dec.data(), enc_size, pw1, psize1);
+
+  EXPECT_TRUE(called);
+  EXPECT_NE(captured.find(" -> "), std::string::npos);
 }

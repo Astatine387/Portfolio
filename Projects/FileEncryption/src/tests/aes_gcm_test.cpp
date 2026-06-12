@@ -7,16 +7,17 @@
 #include "core/aes_gcm.h"
 
 #include <gtest/gtest.h>
+#include <openssl/err.h>
 
 #include <string>
 
 #include "utils/platform.h"
 
 /**
- * @class   TEST
+ * @class   AesGcmTest
  * @brief   Test fixture for AesGcm encryption/decryption tests
  */
-class TEST : public ::testing::Test {
+class AesGcmTest : public ::testing::Test {
  protected:
   std::string src_path_ = "test_src.tmp";
   std::string enc_path_ = "test_enc.tmp";
@@ -83,7 +84,7 @@ class TEST : public ::testing::Test {
  * @brief   Verify encryption and decryption works with no error, and decrypted
  * data is identical to original
  */
-TEST_F(TEST, EncryptDecryptBasic) {
+TEST_F(AesGcmTest, EncryptDecryptBasic) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
@@ -143,7 +144,7 @@ TEST_F(TEST, EncryptDecryptBasic) {
 /**
  * @brief   Verify decryption fails with wrong password
  */
-TEST_F(TEST, WrongPasswordFails) {
+TEST_F(AesGcmTest, WrongPasswordFails) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
@@ -192,7 +193,7 @@ TEST_F(TEST, WrongPasswordFails) {
 /**
  * @brief   Verify tampered ciphertext fails decryption
  */
-TEST_F(TEST, TamperedCipherFails) {
+TEST_F(AesGcmTest, TamperedCipherFails) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
@@ -252,7 +253,7 @@ TEST_F(TEST, TamperedCipherFails) {
 /**
  * @brief   Verify empty file can be encrypted and decrypted
  */
-TEST_F(TEST, EmptyFile) {
+TEST_F(AesGcmTest, EmptyFile) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig, copy;
@@ -307,7 +308,7 @@ TEST_F(TEST, EmptyFile) {
 /**
  * @brief   Verify file with exact buffer size works correctly
  */
-TEST_F(TEST, ExactBuffSizeFile) {
+TEST_F(AesGcmTest, ExactBuffSizeFile) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig, copy;
@@ -364,7 +365,7 @@ TEST_F(TEST, ExactBuffSizeFile) {
 /**
  * @brief   Verify arbitrary sized file works correctly
  */
-TEST_F(TEST, ArbitrarySizeFile) {
+TEST_F(AesGcmTest, ArbitrarySizeFile) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig, copy;
@@ -425,7 +426,7 @@ TEST_F(TEST, ArbitrarySizeFile) {
 /**
  * @brief   Verify progress callback is invoked during encryption
  */
-TEST_F(TEST, ProgressCallback) {
+TEST_F(AesGcmTest, ProgressCallback) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig;
@@ -467,7 +468,7 @@ TEST_F(TEST, ProgressCallback) {
 /**
  * @brief   Verify error callback is invoked on failure
  */
-TEST_F(TEST, ErrorCallback) {
+TEST_F(AesGcmTest, ErrorCallback) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   bool b = false;
@@ -515,6 +516,65 @@ TEST_F(TEST, ErrorCallback) {
   EXPECT_TRUE(b);
 }
 
+/**
+ * @brief   Verify ReportError formats and appends queued OpenSSL errors
+ */
+TEST_F(AesGcmTest, ErrorCallbackFormatsQueue) {
+  AesGcm aes;
+  FILE *src = nullptr, *dst = nullptr;
+  bool called = false;
+  std::string captured;
+  const char* data = "Hello, world!";
+  const char *pw0 = "password", *pw1 = "asdf1234";
+  int dsize = static_cast<int>(strlen(data));
+  int psize0 = static_cast<int>(strlen(pw0));
+  int psize1 = static_cast<int>(strlen(pw1));
+  std::vector<uint8_t> orig(data, data + dsize);
+
+  Create(src_path_, orig, dsize);
+
+  /* Encrypt with the correct password */
+
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
+
+  aes.Encrypt(src, dst, pw0, psize0);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  /* Seed the OpenSSL error queue, then fail decryption with a wrong password */
+
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb+");
+
+  aes.SetErrorCallback([&](const char* msg) {
+    called = true;
+    captured = msg;
+  });
+
+  ERR_clear_error();
+  ERR_raise(ERR_LIB_USER, ERR_R_INTERNAL_ERROR);
+
+  aes.Decrypt(src, dst, pw1, psize1);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  EXPECT_TRUE(called);
+  EXPECT_NE(captured.find(" -> "), std::string::npos);
+}
+
 /* ==================================================
  * Cancellation Tests
  * ================================================== */
@@ -522,7 +582,7 @@ TEST_F(TEST, ErrorCallback) {
 /**
  * @brief   Verify cancellation works
  */
-TEST_F(TEST, Cancellation) {
+TEST_F(AesGcmTest, Cancellation) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig;
