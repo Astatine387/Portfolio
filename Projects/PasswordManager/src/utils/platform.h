@@ -67,15 +67,6 @@ Result RemoveFile(const std::string& path);
 Result RenameFile(const std::string& src, const std::string& dst);
 
 /**
- * @brief	Move file pointer to specific position
- * @param	file	File pointer
- * @param	dist	Distance from reference point
- * @param	ref		Reference point
- * @return	kSuccess on success, kFailure on failure
- */
-Result Seek(FILE* file, int64_t dist, int ref);
-
-/**
  * @brief	Flush and sync file data to disk
  * @param	file	File pointer
  * @return	kSuccess on success, kFailure on failure

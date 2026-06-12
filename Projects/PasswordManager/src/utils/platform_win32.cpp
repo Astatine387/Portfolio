@@ -61,14 +61,6 @@ Result RenameFile(const std::string& src, const std::string& dst) {
   return Result::kSuccess;
 }
 
-Result Seek(FILE* file, int64_t offset, int origin) {
-  if (_fseeki64(file, offset, origin)) {
-    return Result::kFailure;
-  }
-
-  return Result::kSuccess;
-}
-
 Result SyncFile(FILE* file) {
   if (fflush(file)) {
     return Result::kFailure;
