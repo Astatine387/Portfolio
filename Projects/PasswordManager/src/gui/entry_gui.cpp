@@ -169,6 +169,18 @@ void EntryGUI::OnOKClicked() {
     return;
   }
 
+  /* Limit by UTF-8 byte size, since the vault stores and validates bytes (not characters) */
+
+  if (site_line_->text().toUtf8().size() > kMaxSiteLen) {
+    err_msg_->setText("Site exceeds maximum size (256 bytes)");
+    return;
+  }
+
+  if (acc_line_->text().toUtf8().size() > kMaxAccLen) {
+    err_msg_->setText("Account exceeds maximum size (256 bytes)");
+    return;
+  }
+
   Password tmp;
 
   if (pwline_->Extract(tmp) == Result::kFailure) {
