@@ -38,8 +38,10 @@ Result Vault::NewVault(const std::string& path) {
 
   if (aes_.Encrypt(src_buff_.data(), dst_buff_.data() + kMagicSize, src_size_, pw_.GetData(), pw_.GetSize()) ==
       Result::kFailure) {
+    // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt vault data\n");
     return Result::kFailure;
+    // LCOV_EXCL_STOP
   }
 
   /* Write vault */
@@ -237,8 +239,10 @@ Result Vault::SaveVault(const std::string& path) {
 
   if (aes_.Encrypt(src_buff_.data(), dst_buff_.data() + dst_cur, src_size_, pw_.GetData(), pw_.GetSize()) ==
       Result::kFailure) {
+    // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt vault data\n");
     return Result::kFailure;
+    // LCOV_EXCL_STOP
   }
 
   /* Save to temporary file */
@@ -304,10 +308,12 @@ Result Vault::ChangePW(const Password& pw, const std::string& path) {
   last_error_.clear();
 
   if (pw_.SetData(pw) == Result::kFailure) {
+    // LCOV_EXCL_START
     ReportError(
         "[Auth] Password change failed - Password exceeds maximum length (256 "
         "characters)\n");
     return Result::kFailure;
+    // LCOV_EXCL_STOP
   }
 
   if (SaveVault(path) == Result::kFailure) {

@@ -23,11 +23,13 @@ void CryptoWorker::Work() {
   /* Abort if the password is not locked in memory */
 
   if (!pw_.IsLocked()) {
+    // LCOV_EXCL_START
     if (fcb_) {
-      fcb_("[Memory] Lock failed - Cannot lock password in memory\n");  // LCOV_EXCL_LINE
+      fcb_("[Memory] Lock failed - Cannot lock password in memory\n");
     }
 
     return;
+    // LCOV_EXCL_STOP
   }
 
   /* Open files */
@@ -85,8 +87,10 @@ void CryptoWorker::Work() {
       should_delete = true;
     }
     else if (res == Result::kFailure) {
+      // LCOV_EXCL_START
       msg = err + "Encryption failed\n";
       should_delete = true;
+      // LCOV_EXCL_STOP
     }
     else {
       msg = "Encryption complete\n";

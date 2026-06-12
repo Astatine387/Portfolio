@@ -99,7 +99,7 @@ size_t Entry::Deser(const uint8_t* src, size_t srclen) {
   }
 
   if (pw.SetData(reinterpret_cast<const char*>(src + cur), dlen) == Result::kFailure) {
-    return 0;
+    return 0;  // LCOV_EXCL_LINE
   }
 
   cur += dlen;

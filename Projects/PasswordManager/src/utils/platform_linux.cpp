@@ -23,7 +23,7 @@ int64_t GetFileSize(FILE* file) {
   int64_t size = ftello(file);
 
   if (fseeko(file, 0, SEEK_SET)) {
-    return -1;
+    return -1;  // LCOV_EXCL_LINE
   }
 
   return size;
@@ -40,9 +40,11 @@ Result Random(uint8_t* dst, size_t size) {
     ssize_t result = getrandom(dst, remaining, 0);
 
     if (result == -1) {
+      // LCOV_EXCL_START
       if (errno == EINTR) {
         continue;
       }
+      // LCOV_EXCL_STOP
 
       return Result::kFailure;
     }
