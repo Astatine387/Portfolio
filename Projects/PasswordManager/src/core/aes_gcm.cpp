@@ -13,7 +13,7 @@
 #include "utils/platform.h"
 
 AesGcm::AesGcm() {
-  Lock(key_.data(), kKeySize);
+  key_locked_ = (Lock(key_.data(), kKeySize) == Result::kSuccess);
 }
 
 AesGcm::~AesGcm() {

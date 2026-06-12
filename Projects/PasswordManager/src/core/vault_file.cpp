@@ -25,6 +25,15 @@ Result Vault::NewVault(const std::string& path) {
   memcpy(src_buff_.data(), &entry_cnt, kCountSize);
   memcpy(dst_buff_.data(), &magic_num_, kMagicSize);
 
+  /* Abort if the password is not locked in memory */
+
+  if (!pw_.IsLocked()) {
+    // LCOV_EXCL_START
+    ReportError("[Memory] Lock failed - Cannot lock password in memory\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
   /* Encrypt */
 
   if (aes_.Encrypt(src_buff_.data(), dst_buff_.data() + kMagicSize, src_size_, pw_.GetData(), pw_.GetSize()) ==
@@ -122,6 +131,15 @@ Result Vault::OpenVault(const std::string& path) {
     return Result::kFailure;
   }
 
+  /* Abort if the password is not locked in memory */
+
+  if (!pw_.IsLocked()) {
+    // LCOV_EXCL_START
+    ReportError("[Memory] Lock failed - Cannot lock password in memory\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
   /* Decrypt */
 
   dst_size_ = static_cast<int64_t>(src_size_ - (kMagicSize + kSaltSize + kIVSize + kTagSize));
@@ -205,6 +223,15 @@ Result Vault::SaveVault(const std::string& path) {
 
   memcpy(dst_buff_.data() + dst_cur, &magic_num_, kMagicSize);
   dst_cur += kMagicSize;
+
+  /* Abort if the password is not locked in memory */
+
+  if (!pw_.IsLocked()) {
+    // LCOV_EXCL_START
+    ReportError("[Memory] Lock failed - Cannot lock password in memory\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
 
   /* Encrypt */
 

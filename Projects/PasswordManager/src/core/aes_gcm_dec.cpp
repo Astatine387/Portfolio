@@ -36,6 +36,15 @@ Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, 
 }
 
 Result AesGcm::DecryptInit(const char* pw, size_t plen) {
+  /* Abort if the key buffer is not locked in memory */
+
+  if (!key_locked_) {
+    // LCOV_EXCL_START
+    ReportError("[Memory] Lock failed - Cannot lock key in memory\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
   /* Read salt and IV from header */
 
   memcpy(salt_.data(), src_buff_, kSaltSize);

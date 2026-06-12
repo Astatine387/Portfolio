@@ -77,8 +77,9 @@ Result SyncFile(FILE* file);
  * @brief	Lock memory space so that it cannot be swapped
  * @param	ptr	Buffer to lock
  * @param	size	Buffer size in bytes
+ * @return	kSuccess on success, kFailure on failure
  */
-void Lock(void* ptr, size_t size);
+Result Lock(void* ptr, size_t size);
 
 /**
  * @brief	Open a file

@@ -104,6 +104,8 @@ class AesGcm {
   size_t dst_crs_ = 0;  // Current write position in buffer
   size_t size_ = 0;     // Source buffer size
 
+  bool key_locked_ = false;  // Whether the key buffer is locked in memory
+
   /* ==================================================
    * Decryption functions
    * ================================================== */

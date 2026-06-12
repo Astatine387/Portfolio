@@ -321,3 +321,29 @@ TEST(PasswordTest, SetDataExceedsMaxSize) {
   EXPECT_EQ(pw.SetData(data.c_str(), data.size()), Result::kFailure);
   EXPECT_TRUE(pw.IsEmpty());
 }
+
+/* ==================================================
+ * Lock Status Test
+ * ================================================== */
+
+/**
+ * @brief   Verify a default-constructed password is not locked
+ */
+TEST(PasswordTest, IsNotLockedWhenEmpty) {
+  Password pw;
+
+  EXPECT_FALSE(pw.IsLocked());
+}
+
+/**
+ * @brief   Verify password is locked in memory after setData
+ */
+TEST(PasswordTest, IsLockedAfterSetData) {
+  Password pw;
+  const char* data = "password";
+  size_t size = strlen(data);
+
+  pw.SetData(data, size);
+
+  EXPECT_TRUE(pw.IsLocked());
+}

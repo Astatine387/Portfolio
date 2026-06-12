@@ -28,6 +28,10 @@ bool Password::IsEmpty() const {
   return size_ == 0;
 }
 
+bool Password::IsLocked() const {
+  return locked_;
+}
+
 const char* Password::GetData() const {
   return data_;
 }
@@ -51,7 +55,7 @@ Result Password::SetData(const char* str, size_t len) {
     size_ = len;
     data_ = new char[size_ + 1];
 
-    Lock(data_, size_ + 1);
+    locked_ = (Lock(data_, size_ + 1) == Result::kSuccess);
     memcpy(data_, str, size_);
 
     data_[size_] = '\0';

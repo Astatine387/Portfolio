@@ -82,8 +82,8 @@ Result SyncFile(FILE* file) {
   return Result::kSuccess;
 }
 
-void Lock(void* ptr, size_t size) {
-  mlock(ptr, size);
+Result Lock(void* ptr, size_t size) {
+  return mlock(ptr, size) == 0 ? Result::kSuccess : Result::kFailure;
 }
 
 void OpenFile(FILE** file, const std::string& path, const char* mode) {

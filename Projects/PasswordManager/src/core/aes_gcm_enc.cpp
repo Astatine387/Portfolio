@@ -43,6 +43,15 @@ Result AesGcm::EncryptInit(const char* pw, size_t plen) {
     ctx_ = nullptr;
   }
 
+  /* Abort if the key buffer is not locked in memory */
+
+  if (!key_locked_) {
+    // LCOV_EXCL_START
+    ReportError("[Memory] Lock failed - Cannot lock key in memory\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
   /* Generate salt and IV */
 
   if (Random(salt_.data(), kSaltSize) == Result::kFailure) {
