@@ -74,4 +74,5 @@ void Password::Clean() {
 
   data_ = nullptr;
   size_ = 0;
+  locked_ = false;
 }
