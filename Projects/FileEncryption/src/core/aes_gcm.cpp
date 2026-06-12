@@ -179,5 +179,8 @@ void AesGcm::ReportError(const char* msg) {
     res += '\n';
   }
 
+  /* Serialize the callback so a write-thread error cannot race a read/encrypt-thread error */
+
+  std::scoped_lock lk(error_mtx_);
   ecb_(res.c_str());
 }

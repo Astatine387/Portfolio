@@ -121,6 +121,7 @@ class AesGcm {
 
   ErrorCallback ecb_ = nullptr;     // Error reporting callback function
   ProgressCallback pcb_ = nullptr;  // Progress reporting callback function
+  std::mutex error_mtx_;            // Serializes error callback calls from the read and write threads
 
   int64_t src_size_ = 0;      // Source file size
   int64_t progress_cur_ = 0;  // Current progress
