@@ -162,6 +162,61 @@ TEST_F(CryptoWorkerTest, ProgressCallbackReportsStatus) {
   EXPECT_NE(status.find("Encrypting"), std::string::npos);
 }
 
+/**
+ * @brief   Verify progress callback is invoked with a decrypting status
+ */
+TEST_F(CryptoWorkerTest, ProgressCallbackReportsDecrypting) {
+  std::vector<uint8_t> orig(static_cast<size_t>(kBlockSize) * kBuffSize * 10, 'a');
+  std::string status;
+
+  Create(src_path_, orig);
+
+  /* Encrypt first to produce a valid ciphertext */
+
+  CryptoWorker enc(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
+
+  enc.Work();
+
+  /* Decrypt with a progress callback */
+
+  CryptoWorker dec(enc_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
+
+  dec.SetProgressCallback([&](int perc, const std::string& msg) { status = msg; });
+
+  dec.Work();
+
+  EXPECT_NE(status.find("Decrypting"), std::string::npos);  // line 69
+}
+
+/**
+ * @brief   Verify a cancelled decryption reports cancellation and removes output
+ */
+TEST_F(CryptoWorkerTest, CancelDecryptionRemovesOutput) {
+  std::vector<uint8_t> orig(static_cast<size_t>(kBlockSize) * kBuffSize * 10, 'a');
+  std::string msg;
+
+  Create(src_path_, orig);
+
+  /* Encrypt first to produce a valid ciphertext */
+
+  CryptoWorker enc(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
+
+  enc.Work();
+
+  /* Decrypt, but cancel up front */
+
+  CryptoWorker dec(enc_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
+
+  dec.SetFinishedCallback([&](const std::string& m) { msg = m; });
+
+  dec.RequestCancel();
+
+  dec.Work();
+
+  EXPECT_NE(msg.find("canceled"), std::string::npos);  // lines 99-100
+  EXPECT_FALSE(FileExists(dec_path_));
+}
+
 /* ==================================================
  * Cancellation Tests
  * ================================================== */

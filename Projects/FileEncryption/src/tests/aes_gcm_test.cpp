@@ -137,6 +137,55 @@ TEST_F(AesGcmTest, EncryptDecryptBasic) {
   EXPECT_EQ(orig, copy);
 }
 
+/**
+ * @brief   Verify a reused AesGcm frees its previous context before re-init
+ */
+TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
+  AesGcm aes;
+  FILE *src = nullptr, *dst = nullptr;
+  const char* data = "Hello, world!";
+  const char* pw = "password";
+  int dsize = static_cast<int>(strlen(data));
+  int psize = static_cast<int>(strlen(pw));
+  std::vector<uint8_t> orig(data, data + dsize);
+  Result res0, res1;
+
+  Create(src_path_, orig, dsize);
+
+  /* First encryption - leaves a live context on the object */
+
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
+
+  res0 = aes.Encrypt(src, dst, pw, psize);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  /* Second encryption - EncryptInit must free the previous context */
+
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb+");
+
+  res1 = aes.Encrypt(src, dst, pw, psize);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  EXPECT_EQ(res0, Result::kSuccess);
+  EXPECT_EQ(res1, Result::kSuccess);
+}
+
 /* ==================================================
  * Authentication Tests
  * ================================================== */
@@ -622,4 +671,60 @@ TEST_F(AesGcmTest, Cancellation) {
   EXPECT_EQ(res, Result::kFailure);
   EXPECT_GE(cnt, 2);
   EXPECT_LE(cnt, 3);
+}
+
+/**
+ * @brief   Verify cancelling during the decryption write pass waits for the ongoing async write before reporting
+ * failure
+ */
+TEST_F(AesGcmTest, CancelDuringWritePass) {
+  AesGcm aes;
+  FILE *src = nullptr, *dst = nullptr;
+  std::vector<uint8_t> orig;
+  const char* pw = "password";
+  int dsize = kBlockSize * kBuffSize * 10;
+  int psize = static_cast<int>(strlen(pw));
+  Result res;
+
+  orig.resize(dsize, 'a');
+
+  Create(src_path_, orig, dsize);
+
+  /* Encrypt first to produce a valid ciphertext */
+
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
+
+  aes.Encrypt(src, dst, pw, psize);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  /* Decrypt, cancelling once the write pass is in progress (perc > 50) */
+
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb+");
+
+  aes.SetProgressCallback([&](int perc, bool* cancelled) {
+    if (perc > 50) {
+      *cancelled = true;
+    }
+  });
+
+  res = aes.Decrypt(src, dst, pw, psize);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  EXPECT_EQ(res, Result::kFailure);
 }
