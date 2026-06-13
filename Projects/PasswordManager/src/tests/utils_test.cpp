@@ -45,9 +45,11 @@ class GetFileSizeTest : public ::testing::Test {
     OpenFile(&file_, path_, "wb+");
 
     if (file_) {
-      std::vector<uint8_t> vec(size, 0x00);
+      if (size > 0) {
+        std::vector<uint8_t> vec(size, 0x00);
 
-      fwrite(vec.data(), 1, size, file_);
+        fwrite(vec.data(), 1, size, file_);
+      }
 
       fclose(file_);
 
