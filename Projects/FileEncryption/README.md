@@ -19,7 +19,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * Error report and automatic stop when error occurs
 * Cross-platform support for Windows and Linux
 
-## 2-1. Why use this?
+## 2-1. Cryptographic Choice
 
 * **AES-GCM**
 	* **AES**

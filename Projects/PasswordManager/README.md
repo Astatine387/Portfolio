@@ -17,7 +17,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 * Search and filter entries by keyword
 * Cross-platform support for Windows and Linux
 
-## 2-1. Why use this?
+## 2-1. Cryptographic Choice
 
 * **AES-GCM**
 	* **AES**
