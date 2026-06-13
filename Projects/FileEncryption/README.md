@@ -161,13 +161,13 @@ cmake --build build
 
 | File                     | Tracked Lines | Covered | Partial | Missed | Coverage % |
 | ------------------------ | ------------- | ------- | ------- | ------ | ---------- |
-| core/aes_gcm.cpp         | 42            | 42      | 0       | 0      | 100.00%    |
+| core/aes_gcm.cpp         | 75            | 74      | 0       | 1      | 98.67%     |
 | core/aes_gcm.h           | 2             | 2       | 0       | 0      | 100.00%    |
-| core/aes_gcm_dec.cpp     | 70            | 70      | 0       | 0      | 100.00%    |
-| core/aes_gcm_enc.cpp     | 70            | 70      | 0       | 0      | 100.00%    |
+| core/aes_gcm_dec.cpp     | 67            | 67      | 0       | 0      | 100.00%    |
+| core/aes_gcm_enc.cpp     | 68            | 68      | 0       | 0      | 100.00%    |
 | core/crypto_worker.cpp   | 51            | 51      | 0       | 0      | 100.00%    |
 | core/crypto_worker.h     | 4             | 4       | 0       | 0      | 100.00%    |
-| utils/password.cpp       | 25            | 25      | 0       | 0      | 100.00%    |
+| utils/password.cpp       | 26            | 26      | 0       | 0      | 100.00%    |
 | utils/password.h         | 25            | 25      | 0       | 0      | 100.00%    |
 | utils/platform.cpp       | 3             | 3       | 0       | 0      | 100.00%    |
 | utils/platform_linux.cpp | 33            | 30      | 0       | 6      | 90.91%     |
