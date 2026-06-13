@@ -133,7 +133,8 @@ TEST(AesGcmTest, TamperedCiphertext) {
 }
 
 /**
- * @brief   Verify tampered ciphertext fails decryption
+ * @brief   Verify tampering with the authentication tag causes decryption
+ * failure
  */
 TEST(AesGcmTest, TamperedTag) {
   AesGcm aes;
@@ -165,6 +166,35 @@ TEST(AesGcmTest, TamperedTag) {
 /* ==================================================
  * Edge Case Tests
  * ================================================== */
+
+/**
+ * @brief   Verify encryption and decryption works with empty data
+ */
+TEST(AesGcmTest, EmptyData) {
+  AesGcm aes;
+
+  const char* pw = "password";
+
+  size_t psize = strlen(pw);
+  size_t dsize = 0;
+  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+
+  std::vector<uint8_t> src(dsize);
+  std::vector<uint8_t> enc(enc_size);
+  std::vector<uint8_t> dec(dsize);
+
+  /* Encrypt */
+
+  Result res = aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
+
+  EXPECT_EQ(res, Result::kSuccess);
+
+  /* Decrypt */
+
+  res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
+
+  EXPECT_EQ(res, Result::kSuccess);
+}
 
 /**
  * @brief   Verify encryption and decryption works with single byte

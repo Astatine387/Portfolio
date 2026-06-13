@@ -118,9 +118,9 @@ TEST_F(FileExistsTest, ExistingFile) {
 }
 
 /**
- * @brief   Verify FileExists returns false for non-existing file
+ * @brief   Verify FileExists returns false for non-existent file
  */
-TEST_F(FileExistsTest, NonExistingFile) {
+TEST_F(FileExistsTest, NonExistentFile) {
   EXPECT_FALSE(FileExists("fake.tmp"));
 }
 
@@ -364,6 +364,80 @@ TEST(RandomRangeTest, MinGreaterThanMax) {
   uint32_t val;
 
   EXPECT_EQ(RandomRange(&val, 10, 5), Result::kFailure);
+}
+
+/* ==================================================
+ * RemoveFile Test
+ * ================================================== */
+
+/**
+ * @class   RemoveFileTest
+ * @brief   Test class for RemoveFile function
+ */
+class RemoveFileTest : public ::testing::Test {
+ protected:
+  const char* path_ = "test.tmp";
+
+  /**
+   * @brief   Create a temporary test file
+   */
+  void CreateTestFile() {
+    FILE* file = nullptr;
+
+    OpenFile(&file, path_, "wb");
+
+    if (file) {
+      fclose(file);
+    }
+  }
+
+  /**
+   * @brief   Check if file exists
+   * @param   path    File path to check
+   * @return  true if file exists
+   */
+  bool FileExists(const char* path) {
+    FILE* file = nullptr;
+
+    OpenFile(&file, path, "rb");
+
+    if (file) {
+      fclose(file);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * @brief   Clean up temporary files after each test
+   */
+  void TearDown() override { RemoveFile(path_); }
+};
+
+/**
+ * @brief   Verify RemoveFile deletes existing file
+ */
+TEST_F(RemoveFileTest, DeleteExisting) {
+  CreateTestFile();
+
+  ASSERT_TRUE(FileExists(path_));
+
+  Result res = RemoveFile(path_);
+
+  EXPECT_EQ(res, Result::kSuccess);
+  EXPECT_FALSE(FileExists(path_));
+}
+
+/**
+ * @brief   Verify RemoveFile fails for non-existent file
+ */
+TEST_F(RemoveFileTest, DeleteNonExistent) {
+  const char* fake = "fake.tmp";
+
+  Result res = RemoveFile(fake);
+
+  EXPECT_EQ(res, Result::kFailure);
 }
 
 /* ==================================================

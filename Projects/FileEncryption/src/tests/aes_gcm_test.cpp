@@ -81,8 +81,7 @@ class AesGcmTest : public ::testing::Test {
  * ================================================== */
 
 /**
- * @brief   Verify encryption and decryption works with no error, and decrypted
- * data is identical to original
+ * @brief   Verify encryption and decryption round-trip preserves data
  */
 TEST_F(AesGcmTest, EncryptDecryptBasic) {
   AesGcm aes;
@@ -135,6 +134,59 @@ TEST_F(AesGcmTest, EncryptDecryptBasic) {
   Read(dec_path_, copy);
 
   EXPECT_EQ(orig, copy);
+}
+
+/**
+ * @brief   Verify encryption produces different ciphertext each time (random
+ * salt/IV)
+ */
+TEST_F(AesGcmTest, EncryptProducesDifferentOutput) {
+  AesGcm aes;
+  FILE *src = nullptr, *dst = nullptr;
+  const char* data = "Hello, world!";
+  const char* pw = "password";
+  int dsize = static_cast<int>(strlen(data));
+  int psize = static_cast<int>(strlen(pw));
+  std::vector<uint8_t> orig(data, data + dsize), enc0, enc1;
+
+  Create(src_path_, orig, dsize);
+
+  /* First encryption */
+
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
+
+  aes.Encrypt(src, dst, pw, psize);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  /* Second encryption of the same source */
+
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb+");
+
+  aes.Encrypt(src, dst, pw, psize);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  /* Ciphertexts must differ due to random salt/IV */
+
+  Read(enc_path_, enc0);
+  Read(dec_path_, enc1);
+
+  EXPECT_NE(enc0, enc1);
 }
 
 /**
@@ -191,9 +243,9 @@ TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
  * ================================================== */
 
 /**
- * @brief   Verify decryption fails with wrong password
+ * @brief   Verify decryption with wrong password fails
  */
-TEST_F(AesGcmTest, WrongPasswordFails) {
+TEST_F(AesGcmTest, DecryptWrongPassword) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
@@ -240,9 +292,9 @@ TEST_F(AesGcmTest, WrongPasswordFails) {
 }
 
 /**
- * @brief   Verify tampered ciphertext fails decryption
+ * @brief   Verify tampering with ciphertext causes decryption failure
  */
-TEST_F(AesGcmTest, TamperedCipherFails) {
+TEST_F(AesGcmTest, TamperedCiphertext) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
@@ -274,6 +326,63 @@ TEST_F(AesGcmTest, TamperedCipherFails) {
   Read(enc_path_, copy);
 
   copy[kSaltSize + kIVSize] ^= 0xFF;
+
+  Create(enc_path_, copy, static_cast<int>(copy.size()));
+
+  /* Decrypt */
+
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb+");
+
+  res = aes.Decrypt(src, dst, pw, psize);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  EXPECT_EQ(res, Result::kFailure);
+}
+
+/**
+ * @brief   Verify tampering with the authentication tag causes decryption
+ * failure
+ */
+TEST_F(AesGcmTest, TamperedTag) {
+  AesGcm aes;
+  FILE *src = nullptr, *dst = nullptr;
+  const char* data = "Hello, world!";
+  const char* pw = "password";
+  int dsize = static_cast<int>(strlen(data));
+  int psize = static_cast<int>(strlen(pw));
+  Result res;
+  std::vector<uint8_t> orig(data, data + dsize), copy;
+
+  Create(src_path_, orig, dsize);
+
+  /* Encrypt */
+
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
+
+  aes.Encrypt(src, dst, pw, psize);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  /* Tamper authentication tag (last byte of the file) */
+
+  Read(enc_path_, copy);
+
+  copy[copy.size() - 1] ^= 0xFF;
 
   Create(enc_path_, copy, static_cast<int>(copy.size()));
 
@@ -515,7 +624,7 @@ TEST_F(AesGcmTest, ProgressCallback) {
 }
 
 /**
- * @brief   Verify error callback is invoked on failure
+ * @brief   Verify error callback is invoked on decryption failure
  */
 TEST_F(AesGcmTest, ErrorCallback) {
   AesGcm aes;

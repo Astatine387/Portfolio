@@ -184,6 +184,10 @@ TEST(PasswordTest, MoveAssignment) {
   EXPECT_EQ(pw0.GetData(), nullptr);
 }
 
+/* ==================================================
+ * Safety Test
+ * ================================================== */
+
 /**
  * @brief   Verify self-assignment does not corrupt data
  */
@@ -198,6 +202,32 @@ TEST(PasswordTest, SelfAssignment) {
 
   EXPECT_STREQ(pw.GetData(), data);
   EXPECT_EQ(pw.GetSize(), size);
+}
+
+/**
+ * @brief   Verify null pointer is handled safely
+ */
+TEST(PasswordTest, SetDataNull) {
+  Password pw;
+  pw.SetData(nullptr, 0);
+
+  EXPECT_TRUE(pw.IsEmpty());
+}
+
+/**
+ * @brief   Verify destructor is called without crash after move
+ */
+TEST(PasswordTest, DestructorAfterMove) {
+  Password* pw0 = new Password();
+  const char* data = "password";
+  size_t size = strlen(data);
+
+  pw0->SetData(data, size);
+
+  Password pw1(std::move(*pw0));
+
+  EXPECT_NO_THROW(delete pw0);
+  EXPECT_STREQ(pw1.GetData(), data);
 }
 
 /* ==================================================

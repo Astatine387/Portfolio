@@ -144,12 +144,15 @@ TEST(PasswordTest, MoveConstructor) {
 
   pw0.SetData(data, size);
 
-  const char* ptr = pw0.GetData();
+  const char* orig_ptr = pw0.GetData();
+
   Password pw1(std::move(pw0));
 
   EXPECT_STREQ(pw1.GetData(), data);
-  EXPECT_EQ(pw1.GetData(), ptr);
+  EXPECT_EQ(pw1.GetSize(), size);
+  EXPECT_EQ(pw1.GetData(), orig_ptr);
   EXPECT_TRUE(pw0.IsEmpty());  // NOLINT(bugprone-use-after-move)
+  EXPECT_EQ(pw0.GetData(), nullptr);
 }
 
 /**
@@ -159,20 +162,24 @@ TEST(PasswordTest, MoveConstructor) {
  * empty
  */
 TEST(PasswordTest, MoveAssignment) {
-  Password pw0;
-  const char* data = "password";
-  size_t size = strlen(data);
+  Password pw0, pw1;
+  const char* data0 = "qwerty1234";
+  const char* data1 = "password";
+  size_t size0 = strlen(data0);
+  size_t size1 = strlen(data1);
 
-  pw0.SetData(data, size);
+  pw0.SetData(data0, size0);
+  pw1.SetData(data1, size1);
 
-  const char* ptr = pw0.GetData();
-  Password pw1;
+  const char* orig_ptr = pw0.GetData();
 
   pw1 = std::move(pw0);
 
-  EXPECT_STREQ(pw1.GetData(), data);
-  EXPECT_EQ(pw1.GetData(), ptr);
+  EXPECT_STREQ(pw1.GetData(), data0);
+  EXPECT_EQ(pw1.GetSize(), size0);
+  EXPECT_EQ(pw1.GetData(), orig_ptr);
   EXPECT_TRUE(pw0.IsEmpty());  // NOLINT(bugprone-use-after-move)
+  EXPECT_EQ(pw0.GetData(), nullptr);
 }
 
 /* ==================================================
@@ -180,9 +187,9 @@ TEST(PasswordTest, MoveAssignment) {
  * ================================================== */
 
 /**
- * @brief   Verify self-assignment is handled safely
+ * @brief   Verify self-assignment does not corrupt data
  */
-TEST(PasswordTest, SelfAssignmentSafe) {
+TEST(PasswordTest, SelfAssignment) {
   Password pw;
   const char* data = "password";
   size_t size = strlen(data);
@@ -219,4 +226,30 @@ TEST(PasswordTest, DestructorAfterMove) {
 
   EXPECT_NO_THROW(delete pw0);
   EXPECT_STREQ(pw1.GetData(), data);
+}
+
+/* ==================================================
+ * Lock Status Test
+ * ================================================== */
+
+/**
+ * @brief   Verify a default-constructed password is not locked
+ */
+TEST(PasswordTest, IsNotLockedWhenEmpty) {
+  Password pw;
+
+  EXPECT_FALSE(pw.IsLocked());
+}
+
+/**
+ * @brief   Verify password is locked in memory after setData
+ */
+TEST(PasswordTest, IsLockedAfterSetData) {
+  Password pw;
+  const char* data = "password";
+  size_t size = strlen(data);
+
+  pw.SetData(data, size);
+
+  EXPECT_TRUE(pw.IsLocked());
 }
