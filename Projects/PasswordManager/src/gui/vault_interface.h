@@ -1,6 +1,6 @@
 /**
  * @file	vault_interface.h
- * @brief	Vault interface for GUI layer
+ * @brief	Vault interface between GUI and core layers
  * @author	Astatine387
  */
 
