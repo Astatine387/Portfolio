@@ -8,7 +8,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 
 # 2. Features
 
-* Up to 2 GiB/s Google Benchmark encryption throughput
+* Up to 2+ GiB/s Google Benchmark throughput in encryption
 * AES-256-GCM for file encryption and integrity check
 * Argon2id for key derivation from password
 * Qt6 graphical user interface
@@ -219,14 +219,14 @@ ctest --test-dir build --output-on-failure
 	* **File Size:** 4 GiB
 
 * **Results** (on cold start)
-	* **Encryption:** 1.1 ~ 1.3 GiB/s
-	* **Decryption:** 1.2 ~ 1.3 GiB/s
-	* **Argon2id Key Derivation:** 430ms
+	* **Encryption:** 1.5 ~ 1.6 GiB/s
+	* **Decryption:** 0.9 ~ 1.0 GiB/s
+	* **Argon2id Key Derivation:** 380 ~ 400 ms
 
 * **Results** (after warm-up)
 	* **Encryption:** 1.9 ~ 2.1 GiB/s
-	* **Decryption:** 2.0 ~ 2.1 GiB/s
-	* **Argon2id Key Derivation:** 310ms
+	* **Decryption:** 1.3 ~ 1.4 GiB/s
+	* **Argon2id Key Derivation:** 380 ~ 400 ms
 
 **Running Benchmarks Locally:** 
 ```cmd
