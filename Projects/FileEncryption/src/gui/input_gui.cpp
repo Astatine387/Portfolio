@@ -4,7 +4,7 @@
  * @author	Astatine387
  */
 
-#include "input_gui.h"
+#include "gui/input_gui.h"
 
 InputGUI::InputGUI(QWidget* parent) : QWidget(parent) {
   /* Create layouts and components */
