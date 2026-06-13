@@ -43,7 +43,9 @@ size_t Entry::Ser(uint8_t* dst) const {
   memcpy(dst + cur, &dlen, sizeof(uint32_t));
   cur += sizeof(uint32_t);
 
-  memcpy(dst + cur, pw.GetData(), dlen);
+  if (dlen > 0) {
+    memcpy(dst + cur, pw.GetData(), dlen);
+  }
   cur += dlen;
 
   return cur;
