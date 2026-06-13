@@ -239,3 +239,34 @@ jobs:
         run: |
           cd Projects/FileEncryption
           ctest --test-dir build --output-on-failure
+
+  # ============================================================
+  # Thread Sanitizer
+  # ============================================================
+
+  tsan-linux-fileencryption:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list \
+                     /etc/apt/sources.list.d/microsoft-prod.sources \
+                     /etc/apt/sources.list.d/azure-cli.list \
+                     /etc/apt/sources.list.d/azure-cli.sources
+          sudo apt-get update
+          sudo apt-get install -y qt6-base-dev libssl-dev libargon2-dev libgtest-dev
+
+      - name: Build with ThreadSanitizer (Debug)
+        run: |
+          cd Projects/FileEncryption
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DTHREAD_SANITIZE=ON
+          cmake --build build
+
+      - name: Test
+        env:
+          TSAN_OPTIONS: halt_on_error=1
+        run: |
+          cd Projects/FileEncryption
+          ctest --test-dir build --output-on-failure

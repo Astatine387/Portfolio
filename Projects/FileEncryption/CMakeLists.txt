@@ -14,6 +14,11 @@ if(COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 option(SANITIZE "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(THREAD_SANITIZE "Enable ThreadSanitizer" OFF)
+
+if(SANITIZE AND THREAD_SANITIZE)
+    message(FATAL_ERROR "SANITIZE and THREAD_SANITIZE are mutually exclusive; enable only one")
+endif()
 
 if(SANITIZE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     message(STATUS "Sanitizers enabled (address, undefined)")
@@ -21,11 +26,19 @@ if(SANITIZE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address,undefined")
 endif()
 
+if(THREAD_SANITIZE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    message(STATUS "ThreadSanitizer enabled")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread -fno-omit-frame-pointer")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread")
+endif()
+
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
 find_package(OpenSSL 3.0 REQUIRED)
 
 find_package(GTest CONFIG REQUIRED)
+
+find_package(Threads REQUIRED)
 
 find_library(ARGON2_LIBRARY NAMES argon2)
 find_path(ARGON2_INCLUDE_DIR argon2.h)
@@ -120,6 +133,7 @@ target_link_libraries(FileEncryption-tests PRIVATE
     FileEncryption-core
     GTest::gtest
     GTest::gtest_main
+    Threads::Threads
 )
 
 include(GoogleTest)
