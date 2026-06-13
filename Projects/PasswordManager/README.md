@@ -240,12 +240,15 @@ ctest --test-dir build --output-on-failure
 
 ## 5-3. Continuous Integration
 
-| Check | Windows | Linux |
-|-------|---------|-------|
-| Build | ✅ MSVC 2022 | ✅ GCC 11+ |
-| Unit Tests | ✅ | ✅ |
-| Static Analysis (cppcheck) | - | ✅ |
-| Coverage Report | - | ✅ Codecov |
+| Check                        | Windows     | Linux     |
+| ---------------------------- | ----------- | --------- |
+| Build                        | ✅ MSVC 2022 | ✅ GCC 11+ |
+| Unit Tests                   | ✅           | ✅         |
+| Format Check (clang-format)  | -           | ✅         |
+| Static Analysis (cppcheck)   | -           | ✅         |
+| Static Analysis (clang-tidy) | -           | ✅         |
+| Coverage Report              | -           | ✅ Codecov |
+| AddressSanitizer (ASan)      | -           | ✅         |
 
 # 6. License
 
