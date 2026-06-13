@@ -300,6 +300,48 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
   EXPECT_EQ(Reload(), Result::kFailure);
 }
 
+/**
+ * @brief   Verify decryption fails when the ciphertext is tampered
+ */
+TEST_F(VaultFileTest, OpenTamperedCiphertext) {
+  FILE* file = nullptr;
+
+  /* Read back the valid vault file created in SetUp */
+
+  OpenFile(&file, path_, "rb");
+  ASSERT_NE(file, nullptr);
+
+  int64_t size = GetFileSize(file);
+  ASSERT_GT(size, 0);
+
+  std::vector<uint8_t> buff(size);
+
+  ASSERT_EQ(fread(buff.data(), sizeof(uint8_t), size, file), static_cast<size_t>(size));
+  fclose(file);
+
+  /* Flip the first ciphertext byte, leaving magic, salt and IV intact */
+
+  size_t ct_off = kMagicSize + kSaltSize + kIVSize;
+
+  buff[ct_off] ^= 0xFF;
+
+  /* The header (magic number) must still be valid */
+
+  EXPECT_EQ(memcmp(buff.data(), &kMagicNum, kMagicSize), 0);
+
+  /* Write the tampered vault back */
+
+  OpenFile(&file, path_, "wb");
+  ASSERT_NE(file, nullptr);
+
+  fwrite(buff.data(), sizeof(uint8_t), size, file);
+  fclose(file);
+
+  /* GCM authentication must reject the tampered data */
+
+  EXPECT_EQ(Reload(), Result::kFailure);
+}
+
 /* ==================================================
  * Save and Reload Test
  * ================================================== */
