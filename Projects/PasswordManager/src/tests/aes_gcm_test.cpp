@@ -133,7 +133,7 @@ TEST(AesGcmTest, TamperedCiphertext) {
 }
 
 /**
- * @brief   Verify tampering with authentication tag causes decryption failure
+ * @brief   Verify tampered ciphertext fails decryption
  */
 TEST(AesGcmTest, TamperedTag) {
   AesGcm aes;
