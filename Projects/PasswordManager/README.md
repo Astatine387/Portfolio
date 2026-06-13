@@ -213,14 +213,14 @@ cmake --build build
 | utils/platform.cpp       | 23            | 23      | 0       | 0      | 100.00%    |
 | utils/platform_linux.cpp | 39            | 35      | 0       | 8      | 89.74%     |
 
-| Module   | Test File            | Test Cases                                                                 |
-| -------- | -------------------- | -------------------------------------------------------------------------- |
-| AES_GCM  | `aes_gcm_test.cpp`   | Encrypt/Decrypt, Integrity Check, Edge Cases, Callbacks                    |
-| Entry    | `entry_test.cpp`      | Size Calculation, Serialization/Deserialization, Comparator, Set Insertion |
-| Password | `password_test.cpp`   | RAII, Copy/Move Semantics, Constant-time Compare, Memory Safety, Max Size  |
-| Utils    | `utils_test.cpp`      | File I/O, Delete, Existence Check, Key Derivation, CSPRNG, Memory Wipe     |
-| Vault    | `vault_entry_test.cpp` | Create, Update, Delete, Duplicate Check, Accessor                          |
-| Vault    | `vault_file_test.cpp`  | New Vault, Open, Save, Round-trip, Password Change, Error Handling         |
+| Module   | Test File              | Test Cases                                                                                                                       |
+| -------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| AesGcm   | `aes_gcm_test.cpp`     | Encryption, Decryption, Authentication, Integrity Check, Edge Cases, Error Callback                                              |
+| Entry    | `entry_test.cpp`       | Size Calculation, Comparison, Serialization, Deserialization, Boundary Check, Field Length Validation                            |
+| Password | `password_test.cpp`    | Initialization, Setting Data, Copy and Move Semantics, Memory Safety, RAII, Comparison, Data, Cleanup, Maximum Size, Memory Lock |
+| Utils    | `utils_test.cpp`       | File Handling, Argon2id Key Derivation, Random Number Generation, Memory Wipe                                                    |
+| Vault    | `vault_entry_test.cpp` | Entry CRUD Operation, Duplication Check, Existence Check, Conflict Check, Accessor, Master Password Verification                 |
+| Vault    | `vault_file_test.cpp`  | Vault Creation, Opening, Validation, Save, Password Change, Error Handling                                                       |
 
 **Note:** GUI files, error messages for external libraries and system calls are excluded from tests.
 

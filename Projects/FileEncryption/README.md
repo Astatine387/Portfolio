@@ -173,11 +173,12 @@ cmake --build build
 | utils/platform.cpp       | 3             | 3       | 0       | 0      | 100.00%    |
 | utils/platform_linux.cpp | 33            | 30      | 0       | 6      | 90.91%     |
 
-| Module   | Test File          | Test Cases                                                             |
-| -------- | ------------------ | ---------------------------------------------------------------------- |
-| AES_GCM  | `aes_gcm_test.cpp` | Encrypt/Decrypt, Integrity Check, Edge Cases, Callbacks                |
-| Password | `password_test.cpp` | RAII, Copy/Move Semantics, Memory Safety                               |
-| Utils    | `utils_test.cpp`    | File I/O, Delete, Existence Check, Key Derivation, CSPRNG, Memory Wipe |
+| Module       | Test File                | Test Cases                                                                                   |
+| ------------ | ------------------------ | -------------------------------------------------------------------------------------------- |
+| AesGcm       | `aes_gcm_test.cpp`       | Encryption, Decryption, Authentication, Integrity Check, Edge Cases, Callbacks, Cancellation |
+| CryptoWorker | `crypto_worker_test.cpp` | Encryption, Decryption, Callbacks, Cancellation, Error Handling, Concurrency                 |
+| Password     | `password_test.cpp`      | Initialization, Setting Data, Copy and Move Semantics, Memory Safety, RAII                   |
+| Utils        | `utils_test.cpp`         | File Handling, Argon2id Key Derivation, Random Number Generation, Memory Wipe                |
 
 **Note:** GUI files, error messages for external libraries and system calls are excluded from tests.
 
