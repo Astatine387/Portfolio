@@ -8,8 +8,10 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <cstring>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "common/constants.h"
@@ -315,4 +317,49 @@ TEST_F(CryptoWorkerTest, UncreatableDestinationReportsError) {
   worker.Work();
 
   EXPECT_NE(msg.find("Open failed"), std::string::npos);
+}
+
+/* ==================================================
+ * Concurrency Tests
+ * ================================================== */
+
+/**
+ * @brief   Verify cancelling from another thread while the worker runs is race-free
+ */
+TEST_F(CryptoWorkerTest, ConcurrentCancelDuringWork) {
+  /* Large enough that encryption spans many progress checkpoints */
+
+  std::vector<uint8_t> orig(static_cast<size_t>(kBlockSize) * kBuffSize * 64, 'a');
+  std::atomic<bool> in_progress{ false };
+  std::string msg;
+
+  Create(src_path_, orig);
+
+  CryptoWorker worker(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
+
+  /* Signal once the worker is actively processing */
+
+  worker.SetProgressCallback([&](int, const std::string&) { in_progress.store(true, std::memory_order_release); });
+
+  worker.SetFinishedCallback([&](const std::string& m) { msg = m; });
+
+  std::thread runner([&] { worker.Work(); });
+
+  /* Wait for the processing loop, then cancel concurrently with it */
+
+  while (!in_progress.load(std::memory_order_acquire)) {
+    std::this_thread::yield();
+  }
+
+  worker.RequestCancel();
+
+  runner.join();
+
+  /* The race is benign: completion and cancellation are both valid outcomes */
+
+  EXPECT_TRUE(msg.find("complete") != std::string::npos || msg.find("canceled") != std::string::npos);
+
+  if (msg.find("canceled") != std::string::npos) {
+    EXPECT_FALSE(FileExists(enc_path_));
+  }
 }
