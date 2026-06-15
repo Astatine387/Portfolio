@@ -4,14 +4,14 @@ I'm Astatine387, a C/C++ software engineer building cross-platform desktop appli
 
 # 2. Tech Stack
 
-| Category                   | Tools                                                                            |
-| -------------------------- | -------------------------------------------------------------------------------- |
-| **Languages**              | C, C++20                                                                         |
-| **Libraries & Frameworks** | C++ STL, Argon2, OpenSSL, Qt6                                                    |
-| **Build & Package**        | CMake, vcpkg                                                                     |
-| **Testing & Quality**      | Codecov, Google Test, Google Benchmark, lcov, clang-format, clang-tidy, cppcheck |
-| **CI/CD**                  | GitHub Actions                                                                   |
-| **Platforms**              | Windows, Linux                                                                   |
+| Category                   | Tools                                                                                                                             |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Languages**              | C, C++20                                                                                                                          |
+| **Libraries & Frameworks** | C++ STL, Argon2, OpenSSL, Qt6                                                                                                     |
+| **Build & Package**        | CMake, vcpkg                                                                                                                      |
+| **Testing & Quality**      | AddressSanitizer (ASan), ThreadSanitizer (TSan), Google Benchmark, Google Test, Codecov, lcov, clang-format, clang-tidy, cppcheck |
+| **CI/CD**                  | GitHub Actions                                                                                                                    |
+| **Platforms**              | Windows, Linux                                                                                                                    |
 
 # 3. Projects
 
@@ -28,7 +28,7 @@ I'm Astatine387, a C/C++ software engineer building cross-platform desktop appli
 
 ![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-fileencryption.yml/badge.svg) ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=fileencryption)
 
-Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2id, and Qt6.
+Password-based file encryption tool using AES-256-GCM, Argon2id, and Qt6.
 
 **Features**
 * Up to 2+ GiB/s Google Benchmark throughput in encryption
@@ -52,7 +52,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 
 ![Build](https://github.com/Astatine387/Portfolio/actions/workflows/build-passwordmanager.yml/badge.svg) ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=passwordmanager)
 
-GUI encrypted password file manager using AES-256-GCM and Argon2id.
+Encrypted password vault manager using AES-256-GCM, Argon2id, and Qt6.
 
 **Features**
 * AES-256-GCM for vault encryption and integrity check
