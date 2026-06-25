@@ -81,7 +81,6 @@ jobs:
 
   build-linux:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -93,7 +92,7 @@ jobs:
                      /etc/apt/sources.list.d/azure-cli.list \
                      /etc/apt/sources.list.d/azure-cli.sources
           sudo apt-get update
-          sudo apt-get install -y qt6-base-dev libssl-dev libargon2-dev libgtest-dev
+          sudo apt-get install -y qt6-base-dev qt6-base-dev-tools libssl-dev libargon2-dev libgtest-dev file
 
       - name: Build
         run: |
@@ -106,14 +105,31 @@ jobs:
           cd Projects/FileEncryption
           ctest --test-dir build --output-on-failure
 
-      - name: Deploy
+      - name: Bundle (self-contained, extract-and-run)
         run: |
           cd Projects/FileEncryption
-          mkdir -p deploy
 
-          cp build/FileEncryption deploy/
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
 
-          tar -czf FileEncryption-Linux-x64.tar.gz -C deploy .
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          export QMAKE=$(which qmake6)
+
+          printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=FileEncryption' \
+            'Exec=FileEncryption' 'Icon=fileencryption' 'Categories=Utility;' 'Terminal=false' \
+            > fileencryption.desktop
+
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --executable build/FileEncryption \
+            --desktop-file fileencryption.desktop \
+            --icon-file InputGUI.png \
+            --icon-filename fileencryption \
+            --plugin qt
+
+          mv AppDir FileEncryption
+          tar -czf FileEncryption-Linux-x64.tar.gz FileEncryption
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
