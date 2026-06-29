@@ -156,9 +156,9 @@ jobs:
             '*/tests/*' \
             '*/DigitalLogicSimulator/src/benchmark/benchmark.cpp' \
             '*/DigitalLogicSimulator/src/common/main.cpp' \
-            --output-file coverage.info --ignore-errors mismatch,unused
+            --output-file coverage.info --ignore-errors mismatch,unused,empty
           echo "=== Files in coverage report ==="
-          lcov --list coverage.info
+          lcov --list coverage.info --ignore-errors empty
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v4
