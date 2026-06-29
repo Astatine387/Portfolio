@@ -1,0 +1,199 @@
+name: DigitalLogicSimulator Build Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Projects/DigitalLogicSimulator/**'
+      - '.github/workflows/build-digitallogicsimulator.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Projects/DigitalLogicSimulator/**'
+      - '.github/workflows/build-digitallogicsimulator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+
+  # ============================================================
+  # Format Check
+  # ============================================================
+
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check clang-format
+        run: |
+          find Projects/DigitalLogicSimulator/src -name '*.cpp' -o -name '*.h' \
+            | xargs clang-format --dry-run --Werror
+
+  # ============================================================
+  # Tidy Check
+  # ============================================================
+
+  tidy-check:
+    runs-on: ubuntu-latest
+    needs: format-check
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtest-dev libbenchmark-dev clang-tidy
+
+      - name: Configure (generate compile_commands.json)
+        run: |
+          cd Projects/DigitalLogicSimulator
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Run clang-tidy
+        run: |
+          cd Projects/DigitalLogicSimulator
+          run-clang-tidy -p build
+
+  # ============================================================
+  # Windows
+  # ============================================================
+
+  build-windows-digitallogicsimulator:
+    needs: format-check
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: '0a434205c521ca43d66921271ae2a1d051e718a5'
+
+      - name: Install dependencies
+        run: vcpkg install gtest:x64-windows benchmark:x64-windows
+
+      - name: Build
+        run: |
+          cd Projects/DigitalLogicSimulator
+          cmake -B build `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+          cmake --build build --config Release
+
+      - name: Test
+        run: |
+          cd Projects/DigitalLogicSimulator
+          ctest --test-dir build -C Release --output-on-failure
+
+      - name: Deploy
+        run: |
+          cd Projects/DigitalLogicSimulator
+          mkdir deploy
+          copy build\Release\DigitalLogicSimulator.exe deploy\
+          Get-ChildItem deploy -Recurse | Format-Table Name, Length
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DigitalLogicSimulator-Windows-x64
+          path: Projects/DigitalLogicSimulator/deploy/
+          retention-days: 90
+
+  # ============================================================
+  # Linux
+  # ============================================================
+
+  build-linux-digitallogicsimulator:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtest-dev libbenchmark-dev cppcheck lcov
+
+      - name: Run cppcheck
+        run: |
+          cppcheck \
+            --enable=warning,style,performance,portability \
+            --error-exitcode=1 \
+            --suppress=missingIncludeSystem \
+            --inline-suppr \
+            -I Projects/DigitalLogicSimulator/src \
+            Projects/DigitalLogicSimulator/src/core \
+            Projects/DigitalLogicSimulator/src/parser \
+            Projects/DigitalLogicSimulator/src/common
+
+      - name: Build with Coverage (Debug)
+        run: |
+          cd Projects/DigitalLogicSimulator
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE=ON
+          cmake --build build
+
+      - name: Test
+        run: |
+          cd Projects/DigitalLogicSimulator
+          ctest --test-dir build --output-on-failure
+
+      - name: Generate Coverage Report
+        run: |
+          cd Projects/DigitalLogicSimulator
+          lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch
+          lcov --remove coverage.info \
+            '/usr/*' \
+            '*/gtest/*' \
+            '*/tests/*' \
+            '*/DigitalLogicSimulator/src/benchmark/benchmark.cpp' \
+            '*/DigitalLogicSimulator/src/common/main.cpp' \
+            --output-file coverage.info --ignore-errors mismatch,unused
+          echo "=== Files in coverage report ==="
+          lcov --list coverage.info
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: Projects/DigitalLogicSimulator/coverage.info
+          flags: digitallogicsimulator
+          name: digitallogicsimulator-coverage
+          fail_ci_if_error: false
+
+  # ============================================================
+  # Sanitizers
+  # ============================================================
+
+  sanitize-linux-digitallogicsimulator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list \
+                     /etc/apt/sources.list.d/microsoft-prod.sources \
+                     /etc/apt/sources.list.d/azure-cli.list \
+                     /etc/apt/sources.list.d/azure-cli.sources
+          sudo apt-get update
+          sudo apt-get install -y libgtest-dev
+
+      - name: Build with AddressSanitizer + UndefinedBehaviorSanitizer (Debug)
+        run: |
+          cd Projects/DigitalLogicSimulator
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DSANITIZE=ON
+          cmake --build build
+
+      - name: Test
+        run: |
+          cd Projects/DigitalLogicSimulator
+          ctest --test-dir build --output-on-failure
