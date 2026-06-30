@@ -48,11 +48,11 @@ find_package(benchmark CONFIG QUIET)
 # ============================================================
 
 set(CORE_SOURCES
-    src/core/simulator.cpp
+    src/core/logic4.cpp
 )
 
 set(CORE_HEADERS
-    src/core/simulator.h
+    src/core/logic4.h
 )
 
 add_library(${PROJECT_NAME}-core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
@@ -96,7 +96,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 enable_testing()
 
 set(TEST_SOURCES
-    src/tests/test.cpp
+    src/tests/logic4_test.cpp
 )
 
 add_executable(${PROJECT_NAME}-tests ${TEST_SOURCES})
