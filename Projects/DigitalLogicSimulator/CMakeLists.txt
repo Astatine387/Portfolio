@@ -49,10 +49,12 @@ find_package(benchmark CONFIG QUIET)
 
 set(CORE_SOURCES
     src/core/logic4.cpp
+    src/core/netlist.cpp
 )
 
 set(CORE_HEADERS
     src/core/logic4.h
+    src/core/netlist.h
 )
 
 add_library(${PROJECT_NAME}-core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
@@ -97,6 +99,7 @@ enable_testing()
 
 set(TEST_SOURCES
     src/tests/logic4_test.cpp
+    src/tests/netlist_test.cpp
 )
 
 add_executable(${PROJECT_NAME}-tests ${TEST_SOURCES})

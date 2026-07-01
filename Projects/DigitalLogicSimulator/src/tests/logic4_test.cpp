@@ -17,6 +17,9 @@ constexpr std::array<Logic4, 4> kAll = { Logic4::k0, Logic4::k1, Logic4::kX, Log
  * Two-input gate truth tables
  * ================================================== */
 
+/**
+ * @brief   Verify the AND truth table over all 16 input combinations
+ */
 TEST(Logic4Gate, And) {
   using enum Logic4;
 
@@ -41,6 +44,9 @@ TEST(Logic4Gate, And) {
   EXPECT_EQ(And(kZ, kZ), kX);
 }
 
+/**
+ * @brief   Verify the OR truth table over all 16 input combinations
+ */
 TEST(Logic4Gate, Or) {
   using enum Logic4;
 
@@ -65,6 +71,9 @@ TEST(Logic4Gate, Or) {
   EXPECT_EQ(Or(kZ, kZ), kX);
 }
 
+/**
+ * @brief   Verify the XOR truth table over all 16 input combinations
+ */
 TEST(Logic4Gate, Xor) {
   using enum Logic4;
 
@@ -93,6 +102,9 @@ TEST(Logic4Gate, Xor) {
  * One-input gates
  * ================================================== */
 
+/**
+ * @brief   Verify the NOT truth table (Z is treated as X)
+ */
 TEST(Logic4Gate, Not) {
   using enum Logic4;
 
@@ -102,6 +114,9 @@ TEST(Logic4Gate, Not) {
   EXPECT_EQ(Not(kZ), kX);
 }
 
+/**
+ * @brief   Verify the BUF truth table (Z is treated as X)
+ */
 TEST(Logic4Gate, Buf) {
   using enum Logic4;
 
@@ -115,6 +130,9 @@ TEST(Logic4Gate, Buf) {
  * Inverting gates (NAND/NOR/XNOR invert AND/OR/XOR)
  * ================================================== */
 
+/**
+ * @brief   Verify NAND equals the inversion of AND across all inputs
+ */
 TEST(Logic4Gate, NandIsInvertedAnd) {
   using enum Logic4;
 
@@ -129,6 +147,9 @@ TEST(Logic4Gate, NandIsInvertedAnd) {
   EXPECT_EQ(Nand(k1, kZ), kX);
 }
 
+/**
+ * @brief   Verify NOR equals the inversion of OR across all inputs
+ */
 TEST(Logic4Gate, NorIsInvertedOr) {
   using enum Logic4;
 
@@ -143,6 +164,9 @@ TEST(Logic4Gate, NorIsInvertedOr) {
   EXPECT_EQ(Nor(k0, kZ), kX);
 }
 
+/**
+ * @brief   Verify XNOR equals the inversion of XOR across all inputs
+ */
 TEST(Logic4Gate, XnorIsInvertedXor) {
   using enum Logic4;
 
@@ -161,6 +185,9 @@ TEST(Logic4Gate, XnorIsInvertedXor) {
  * Properties
  * ================================================== */
 
+/**
+ * @brief   Verify the two-input gates are commutative in both operands
+ */
 TEST(Logic4Gate, BinaryGatesAreCommutative) {
   for (Logic4 a : kAll) {
     for (Logic4 b : kAll) {
@@ -175,6 +202,9 @@ TEST(Logic4Gate, BinaryGatesAreCommutative) {
  * Multi-driver resolution
  * ================================================== */
 
+/**
+ * @brief   Verify the multi-driver resolution table over all input combinations
+ */
 TEST(Logic4Resolve, TruthTable) {
   using enum Logic4;
 
@@ -199,6 +229,9 @@ TEST(Logic4Resolve, TruthTable) {
   EXPECT_EQ(Resolve(kZ, kZ), kZ);
 }
 
+/**
+ * @brief   Verify driver resolution is commutative
+ */
 TEST(Logic4Resolve, IsCommutative) {
   for (Logic4 a : kAll) {
     for (Logic4 b : kAll) {
@@ -207,6 +240,9 @@ TEST(Logic4Resolve, IsCommutative) {
   }
 }
 
+/**
+ * @brief   Verify a high-impedance driver yields to the other input
+ */
 TEST(Logic4Resolve, HighImpedanceIsIdentity) {
   for (Logic4 v : kAll) {
     EXPECT_EQ(Resolve(Logic4::kZ, v), v);
@@ -218,6 +254,9 @@ TEST(Logic4Resolve, HighImpedanceIsIdentity) {
  * Character conversion
  * ================================================== */
 
+/**
+ * @brief   Verify each value maps to its VCD character
+ */
 TEST(Logic4, ToCharMapping) {
   using enum Logic4;
 
@@ -227,6 +266,9 @@ TEST(Logic4, ToCharMapping) {
   EXPECT_EQ(ToChar(kZ), 'z');
 }
 
+/**
+ * @brief   Verify the stream operator writes values as their VCD characters
+ */
 TEST(Logic4, StreamOperator) {
   using enum Logic4;
 
