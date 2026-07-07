@@ -48,11 +48,13 @@ find_package(benchmark CONFIG QUIET)
 # ============================================================
 
 set(CORE_SOURCES
+    src/core/kernel.cpp
     src/core/logic4.cpp
     src/core/netlist.cpp
 )
 
 set(CORE_HEADERS
+    src/core/kernel.h
     src/core/logic4.h
     src/core/netlist.h
 )
@@ -98,6 +100,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 enable_testing()
 
 set(TEST_SOURCES
+    src/tests/kernel_test.cpp
     src/tests/logic4_test.cpp
     src/tests/netlist_test.cpp
 )
