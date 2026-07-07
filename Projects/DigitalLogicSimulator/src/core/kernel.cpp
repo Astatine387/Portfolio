@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <numeric>
 #include <vector>
 
 void Kernel::Poke(NetId net, Logic4 value, Time at) {
@@ -113,13 +114,8 @@ Logic4 Kernel::ResolveNet(NetId net) const {
     return net_values_[Index(net)];
   }
 
-  Logic4 resolved = Logic4::kZ;
-
-  for (const GateId driver : record.drivers) {
-    resolved = Resolve(resolved, driver_values_[Index(driver)]);
-  }
-
-  return resolved;
+  return std::accumulate(record.drivers.begin(), record.drivers.end(), Logic4::kZ,
+                         [this](Logic4 acc, GateId driver) { return Resolve(acc, driver_values_[Index(driver)]); });
 }
 
 void Kernel::EvaluateGate(GateId gate_id, Time now) {
