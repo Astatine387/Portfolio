@@ -244,7 +244,7 @@ TEST(VcdWriterHeader, OutputIsDeterministic) {
 TEST(VcdWriterCode, AssignsPrintableAsciiCodes) {
   Netlist net;
 
-  for (std::size_t i = 0; i < 94 * 94; i++) {
+  for (std::size_t i = 0; i < kIdCodeRadix * kIdCodeRadix; i++) {
     net.AddWire("w" + std::to_string(i));
   }
 
@@ -269,7 +269,7 @@ TEST(VcdWriterCode, AssignsPrintableAsciiCodes) {
 TEST(VcdWriterCode, CodesAreUnique) {
   Netlist net;
 
-  for (std::size_t i = 0; i < 94 * 94; ++i) {
+  for (std::size_t i = 0; i < kIdCodeRadix * kIdCodeRadix; ++i) {
     net.AddWire("w" + std::to_string(i));
   }
 
@@ -291,7 +291,7 @@ TEST(VcdWriterCode, CodesAreUnique) {
 TEST(VcdWriterCode, RollsOverBeyondRadix) {
   Netlist net;
 
-  for (std::size_t i = 0; i < 94 * 94; i++) {
+  for (std::size_t i = 0; i < kIdCodeRadix * kIdCodeRadix; i++) {
     net.AddWire("w" + std::to_string(i));
   }
 
