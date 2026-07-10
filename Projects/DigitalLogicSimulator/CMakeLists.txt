@@ -70,11 +70,11 @@ target_include_directories(${PROJECT_NAME}-core PUBLIC
 # ============================================================
 
 set(PARSER_SOURCES
-    src/parser/parser.cpp
+    src/parser/vcd_writer.cpp
 )
 
 set(PARSER_HEADERS
-    src/parser/parser.h
+    src/parser/vcd_writer.h
 )
 
 add_library(${PROJECT_NAME}-parser STATIC ${PARSER_SOURCES} ${PARSER_HEADERS})
@@ -103,12 +103,14 @@ set(TEST_SOURCES
     src/tests/kernel_test.cpp
     src/tests/logic4_test.cpp
     src/tests/netlist_test.cpp
+    src/tests/vcd_writer_test.cpp
 )
 
 add_executable(${PROJECT_NAME}-tests ${TEST_SOURCES})
 
 target_link_libraries(${PROJECT_NAME}-tests PRIVATE
     ${PROJECT_NAME}-core
+    ${PROJECT_NAME}-parser
     GTest::gtest
     GTest::gtest_main
     Threads::Threads
