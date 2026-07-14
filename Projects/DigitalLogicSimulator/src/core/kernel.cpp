@@ -1,6 +1,6 @@
 /**
  * @file    kernel.cpp
- * @brief   Out-of-line definitions for the event-driven, 4-state simulation kernel
+ * @brief   Out-of-line definitions for event-driven, 4-state simulation kernel
  * @author  Astatine387
  */
 

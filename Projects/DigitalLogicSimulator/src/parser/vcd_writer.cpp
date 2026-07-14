@@ -1,6 +1,6 @@
 /**
  * @file    vcd_writer.cpp
- * @brief   Out-of-line definitions for the VCD waveform writer
+ * @brief   Out-of-line definitions for VCD waveform writer
  * @author  Astatine387
  */
 

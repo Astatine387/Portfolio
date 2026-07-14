@@ -71,10 +71,12 @@ target_include_directories(${PROJECT_NAME}-core PUBLIC
 
 set(PARSER_SOURCES
     src/parser/vcd_writer.cpp
+    src/parser/verilog_parser.cpp
 )
 
 set(PARSER_HEADERS
     src/parser/vcd_writer.h
+    src/parser/verilog_parser.h
 )
 
 add_library(${PROJECT_NAME}-parser STATIC ${PARSER_SOURCES} ${PARSER_HEADERS})

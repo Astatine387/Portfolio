@@ -1,6 +1,6 @@
 /**
  * @file    netlist.cpp
- * @brief   Out-of-line definitions for the netlist IR and builder
+ * @brief   Out-of-line definitions for netlist IR and builder
  * @author  Astatine387
  */
 

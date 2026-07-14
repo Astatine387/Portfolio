@@ -1,6 +1,6 @@
 /**
  * @file    logic4.cpp
- * @brief   Out-of-line definitions for the Logic4 value model
+ * @brief   Out-of-line definitions for Logic4 value model
  * @author  Astatine387
  */
 
