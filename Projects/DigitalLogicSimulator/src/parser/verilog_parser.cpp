@@ -162,11 +162,11 @@ struct Token {
  */
 [[nodiscard]] bool IsUnsupportedKeyword(std::string_view word) {
   static constexpr auto kKeywords = std::to_array<std::string_view>({
-    "always",   "initial", "reg",       "assign",  "parameter", "localparam", "generate", "genvar",
-    "function", "task",    "primitive", "specify", "integer",   "real",       "time",     "event",
-    "force",    "release", "fork",      "join",    "case",      "casex",      "casez",    "defparam",
-    "tri",      "wand",    "wor",       "supply0", "supply1",   "posedge",    "negedge",  "if",
-    "else",     "for",     "while",     "repeat",  "forever",
+      "always",   "initial", "reg",       "assign",  "parameter", "localparam", "generate", "genvar",
+      "function", "task",    "primitive", "specify", "integer",   "real",       "time",     "event",
+      "force",    "release", "fork",      "join",    "case",      "casex",      "casez",    "defparam",
+      "tri",      "wand",    "wor",       "supply0", "supply1",   "posedge",    "negedge",  "if",
+      "else",     "for",     "while",     "repeat",  "forever",
   });
 
   for (const std::string_view keyword : kKeywords) {
