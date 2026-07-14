@@ -6,6 +6,7 @@
 
 #include "parser/verilog_parser.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -169,13 +170,7 @@ struct Token {
       "else",     "for",     "while",     "repeat",  "forever",
   });
 
-  for (const std::string_view keyword : kKeywords) {
-    if (word == keyword) {
-      return true;
-    }
-  }
-
-  return false;
+  return std::ranges::find(kKeywords, word) != kKeywords.end();
 }
 
 /**
