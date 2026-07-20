@@ -85,5 +85,8 @@ class ChangePWGUI : public QDialog {
   QHBoxLayout* btn_box_;
   QVBoxLayout* vbox_;
 
+  Password cur_pw_;  // Validated current password handed to GetInput
+  Password new_pw_;  // Validated new password handed to GetInput
+
   VerifyCallback vcb_ = nullptr;
 };

@@ -10,14 +10,14 @@ VaultInterface::VaultInterface() : vault_(std::make_unique<Vault>()) {
   vault_->SetErrorCallback([this](const char* msg) { last_error_ = QString::fromUtf8(msg); });
 }
 
-Result VaultInterface::NewVault(const QString& path) {
+Result VaultInterface::NewVault(const QString& path, const Password& pw) {
   vault_path_ = path;
-  return vault_->NewVault(path.toStdString());
+  return vault_->NewVault(path.toStdString(), pw);
 }
 
-Result VaultInterface::OpenVault(const QString& path) {
+Result VaultInterface::OpenVault(const QString& path, const Password& pw) {
   vault_path_ = path;
-  return vault_->OpenVault(path.toStdString());
+  return vault_->OpenVault(path.toStdString(), pw);
 }
 
 Result VaultInterface::SaveVault() {
@@ -35,10 +35,6 @@ bool VaultInterface::VerifyPW(const Password& pw) const {
 
 Result VaultInterface::ChangePW(const Password& pw) {
   return vault_->ChangePW(pw, vault_path_.toStdString());
-}
-
-void VaultInterface::SetPW(const Password& pw) {
-  vault_->SetPW(pw);
 }
 
 Result VaultInterface::CreateEntry(const QString& site, const QString& acc, const Password& pw) {
@@ -67,17 +63,7 @@ QVector<EntryView> VaultInterface::GetEntries() const {
 }
 
 bool VaultInterface::GetPW(const QString& site, const QString& acc, Password& pw) const {
-  Entry target = { .site = site.toStdString(), .acc = acc.toStdString() };
-  const auto& entries = vault_->GetEntries();
-  auto it = entries.find(target);
-
-  if (it == entries.end()) {
-    return false;
-  }
-
-  pw = it->pw;
-
-  return true;
+  return vault_->GetEntryPW(site.toStdString(), acc.toStdString(), pw);
 }
 
 QString VaultInterface::GetLastError() const {

@@ -9,8 +9,14 @@
 #include <gtest/gtest.h>
 #include <openssl/err.h>
 
+#include <array>
+#include <cstring>
+#include <optional>
+#include <span>
 #include <string>
+#include <vector>
 
+#include "core/secure_key.h"
 #include "utils/platform.h"
 
 /**
@@ -30,6 +36,28 @@ class AesGcmTest : public ::testing::Test {
     RemoveFile(src_path_);
     RemoveFile(enc_path_);
     RemoveFile(dec_path_);
+  }
+
+  /**
+   * @brief   Small Argon2id parameters to keep key derivation fast
+   */
+  static KdfParams FastParams() { return KdfParams{ .time_cost = 1, .mem_cost = 8, .parallelism = 1 }; }
+
+  /**
+   * @brief   Build a fixed salt
+   */
+  static std::array<uint8_t, kSaltSize> MakeSalt(uint8_t fill) {
+    std::array<uint8_t, kSaltSize> salt{};
+    salt.fill(fill);
+    return salt;
+  }
+
+  /**
+   * @brief   Derive a key from a password and salt
+   */
+  static SecureKey MakeKey(const char* pw, const std::array<uint8_t, kSaltSize>& salt) {
+    auto key = DeriveKey(std::span<const char>(pw, std::strlen(pw)), salt, FastParams());
+    return std::move(key.value());  // NOLINT(bugprone-unchecked-optional-access)
   }
 
   /**
@@ -87,11 +115,12 @@ TEST_F(AesGcmTest, EncryptDecryptBasic) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
-  const char* pw = "password";
   int dsize = static_cast<int>(strlen(data));
-  int psize = static_cast<int>(strlen(pw));
   Result res;
   std::vector<uint8_t> orig(data, data + dsize), copy;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
   Create(src_path_, orig, dsize);
 
@@ -100,7 +129,7 @@ TEST_F(AesGcmTest, EncryptDecryptBasic) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  res = aes.Encrypt(src, dst, pw, psize);
+  res = aes.Encrypt(src, dst, key, salt);
 
   if (src) {
     fclose(src);
@@ -117,7 +146,7 @@ TEST_F(AesGcmTest, EncryptDecryptBasic) {
   OpenFile(&src, enc_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
 
-  res = aes.Decrypt(src, dst, pw, psize);
+  res = aes.Decrypt(src, dst, key);
 
   if (src) {
     fclose(src);
@@ -137,17 +166,17 @@ TEST_F(AesGcmTest, EncryptDecryptBasic) {
 }
 
 /**
- * @brief   Verify encryption produces different ciphertext each time (random
- * salt/IV)
+ * @brief   Verify encryption produces different ciphertext each time (fresh IV)
  */
 TEST_F(AesGcmTest, EncryptProducesDifferentOutput) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
-  const char* pw = "password";
   int dsize = static_cast<int>(strlen(data));
-  int psize = static_cast<int>(strlen(pw));
   std::vector<uint8_t> orig(data, data + dsize), enc0, enc1;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
   Create(src_path_, orig, dsize);
 
@@ -156,7 +185,7 @@ TEST_F(AesGcmTest, EncryptProducesDifferentOutput) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, pw, psize);
+  aes.Encrypt(src, dst, key, salt);
 
   if (src) {
     fclose(src);
@@ -166,12 +195,12 @@ TEST_F(AesGcmTest, EncryptProducesDifferentOutput) {
     fclose(dst);
   }
 
-  /* Second encryption of the same source */
+  /* Second encryption of the same source with the same key and salt */
 
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
 
-  aes.Encrypt(src, dst, pw, psize);
+  aes.Encrypt(src, dst, key, salt);
 
   if (src) {
     fclose(src);
@@ -181,7 +210,7 @@ TEST_F(AesGcmTest, EncryptProducesDifferentOutput) {
     fclose(dst);
   }
 
-  /* Ciphertexts must differ due to random salt/IV */
+  /* Ciphertexts must differ because a fresh IV is generated each time */
 
   Read(enc_path_, enc0);
   Read(dec_path_, enc1);
@@ -196,11 +225,12 @@ TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
-  const char* pw = "password";
   int dsize = static_cast<int>(strlen(data));
-  int psize = static_cast<int>(strlen(pw));
   std::vector<uint8_t> orig(data, data + dsize);
   Result res0, res1;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
   Create(src_path_, orig, dsize);
 
@@ -209,7 +239,7 @@ TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  res0 = aes.Encrypt(src, dst, pw, psize);
+  res0 = aes.Encrypt(src, dst, key, salt);
 
   if (src) {
     fclose(src);
@@ -224,7 +254,7 @@ TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
 
-  res1 = aes.Encrypt(src, dst, pw, psize);
+  res1 = aes.Encrypt(src, dst, key, salt);
 
   if (src) {
     fclose(src);
@@ -243,18 +273,19 @@ TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
  * ================================================== */
 
 /**
- * @brief   Verify decryption with wrong password fails
+ * @brief   Verify decryption with the wrong key fails
  */
-TEST_F(AesGcmTest, DecryptWrongPassword) {
+TEST_F(AesGcmTest, DecryptWrongKey) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
-  const char *pw0 = "password", *pw1 = "asdf1234";
   int dsize = static_cast<int>(strlen(data));
-  int psize0 = static_cast<int>(strlen(pw0));
-  int psize1 = static_cast<int>(strlen(pw1));
   Result res;
   std::vector<uint8_t> orig(data, data + dsize);
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key0 = MakeKey("password", salt);
+  SecureKey key1 = MakeKey("asdf1234", salt);
 
   Create(src_path_, orig, dsize);
 
@@ -263,7 +294,7 @@ TEST_F(AesGcmTest, DecryptWrongPassword) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, pw0, psize0);
+  aes.Encrypt(src, dst, key0, salt);
 
   if (src) {
     fclose(src);
@@ -273,12 +304,12 @@ TEST_F(AesGcmTest, DecryptWrongPassword) {
     fclose(dst);
   }
 
-  /* Decrypt with wrong password */
+  /* Decrypt with the wrong key */
 
   OpenFile(&src, enc_path_, "rb");
   OpenFile(&dst, dec_path_, "wb");
 
-  res = aes.Decrypt(src, dst, pw1, psize1);
+  res = aes.Decrypt(src, dst, key1);
 
   if (src) {
     fclose(src);
@@ -298,11 +329,12 @@ TEST_F(AesGcmTest, TamperedCiphertext) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
-  const char* pw = "password";
   int dsize = static_cast<int>(strlen(data));
-  int psize = static_cast<int>(strlen(pw));
   Result res;
   std::vector<uint8_t> orig(data, data + dsize), copy;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
   Create(src_path_, orig, dsize);
 
@@ -311,7 +343,7 @@ TEST_F(AesGcmTest, TamperedCiphertext) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, pw, psize);
+  aes.Encrypt(src, dst, key, salt);
 
   if (src) {
     fclose(src);
@@ -334,7 +366,7 @@ TEST_F(AesGcmTest, TamperedCiphertext) {
   OpenFile(&src, enc_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
 
-  res = aes.Decrypt(src, dst, pw, psize);
+  res = aes.Decrypt(src, dst, key);
 
   if (src) {
     fclose(src);
@@ -348,18 +380,18 @@ TEST_F(AesGcmTest, TamperedCiphertext) {
 }
 
 /**
- * @brief   Verify tampering with the authentication tag causes decryption
- * failure
+ * @brief   Verify tampering with the authentication tag causes decryption failure
  */
 TEST_F(AesGcmTest, TamperedTag) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
-  const char* pw = "password";
   int dsize = static_cast<int>(strlen(data));
-  int psize = static_cast<int>(strlen(pw));
   Result res;
   std::vector<uint8_t> orig(data, data + dsize), copy;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
   Create(src_path_, orig, dsize);
 
@@ -368,7 +400,7 @@ TEST_F(AesGcmTest, TamperedTag) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, pw, psize);
+  aes.Encrypt(src, dst, key, salt);
 
   if (src) {
     fclose(src);
@@ -391,7 +423,7 @@ TEST_F(AesGcmTest, TamperedTag) {
   OpenFile(&src, enc_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
 
-  res = aes.Decrypt(src, dst, pw, psize);
+  res = aes.Decrypt(src, dst, key);
 
   if (src) {
     fclose(src);
@@ -415,10 +447,11 @@ TEST_F(AesGcmTest, EmptyFile) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig, copy;
-  const char* pw = "password";
   int dsize = 0;
-  int psize = static_cast<int>(strlen(pw));
   Result res;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
   Create(src_path_, orig, dsize);
 
@@ -427,7 +460,7 @@ TEST_F(AesGcmTest, EmptyFile) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  res = aes.Encrypt(src, dst, pw, psize);
+  res = aes.Encrypt(src, dst, key, salt);
 
   if (src) {
     fclose(src);
@@ -444,7 +477,7 @@ TEST_F(AesGcmTest, EmptyFile) {
   OpenFile(&src, enc_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
 
-  res = aes.Decrypt(src, dst, pw, psize);
+  res = aes.Decrypt(src, dst, key);
 
   if (src) {
     fclose(src);
@@ -470,10 +503,11 @@ TEST_F(AesGcmTest, ExactBuffSizeFile) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig, copy;
-  const char* pw = "password";
   int dsize = kBlockSize * kBuffSize;
-  int psize = static_cast<int>(strlen(pw));
   Result res;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
   orig.resize(dsize, 'a');
 
@@ -484,7 +518,7 @@ TEST_F(AesGcmTest, ExactBuffSizeFile) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  res = aes.Encrypt(src, dst, pw, psize);
+  res = aes.Encrypt(src, dst, key, salt);
 
   if (src) {
     fclose(src);
@@ -501,7 +535,7 @@ TEST_F(AesGcmTest, ExactBuffSizeFile) {
   OpenFile(&src, enc_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
 
-  res = aes.Decrypt(src, dst, pw, psize);
+  res = aes.Decrypt(src, dst, key);
 
   if (src) {
     fclose(src);
@@ -527,10 +561,11 @@ TEST_F(AesGcmTest, ArbitrarySizeFile) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig, copy;
-  const char* pw = "password";
   int dsize = 50000;
-  int psize = static_cast<int>(strlen(pw));
   Result res;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
   orig.resize(dsize, 'a');
 
@@ -541,7 +576,7 @@ TEST_F(AesGcmTest, ArbitrarySizeFile) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  res = aes.Encrypt(src, dst, pw, psize);
+  res = aes.Encrypt(src, dst, key, salt);
 
   if (src) {
     fclose(src);
@@ -558,7 +593,7 @@ TEST_F(AesGcmTest, ArbitrarySizeFile) {
   OpenFile(&src, enc_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
 
-  res = aes.Decrypt(src, dst, pw, psize);
+  res = aes.Decrypt(src, dst, key);
 
   if (src) {
     fclose(src);
@@ -588,10 +623,11 @@ TEST_F(AesGcmTest, ProgressCallback) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig;
-  const char* pw = "password";
   int dsize = kBlockSize * kBuffSize * 10;
-  int psize = static_cast<int>(strlen(pw));
   int cnt = 0, last = -1;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
   orig.resize(dsize, 'a');
 
@@ -610,7 +646,7 @@ TEST_F(AesGcmTest, ProgressCallback) {
     last = perc;
   });
 
-  aes.Encrypt(src, dst, pw, psize);
+  aes.Encrypt(src, dst, key, salt);
 
   if (src) {
     fclose(src);
@@ -631,11 +667,12 @@ TEST_F(AesGcmTest, ErrorCallback) {
   FILE *src = nullptr, *dst = nullptr;
   bool b = false;
   const char* data = "Hello, world!";
-  const char *pw0 = "password", *pw1 = "asdf1234";
   int dsize = static_cast<int>(strlen(data));
-  int psize0 = static_cast<int>(strlen(pw0));
-  int psize1 = static_cast<int>(strlen(pw1));
   std::vector<uint8_t> orig(data, data + dsize);
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key0 = MakeKey("password", salt);
+  SecureKey key1 = MakeKey("asdf1234", salt);
 
   Create(src_path_, orig, dsize);
 
@@ -644,7 +681,7 @@ TEST_F(AesGcmTest, ErrorCallback) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, pw0, psize0);
+  aes.Encrypt(src, dst, key0, salt);
 
   if (src) {
     fclose(src);
@@ -654,14 +691,14 @@ TEST_F(AesGcmTest, ErrorCallback) {
     fclose(dst);
   }
 
-  /* Decrypt with wrong password and error callback */
+  /* Decrypt with the wrong key and an error callback */
 
   OpenFile(&src, enc_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
 
   aes.SetErrorCallback([&](const char* msg) { b = true; });
 
-  aes.Decrypt(src, dst, pw1, psize1);
+  aes.Decrypt(src, dst, key1);
 
   if (src) {
     fclose(src);
@@ -683,20 +720,21 @@ TEST_F(AesGcmTest, ErrorCallbackFormatsQueue) {
   bool called = false;
   std::string captured;
   const char* data = "Hello, world!";
-  const char *pw0 = "password", *pw1 = "asdf1234";
   int dsize = static_cast<int>(strlen(data));
-  int psize0 = static_cast<int>(strlen(pw0));
-  int psize1 = static_cast<int>(strlen(pw1));
   std::vector<uint8_t> orig(data, data + dsize);
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key0 = MakeKey("password", salt);
+  SecureKey key1 = MakeKey("asdf1234", salt);
 
   Create(src_path_, orig, dsize);
 
-  /* Encrypt with the correct password */
+  /* Encrypt with the correct key */
 
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, pw0, psize0);
+  aes.Encrypt(src, dst, key0, salt);
 
   if (src) {
     fclose(src);
@@ -706,7 +744,7 @@ TEST_F(AesGcmTest, ErrorCallbackFormatsQueue) {
     fclose(dst);
   }
 
-  /* Seed the OpenSSL error queue, then fail decryption with a wrong password */
+  /* Seed the OpenSSL error queue, then fail decryption with the wrong key */
 
   OpenFile(&src, enc_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
@@ -719,7 +757,7 @@ TEST_F(AesGcmTest, ErrorCallbackFormatsQueue) {
   ERR_clear_error();
   ERR_raise(ERR_LIB_USER, ERR_R_INTERNAL_ERROR);
 
-  aes.Decrypt(src, dst, pw1, psize1);
+  aes.Decrypt(src, dst, key1);
 
   if (src) {
     fclose(src);
@@ -744,11 +782,12 @@ TEST_F(AesGcmTest, Cancellation) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig;
-  const char* pw = "password";
   int dsize = kBlockSize * kBuffSize * 10;
-  int psize = static_cast<int>(strlen(pw));
   int cnt = 0;
   Result res;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
   orig.resize(dsize, 'a');
 
@@ -767,7 +806,7 @@ TEST_F(AesGcmTest, Cancellation) {
     }
   });
 
-  res = aes.Encrypt(src, dst, pw, psize);
+  res = aes.Encrypt(src, dst, key, salt);
 
   if (src) {
     fclose(src);
@@ -790,10 +829,11 @@ TEST_F(AesGcmTest, CancelDuringWritePass) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig;
-  const char* pw = "password";
   int dsize = kBlockSize * kBuffSize * 10;
-  int psize = static_cast<int>(strlen(pw));
   Result res;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
   orig.resize(dsize, 'a');
 
@@ -804,7 +844,7 @@ TEST_F(AesGcmTest, CancelDuringWritePass) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, pw, psize);
+  aes.Encrypt(src, dst, key, salt);
 
   if (src) {
     fclose(src);
@@ -825,7 +865,7 @@ TEST_F(AesGcmTest, CancelDuringWritePass) {
     }
   });
 
-  res = aes.Decrypt(src, dst, pw, psize);
+  res = aes.Decrypt(src, dst, key);
 
   if (src) {
     fclose(src);

@@ -10,20 +10,18 @@
 #include "core/aes_gcm.h"
 
 #include <openssl/err.h>
+#include <sodium.h>
 
 #include <array>
 #include <string>
 
-#include "utils/platform.h"
-
 AesGcm::AesGcm() {
-  key_locked_ = (Lock(key_.data(), kKeySize) == Result::kSuccess);
   writer_ = std::thread(&AesGcm::WriterLoop, this);
 }
 
 // NOLINTNEXTLINE(bugprone-exception-escape)
 AesGcm::~AesGcm() {
-  /* Stop the writer thread, draining any in-flight write first */
+  /* Stop the writer thread, draining any ongoing write first */
 
   {
     std::scoped_lock lk(write_mtx_);
@@ -37,17 +35,12 @@ AesGcm::~AesGcm() {
   }
 
   for (int i = 0; i < kBuffNum; i++) {
-    Wipe(buff_[i].data(), sizeof(buff_[i]));
+    sodium_memzero(buff_[i].data(), sizeof(buff_[i]));
   }
 
-  Wipe(iv_.data(), sizeof(iv_));
-  Wipe(key_.data(), sizeof(key_));
-  Wipe(salt_.data(), sizeof(salt_));
-  Wipe(tag_.data(), sizeof(tag_));
-
-  if (key_locked_) {
-    Unlock(key_.data(), kKeySize);
-  }
+  sodium_memzero(iv_.data(), sizeof(iv_));
+  sodium_memzero(salt_.data(), sizeof(salt_));
+  sodium_memzero(tag_.data(), sizeof(tag_));
 
   if (ctx_) {
     EVP_CIPHER_CTX_free(ctx_);

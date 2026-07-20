@@ -227,29 +227,3 @@ TEST(PasswordTest, DestructorAfterMove) {
   EXPECT_NO_THROW(delete pw0);
   EXPECT_STREQ(pw1.GetData(), data);
 }
-
-/* ==================================================
- * Lock Status Test
- * ================================================== */
-
-/**
- * @brief   Verify a default-constructed password is not locked
- */
-TEST(PasswordTest, IsNotLockedWhenEmpty) {
-  Password pw;
-
-  EXPECT_FALSE(pw.IsLocked());
-}
-
-/**
- * @brief   Verify password is locked in memory after setData
- */
-TEST(PasswordTest, IsLockedAfterSetData) {
-  Password pw;
-  const char* data = "password";
-  size_t size = strlen(data);
-
-  pw.SetData(data, size);
-
-  EXPECT_TRUE(pw.IsLocked());
-}

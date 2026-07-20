@@ -10,6 +10,7 @@
 #include <QScreen>
 #include <QSize>
 
+#include "core/secure_key.h"
 #include "gui/main_gui.h"
 
 int ShowGUI(int argc, char** argv) {
@@ -42,5 +43,7 @@ int ShowGUI(int argc, char** argv) {
 }
 
 int main(int argc, char** argv) {
+  InitCrypto();
+
   return ShowGUI(argc, argv);
 }

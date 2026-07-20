@@ -6,6 +6,9 @@
 
 #include "gui/change_pw_gui.h"
 
+#include <QApplication>
+#include <utility>
+
 ChangePWGUI::ChangePWGUI(QWidget* parent) : QDialog(parent) {
   /* Create layouts and components */
 
@@ -55,8 +58,8 @@ ChangePWGUI::ChangePWGUI(QWidget* parent) : QDialog(parent) {
 }
 
 void ChangePWGUI::GetInput(Password& cur_pw, Password& new_pw) {
-  cur_pwline_->Extract(cur_pw);
-  new_pwline_->Extract(new_pw);
+  cur_pw = std::move(cur_pw_);
+  new_pw = std::move(new_pw_);
 }
 
 void ChangePWGUI::Reset() {
@@ -64,6 +67,8 @@ void ChangePWGUI::Reset() {
   new_pwline_->Clear();
   confirm_pwline_->Clear();
   err_msg_->clear();
+  cur_pw_.Clean();
+  new_pw_.Clean();
 }
 
 void ChangePWGUI::SetErrMsg(const QString& msg) {
@@ -110,34 +115,34 @@ void ChangePWGUI::OnOKClicked() {
     return;
   }
 
-  /* Validate new password matches confirmation */
+  /* Constant-time comparison of the new password against its confirmation */
 
   if (new_pw.GetSize() != confirm_pw.GetSize() || !new_pw.Equal(confirm_pw)) {
     err_msg_->setText("New and confirm password do not match");
     return;
   }
 
-  /* Validate new password differs from current */
+  /* Re-authorize the current password */
 
-  if (new_pw.GetSize() == cur_pw.GetSize() && new_pw.Equal(cur_pw)) {
-    err_msg_->setText("Old and new password are the same");
-    return;
-  }
+  err_msg_->setText("Verifying...");
+  QApplication::setOverrideCursor(Qt::WaitCursor);
+  QApplication::processEvents();
 
-  /* Verify current password via callback */
+  bool auth_res = (!vcb_ || vcb_(cur_pw));
 
-  if (vcb_ && !vcb_(cur_pw)) {
+  QApplication::restoreOverrideCursor();
+
+  if (!auth_res) {
     err_msg_->setText("Current password is incorrect");
     cur_pwline_->Clear();
     new_pwline_->Clear();
     confirm_pwline_->Clear();
+
     return;
   }
 
-  /* Restore passwords for getInput() */
-
-  cur_pwline_->SetPassword(cur_pw);
-  new_pwline_->SetPassword(new_pw);
+  cur_pw_ = std::move(cur_pw);
+  new_pw_ = std::move(new_pw);
 
   accept();
 }

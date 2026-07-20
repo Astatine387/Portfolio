@@ -6,16 +6,14 @@
 
 #include "utils/password.h"
 
+#include <sodium.h>
+
 #include <cstring>
 
-#include "utils/platform.h"
+#include "core/secure_key.h"
 
 bool Password::IsEmpty() const {
   return size_ == 0;
-}
-
-bool Password::IsLocked() const {
-  return locked_;
 }
 
 const char* Password::GetData() const {
@@ -33,11 +31,16 @@ void Password::SetData(const Password& pw) {
 void Password::SetData(const char* str, size_t len) {
   Clean();
 
-  if (str) {
-    size_ = len;
-    data_ = new char[size_ + 1];
+  if (str != nullptr) {
+    InitCrypto();
 
-    locked_ = (Lock(data_, size_ + 1) == Result::kSuccess);
+    data_ = static_cast<char*>(sodium_malloc(len + 1));
+
+    if (data_ == nullptr) {
+      return;  // LCOV_EXCL_LINE  secure allocation failed; the password stays empty
+    }
+
+    size_ = len;
     memcpy(data_, str, size_);
 
     data_[size_] = '\0';
@@ -46,13 +49,9 @@ void Password::SetData(const char* str, size_t len) {
 
 void Password::Clean() {
   if (data_ != nullptr) {
-    Wipe(data_, size_ + 1);
-    Unlock(data_, size_ + 1);
-
-    delete[] data_;
+    sodium_free(data_);  // sodium_free zeroes the buffer before releasing it
+    data_ = nullptr;
   }
 
-  data_ = nullptr;
   size_ = 0;
-  locked_ = false;
 }

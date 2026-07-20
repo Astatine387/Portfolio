@@ -6,14 +6,14 @@
 
 #include "core/vault.h"
 
-#include "utils/platform.h"
+#include <sodium.h>
 
 Vault::Vault() {
   aes_.SetErrorCallback([this](const char* msg) { last_error_ = msg; });
 }
 
 Vault::~Vault() {
-  Clear();
+  CloseVault();
 }
 
 const std::set<Entry, EntryCmp>& Vault::GetEntries() const {
@@ -28,6 +28,18 @@ int Vault::GetEntryCount() const {
   return static_cast<int>(entry_set_.size());
 }
 
+bool Vault::GetEntryPW(const std::string& site, const std::string& acc, Password& dst) const {
+  auto it = entry_set_.find(Entry{ .site = site, .acc = acc });
+
+  if (it == entry_set_.end()) {
+    return false;
+  }
+
+  const char* pw_ptr = (it->pw_len > 0) ? reinterpret_cast<const char*>(img_.Data() + it->pw_off) : nullptr;
+
+  return dst.SetData(pw_ptr, it->pw_len) == Result::kSuccess;
+}
+
 void Vault::Clear() {
   if (file_) {
     fclose(file_);
@@ -35,17 +47,24 @@ void Vault::Clear() {
   }
 
   if (!src_buff_.empty()) {
-    Wipe(src_buff_.data(), src_buff_.size());
+    sodium_memzero(src_buff_.data(), src_buff_.size());
     src_buff_.clear();
   }
 
   if (!dst_buff_.empty()) {
-    Wipe(dst_buff_.data(), dst_buff_.size());
+    sodium_memzero(dst_buff_.data(), dst_buff_.size());
     dst_buff_.clear();
   }
 
   src_size_ = 0;
   dst_size_ = 0;
+}
+
+void Vault::Reset() {
+  entry_set_.clear();
+  img_.Reset();
+  key_.reset();
+  sodium_memzero(salt_.data(), salt_.size());
 }
 
 void Vault::ReportError(const char* msg) {

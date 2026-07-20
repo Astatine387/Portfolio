@@ -8,17 +8,15 @@
 #include <cstring>
 
 #include "core/aes_gcm.h"
-#include "utils/platform.h"
 
-Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen) {
+Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key) {
   src_buff_ = src;
   dst_buff_ = dst;
   size_ = size;
   dst_crs_ = 0;
+  key_ = &key;
 
-  if (DecryptInit(pw, plen) == Result::kFailure) {
-    return Result::kFailure;  // LCOV_EXCL_LINE
-  }
+  DecryptInit();
 
   /* Pass 1 - verify authentication tag */
 
@@ -35,35 +33,11 @@ Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, 
   return Result::kSuccess;
 }
 
-Result AesGcm::DecryptInit(const char* pw, size_t plen) {
-  /* Abort if the key buffer is not locked in memory */
+void AesGcm::DecryptInit() {
+  /* Read the IV from the header */
 
-  if (!key_locked_) {
-    // LCOV_EXCL_START
-    ReportError("[Memory] Lock failed - Cannot lock key in memory\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
-
-  /* Read salt and IV from header */
-
-  memcpy(salt_.data(), src_buff_, kSaltSize);
   memcpy(iv_.data(), src_buff_ + kSaltSize, kIVSize);
-
-  /* Read authentication tag from the end of the buffer */
-
   memcpy(tag_.data(), src_buff_ + size_ - kTagSize, kTagSize);
-
-  /* Derive key from password */
-
-  if (Argon2id(salt_.data(), pw, plen, key_.data()) == Result::kFailure) {
-    // LCOV_EXCL_START
-    ReportError("[Crypto] Key derivation failed - Argon2id error\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
-
-  return Result::kSuccess;
 }
 
 Result AesGcm::DecryptBatch(DecryptMode mode) {
@@ -78,8 +52,7 @@ Result AesGcm::DecryptBatch(DecryptMode mode) {
   while (rem > 0) {
     int chunk = static_cast<int>(std::min<int64_t>(rem, kBuffSize * kBlockSize));
 
-    /* The verify pass decrypts into a scratch buffer so that unverified
-       plaintext is never written into the destination buffer */
+    /* Decrypt into a temporary buffer */
 
     uint8_t* dst = (mode == DecryptMode::kWrite) ? dst_buff_ + dst_crs : verify_buff_.data();
 
@@ -130,7 +103,7 @@ Result AesGcm::SetupDecryptCtx() {
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_DecryptInit_ex(ctx_, nullptr, nullptr, key_.data(), iv_.data()) != 1) {
+  if (EVP_DecryptInit_ex(ctx_, nullptr, nullptr, key_->Bytes().data(), iv_.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
     return Result::kFailure;

@@ -10,13 +10,15 @@
 #include "core/aes_gcm.h"
 #include "utils/platform.h"
 
-Result AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen) {
+Result AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key,
+                       std::span<const uint8_t, kSaltSize> salt) {
   src_buff_ = src;
   dst_buff_ = dst;
   size_ = size;
   dst_crs_ = 0;
+  key_ = &key;
 
-  if (EncryptInit(pw, plen) == Result::kFailure) {
+  if (EncryptInit(salt) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
@@ -35,7 +37,7 @@ Result AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, 
   return Result::kSuccess;
 }
 
-Result AesGcm::EncryptInit(const char* pw, size_t plen) {
+Result AesGcm::EncryptInit(std::span<const uint8_t, kSaltSize> salt) {
   /* Clear existing context */
 
   if (ctx_) {
@@ -43,36 +45,11 @@ Result AesGcm::EncryptInit(const char* pw, size_t plen) {
     ctx_ = nullptr;
   }
 
-  /* Abort if the key buffer is not locked in memory */
-
-  if (!key_locked_) {
-    // LCOV_EXCL_START
-    ReportError("[Memory] Lock failed - Cannot lock key in memory\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
-
-  /* Generate salt and IV */
-
-  if (Random(salt_.data(), kSaltSize) == Result::kFailure) {
-    // LCOV_EXCL_START
-    ReportError("[Crypto] Random failed - Cannot generate salt\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
+  /* Generate a new IV for every encryption */
 
   if (Random(iv_.data(), kIVSize) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Random failed - Cannot generate initial vector\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
-
-  /* Derive key from password */
-
-  if (Argon2id(salt_.data(), pw, plen, key_.data()) == Result::kFailure) {
-    // LCOV_EXCL_START
-    ReportError("[Crypto] Key derivation failed - Argon2id error\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
@@ -102,16 +79,16 @@ Result AesGcm::EncryptInit(const char* pw, size_t plen) {
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_EncryptInit_ex(ctx_, nullptr, nullptr, key_.data(), iv_.data()) != 1) {
+  if (EVP_EncryptInit_ex(ctx_, nullptr, nullptr, key_->Bytes().data(), iv_.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  /* Write salt and IV */
+  /* Write the session salt and the fresh IV to the header */
 
-  memcpy(dst_buff_ + dst_crs_, salt_.data(), kSaltSize);
+  memcpy(dst_buff_ + dst_crs_, salt.data(), kSaltSize);
   dst_crs_ += kSaltSize;
 
   memcpy(dst_buff_ + dst_crs_, iv_.data(), kIVSize);

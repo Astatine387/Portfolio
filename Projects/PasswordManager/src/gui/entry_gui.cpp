@@ -6,10 +6,14 @@
 
 #include "gui/entry_gui.h"
 
+#include <sodium.h>
+
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "common/constants.h"
+#include "core/secure_key.h"
 #include "utils/platform.h"
 
 namespace {
@@ -135,6 +139,7 @@ void EntryGUI::SetAddMode() {
   acc_line_->clear();
   pwline_->Clear();
   err_msg_->clear();
+  input_pw_.Clean();
 }
 
 void EntryGUI::SetEditMode(const QString& site, const QString& acc, const Password& pw) {
@@ -144,6 +149,7 @@ void EntryGUI::SetEditMode(const QString& site, const QString& acc, const Passwo
   acc_line_->setText(acc);
   pwline_->SetPassword(pw);
   err_msg_->clear();
+  input_pw_.Clean();
 }
 
 EntryInput EntryGUI::GetInput() {
@@ -151,7 +157,7 @@ EntryInput EntryGUI::GetInput() {
 
   res.site = site_line_->text();
   res.acc = acc_line_->text();
-  pwline_->Extract(res.pw);
+  res.pw = std::move(input_pw_);
 
   return res;
 }
@@ -193,7 +199,7 @@ void EntryGUI::OnOKClicked() {
     return;
   }
 
-  pwline_->SetPassword(tmp);
+  input_pw_ = std::move(tmp);
 
   accept();
 }
@@ -311,14 +317,15 @@ Result EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size
     return Result::kFailure;
   }
 
-  /* Generate password */
+  /* Generate the password in guarded, locked memory */
 
-  pw = new char[pw_size]{};
+  InitCrypto();
 
-  /* Lock the output buffer and the candidate pool so neither can be swapped to disk */
+  pw = static_cast<char*>(sodium_malloc(pw_size));
 
-  Lock(pw, pw_size);
-  Lock(pool.data(), pool.size());
+  if (pw == nullptr) {
+    return Result::kFailure;
+  }
 
   Result res = Result::kSuccess;
 
@@ -362,12 +369,8 @@ Result EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size
 
   /* Cleanup */
 
-  Wipe(pool.data(), pool.size());
-  Unlock(pool.data(), pool.size());
-  Wipe(pw, pw_size);
-  Unlock(pw, pw_size);
-
-  delete[] pw;
+  sodium_memzero(pool.data(), pool.size());
+  sodium_free(pw);
 
   return res;
 }

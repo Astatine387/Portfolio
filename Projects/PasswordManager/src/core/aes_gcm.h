@@ -11,8 +11,10 @@
 #include <array>
 #include <functional>
 #include <future>
+#include <span>
 
 #include "common/constants.h"
+#include "core/secure_key.h"
 
 /**
  * @enum	DecryptMode
@@ -32,7 +34,7 @@ class AesGcm {
   /**
    * @brief	Default constructor of AesGcm class
    */
-  AesGcm();
+  AesGcm() = default;
 
   /**
    * @brief	Destructor of AesGcm class
@@ -53,22 +55,22 @@ class AesGcm {
    * @param		src		Source buffer
    * @param		dst		Destination buffer
    * @param		size	Source buffer size
-   * @param		pw		Password
-   * @param		plen	Password length
+   * @param		key		Session key
    * @return		kSuccess on success, kFailure on failure
    */
-  Result Decrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
+  Result Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key);
 
   /**
    * @brief		Encrypt a buffer
    * @param		src			Source buffer
    * @param		dst			Destination buffer
    * @param		size		Source buffer size
-   * @param		pw			Password
-   * @param		plen		Password length
+   * @param		key			Session key
+   * @param		salt		Session salt written to the header
    * @return		kSuccess on success, kFailure on failure
    */
-  Result Encrypt(uint8_t* src, uint8_t* dst, size_t size, const char* pw, size_t plen);
+  Result Encrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key,
+                 std::span<const uint8_t, kSaltSize> salt);
 
   /* ==================================================
    * Callback functions
@@ -91,12 +93,12 @@ class AesGcm {
 
   ErrorCallback ecb_ = nullptr;  // Error reporting callback function
 
-  std::array<uint8_t, kIVSize> iv_{};      // Initial vector
-  std::array<uint8_t, kKeySize> key_{};    // Key derived from password
-  std::array<uint8_t, kSaltSize> salt_{};  // Key derivation salt
-  std::array<uint8_t, kTagSize> tag_{};    // Authentication tag read from buffer
+  std::array<uint8_t, kIVSize> iv_{};    // Initial vector
+  std::array<uint8_t, kTagSize> tag_{};  // Authentication tag read from buffer
 
   std::array<uint8_t, kBuffSize * kBlockSize> verify_buff_{};  // Scratch buffer for the verify pass
+
+  const SecureKey* key_ = nullptr;  // Session key for the current operation
 
   uint8_t* src_buff_ = nullptr;  // Source buffer
   uint8_t* dst_buff_ = nullptr;  // Destination buffer
@@ -104,19 +106,16 @@ class AesGcm {
   size_t dst_crs_ = 0;  // Current write position in buffer
   size_t size_ = 0;     // Source buffer size
 
-  bool key_locked_ = false;  // Whether the key buffer is locked in memory
-
   /* ==================================================
    * Decryption functions
    * ================================================== */
 
   /**
-   * @brief	Read salt, IV, and tag, then derive the key
-   * @param	pw		Password
-   * @param	plen	Password length
-   * @return	kSuccess on success, kFailure on failure
+   * @brief	Read the IV and authentication tag from the buffer
+   *
+   * The salt was already consumed by the caller to derive the session key.
    */
-  Result DecryptInit(const char* pw, size_t plen);
+  void DecryptInit();
 
   /**
    * @brief	Run one decryption pass over the ciphertext
@@ -151,12 +150,11 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief	Initialize encryption context
-   * @param	pw		Password
-   * @param	plen	Password length
+   * @brief	Initialize the encryption context and write the header
+   * @param	salt	Session salt written to the header
    * @return	kSuccess on success, kFailure on failure
    */
-  Result EncryptInit(const char* pw, size_t plen);
+  Result EncryptInit(std::span<const uint8_t, kSaltSize> salt);
 
   /**
    * @brief	Encrypt buffer

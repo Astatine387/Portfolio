@@ -6,6 +6,11 @@
 
 #include "core/crypto_worker.h"
 
+#include <array>
+#include <optional>
+#include <span>
+
+#include "core/secure_key.h"
 #include "utils/platform.h"
 
 void CryptoWorker::RequestCancel() {
@@ -16,21 +21,10 @@ void CryptoWorker::Work() {
   AesGcm aes;
   FILE* src_file = nullptr;
   FILE* dst_file = nullptr;
-  std::string err, msg;
+  std::string err;
+  std::string msg;
   bool should_delete = false;
   Result res;
-
-  /* Abort if the password is not locked in memory */
-
-  if (!pw_.IsLocked()) {
-    // LCOV_EXCL_START
-    if (fcb_) {
-      fcb_("[Memory] Lock failed - Cannot lock password in memory\n");
-    }
-
-    return;
-    // LCOV_EXCL_STOP
-  }
 
   /* Open files */
 
@@ -51,6 +45,38 @@ void CryptoWorker::Work() {
 
     if (fcb_) {
       fcb_("[File] Open failed - Cannot create destination file\n");
+    }
+
+    return;
+  }
+
+  /* Derive the session key */
+
+  std::array<uint8_t, kSaltSize> salt{};
+  std::optional<SecureKey> key;
+
+  if (mode_ == CryptoMode::kEncrypt) {
+    if (Random(salt.data(), kSaltSize) == Result::kSuccess) {
+      key = DeriveKey(std::span<const char>(pw_.GetData(), pw_.GetSize()), salt);
+    }
+  }
+  else {
+    if (fread(salt.data(), sizeof(uint8_t), kSaltSize, src_file) == kSaltSize &&
+        Seek(src_file, 0, SEEK_SET) == Result::kSuccess) {
+      key = DeriveKey(std::span<const char>(pw_.GetData(), pw_.GetSize()), salt);
+    }
+  }
+
+  pw_ = Password();
+
+  if (!key.has_value()) {
+    fclose(src_file);
+    fclose(dst_file);
+    RemoveFile(dst_path_);
+
+    if (fcb_) {
+      fcb_(mode_ == CryptoMode::kEncrypt ? "[Crypto] Key derivation failed\nEncryption failed\n"
+                                         : "[Crypto] Key derivation failed\nDecryption failed\n");
     }
 
     return;
@@ -80,7 +106,7 @@ void CryptoWorker::Work() {
   /* Encrypt or decrypt */
 
   if (mode_ == CryptoMode::kEncrypt) {
-    res = aes.Encrypt(src_file, dst_file, pw_.GetData(), pw_.GetSize());
+    res = aes.Encrypt(src_file, dst_file, *key, salt);
 
     if (should_cancel_) {
       msg = "Encryption canceled\n";
@@ -97,7 +123,7 @@ void CryptoWorker::Work() {
     }
   }
   else {
-    res = aes.Decrypt(src_file, dst_file, pw_.GetData(), pw_.GetSize());
+    res = aes.Decrypt(src_file, dst_file, *key);
 
     if (should_cancel_) {
       msg = "Decryption canceled\n";

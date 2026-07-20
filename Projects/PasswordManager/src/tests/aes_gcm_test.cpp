@@ -9,7 +9,36 @@
 #include <gtest/gtest.h>
 #include <openssl/err.h>
 
+#include <array>
+#include <cstring>
+#include <optional>
+#include <span>
 #include <string>
+#include <vector>
+
+#include "common/constants.h"
+#include "core/secure_key.h"
+
+namespace {
+
+/* Small Argon2id parameters keep the key derivation fast for tests */
+
+KdfParams FastParams() {
+  return KdfParams{ .time_cost = 1, .mem_cost = 8, .parallelism = 1 };
+}
+
+std::array<uint8_t, kSaltSize> MakeSalt(uint8_t fill) {
+  std::array<uint8_t, kSaltSize> salt{};
+  salt.fill(fill);
+  return salt;
+}
+
+SecureKey MakeKey(const char* pw, const std::array<uint8_t, kSaltSize>& salt) {
+  auto key = DeriveKey(std::span<const char>(pw, std::strlen(pw)), salt, FastParams());
+  return std::move(key.value());  // NOLINT(bugprone-unchecked-optional-access)
+}
+
+}  // namespace
 
 /* ==================================================
  * Encryption/Decryption Tests
@@ -22,10 +51,7 @@ TEST(AesGcmTest, EncryptDecryptBasic) {
   AesGcm aes;
 
   const char* data = "Hello, world!";
-  const char* pw = "password";
-
   size_t dsize = strlen(data);
-  size_t psize = strlen(pw);
   size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
@@ -34,32 +60,22 @@ TEST(AesGcmTest, EncryptDecryptBasic) {
 
   memcpy(src.data(), data, dsize);
 
-  /* Encrypt */
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
-  Result res = aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
-
-  EXPECT_EQ(res, Result::kSuccess);
-
-  /* Decrypt */
-
-  res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
-
-  EXPECT_EQ(res, Result::kSuccess);
+  EXPECT_EQ(aes.Encrypt(src.data(), enc.data(), dsize, key, salt), Result::kSuccess);
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key), Result::kSuccess);
   EXPECT_EQ(memcmp(src.data(), dec.data(), dsize), 0);
 }
 
 /**
- * @brief   Verify encryption produces different ciphertext each time (random
- * salt/IV)
+ * @brief   Verify encryption produces different ciphertext each time (fresh IV)
  */
 TEST(AesGcmTest, EncryptProducesDifferentOutput) {
   AesGcm aes;
 
   const char* data = "Hello, world!";
-  const char* pw = "password";
-
   size_t dsize = strlen(data);
-  size_t psize = strlen(pw);
   size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
@@ -68,25 +84,60 @@ TEST(AesGcmTest, EncryptProducesDifferentOutput) {
 
   memcpy(src.data(), data, dsize);
 
-  aes.Encrypt(src.data(), enc0.data(), dsize, pw, psize);
-  aes.Encrypt(src.data(), enc1.data(), dsize, pw, psize);
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
+
+  aes.Encrypt(src.data(), enc0.data(), dsize, key, salt);
+  aes.Encrypt(src.data(), enc1.data(), dsize, key, salt);
 
   EXPECT_NE(memcmp(enc0.data(), enc1.data(), enc_size), 0);
 }
 
 /**
- * @brief   Verify decryption with wrong password fails
+ * @brief   Verify a fresh IV is generated on every encrypt under a fixed key,
+ *          yet both ciphertexts decrypt correctly (D3)
  */
-TEST(AesGcmTest, DecryptWrongPassword) {
+TEST(AesGcmTest, FreshIvPerEncrypt) {
   AesGcm aes;
 
   const char* data = "Hello, world!";
-  const char* pw0 = "password";
-  const char* pw1 = "asdf1234";
-
   size_t dsize = strlen(data);
-  size_t psize0 = strlen(pw0);
-  size_t psize1 = strlen(pw1);
+  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+
+  std::vector<uint8_t> src(dsize);
+  std::vector<uint8_t> enc0(enc_size);
+  std::vector<uint8_t> enc1(enc_size);
+  std::vector<uint8_t> dec0(dsize);
+  std::vector<uint8_t> dec1(dsize);
+
+  memcpy(src.data(), data, dsize);
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
+
+  aes.Encrypt(src.data(), enc0.data(), dsize, key, salt);
+  aes.Encrypt(src.data(), enc1.data(), dsize, key, salt);
+
+  /* The IV (written after the salt) must differ between the two writes */
+
+  EXPECT_NE(memcmp(enc0.data() + kSaltSize, enc1.data() + kSaltSize, kIVSize), 0);
+
+  /* Both ciphertexts must still decrypt back to the plaintext */
+
+  EXPECT_EQ(aes.Decrypt(enc0.data(), dec0.data(), enc_size, key), Result::kSuccess);
+  EXPECT_EQ(aes.Decrypt(enc1.data(), dec1.data(), enc_size, key), Result::kSuccess);
+  EXPECT_EQ(memcmp(src.data(), dec0.data(), dsize), 0);
+  EXPECT_EQ(memcmp(src.data(), dec1.data(), dsize), 0);
+}
+
+/**
+ * @brief   Verify decryption with the wrong key fails
+ */
+TEST(AesGcmTest, DecryptWrongKey) {
+  AesGcm aes;
+
+  const char* data = "Hello, world!";
+  size_t dsize = strlen(data);
   size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
@@ -95,11 +146,13 @@ TEST(AesGcmTest, DecryptWrongPassword) {
 
   memcpy(src.data(), data, dsize);
 
-  aes.Encrypt(src.data(), enc.data(), dsize, pw0, psize0);
+  auto salt = MakeSalt(0xA5);
+  SecureKey key0 = MakeKey("password", salt);
+  SecureKey key1 = MakeKey("asdf1234", salt);
 
-  Result res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw1, psize1);
+  aes.Encrypt(src.data(), enc.data(), dsize, key0, salt);
 
-  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key1), Result::kFailure);
 }
 
 /**
@@ -109,10 +162,7 @@ TEST(AesGcmTest, TamperedCiphertext) {
   AesGcm aes;
 
   const char* data = "Hello, world!";
-  const char* pw = "password";
-
   size_t dsize = strlen(data);
-  size_t psize = strlen(pw);
   size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
@@ -121,29 +171,24 @@ TEST(AesGcmTest, TamperedCiphertext) {
 
   memcpy(src.data(), data, dsize);
 
-  aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
-  /* Tamper with encrypted data */
+  aes.Encrypt(src.data(), enc.data(), dsize, key, salt);
 
   enc[kSaltSize + kIVSize] ^= 0x01;
 
-  Result res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
-
-  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key), Result::kFailure);
 }
 
 /**
- * @brief   Verify tampering with the authentication tag causes decryption
- * failure
+ * @brief   Verify tampering with the authentication tag causes decryption failure
  */
 TEST(AesGcmTest, TamperedTag) {
   AesGcm aes;
 
   const char* data = "Hello, world!";
-  const char* pw = "password";
-
   size_t dsize = strlen(data);
-  size_t psize = strlen(pw);
   size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
@@ -152,15 +197,14 @@ TEST(AesGcmTest, TamperedTag) {
 
   memcpy(src.data(), data, dsize);
 
-  aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
-  /* Tamper with authentication tag */
+  aes.Encrypt(src.data(), enc.data(), dsize, key, salt);
 
   enc[enc_size - 1] ^= 0x01;
 
-  Result res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
-
-  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key), Result::kFailure);
 }
 
 /* ==================================================
@@ -173,9 +217,6 @@ TEST(AesGcmTest, TamperedTag) {
 TEST(AesGcmTest, EmptyData) {
   AesGcm aes;
 
-  const char* pw = "password";
-
-  size_t psize = strlen(pw);
   size_t dsize = 0;
   size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
@@ -183,17 +224,11 @@ TEST(AesGcmTest, EmptyData) {
   std::vector<uint8_t> enc(enc_size);
   std::vector<uint8_t> dec(dsize);
 
-  /* Encrypt */
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
-  Result res = aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
-
-  EXPECT_EQ(res, Result::kSuccess);
-
-  /* Decrypt */
-
-  res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
-
-  EXPECT_EQ(res, Result::kSuccess);
+  EXPECT_EQ(aes.Encrypt(src.data(), enc.data(), dsize, key, salt), Result::kSuccess);
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key), Result::kSuccess);
 }
 
 /**
@@ -202,27 +237,18 @@ TEST(AesGcmTest, EmptyData) {
 TEST(AesGcmTest, SingleByte) {
   AesGcm aes;
 
-  const char* pw = "password";
-
-  size_t psize = strlen(pw);
   size_t dsize = 1;
   size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   uint8_t src = 0x00;
   std::vector<uint8_t> enc(enc_size);
-  uint8_t dec;
+  uint8_t dec = 0xFF;
 
-  /* Encrypt */
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
-  Result res = aes.Encrypt(&src, enc.data(), dsize, pw, psize);
-
-  EXPECT_EQ(res, Result::kSuccess);
-
-  /* Decrypt */
-
-  res = aes.Decrypt(enc.data(), &dec, enc_size, pw, psize);
-
-  EXPECT_EQ(res, Result::kSuccess);
+  EXPECT_EQ(aes.Encrypt(&src, enc.data(), dsize, key, salt), Result::kSuccess);
+  EXPECT_EQ(aes.Decrypt(enc.data(), &dec, enc_size, key), Result::kSuccess);
   EXPECT_EQ(dec, src);
 }
 
@@ -232,9 +258,6 @@ TEST(AesGcmTest, SingleByte) {
 TEST(AesGcmTest, LargeData) {
   AesGcm aes;
 
-  const char* pw = "password";
-
-  size_t psize = strlen(pw);
   size_t dsize = 1024ULL * 1024;  // 1 MiB
   size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
@@ -242,17 +265,11 @@ TEST(AesGcmTest, LargeData) {
   std::vector<uint8_t> enc(enc_size);
   std::vector<uint8_t> dec(dsize);
 
-  /* Encrypt */
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
 
-  Result res = aes.Encrypt(src.data(), enc.data(), dsize, pw, psize);
-
-  EXPECT_EQ(res, Result::kSuccess);
-
-  /* Decrypt */
-
-  res = aes.Decrypt(enc.data(), dec.data(), enc_size, pw, psize);
-
-  EXPECT_EQ(res, Result::kSuccess);
+  EXPECT_EQ(aes.Encrypt(src.data(), enc.data(), dsize, key, salt), Result::kSuccess);
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key), Result::kSuccess);
   EXPECT_EQ(memcmp(src.data(), dec.data(), dsize), 0);
 }
 
@@ -268,12 +285,7 @@ TEST(AesGcmTest, ErrorCallback) {
   bool cb_called = false;
 
   const char* data = "Hello, world!";
-  const char* pw0 = "password";
-  const char* pw1 = "asdf1234";
-
   size_t dsize = strlen(data);
-  size_t psize0 = strlen(pw0);
-  size_t psize1 = strlen(pw1);
   size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
@@ -282,11 +294,15 @@ TEST(AesGcmTest, ErrorCallback) {
 
   memcpy(src.data(), data, dsize);
 
-  aes.Encrypt(src.data(), enc.data(), dsize, pw0, psize0);
+  auto salt = MakeSalt(0xA5);
+  SecureKey key0 = MakeKey("password", salt);
+  SecureKey key1 = MakeKey("asdf1234", salt);
+
+  aes.Encrypt(src.data(), enc.data(), dsize, key0, salt);
 
   aes.SetErrorCallback([&](const char* msg) { cb_called = true; });
 
-  aes.Decrypt(enc.data(), dec.data(), enc_size, pw1, psize1);
+  aes.Decrypt(enc.data(), dec.data(), enc_size, key1);
 
   EXPECT_TRUE(cb_called);
 }
@@ -300,12 +316,7 @@ TEST(AesGcmTest, ErrorCallbackFormatsQueue) {
   std::string captured;
 
   const char* data = "Hello, world!";
-  const char* pw0 = "password";
-  const char* pw1 = "asdf1234";
-
   size_t dsize = strlen(data);
-  size_t psize0 = strlen(pw0);
-  size_t psize1 = strlen(pw1);
   size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
@@ -314,21 +325,23 @@ TEST(AesGcmTest, ErrorCallbackFormatsQueue) {
 
   memcpy(src.data(), data, dsize);
 
-  /* Encrypt with the correct password */
+  auto salt = MakeSalt(0xA5);
+  SecureKey key0 = MakeKey("password", salt);
+  SecureKey key1 = MakeKey("asdf1234", salt);
 
-  aes.Encrypt(src.data(), enc.data(), dsize, pw0, psize0);
+  aes.Encrypt(src.data(), enc.data(), dsize, key0, salt);
 
   aes.SetErrorCallback([&](const char* msg) {
     called = true;
     captured = msg;
   });
 
-  /* Seed the OpenSSL error queue, then fail decryption with a wrong password */
+  /* Seed the OpenSSL error queue, then fail decryption with the wrong key */
 
   ERR_clear_error();
   ERR_raise(ERR_LIB_USER, ERR_R_INTERNAL_ERROR);
 
-  aes.Decrypt(enc.data(), dec.data(), enc_size, pw1, psize1);
+  aes.Decrypt(enc.data(), dec.data(), enc_size, key1);
 
   EXPECT_TRUE(called);
   EXPECT_NE(captured.find(" -> "), std::string::npos);

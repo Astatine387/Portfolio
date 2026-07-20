@@ -6,35 +6,27 @@
 
 #include <gtest/gtest.h>
 
+#include <cstring>
+
 #include "core/vault.h"
 
 /**
  * @class   VaultEntryTest
  * @brief   Test fixture for Vault entry CRUD operations
+ *
+ * Entry CRUD operates on the in-memory image and does not require an open
+ * session key, so the fixture creates entries directly.
  */
 class VaultEntryTest : public ::testing::Test {
  protected:
   Vault vault_;
 
   /**
-   * @brief   Set up test fixture with a master password
-   */
-  void SetUp() override {
-    Password pw;
-    const char* pwstr = "password";
-    size_t psize = strlen(pwstr);
-
-    pw.SetData(pwstr, psize);
-
-    vault_.SetPW(pw);
-  }
-
-  /**
    * @brief   Create a Password object from C-string
    * @param   str     Password string
    * @return  Password object
    */
-  Password MakePW(const char* str) {
+  static Password MakePW(const char* str) {
     Password pw;
 
     pw.SetData(str, strlen(str));
@@ -80,6 +72,18 @@ TEST_F(VaultEntryTest, CreateDuplicate) {
   EXPECT_EQ(vault_.GetEntryCount(), 1);
 }
 
+/**
+ * @brief   Verify a created entry's password is stored in the image
+ */
+TEST_F(VaultEntryTest, CreateStoresPassword) {
+  vault_.CreateEntry("Google", "user@google.com", MakePW("s3cr3t!!"));
+
+  Password got;
+
+  EXPECT_TRUE(vault_.GetEntryPW("Google", "user@google.com", got));
+  EXPECT_TRUE(got.Equal(MakePW("s3cr3t!!")));
+}
+
 /* ==================================================
  * Update Entry Test
  * ================================================== */
@@ -95,14 +99,10 @@ TEST_F(VaultEntryTest, UpdateBasic) {
   EXPECT_EQ(res, UpdateResult::kSuccess);
   EXPECT_EQ(vault_.GetEntryCount(), 1);
 
-  /* Verify the updated entry exists */
-
   const auto& entries = vault_.GetEntries();
   Entry target = { .site = "Google", .acc = "new@google.com" };
 
-  auto it = entries.find(target);
-
-  EXPECT_NE(it, entries.end());
+  EXPECT_NE(entries.find(target), entries.end());
 }
 
 /**
@@ -137,6 +137,11 @@ TEST_F(VaultEntryTest, UpdateSameKeySelf) {
 
   EXPECT_EQ(res, UpdateResult::kSuccess);
   EXPECT_EQ(vault_.GetEntryCount(), 1);
+
+  Password got;
+
+  EXPECT_TRUE(vault_.GetEntryPW("Google", "user@google.com", got));
+  EXPECT_TRUE(got.Equal(MakePW("asdf1234")));
 }
 
 /* ==================================================
@@ -165,20 +170,24 @@ TEST_F(VaultEntryTest, DeleteNonExistent) {
 }
 
 /**
- * @brief   Verify deleting one entry does not affect others
+ * @brief   Verify deleting one entry preserves the passwords of the others
  */
 TEST_F(VaultEntryTest, DeletePreservesOthers) {
-  vault_.CreateEntry("Google", "user1@google.com", MakePW("password"));
-  vault_.CreateEntry("Microsoft", "user2@microsoft.com", MakePW("asdf1234"));
+  vault_.CreateEntry("Google", "user1@google.com", MakePW("gpass"));
+  vault_.CreateEntry("Amazon", "user2@amazon.com", MakePW("apass"));
+  vault_.CreateEntry("Microsoft", "user3@microsoft.com", MakePW("mpass"));
 
-  vault_.DeleteEntry("Google", "user1@google.com");
+  vault_.DeleteEntry("Amazon", "user2@amazon.com");
 
-  EXPECT_EQ(vault_.GetEntryCount(), 1);
+  EXPECT_EQ(vault_.GetEntryCount(), 2);
 
-  const auto& entries = vault_.GetEntries();
-  Entry target = { .site = "Microsoft", .acc = "user2@microsoft.com" };
+  Password google;
+  Password microsoft;
 
-  EXPECT_NE(entries.find(target), entries.end());
+  EXPECT_TRUE(vault_.GetEntryPW("Google", "user1@google.com", google));
+  EXPECT_TRUE(google.Equal(MakePW("gpass")));
+  EXPECT_TRUE(vault_.GetEntryPW("Microsoft", "user3@microsoft.com", microsoft));
+  EXPECT_TRUE(microsoft.Equal(MakePW("mpass")));
 }
 
 /* ==================================================
@@ -186,7 +195,7 @@ TEST_F(VaultEntryTest, DeletePreservesOthers) {
  * ================================================== */
 
 /**
- * @brief   Verify getEntries returns correct data
+ * @brief   Verify getEntries returns correct data in order
  */
 TEST_F(VaultEntryTest, GetEntries) {
   vault_.CreateEntry("Google", "user1@google.com", MakePW("password"));
@@ -196,8 +205,6 @@ TEST_F(VaultEntryTest, GetEntries) {
   const auto& entries = vault_.GetEntries();
 
   EXPECT_EQ(entries.size(), 3);
-
-  /* Entries are ordered by EntryCmp */
 
   auto it = entries.begin();
 
@@ -234,34 +241,13 @@ TEST_F(VaultEntryTest, GetEntryCount) {
   EXPECT_EQ(vault_.GetEntryCount(), 1);
 }
 
-/* ==================================================
- * Password Verification Test
- * ================================================== */
-
 /**
- * @brief   Verify correct master password passes verification
+ * @brief   Verify getEntryPW fails for a missing entry
  */
-TEST_F(VaultEntryTest, VerifyPWCorrect) {
-  Password pw;
-  const char* pwstr = "password";
-  size_t psize = strlen(pwstr);
+TEST_F(VaultEntryTest, GetEntryPWMissing) {
+  Password got;
 
-  pw.SetData(pwstr, psize);
-
-  EXPECT_TRUE(vault_.VerifyPW(pw));
-}
-
-/**
- * @brief   Verify wrong master password fails verification
- */
-TEST_F(VaultEntryTest, VerifyPWWrong) {
-  Password pw;
-  const char* pwstr = "asdf1234";
-  size_t psize = strlen(pwstr);
-
-  pw.SetData(pwstr, psize);
-
-  EXPECT_FALSE(vault_.VerifyPW(pw));
+  EXPECT_FALSE(vault_.GetEntryPW("Google", "user@google.com", got));
 }
 
 /* ==================================================
@@ -269,7 +255,7 @@ TEST_F(VaultEntryTest, VerifyPWWrong) {
  * ================================================== */
 
 /**
- * @brief   Verify closeVault clears all entries and password
+ * @brief   Verify closeVault clears all entries and the session
  */
 TEST_F(VaultEntryTest, CloseVault) {
   vault_.CreateEntry("Google", "user1@google.com", MakePW("password"));
@@ -278,8 +264,5 @@ TEST_F(VaultEntryTest, CloseVault) {
   vault_.CloseVault();
 
   EXPECT_EQ(vault_.GetEntryCount(), 0);
-
-  Password pw;
-
-  EXPECT_TRUE(vault_.VerifyPW(pw));
+  EXPECT_FALSE(vault_.VerifyPW(MakePW("password")));
 }

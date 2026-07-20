@@ -7,22 +7,13 @@
 #include "core/aes_gcm.h"
 
 #include <openssl/err.h>
+#include <sodium.h>
 
 #include <cstring>
 
-#include "utils/platform.h"
-
-AesGcm::AesGcm() {
-  key_locked_ = (Lock(key_.data(), kKeySize) == Result::kSuccess);
-}
-
 AesGcm::~AesGcm() {
-  Wipe(iv_.data(), sizeof(uint8_t) * kIVSize);
-  Wipe(key_.data(), sizeof(uint8_t) * kKeySize);
-  Wipe(salt_.data(), sizeof(uint8_t) * kSaltSize);
-  Wipe(verify_buff_.data(), verify_buff_.size());
-
-  Unlock(key_.data(), kKeySize);
+  sodium_memzero(iv_.data(), iv_.size());
+  sodium_memzero(verify_buff_.data(), verify_buff_.size());
 
   if (ctx_) {
     EVP_CIPHER_CTX_free(ctx_);

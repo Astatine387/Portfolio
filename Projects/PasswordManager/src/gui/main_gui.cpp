@@ -6,6 +6,7 @@
 
 #include "gui/main_gui.h"
 
+#include <QApplication>
 #include <QClipboard>
 #include <QGuiApplication>
 
@@ -70,19 +71,13 @@ void MainGUI::OnVaultSelected(VaultAction action, const QString& path) {
 void MainGUI::OnLoginRequested(const LoginRequest& req) {
   Result res;
 
-  /* Set master password */
-
-  Password pw;
-  pw.SetData(req.pw);
-  vault_.SetPW(pw);
-
-  /* Create or open vault */
+  /* Create or open the vault, deriving the session key from the master password */
 
   if (req.action == VaultAction::kCreate) {
-    res = vault_.NewVault(req.path);
+    res = vault_.NewVault(req.path, req.pw);
   }
   else {
-    res = vault_.OpenVault(req.path);
+    res = vault_.OpenVault(req.path, req.pw);
   }
 
   if (res == Result::kFailure) {
@@ -146,6 +141,11 @@ void MainGUI::OnEditRequested(const QString& site, const QString& acc) {
 
     if (res == UpdateResult::kDuplicate) {
       list_gui_->SetErrMsg("Entry already exists");
+      return;
+    }
+
+    if (res == UpdateResult::kError) {
+      list_gui_->SetErrMsg("Failed to update entry");
       return;
     }
 
@@ -233,7 +233,17 @@ void MainGUI::OnChangePWRequested() {
 
     change_pw_gui_->GetInput(cur_pw, new_pw);
 
-    if (vault_.ChangePW(new_pw) == Result::kFailure) {
+    /* Deriving the new key and re-encrypting is heavy, so show a busy state */
+
+    list_gui_->SetErrMsg("Changing master password...");
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    QApplication::processEvents();
+
+    Result res = vault_.ChangePW(new_pw);
+
+    QApplication::restoreOverrideCursor();
+
+    if (res == Result::kFailure) {
       list_gui_->SetErrMsg("Failed to save vault");
       return;
     }

@@ -8,6 +8,22 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <cstring>
+#include <set>
+#include <string>
+#include <vector>
+
+namespace {
+
+/* Reinterpret a C-string as a password source buffer */
+
+const uint8_t* PwBytes(const char* pw) {
+  return reinterpret_cast<const uint8_t*>(pw);
+}
+
+}  // namespace
+
 /* ==================================================
  * Size Calculation Test
  * ================================================== */
@@ -22,15 +38,11 @@ TEST(EntryTest, SizeCalculation) {
   const char* acc = "user@google.com";
   const char* pw = "password";
 
-  size_t site_len = strlen(site);
-  size_t acc_len = strlen(acc);
-  size_t pw_len = strlen(pw);
-
   entry.site = site;
   entry.acc = acc;
-  entry.pw.SetData(pw, pw_len);
+  entry.pw_len = static_cast<uint32_t>(strlen(pw));
 
-  size_t expected = sizeof(uint32_t) + site_len + sizeof(uint32_t) + acc_len + sizeof(uint32_t) + pw_len;
+  size_t expected = sizeof(uint32_t) + strlen(site) + sizeof(uint32_t) + strlen(acc) + sizeof(uint32_t) + strlen(pw);
 
   EXPECT_EQ(entry.Size(), expected);
 }
@@ -82,19 +94,15 @@ TEST(EntryTest, ComparatorEqual) {
 }
 
 /**
- * @brief   Verify entries are stored without duplication in std::set with
- * EntryCmp
+ * @brief   Verify entries are stored without duplication in std::set with EntryCmp
  */
 TEST(EntryTest, SetInsertion) {
   std::set<Entry, EntryCmp> entry_set;
-  Password pw;
 
-  pw.SetData("password", 8);
-
-  Entry entry0 = { .site = "Google", .acc = "user1", .pw = pw };
-  Entry entry1 = { .site = "Google", .acc = "user2", .pw = pw };
-  Entry entry2 = { .site = "Amazon", .acc = "user1", .pw = pw };
-  Entry entry3 = { .site = "Google", .acc = "user1", .pw = pw };  // Duplicate
+  Entry entry0 = { .site = "Google", .acc = "user1" };
+  Entry entry1 = { .site = "Google", .acc = "user2" };
+  Entry entry2 = { .site = "Amazon", .acc = "user1" };
+  Entry entry3 = { .site = "Google", .acc = "user1" };  // Duplicate
 
   entry_set.insert(entry0);
   entry_set.insert(entry1);
@@ -109,145 +117,135 @@ TEST(EntryTest, SetInsertion) {
  * ================================================== */
 
 /**
- * @brief   Verify serialization writes correct number of bytes
+ * @brief   Verify serialization writes the expected number of bytes
  */
 TEST(EntryTest, SerializeSize) {
   Entry entry;
 
-  const char* site = "Google";
-  const char* acc = "user@google.com";
   const char* pw = "password";
 
-  size_t site_len = strlen(site);
-  size_t acc_len = strlen(acc);
-  size_t pw_len = strlen(pw);
-
-  entry.site = site;
-  entry.acc = acc;
-  entry.pw.SetData(pw, pw_len);
+  entry.site = "Google";
+  entry.acc = "user@google.com";
+  entry.pw_len = static_cast<uint32_t>(strlen(pw));
 
   std::vector<uint8_t> vec(entry.Size());
 
-  size_t size = entry.Ser(vec.data());
+  size_t size = entry.Serialize(vec.data(), PwBytes(pw));
 
   EXPECT_EQ(size, entry.Size());
 }
 
 /**
- * @brief   Verify round-trip serialization and deserialization preserves data
+ * @brief   Verify round-trip serialization records the password view correctly
  */
 TEST(EntryTest, SerializeDeserializeRoundTrip) {
-  Entry orig, copy;
+  Entry orig;
+  Entry copy;
 
-  const char* site = "Google";
-  const char* acc = "user@google.com";
   const char* pw = "password";
 
-  size_t site_len = strlen(site);
-  size_t acc_len = strlen(acc);
-  size_t pw_len = strlen(pw);
-
-  orig.site = site;
-  orig.acc = acc;
-  orig.pw.SetData(pw, pw_len);
+  orig.site = "Google";
+  orig.acc = "user@google.com";
+  orig.pw_len = static_cast<uint32_t>(strlen(pw));
 
   std::vector<uint8_t> vec(orig.Size());
 
-  size_t writ = orig.Ser(vec.data());
-  size_t read = copy.Deser(vec.data(), vec.size());
+  size_t writ = orig.Serialize(vec.data(), PwBytes(pw));
+  size_t read = copy.Deserialize(vec.data(), vec.size(), 0);
 
   EXPECT_EQ(writ, read);
   EXPECT_EQ(copy.site, orig.site);
   EXPECT_EQ(copy.acc, orig.acc);
-  EXPECT_EQ(copy.pw.GetSize(), orig.pw.GetSize());
-  EXPECT_TRUE(copy.pw.Equal(orig.pw));
+  EXPECT_EQ(copy.pw_len, orig.pw_len);
+  EXPECT_EQ(memcmp(vec.data() + copy.pw_off, pw, copy.pw_len), 0);
 }
 
 /**
  * @brief   Verify round-trip with empty fields
  */
 TEST(EntryTest, SerializeDeserializeEmpty) {
-  Entry orig, copy;
+  Entry orig;
+  Entry copy;
 
   std::vector<uint8_t> vec(orig.Size());
 
-  size_t writ = orig.Ser(vec.data());
-  size_t read = copy.Deser(vec.data(), vec.size());
+  size_t writ = orig.Serialize(vec.data(), nullptr);
+  size_t read = copy.Deserialize(vec.data(), vec.size(), 0);
 
   EXPECT_EQ(writ, read);
   EXPECT_EQ(copy.site, "");
   EXPECT_EQ(copy.acc, "");
-  EXPECT_TRUE(copy.pw.IsEmpty());
+  EXPECT_EQ(copy.pw_len, 0);
 }
 
 /**
- * @brief   Verify multiple entries can be serialized sequentially into one
- * buffer
+ * @brief   Verify multiple entries can be serialized sequentially into one buffer
  */
 TEST(EntryTest, SerializeMultipleEntries) {
-  Entry entry0, entry1;
+  Entry entry0;
+  Entry entry1;
 
-  const char *site0 = "Google", *acc0 = "user@google.com", *pw0 = "password";
-  const char *site1 = "Microsoft", *acc1 = "account@microsoft.com", *pw1 = "asdf1234!";
+  const char* pw0 = "password";
+  const char* pw1 = "asdf1234!";
 
-  size_t site0_len = strlen(site0), acc0_len = strlen(acc0), pw0_len = strlen(pw0);
-  size_t site1_len = strlen(site1), acc1_len = strlen(acc1), pw1_len = strlen(pw1);
+  entry0.site = "Google";
+  entry0.acc = "user@google.com";
+  entry0.pw_len = static_cast<uint32_t>(strlen(pw0));
 
-  entry0.site = site0, entry0.acc = acc0, entry0.pw.SetData(pw0, pw0_len);
-  entry1.site = site1, entry1.acc = acc1, entry1.pw.SetData(pw1, pw0_len);
+  entry1.site = "Microsoft";
+  entry1.acc = "account@microsoft.com";
+  entry1.pw_len = static_cast<uint32_t>(strlen(pw1));
 
   /* Serialize both */
 
-  size_t cur = 0, total_size = entry0.Size() + entry1.Size();
-
+  size_t total_size = entry0.Size() + entry1.Size();
   std::vector<uint8_t> vec(total_size);
 
-  cur += entry0.Ser(vec.data() + cur);
-  cur += entry1.Ser(vec.data() + cur);
+  size_t cur = 0;
+  cur += entry0.Serialize(vec.data() + cur, PwBytes(pw0));
+  cur += entry1.Serialize(vec.data() + cur, PwBytes(pw1));
 
   EXPECT_EQ(cur, total_size);
 
   /* Deserialize both */
 
-  Entry copy0, copy1;
+  Entry copy0;
+  Entry copy1;
 
   cur = 0;
-  cur += copy0.Deser(vec.data() + cur, vec.size());
-  cur += copy1.Deser(vec.data() + cur, vec.size());
+  cur += copy0.Deserialize(vec.data() + cur, vec.size() - cur, cur);
+  cur += copy1.Deserialize(vec.data() + cur, vec.size() - cur, cur);
 
   EXPECT_EQ(cur, total_size);
-  EXPECT_EQ(copy0.site, site0);
-  EXPECT_EQ(copy0.acc, acc0);
-  EXPECT_EQ(copy1.site, site1);
-  EXPECT_EQ(copy1.acc, acc1);
+  EXPECT_EQ(copy0.site, entry0.site);
+  EXPECT_EQ(copy0.acc, entry0.acc);
+  EXPECT_EQ(copy1.site, entry1.site);
+  EXPECT_EQ(copy1.acc, entry1.acc);
+  EXPECT_EQ(memcmp(vec.data() + copy0.pw_off, pw0, copy0.pw_len), 0);
+  EXPECT_EQ(memcmp(vec.data() + copy1.pw_off, pw1, copy1.pw_len), 0);
 }
 
 /**
  * @brief   Verify serialization handles special characters
  */
 TEST(EntryTest, SerializeSpecialCharacters) {
-  Entry orig, copy;
+  Entry orig;
+  Entry copy;
 
-  const char* site = "$i+3n@m3 wi+h $p@c3$ @nd $p3ci@l$";
-  const char* acc = "user@google.com";
   const char* pw = "p@$$w0rd";
 
-  size_t site_len = strlen(site);
-  size_t acc_len = strlen(acc);
-  size_t pw_len = strlen(pw);
-
-  orig.site = site;
-  orig.acc = acc;
-  orig.pw.SetData(pw, pw_len);
+  orig.site = "$i+3n@m3 wi+h $p@c3$ @nd $p3ci@l$";
+  orig.acc = "user@google.com";
+  orig.pw_len = static_cast<uint32_t>(strlen(pw));
 
   std::vector<uint8_t> vec(orig.Size());
 
-  orig.Ser(vec.data());
-  copy.Deser(vec.data(), vec.size());
+  orig.Serialize(vec.data(), PwBytes(pw));
+  copy.Deserialize(vec.data(), vec.size(), 0);
 
   EXPECT_EQ(copy.site, orig.site);
   EXPECT_EQ(copy.acc, orig.acc);
-  EXPECT_TRUE(copy.pw.Equal(orig.pw));
+  EXPECT_EQ(memcmp(vec.data() + copy.pw_off, pw, copy.pw_len), 0);
 }
 
 /* ==================================================
@@ -258,60 +256,54 @@ TEST(EntryTest, SerializeSpecialCharacters) {
  * @brief   Verify deserialization fails when buffer size is insufficient
  */
 TEST(EntryTest, DeserializationBoundaryCheck) {
-  Entry src, dst;
+  Entry src;
+  Entry dst;
 
-  const char* site = "Google";
-  const char* acc = "user@google.com";
   const char* pw = "password";
 
-  size_t site_len = strlen(site);
-  size_t acc_len = strlen(acc);
-  size_t pw_len = strlen(pw);
-
-  src.site = site;
-  src.acc = acc;
-  src.pw.SetData(pw, pw_len);
+  src.site = "Google";
+  src.acc = "user@google.com";
+  src.pw_len = static_cast<uint32_t>(strlen(pw));
 
   std::vector<uint8_t> vec(src.Size());
 
-  src.Ser(vec.data());
+  src.Serialize(vec.data(), PwBytes(pw));
 
   /* Buffer truncated before site length */
 
   size_t size = sizeof(uint32_t) - 1;
 
-  EXPECT_EQ(dst.Deser(vec.data(), size), 0);
+  EXPECT_EQ(dst.Deserialize(vec.data(), size, 0), 0);
 
   /* Buffer truncated before site data */
 
   size = sizeof(uint32_t) + src.site.size() - 1;
 
-  EXPECT_EQ(dst.Deser(vec.data(), size), 0);
+  EXPECT_EQ(dst.Deserialize(vec.data(), size, 0), 0);
 
   /* Buffer truncated before account length */
 
   size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) - 1;
 
-  EXPECT_EQ(dst.Deser(vec.data(), size), 0);
+  EXPECT_EQ(dst.Deserialize(vec.data(), size, 0), 0);
 
   /* Buffer truncated before account data */
 
   size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() - 1;
 
-  EXPECT_EQ(dst.Deser(vec.data(), size), 0);
+  EXPECT_EQ(dst.Deserialize(vec.data(), size, 0), 0);
 
   /* Buffer truncated before password length */
 
   size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() + sizeof(uint32_t) - 1;
 
-  EXPECT_EQ(dst.Deser(vec.data(), size), 0);
+  EXPECT_EQ(dst.Deserialize(vec.data(), size, 0), 0);
 
-  /* Buffer truncated before password length */
+  /* Buffer truncated before password data */
 
-  size =
-      sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() + sizeof(uint32_t) + src.pw.GetSize() - 1;
+  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() + sizeof(uint32_t) + src.pw_len - 1;
 
-  EXPECT_EQ(dst.Deser(vec.data(), size), 0);
+  EXPECT_EQ(dst.Deserialize(vec.data(), size, 0), 0);
 }
 
 /* ==================================================
@@ -319,12 +311,11 @@ TEST(EntryTest, DeserializationBoundaryCheck) {
  * ================================================== */
 
 /**
- * @brief   Build a serialized entry buffer with specified field lengths and
- * deserialize
+ * @brief   Build a serialized entry buffer with specified field lengths and deserialize
  * @param   entry       Entry to deserialize into
- * @param   siteLen     Site name length
- * @param   accLen      Account length
- * @param   pwLen       Password length
+ * @param   site_len    Site name length
+ * @param   acc_len     Account length
+ * @param   pw_len      Password length
  * @return  Number of bytes read on success, 0 on failure
  */
 static size_t BuildAndDeser(Entry& entry, uint32_t site_len, uint32_t acc_len, uint32_t pw_len) {
@@ -342,7 +333,7 @@ static size_t BuildAndDeser(Entry& entry, uint32_t site_len, uint32_t acc_len, u
 
   memcpy(vec.data() + cur, &pw_len, sizeof(uint32_t));
 
-  return entry.Deser(vec.data(), vec.size());
+  return entry.Deserialize(vec.data(), vec.size(), 0);
 }
 
 /**
@@ -381,5 +372,5 @@ TEST(EntryTest, DeserializeMaxFieldLengths) {
   EXPECT_NE(BuildAndDeser(entry, kMaxSiteLen, kMaxAccLen, kMaxPWLen), 0);
   EXPECT_EQ(entry.site.size(), kMaxSiteLen);
   EXPECT_EQ(entry.acc.size(), kMaxAccLen);
-  EXPECT_EQ(entry.pw.GetSize(), kMaxPWLen);
+  EXPECT_EQ(entry.pw_len, kMaxPWLen);
 }

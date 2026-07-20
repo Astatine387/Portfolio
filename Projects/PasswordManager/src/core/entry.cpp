@@ -9,10 +9,10 @@
 #include <cstring>
 
 size_t Entry::Size() const {
-  return sizeof(uint32_t) + site.size() + sizeof(uint32_t) + acc.size() + sizeof(uint32_t) + pw.GetSize();
+  return sizeof(uint32_t) + site.size() + sizeof(uint32_t) + acc.size() + sizeof(uint32_t) + pw_len;
 }
 
-size_t Entry::Ser(uint8_t* dst) const {
+size_t Entry::Serialize(uint8_t* dst, const uint8_t* pw_src) const {
   size_t cur = 0;
   uint32_t dlen;
 
@@ -36,22 +36,20 @@ size_t Entry::Ser(uint8_t* dst) const {
   memcpy(dst + cur, acc.data(), dlen);
   cur += dlen;
 
-  /* Write password */
+  /* Write password from its source buffer */
 
-  dlen = static_cast<uint32_t>(pw.GetSize());
-
-  memcpy(dst + cur, &dlen, sizeof(uint32_t));
+  memcpy(dst + cur, &pw_len, sizeof(uint32_t));
   cur += sizeof(uint32_t);
 
-  if (dlen > 0) {
-    memcpy(dst + cur, pw.GetData(), dlen);
+  if (pw_len > 0 && pw_src != nullptr) {
+    memcpy(dst + cur, pw_src, pw_len);
   }
-  cur += dlen;
+  cur += pw_len;
 
   return cur;
 }
 
-size_t Entry::Deser(const uint8_t* src, size_t srclen) {
+size_t Entry::Deserialize(const uint8_t* src, size_t srclen, size_t base_off) {
   size_t cur = 0;
   uint32_t dlen;
 
@@ -87,7 +85,7 @@ size_t Entry::Deser(const uint8_t* src, size_t srclen) {
   acc.assign(reinterpret_cast<const char*>(src + cur), dlen);
   cur += dlen;
 
-  /* Read password */
+  /* Read password length and record the view; the bytes stay in the image */
 
   if (cur + sizeof(uint32_t) > srclen) {
     return 0;
@@ -100,10 +98,8 @@ size_t Entry::Deser(const uint8_t* src, size_t srclen) {
     return 0;
   }
 
-  if (pw.SetData(reinterpret_cast<const char*>(src + cur), dlen) == Result::kFailure) {
-    return 0;  // LCOV_EXCL_LINE
-  }
-
+  pw_len = dlen;
+  pw_off = base_off + cur;
   cur += dlen;
 
   return cur;

@@ -6,7 +6,7 @@
 
 #include "gui/pw_line_edit.h"
 
-#include "utils/platform.h"
+#include <sodium.h>
 
 PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
   /* Create layout and components */
@@ -42,15 +42,12 @@ PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
 
 Result PWLineEdit::Extract(Password& pw) {
   QByteArray data = pw_line_->text().toUtf8();
-  int size = static_cast<int>(data.size());
-  Result res;
 
-  Lock(data.data(), size);
+  Result res = pw.SetData(data.constData(), static_cast<size_t>(data.size()));
 
-  res = pw.SetData(data.constData(), size);
+  /* Wipe the transient UTF-8 copy */
 
-  Wipe(data.data(), size);
-  Unlock(data.data(), size);
+  sodium_memzero(data.data(), static_cast<size_t>(data.size()));
 
   pw_line_->clear();
 

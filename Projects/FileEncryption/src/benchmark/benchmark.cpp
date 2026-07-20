@@ -8,9 +8,12 @@
 
 #include <array>
 #include <cstring>
+#include <optional>
+#include <span>
 #include <string>
 
 #include "core/aes_gcm.h"
+#include "core/secure_key.h"
 #include "utils/platform.h"
 
 inline constexpr int64_t kFileSize = 4LL * 1024 * 1024 * 1024;
@@ -54,6 +57,11 @@ BENCHMARK_DEFINE_F(Benchmark, Encrypt)(benchmark::State& state) {
 
   Create(size);
 
+  /* Derive the key once so the benchmark measures AES throughput, not Argon2 */
+
+  std::array<uint8_t, kSaltSize> salt{};
+  auto key = DeriveKey(std::span<const char>(pw_, psize_), salt);
+
   for (auto _ : state) {
     (void)_;
 
@@ -63,7 +71,7 @@ BENCHMARK_DEFINE_F(Benchmark, Encrypt)(benchmark::State& state) {
     OpenFile(&src, src_path_, "rb");
     OpenFile(&dst, enc_path_, "wb+");
 
-    aes.Encrypt(src, dst, pw_, psize_);
+    aes.Encrypt(src, dst, *key, salt);
 
     if (src) {
       fclose(src);
@@ -87,6 +95,11 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
   size_t size = state.range(0);
   Create(size);
 
+  /* Derive the key once so the benchmark measures AES throughput, not Argon2 */
+
+  std::array<uint8_t, kSaltSize> salt{};
+  auto key = DeriveKey(std::span<const char>(pw_, psize_), salt);
+
   /* Encrypt */
 
   AesGcm aes;
@@ -95,7 +108,7 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, pw_, psize_);
+  aes.Encrypt(src, dst, *key, salt);
 
   if (src) {
     fclose(src);
@@ -116,7 +129,7 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
     OpenFile(&src, enc_path_, "rb");
     OpenFile(&dst, dec_path_, "wb+");
 
-    aes.Decrypt(src, dst, pw_, psize_);
+    aes.Decrypt(src, dst, *key);
 
     if (src) {
       fclose(src);

@@ -103,6 +103,8 @@ class EntryGUI : public QDialog {
   QHBoxLayout* spc_btn_box_;
   QVBoxLayout* vbox_;
 
+  Password input_pw_;  // Validated password handed to GetInput
+
   /**
    * @brief     Get the special character selection list
    * @return	Special character selection list

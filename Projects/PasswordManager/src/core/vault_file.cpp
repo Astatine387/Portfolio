@@ -4,94 +4,80 @@
  * @author	Astatine387
  */
 
+#include <array>
 #include <cstring>
+#include <span>
 
 #include "core/vault.h"
 #include "utils/platform.h"
 
-Result Vault::NewVault(const std::string& path) {
-  uint32_t entry_cnt = 0;
-
+Result Vault::NewVault(const std::string& path, const Password& pw) {
   last_error_.clear();
 
-  /* Generate initial data */
+  Reset();
 
-  src_size_ = static_cast<int64_t>(kCountSize);
-  dst_size_ = static_cast<int64_t>(kMagicSize + kSaltSize + kIVSize + src_size_ + kTagSize);
+  /* Generate a new salt */
 
-  src_buff_.assign(src_size_, 0);
-  dst_buff_.assign(dst_size_, 0);
-
-  memcpy(src_buff_.data(), &entry_cnt, kCountSize);
-  memcpy(dst_buff_.data(), &magic_num_, kMagicSize);
-
-  /* Abort if the password is not locked in memory */
-
-  if (!pw_.IsLocked()) {
+  if (Random(salt_.data(), kSaltSize) == Result::kFailure) {
     // LCOV_EXCL_START
-    ReportError("[Memory] Lock failed - Cannot lock password in memory\n");
+    ReportError("[Crypto] Random failed - Cannot generate salt\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  /* Encrypt */
+  /* Derive the session key */
 
-  if (aes_.Encrypt(src_buff_.data(), dst_buff_.data() + kMagicSize, src_size_, pw_.GetData(), pw_.GetSize()) ==
-      Result::kFailure) {
+  key_ = DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()), salt_, kdf_);
+
+  if (!key_.has_value()) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Encryption failed - Cannot encrypt vault data\n");
+    Reset();
+    ReportError("[Crypto] Key derivation failed - Argon2id error\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  /* Write vault */
+  /* Build the empty vault image */
 
-  OpenFile(&file_, path, "wb");
+  img_ = SecureBuffer(kCountSize);
 
-  if (file_ == nullptr) {
+  if (!img_.Valid()) {
     // LCOV_EXCL_START
-    ReportError("[File] Open failed - Cannot create vault file\n");
+    Reset();
+    ReportError("[Memory] Allocation failed - Cannot allocate vault image\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  if (fwrite(dst_buff_.data(), sizeof(uint8_t), dst_size_, file_) != dst_size_) {
-    // LCOV_EXCL_START
-    ReportError("[File] Write failed - Cannot write vault file\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
+  uint32_t entry_cnt = 0;
+
+  memcpy(img_.Data(), &entry_cnt, kCountSize);
+
+  /* Encrypt and write the vault file atomically */
+
+  if (SaveVaultWith(path, *key_, salt_) == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
-
-  /* Sync file data to disk */
-
-  if (SyncFile(file_) == Result::kFailure) {
-    // LCOV_EXCL_START
-    ReportError("[File] Sync failed - Cannot flush vault file to disk\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
-
-  Clear();
 
   return Result::kSuccess;
 }
 
-Result Vault::OpenVault(const std::string& path) {
+Result Vault::OpenVault(const std::string& path, const Password& pw) {
   std::set<Entry, EntryCmp> tmp;
   size_t cur = 0;
   uint32_t entry_cnt = 0;
 
   last_error_.clear();
 
+  Reset();
+
   /* Open file pointer */
 
   OpenFile(&file_, path, "rb");
 
   if (file_ == nullptr) {
-    // LCOV_EXCL_START
     ReportError("[File] Open failed - Cannot open vault file\n");
     return Result::kFailure;
-    // LCOV_EXCL_STOP
   }
 
   /* Get vault size */
@@ -133,33 +119,50 @@ Result Vault::OpenVault(const std::string& path) {
     return Result::kFailure;
   }
 
-  /* Abort if the password is not locked in memory */
+  /* Read the salt from the header and derive the session key */
 
-  if (!pw_.IsLocked()) {
+  memcpy(salt_.data(), src_buff_.data() + kMagicSize, kSaltSize);
+
+  key_ = DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()), salt_, kdf_);
+
+  if (!key_.has_value()) {
     // LCOV_EXCL_START
-    ReportError("[Memory] Lock failed - Cannot lock password in memory\n");
+    Reset();
+    ReportError("[Crypto] Key derivation failed - Argon2id error\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  /* Decrypt */
+  /* Decrypt into the session image */
 
-  dst_size_ = static_cast<int64_t>(src_size_ - (kMagicSize + kSaltSize + kIVSize + kTagSize));
+  int64_t img_size = src_size_ - static_cast<int64_t>(kMagicSize + kSaltSize + kIVSize + kTagSize);
 
-  dst_buff_.assign(dst_size_, 0);
+  img_ = SecureBuffer(static_cast<size_t>(img_size));
 
-  if (aes_.Decrypt(src_buff_.data() + kMagicSize, dst_buff_.data(), src_size_ - kMagicSize, pw_.GetData(),
-                   pw_.GetSize()) == Result::kFailure) {
+  if (!img_.Valid()) {
+    // LCOV_EXCL_START
+    Reset();
+    ReportError("[Memory] Allocation failed - Cannot allocate vault image\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  if (aes_.Decrypt(src_buff_.data() + kMagicSize, img_.Data(), src_size_ - kMagicSize, *key_) == Result::kFailure) {
+    Reset();
     ReportError("[Auth] Decryption failed - Invalid password or corrupted vault\n");
     return Result::kFailure;
   }
 
-  /* Deserialize */
+  /* Deserialize the entries from the image */
 
-  memcpy(&entry_cnt, dst_buff_.data(), kCountSize);
+  const uint8_t* base = img_.Data();
+  size_t img_len = img_.Size();
+
+  memcpy(&entry_cnt, base, kCountSize);
   cur += kCountSize;
 
-  if (entry_cnt * kMinEntrySize > dst_size_ - kCountSize) {
+  if (static_cast<size_t>(entry_cnt) * kMinEntrySize > img_len - kCountSize) {
+    Reset();
     ReportError("[Data] Validation failed - Entry count exceeds available data\n");
     return Result::kFailure;
   }
@@ -167,9 +170,10 @@ Result Vault::OpenVault(const std::string& path) {
   for (uint32_t i = 0; i < entry_cnt; i++) {
     Entry entry;
 
-    size_t bytes = entry.Deser(dst_buff_.data() + cur, dst_size_ - cur);
+    size_t bytes = entry.Deserialize(base + cur, img_len - cur, cur);
 
     if (bytes == 0) {
+      Reset();
       ReportError("[Data] Deserialization failed - Invalid entry data\n");
       return Result::kFailure;
     }
@@ -187,58 +191,33 @@ Result Vault::OpenVault(const std::string& path) {
 }
 
 Result Vault::SaveVault(const std::string& path) {
-  size_t src_cur = 0, dst_cur = 0;
-  uint32_t entry_cnt = static_cast<uint32_t>(entry_set_.size());
-
   last_error_.clear();
 
-  /* Calculate vault size */
-
-  src_size_ = sizeof(uint32_t);
-
-  for (const auto& entry : entry_set_) {
-    src_size_ += static_cast<int64_t>(entry.Size());
+  if (!key_.has_value()) {
+    ReportError("[Auth] Save failed - No vault is open\n");
+    return Result::kFailure;
   }
 
-  dst_size_ = static_cast<int64_t>(kMagicSize + kSaltSize + kIVSize + src_size_ + kTagSize);
+  return SaveVaultWith(path, *key_, salt_);
+}
 
-  /* Check whether the vault exceeds the maximum size */
+Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt) {
+  /* Calculate file size */
+
+  dst_size_ = static_cast<int64_t>(kMagicSize + kSaltSize + kIVSize + img_.Size() + kTagSize);
 
   if (dst_size_ > kMaxSize) {
     ReportError("[Data] Validation failed - Vault exceeds maximum size (2 GiB)\n");
     return Result::kFailure;
   }
 
-  src_buff_.assign(src_size_, 0);
   dst_buff_.assign(dst_size_, 0);
 
-  /* Write entry count to buffer */
+  memcpy(dst_buff_.data(), &magic_num_, kMagicSize);
 
-  memcpy(src_buff_.data() + src_cur, &entry_cnt, sizeof(uint32_t));
-  src_cur += sizeof(uint32_t);
+  /* Encrypt the image; the session salt is written and a fresh IV is generated */
 
-  /* Write entries to buffer */
-
-  for (const auto& entry : entry_set_) {
-    src_cur += entry.Ser(src_buff_.data() + src_cur);
-  }
-
-  memcpy(dst_buff_.data() + dst_cur, &magic_num_, kMagicSize);
-  dst_cur += kMagicSize;
-
-  /* Abort if the password is not locked in memory */
-
-  if (!pw_.IsLocked()) {
-    // LCOV_EXCL_START
-    ReportError("[Memory] Lock failed - Cannot lock password in memory\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
-
-  /* Encrypt */
-
-  if (aes_.Encrypt(src_buff_.data(), dst_buff_.data() + dst_cur, src_size_, pw_.GetData(), pw_.GetSize()) ==
-      Result::kFailure) {
+  if (aes_.Encrypt(img_.Data(), dst_buff_.data() + kMagicSize, img_.Size(), key, salt) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt vault data\n");
     return Result::kFailure;
@@ -295,34 +274,64 @@ Result Vault::SaveVault(const std::string& path) {
 }
 
 void Vault::CloseVault() {
-  entry_set_.clear();
-  pw_.Clean();
+  Reset();
   Clear();
 }
 
 bool Vault::VerifyPW(const Password& pw) const {
-  return pw_.Equal(pw);
+  if (!key_.has_value()) {
+    return false;
+  }
+
+  auto cand = DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()), salt_, kdf_);
+
+  if (!cand.has_value()) {
+    return false;  // LCOV_EXCL_LINE
+  }
+
+  return key_->ConstantTimeEquals(*cand);
 }
 
 Result Vault::ChangePW(const Password& pw, const std::string& path) {
   last_error_.clear();
 
-  if (pw_.SetData(pw) == Result::kFailure) {
+  if (!key_.has_value()) {
+    ReportError("[Auth] Password change failed - No vault is open\n");
+    return Result::kFailure;
+  }
+
+  /* Generate a new salt */
+
+  std::array<uint8_t, kSaltSize> new_salt{};
+
+  if (Random(new_salt.data(), kSaltSize) == Result::kFailure) {
     // LCOV_EXCL_START
-    ReportError(
-        "[Auth] Password change failed - Password exceeds maximum length (256 "
-        "characters)\n");
+    ReportError("[Crypto] Random failed - Cannot generate salt\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  if (SaveVault(path) == Result::kFailure) {
+  /* Derive a new key */
+
+  auto new_key = DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()), new_salt, kdf_);
+
+  if (!new_key.has_value()) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Key derivation failed - Argon2id error\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  /* Persist with the new key before changing session state */
+
+  if (SaveVaultWith(path, *new_key, new_salt) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  return Result::kSuccess;
-}
+  /* Commit the session state only after the save has succeeded */
 
-void Vault::SetPW(const Password& pw) {
-  pw_ = pw;
+  key_ = std::move(new_key);
+  salt_ = new_salt;
+
+  return Result::kSuccess;
 }

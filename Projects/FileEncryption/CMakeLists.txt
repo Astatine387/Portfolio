@@ -47,11 +47,19 @@ if(NOT ARGON2_LIBRARY OR NOT ARGON2_INCLUDE_DIR)
     message(FATAL_ERROR "Argon2 library not found")
 endif()
 
+find_library(SODIUM_LIBRARY NAMES sodium libsodium)
+find_path(SODIUM_INCLUDE_DIR sodium.h)
+
+if(NOT SODIUM_LIBRARY OR NOT SODIUM_INCLUDE_DIR)
+    message(FATAL_ERROR "libsodium not found")
+endif()
+
 set(CORE_SOURCES
     src/core/aes_gcm.cpp
     src/core/aes_gcm_dec.cpp
     src/core/aes_gcm_enc.cpp
     src/core/crypto_worker.cpp
+    src/core/secure_key.cpp
     src/utils/password.cpp
     src/utils/platform.cpp
 )
@@ -66,6 +74,7 @@ set(CORE_HEADERS
     src/common/constants.h
     src/core/aes_gcm.h
     src/core/crypto_worker.h
+    src/core/secure_key.h
     src/utils/password.h
     src/utils/platform.h
 )
@@ -75,11 +84,13 @@ add_library(FileEncryption-core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
 target_include_directories(FileEncryption-core PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${ARGON2_INCLUDE_DIR}
+    ${SODIUM_INCLUDE_DIR}
 )
 
 target_link_libraries(FileEncryption-core PUBLIC
     OpenSSL::Crypto
     ${ARGON2_LIBRARY}
+    ${SODIUM_LIBRARY}
 )
 
 if(WIN32)
@@ -124,6 +135,7 @@ set(TEST_SOURCES
     src/tests/aes_gcm_test.cpp
     src/tests/crypto_worker_test.cpp
     src/tests/password_test.cpp
+    src/tests/secure_key_test.cpp
     src/tests/utils_test.cpp
 )
 

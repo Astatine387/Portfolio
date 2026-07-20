@@ -9,10 +9,11 @@
 #include "core/aes_gcm.h"
 #include "utils/platform.h"
 
-Result AesGcm::Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
+Result AesGcm::Decrypt(FILE* src, FILE* dst, const SecureKey& key) {
   src_file_ = src;
   dst_file_ = dst;
   progress_cur_ = 0;
+  key_ = &key;
 
   /* Drain any write left over from a previous (possibly aborted) run, then arm a clean result */
 
@@ -23,8 +24,8 @@ Result AesGcm::Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
     write_result_ = Result::kSuccess;
   }
 
-  if (DecryptInit(pw, plen) == Result::kFailure) {
-    return Result::kFailure;  // LCOV_EXCL_LINE
+  if (DecryptInit() == Result::kFailure) {
+    return Result::kFailure;
   }
 
   /* Pass 1 - verify authentication tag */
@@ -42,16 +43,7 @@ Result AesGcm::Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
   return Result::kSuccess;
 }
 
-Result AesGcm::DecryptInit(const char* pw, size_t plen) {
-  /* Abort if the key buffer is not locked in memory */
-
-  if (!key_locked_) {
-    // LCOV_EXCL_START
-    ReportError("[Memory] Lock failed - Cannot lock key in memory\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
-
+Result AesGcm::DecryptInit() {
   /* Get source file size */
 
   src_size_ = GetFileSize(src_file_);
@@ -106,15 +98,6 @@ Result AesGcm::DecryptInit(const char* pw, size_t plen) {
   if (fread(tag_.data(), sizeof(uint8_t), kTagSize, src_file_) != kTagSize) {
     // LCOV_EXCL_START
     ReportError("[File] Read failed - Cannot read authentication tag\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
-
-  /* Derive key from password */
-
-  if (Argon2id(salt_.data(), pw, plen, key_.data()) == Result::kFailure) {
-    // LCOV_EXCL_START
-    ReportError("[Crypto] Key derivation failed - Argon2id error\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
@@ -243,7 +226,7 @@ Result AesGcm::SetupDecryptCtx() {
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_DecryptInit_ex(ctx_, nullptr, nullptr, key_.data(), iv_.data()) != 1) {
+  if (EVP_DecryptInit_ex(ctx_, nullptr, nullptr, key_->Bytes().data(), iv_.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
     return Result::kFailure;

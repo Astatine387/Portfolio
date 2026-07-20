@@ -17,9 +17,11 @@
 #include <cstdint>
 #include <functional>
 #include <mutex>
+#include <span>
 #include <thread>
 
 #include "common/constants.h"
+#include "core/secure_key.h"
 
 enum class DecryptMode : std::uint8_t {
   kVerify,
@@ -68,21 +70,20 @@ class AesGcm {
    * @brief		Decrypt a file
    * @param		src		Source file
    * @param		dst		Destination file
-   * @param		pw		Password
-   * @param		plen	Password length
+   * @param		key		Key derived from the password and the salt
    * @return    kSuccess on success, kFailure on failure
    */
-  Result Decrypt(FILE* src, FILE* dst, const char* pw, size_t plen);
+  Result Decrypt(FILE* src, FILE* dst, const SecureKey& key);
 
   /**
    * @brief		Encrypt a file
    * @param		src		Source file
    * @param		dst		Destination file
-   * @param		pw		Password
-   * @param		plen	Password length
+   * @param		key		Key derived from the password and salt
+   * @param		salt	Salt from the file header
    * @return    kSuccess on success, kFailure on failure
    */
-  Result Encrypt(FILE* src, FILE* dst, const char* pw, size_t plen);
+  Result Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt);
 
   /* ==================================================
    * Callback functions
@@ -129,9 +130,10 @@ class AesGcm {
 
   std::array<std::array<std::array<uint8_t, kBlockSize>, kBuffSize>, kBuffNum> buff_{};  // Buffer
   std::array<uint8_t, kIVSize> iv_{};                                                    // Initial vector
-  std::array<uint8_t, kKeySize> key_{};                                                  // Key derived from password
-  std::array<uint8_t, kSaltSize> salt_{};                                                // Key derivation salt
+  std::array<uint8_t, kSaltSize> salt_{};                                                // Salt read from the header
   std::array<uint8_t, kTagSize> tag_{};  // Authentication tag read from file
+
+  const SecureKey* key_ = nullptr;  // Session key for the current operation (non-owning)
 
   std::thread writer_;                      // Long-lived asynchronous write worker
   std::mutex write_mtx_;                    // Guards the write hand-off state below
@@ -141,7 +143,6 @@ class AesGcm {
   bool write_pending_ = false;              // Whether a write job is queued or in progress
   bool writer_stop_ = false;                // Whether the writer thread should exit
   Result write_result_ = Result::kSuccess;  // Result of the most recent write
-  bool key_locked_ = false;                 // Whether the key buffer is locked in memory
 
   /* ==================================================
    * I/O helper functions
@@ -194,12 +195,10 @@ class AesGcm {
   Result DecryptBatch(DecryptMode mode);
 
   /**
-   * @brief	    Intialize decryption context
-   * @param	    pw		Password
-   * @param	    plen	Password length
+   * @brief	    Intialize decryption context by reading the header and tag
    * @return	kSuccess on success, kFailure on failure
    */
-  Result DecryptInit(const char* pw, size_t plen);
+  Result DecryptInit();
 
   /**
    * @brief	    Decrypt buffer
@@ -227,12 +226,11 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief		Intialize encryption context
-   * @param		pw		Password
-   * @param		plen	Password length
+   * @brief		Intialize encryption context and write the header
+   * @param		salt	Salt written to the file header
    * @return	kSuccess on success, kFailure on failure
    */
-  Result EncryptInit(const char* pw, size_t plen);
+  Result EncryptInit(std::span<const uint8_t, kSaltSize> salt);
 
   /**
    * @brief		Encrypt buffer

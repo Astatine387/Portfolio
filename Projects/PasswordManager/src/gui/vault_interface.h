@@ -36,16 +36,18 @@ class VaultInterface {
   /**
    * @brief		Create an empty new vault
    * @param		path    Vault file path
+   * @param		pw      Master password
    * @return	kSuccess on success, kFailure on failure
    */
-  Result NewVault(const QString& path);
+  Result NewVault(const QString& path, const Password& pw);
 
   /**
    * @brief		Open a vault and read its data
    * @param		path	Vault file path
+   * @param		pw      Master password
    * @return	kSuccess on success, kFailure on failure
    */
-  Result OpenVault(const QString& path);
+  Result OpenVault(const QString& path, const Password& pw);
 
   /**
    * @brief		Save the current vault
@@ -75,12 +77,6 @@ class VaultInterface {
    * @return	kSuccess on success, kFailure on save failure
    */
   Result ChangePW(const Password& pw);
-
-  /**
-   * @brief     Set the master password of vault
-   * @param     pw  Master password
-   */
-  void SetPW(const Password& pw);
 
   /* ==================================================
    * Entry CRUD functions

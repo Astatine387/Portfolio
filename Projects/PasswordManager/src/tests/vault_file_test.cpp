@@ -6,9 +6,14 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstring>
+#include <optional>
+#include <span>
 #include <string>
+#include <vector>
 
+#include "core/secure_key.h"
 #include "core/vault.h"
 #include "utils/platform.h"
 
@@ -22,30 +27,11 @@ class VaultFileTest : public ::testing::Test {
   std::string path_ = "test.vault";
 
   /**
-   * @brief   Set up test fixture with master password and empty vault file
-   */
-  void SetUp() override {
-    Password pw;
-    const char* pwstr = "password";
-    size_t psize = strlen(pwstr);
-
-    pw.SetData(pwstr, psize);
-
-    vault_.SetPW(pw);
-    vault_.NewVault(path_);
-  }
-
-  /**
-   * @brief   Clean up temporary vault files after each test
-   */
-  void TearDown() override { RemoveFile(path_); }
-
-  /**
    * @brief   Create a Password object from C-string
    * @param   str     Password string
    * @return  Password object
    */
-  Password MakePW(const char* str) {
+  static Password MakePW(const char* str) {
     Password pw;
 
     pw.SetData(str, strlen(str));
@@ -54,31 +40,41 @@ class VaultFileTest : public ::testing::Test {
   }
 
   /**
-   * @brief   Close vault and reopen with master password
+   * @brief   Set up test fixture with a master password and an empty vault file
+   */
+  void SetUp() override { vault_.NewVault(path_, MakePW("password")); }
+
+  /**
+   * @brief   Clean up temporary vault files after each test
+   */
+  void TearDown() override { RemoveFile(path_); }
+
+  /**
+   * @brief   Close vault and reopen with the default master password
    * @return  kSuccess on success, kFailure on failure
    */
-  Result Reload() {
-    const char* pwstr = "password";
-    size_t psize = strlen(pwstr);
+  Result Reload() { return Reload("password"); }
 
-    return Reload(pwstr, psize);
+  /**
+   * @brief   Close vault and reopen with a specified password
+   * @param   pw_str  Password string
+   * @return  kSuccess on success, kFailure on failure
+   */
+  Result Reload(const char* pw_str) {
+    vault_.CloseVault();
+
+    return vault_.OpenVault(path_, MakePW(pw_str));
   }
 
   /**
-   * @brief   Close vault and reopen with specified password
-   * @param   pwStr   Password string
-   * @param   pwLen   Password length
-   * @return  kSuccess on success, kFailure on failure
+   * @brief   Derive a session-compatible key for crafting vault files
+   * @param   salt    Salt to derive with
+   * @return  Derived key
    */
-  Result Reload(const char* pw_str, size_t pw_len) {
-    vault_.CloseVault();
+  static SecureKey KeyForFile(const std::array<uint8_t, kSaltSize>& salt) {
+    auto key = DeriveKey(std::span<const char>("password", 8), salt, KdfParams{});
 
-    Password pw;
-
-    pw.SetData(pw_str, pw_len);
-    vault_.SetPW(pw);
-
-    return vault_.OpenVault(path_);
+    return std::move(key.value());  // NOLINT(bugprone-unchecked-optional-access)
   }
 };
 
@@ -109,10 +105,7 @@ TEST_F(VaultFileTest, NewVaultIsEmpty) {
  * @brief   Verify opening vault with wrong password fails
  */
 TEST_F(VaultFileTest, OpenWrongPassword) {
-  const char* pwstr = "asdf1234";
-  size_t psize = strlen(pwstr);
-
-  EXPECT_EQ(Reload(pwstr, psize), Result::kFailure);
+  EXPECT_EQ(Reload("asdf1234"), Result::kFailure);
 }
 
 /**
@@ -121,15 +114,7 @@ TEST_F(VaultFileTest, OpenWrongPassword) {
 TEST_F(VaultFileTest, OpenNonExistent) {
   vault_.CloseVault();
 
-  Password pw;
-
-  const char* pwstr = "asdf1234";
-  size_t psize = strlen(pwstr);
-
-  pw.SetData(pwstr, psize);
-  vault_.SetPW(pw);
-
-  EXPECT_EQ(vault_.OpenVault("nonexistent.vault"), Result::kFailure);
+  EXPECT_EQ(vault_.OpenVault("nonexistent.vault", MakePW("asdf1234")), Result::kFailure);
 }
 
 /**
@@ -191,10 +176,8 @@ TEST_F(VaultFileTest, OpenOversizedFile) {
   if (file) {
 #ifdef _WIN32
     _fseeki64(file, kMaxSize + 1, SEEK_SET);
-
 #else
     fseeko(file, kMaxSize + 1, SEEK_SET);
-
 #endif
 
     fputc(0, file);
@@ -205,30 +188,28 @@ TEST_F(VaultFileTest, OpenOversizedFile) {
 }
 
 /**
- * @brief   Verify opening a vault where entry count grossly exceeds available
- * data fails
+ * @brief   Verify opening a vault where entry count grossly exceeds available data fails
  */
 TEST_F(VaultFileTest, OpenInflatedEntryCount) {
-  AesGcm aes;
-  const char* pwstr = "password";
-  size_t psize = strlen(pwstr);
-
-  /* Entry count is 10, but there is no actual entries */
+  /* Entry count is 10, but there are no actual entries */
 
   uint32_t entry_cnt = 10;
   size_t src_size = sizeof(uint32_t);
 
   std::vector<uint8_t> src(src_size);
-
   memcpy(src.data(), &entry_cnt, sizeof(uint32_t));
 
-  /* Encrypt */
+  /* Encrypt with a key the vault will re-derive from "password" */
+
+  std::array<uint8_t, kSaltSize> salt{};
+  salt.fill(0x11);
+  SecureKey key = KeyForFile(salt);
 
   size_t enc_size = kSaltSize + kIVSize + src_size + kTagSize;
-
   std::vector<uint8_t> enc(enc_size);
 
-  aes.Encrypt(src.data(), enc.data(), src_size, pwstr, psize);
+  AesGcm aes;
+  aes.Encrypt(src.data(), enc.data(), src_size, key, salt);
 
   /* Write vault file */
 
@@ -247,21 +228,17 @@ TEST_F(VaultFileTest, OpenInflatedEntryCount) {
 }
 
 /**
- * @brief   Verify opening a vault where entry count exceeds actual entries
- * fails during deserialization
+ * @brief   Verify opening a vault where entry count exceeds actual entries fails
  */
 TEST_F(VaultFileTest, OpenPartialEntryData) {
-  AesGcm aes;
-  const char* pwstr = "password";
-  size_t psize = strlen(pwstr);
-
   /* Entry count is 2, but only 1 entry is valid */
 
   Entry entry;
-
   entry.site = "Google";
   entry.acc = "user@google.com";
-  entry.pw.SetData("password", 8);
+
+  const char* epw = "password";
+  entry.pw_len = static_cast<uint32_t>(strlen(epw));
 
   uint32_t entry_cnt = 2;
   size_t entry_size = entry.Size();
@@ -274,15 +251,19 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
   memcpy(src.data() + cur, &entry_cnt, sizeof(uint32_t));
   cur += sizeof(uint32_t);
 
-  entry.Ser(src.data() + cur);
+  entry.Serialize(src.data() + cur, reinterpret_cast<const uint8_t*>(epw));
 
-  /* Encrypt */
+  /* Encrypt with a key the vault will re-derive from "password" */
+
+  std::array<uint8_t, kSaltSize> salt{};
+  salt.fill(0x22);
+  SecureKey key = KeyForFile(salt);
 
   size_t enc_size = kSaltSize + kIVSize + src_size + kTagSize;
-
   std::vector<uint8_t> enc(enc_size);
 
-  aes.Encrypt(src.data(), enc.data(), src_size, pwstr, psize);
+  AesGcm aes;
+  aes.Encrypt(src.data(), enc.data(), src_size, key, salt);
 
   /* Write vault file */
 
@@ -325,8 +306,6 @@ TEST_F(VaultFileTest, OpenTamperedCiphertext) {
 
   buff[ct_off] ^= 0xFF;
 
-  /* The header (magic number) must still be valid */
-
   EXPECT_EQ(memcmp(buff.data(), &kMagicNum, kMagicSize), 0);
 
   /* Write the tampered vault back */
@@ -336,8 +315,6 @@ TEST_F(VaultFileTest, OpenTamperedCiphertext) {
 
   fwrite(buff.data(), sizeof(uint8_t), size, file);
   fclose(file);
-
-  /* GCM authentication must reject the tampered data */
 
   EXPECT_EQ(Reload(), Result::kFailure);
 }
@@ -359,8 +336,8 @@ TEST_F(VaultFileTest, SaveAndReload) {
 
   const auto& entries = vault_.GetEntries();
 
-  EXPECT_NE(entries.find({ "Google", "user1@google.com" }), entries.end());
-  EXPECT_NE(entries.find({ "Microsoft", "user2@microsoft.com" }), entries.end());
+  EXPECT_NE(entries.find({ .site = "Google", .acc = "user1@google.com" }), entries.end());
+  EXPECT_NE(entries.find({ .site = "Microsoft", .acc = "user2@microsoft.com" }), entries.end());
 }
 
 /**
@@ -374,9 +351,10 @@ TEST_F(VaultFileTest, SavePreservesPasswords) {
 
   EXPECT_EQ(Reload(), Result::kSuccess);
 
-  const auto& entries = vault_.GetEntries();
+  Password got;
 
-  EXPECT_TRUE(entries.begin()->pw.Equal(pw));
+  EXPECT_TRUE(vault_.GetEntryPW("Google", "user@google.com", got));
+  EXPECT_TRUE(got.Equal(pw));
 }
 
 /**
@@ -390,21 +368,35 @@ TEST_F(VaultFileTest, SaveEmptyVault) {
 }
 
 /* ==================================================
+ * Password Verification Test
+ * ================================================== */
+
+/**
+ * @brief   Verify the correct master password matches the session key
+ */
+TEST_F(VaultFileTest, VerifyPWCorrect) {
+  EXPECT_TRUE(vault_.VerifyPW(MakePW("password")));
+}
+
+/**
+ * @brief   Verify a wrong master password does not match the session key
+ */
+TEST_F(VaultFileTest, VerifyPWWrong) {
+  EXPECT_FALSE(vault_.VerifyPW(MakePW("asdf1234")));
+}
+
+/* ==================================================
  * Change Password Test
  * ================================================== */
 
 /**
- * @brief   Verify changing master password and reopening with new password
- * succeeds
+ * @brief   Verify changing master password and reopening with new password succeeds
  */
 TEST_F(VaultFileTest, ChangePW) {
-  const char* pwstr = "asdf1234";
-  size_t psize = strlen(pwstr);
-
   vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
 
-  EXPECT_EQ(vault_.ChangePW(MakePW(pwstr), path_), Result::kSuccess);
-  EXPECT_EQ(Reload(pwstr, psize), Result::kSuccess);
+  EXPECT_EQ(vault_.ChangePW(MakePW("asdf1234"), path_), Result::kSuccess);
+  EXPECT_EQ(Reload("asdf1234"), Result::kSuccess);
   EXPECT_EQ(vault_.GetEntryCount(), 1);
 }
 
@@ -412,12 +404,19 @@ TEST_F(VaultFileTest, ChangePW) {
  * @brief   Verify old password fails after password change
  */
 TEST_F(VaultFileTest, ChangePWOldFails) {
-  const char* pwstr = "password";  // original master password
-  size_t psize = strlen(pwstr);
-
   vault_.ChangePW(MakePW("asdf1234"), path_);
 
-  EXPECT_EQ(Reload(pwstr, psize), Result::kFailure);
+  EXPECT_EQ(Reload("password"), Result::kFailure);
+}
+
+/**
+ * @brief   Verify the session key is updated after a password change
+ */
+TEST_F(VaultFileTest, ChangePWUpdatesSession) {
+  vault_.ChangePW(MakePW("asdf1234"), path_);
+
+  EXPECT_TRUE(vault_.VerifyPW(MakePW("asdf1234")));
+  EXPECT_FALSE(vault_.VerifyPW(MakePW("password")));
 }
 
 /* ==================================================
@@ -433,7 +432,7 @@ TEST_F(VaultFileTest, ErrorCallback) {
   vault_.SetErrorCallback([&](const char* msg) { cb = true; });
 
   vault_.CloseVault();
-  vault_.OpenVault("nonexistent.vault");
+  vault_.OpenVault("nonexistent.vault", MakePW("password"));
 
   EXPECT_TRUE(cb);
 }
@@ -444,7 +443,7 @@ TEST_F(VaultFileTest, ErrorCallback) {
 TEST_F(VaultFileTest, GetLastError) {
   vault_.CloseVault();
 
-  vault_.OpenVault("nonexistent.vault");
+  vault_.OpenVault("nonexistent.vault", MakePW("password"));
 
   EXPECT_FALSE(vault_.GetLastError().empty());
 }

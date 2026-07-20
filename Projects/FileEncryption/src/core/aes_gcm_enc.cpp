@@ -9,10 +9,11 @@
 #include "core/aes_gcm.h"
 #include "utils/platform.h"
 
-Result AesGcm::Encrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
+Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt) {
   src_file_ = src;
   dst_file_ = dst;
   progress_cur_ = 0;
+  key_ = &key;
 
   /* Drain any write left over from a previous (possibly aborted) run, then arm a clean result */
 
@@ -23,7 +24,7 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
     write_result_ = Result::kSuccess;
   }
 
-  if (EncryptInit(pw, plen) == Result::kFailure) {
+  if (EncryptInit(salt) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
@@ -46,21 +47,12 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const char* pw, size_t plen) {
   return Result::kSuccess;
 }
 
-Result AesGcm::EncryptInit(const char* pw, size_t plen) {
+Result AesGcm::EncryptInit(std::span<const uint8_t, kSaltSize> salt) {
   /* Clear existing context */
 
   if (ctx_) {
     EVP_CIPHER_CTX_free(ctx_);
     ctx_ = nullptr;
-  }
-
-  /* Abort if the key buffer is not locked in memory */
-
-  if (!key_locked_) {
-    // LCOV_EXCL_START
-    ReportError("[Memory] Lock failed - Cannot lock key in memory\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
   }
 
   /* Get source file size */
@@ -83,27 +75,11 @@ Result AesGcm::EncryptInit(const char* pw, size_t plen) {
 
   progress_max_ = src_size_;
 
-  /* Generate salt and IV */
-
-  if (Random(salt_.data(), kSaltSize) == Result::kFailure) {
-    // LCOV_EXCL_START
-    ReportError("[Crypto] Random failed - Cannot generate salt\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
+  /* Generate a new IV for every encryption */
 
   if (Random(iv_.data(), kIVSize) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Random failed - Cannot generate initial vector\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
-
-  /* Derive key from password */
-
-  if (Argon2id(salt_.data(), pw, plen, key_.data()) == Result::kFailure) {
-    // LCOV_EXCL_START
-    ReportError("[Crypto] Key derivation failed - Argon2id error\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
@@ -133,16 +109,16 @@ Result AesGcm::EncryptInit(const char* pw, size_t plen) {
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_EncryptInit_ex(ctx_, nullptr, nullptr, key_.data(), iv_.data()) != 1) {
+  if (EVP_EncryptInit_ex(ctx_, nullptr, nullptr, key_->Bytes().data(), iv_.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  /* Write salt and IV */
+  /* Write the salt and the fresh IV to the header */
 
-  if (fwrite(salt_.data(), sizeof(uint8_t), kSaltSize, dst_file_) != kSaltSize) {
+  if (fwrite(salt.data(), sizeof(uint8_t), kSaltSize, dst_file_) != kSaltSize) {
     // LCOV_EXCL_START
     ReportError("[File] Write failed - Cannot write salt to destination file header\n");
     return Result::kFailure;
