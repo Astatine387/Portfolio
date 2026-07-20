@@ -62,6 +62,11 @@ BENCHMARK_DEFINE_F(Benchmark, Encrypt)(benchmark::State& state) {
   std::array<uint8_t, kSaltSize> salt{};
   auto key = DeriveKey(std::span<const char>(pw_, psize_), salt);
 
+  if (!key) {
+    state.SkipWithError("Key derivation failed");
+    return;
+  }
+
   for (auto _ : state) {
     (void)_;
 
@@ -99,6 +104,11 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
 
   std::array<uint8_t, kSaltSize> salt{};
   auto key = DeriveKey(std::span<const char>(pw_, psize_), salt);
+
+  if (!key) {
+    state.SkipWithError("Key derivation failed");
+    return;
+  }
 
   /* Encrypt */
 
@@ -160,6 +170,8 @@ static void BenchArgon2id(benchmark::State& state) {
   }
 
   for (auto _ : state) {
+    (void)_;
+
     Argon2id(salt.data(), pw, psize, key.data());
   }
 }
