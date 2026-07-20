@@ -28,6 +28,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install clang-format
+        run: pipx install clang-format==22.1.5
+
       - name: Check clang-format
         run: |
           find Projects/FileEncryption/src -name '*.cpp' -o -name '*.h' \

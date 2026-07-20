@@ -40,7 +40,7 @@ void DoInit() {
 #else
   /* Raise the RLIMIT_MEMLOCK soft limit to the hard limit */
 
-  struct rlimit rl{};
+  struct rlimit rl = {};
 
   if (getrlimit(RLIMIT_MEMLOCK, &rl) == 0) {
     rl.rlim_cur = rl.rlim_max;
