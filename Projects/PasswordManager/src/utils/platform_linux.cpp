@@ -4,12 +4,10 @@
  * @author	Astatine387
  */
 
-#include <sys/mman.h>
 #include <sys/random.h>
 #include <unistd.h>
 
 #include <cerrno>
-#include <cstring>
 #include <filesystem>
 #include <thread>
 
@@ -84,28 +82,6 @@ Result SyncFile(FILE* file) {
   return Result::kSuccess;
 }
 
-Result Lock(void* ptr, size_t size) {
-  return mlock(ptr, size) == 0 ? Result::kSuccess : Result::kFailure;
-}
-
 void OpenFile(FILE** file, const std::string& path, const char* mode) {
   *file = fopen(path.c_str(), mode);
-}
-
-void Unlock(void* ptr, size_t size) {
-  munlock(ptr, size);
-}
-
-void Wipe(void* ptr, size_t size) {
-#if defined(__GLIBC__) && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25))
-  explicit_bzero(ptr, size);
-#else
-  volatile uint8_t* p = static_cast<volatile uint8_t*>(ptr);
-
-  while (size--) {
-    *p++ = 0;
-  }
-
-  __asm__ __volatile__("" : : "r"(ptr) : "memory");
-#endif
 }

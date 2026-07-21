@@ -57,10 +57,6 @@ Result Seek(FILE* file, int64_t offset, int origin) {
   return Result::kSuccess;
 }
 
-Result Lock(void* ptr, size_t size) {
-  return VirtualLock(ptr, size) ? Result::kSuccess : Result::kFailure;
-}
-
 void OpenFile(FILE** file, const std::string& path, const char* mode) {
   std::filesystem::path fs_path(std::u8string(path.begin(), path.end()));
 
@@ -71,12 +67,4 @@ void OpenFile(FILE** file, const std::string& path, const char* mode) {
   }
 
   _wfopen_s(file, fs_path.c_str(), wmode.c_str());
-}
-
-void Unlock(void* ptr, size_t size) {
-  VirtualUnlock(ptr, size);
-}
-
-void Wipe(void* ptr, size_t size) {
-  SecureZeroMemory(ptr, size);
 }

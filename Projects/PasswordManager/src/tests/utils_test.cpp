@@ -543,44 +543,6 @@ TEST(UtilsTest, RenameFileOverwrite) {
 }
 
 /* ==================================================
- * Wipe Test
- * ================================================== */
-
-/**
- * @brief   Verify Wipe zeroes out entire buffer
- */
-TEST(WipeTest, WipeBuffer) {
-  std::array<uint8_t, 32> arr;
-
-  arr.fill(0xff);
-
-  Wipe(arr.data(), 32);
-
-  for (int i = 0; i < 32; i++) {
-    EXPECT_EQ(arr[i], 0);
-  }
-}
-
-/**
- * @brief   Verify Wipe zeroes only the specified portion
- */
-TEST(WipeTest, WipePartial) {
-  std::array<uint8_t, 32> arr;
-
-  arr.fill(0xff);
-
-  Wipe(arr.data(), 16);
-
-  for (int i = 0; i < 16; i++) {
-    EXPECT_EQ(arr[i], 0);
-  }
-
-  for (int i = 16; i < 32; i++) {
-    EXPECT_EQ(arr[i], 0xFF);
-  }
-}
-
-/* ==================================================
  * Shuffle Test
  * ================================================== */
 

@@ -60,31 +60,9 @@ Result RemoveFile(const std::string& path);
 Result Seek(FILE* file, int64_t dist, int ref);
 
 /**
- * @brief	Lock memory space so that it cannot be swapped
- * @param	ptr	Buffer to lock
- * @param	size	Buffer size in bytes
- * @return kSuccess on success, kFailure on failure
- */
-Result Lock(void* ptr, size_t size);
-
-/**
  * @brief	Open a file
  * @param	file	File pointer
  * @param	path	File path
  * @param	mode	Mode
  */
 void OpenFile(FILE** file, const std::string& path, const char* mode);
-
-/**
- * @brief	Unlock memory space so that it can be swapped
- * @param	ptr	Buffer to unlock
- * @param	size	Buffer size in bytes
- */
-void Unlock(void* ptr, size_t size);
-
-/**
- * @brief	Securely wipe data in memory
- * @param	ptr	Buffer to wipe
- * @param	size	Buffer size in bytes
- */
-void Wipe(void* buff, size_t size);
