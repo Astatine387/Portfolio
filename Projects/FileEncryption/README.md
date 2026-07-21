@@ -91,7 +91,6 @@ src
 └── Utils
     ├── password.h/cpp        # Secure password container
     ├── platform.h            # Utility function declarations
-    ├── platform.cpp          # Common utility functions
     ├── platform_linux.cpp    # Linux utility functions
     └── platform_win32.cpp    # Windows utility functions
 ```
@@ -170,7 +169,6 @@ cmake --build build
 | core/crypto_worker.h     | 4             | 4       | 0       | 0      | 100.00%    |
 | utils/password.cpp       | 26            | 26      | 0       | 0      | 100.00%    |
 | utils/password.h         | 25            | 25      | 0       | 0      | 100.00%    |
-| utils/platform.cpp       | 3             | 3       | 0       | 0      | 100.00%    |
 | utils/platform_linux.cpp | 33            | 30      | 0       | 6      | 90.91%     |
 
 | Module       | Test File                | Test Cases                                                                                   |

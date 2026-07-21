@@ -61,7 +61,6 @@ set(CORE_SOURCES
     src/core/crypto_worker.cpp
     src/core/secure_key.cpp
     src/utils/password.cpp
-    src/utils/platform.cpp
 )
 
 if(WIN32)
