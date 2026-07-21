@@ -153,6 +153,16 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
     return Result::kFailure;
   }
 
+  /* The trailing redzone must be intact after decrypting into the image */
+
+  if (!img_.RedzoneIntact()) {
+    // LCOV_EXCL_START
+    Reset();
+    ReportError("[Memory] Integrity check failed - Image redzone was overwritten\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
   /* Deserialize the entries from the image */
 
   const uint8_t* base = img_.Data();
@@ -202,6 +212,12 @@ Result Vault::SaveVault(const std::string& path) {
 }
 
 Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt) {
+  /* Verify the image redzone and offset invariant before encrypting */
+
+  if (VerifyImage() == Result::kFailure) {
+    return Result::kFailure;  // VerifyImage reported the error
+  }
+
   /* Calculate file size */
 
   dst_size_ = static_cast<int64_t>(kMagicSize + kSaltSize + kIVSize + img_.Size() + kTagSize);
@@ -231,10 +247,8 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::
   OpenFile(&file_, tmp_path, "wb");
 
   if (file_ == nullptr) {
-    // LCOV_EXCL_START
     ReportError("[File] Open failed - Cannot open temporary file for writing\n");
     return Result::kFailure;
-    // LCOV_EXCL_STOP
   }
 
   if (fwrite(dst_buff_.data(), sizeof(uint8_t), dst_size_, file_) != dst_size_) {

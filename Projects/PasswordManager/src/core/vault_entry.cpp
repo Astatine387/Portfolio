@@ -5,20 +5,48 @@
  */
 
 #include <cstring>
+#include <optional>
+#include <span>
 
 #include "core/vault.h"
 
-size_t Vault::SerializeVault(uint8_t* dst, size_t cur, const std::set<Entry, EntryCmp>::const_iterator& skip) {
-  for (auto it = entry_set_.begin(); it != entry_set_.end(); ++it) {
+std::optional<size_t> Vault::SerializeVault(SecureBuffer& dst, size_t cur,
+                                            const std::set<Entry, EntryCmp>::const_iterator& skip) {
+  for (auto it = entry_set_.begin(); it != entry_set_.end(); it++) {
     if (it == skip) {
       continue;
     }
 
-    size_t new_off = cur + sizeof(uint32_t) + it->site.size() + sizeof(uint32_t) + it->acc.size() + sizeof(uint32_t);
-    const uint8_t* pw_src = (it->pw_len > 0) ? img_.Data() + it->pw_off : nullptr;
+    /* Read the password bytes out of the current image (bounds-checked) */
 
-    cur += it->Serialize(dst + cur, pw_src);
-    it->pw_off = new_off;
+    auto pw_src = it->PwSpan(img_.Span());
+
+    if (!pw_src.has_value()) {
+      // LCOV_EXCL_START
+      ReportError("[Data] Serialization failed - Password view falls outside the image\n");
+      return std::nullopt;
+      // LCOV_EXCL_STOP
+    }
+
+    /* Carve the destination subrange for this entry (bounds-checked) */
+
+    auto out = dst.Subspan(cur, it->Size());
+
+    if (!out.has_value()) {
+      // LCOV_EXCL_START
+      ReportError("[Data] Serialization failed - Destination image too small\n");
+      return std::nullopt;
+      // LCOV_EXCL_STOP
+    }
+
+    size_t written = it->Serialize(*out, *pw_src);
+
+    if (written == 0) {
+      return std::nullopt;  // LCOV_EXCL_LINE
+    }
+
+    it->pw_off = cur + it->PwOffset();
+    cur += written;
   }
 
   return cur;
@@ -53,16 +81,41 @@ Result Vault::CreateEntry(const std::string& site, const std::string& acc, const
 
   memcpy(buff.Data(), &entry_cnt, kCountSize);
 
-  size_t cur = SerializeVault(buff.Data(), kCountSize, entry_set_.end());
+  auto cur = SerializeVault(buff, kCountSize, entry_set_.end());
 
-  entry.pw_off = cur + sizeof(uint32_t) + entry.site.size() + sizeof(uint32_t) + entry.acc.size() + sizeof(uint32_t);
+  if (!cur.has_value()) {
+    return Result::kFailure;  // SerializeVault reported the error
+  }
 
-  const uint8_t* pw_src = (entry.pw_len > 0) ? reinterpret_cast<const uint8_t*>(pw.GetData()) : nullptr;
+  /* Append the new entry at the end of the image (bounds-checked) */
 
-  entry.Serialize(buff.Data() + cur, pw_src);
+  auto out = buff.Subspan(*cur, entry.Size());
+
+  if (!out.has_value()) {
+    // LCOV_EXCL_START
+    ReportError("[Data] Insert failed - Destination image too small\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  std::span<const uint8_t> pw_src;
+
+  if (entry.pw_len > 0) {
+    pw_src = std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(pw.GetData()), entry.pw_len);
+  }
+
+  entry.pw_off = *cur + entry.PwOffset();
+
+  if (entry.Serialize(*out, pw_src) == 0) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
 
   img_ = std::move(buff);
   entry_set_.insert(std::move(entry));
+
+  if (VerifyImage() == Result::kFailure) {
+    return Result::kFailure;  // VerifyImage reported the error
+  }
 
   return Result::kSuccess;
 }
@@ -112,17 +165,42 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site, const std::string& 
 
   memcpy(buff.Data(), &entry_cnt, kCountSize);
 
-  size_t cur = SerializeVault(buff.Data(), kCountSize, old_it);
+  auto cur = SerializeVault(buff, kCountSize, old_it);
 
-  entry.pw_off = cur + sizeof(uint32_t) + entry.site.size() + sizeof(uint32_t) + entry.acc.size() + sizeof(uint32_t);
+  if (!cur.has_value()) {
+    return UpdateResult::kError;  // SerializeVault reported the error
+  }
 
-  const uint8_t* pw_src = (entry.pw_len > 0) ? reinterpret_cast<const uint8_t*>(new_pw.GetData()) : nullptr;
+  /* Append the updated entry at the end of the image (bounds-checked) */
 
-  entry.Serialize(buff.Data() + cur, pw_src);
+  auto out = buff.Subspan(*cur, entry.Size());
+
+  if (!out.has_value()) {
+    // LCOV_EXCL_START
+    ReportError("[Data] Update failed - Destination image too small\n");
+    return UpdateResult::kError;
+    // LCOV_EXCL_STOP
+  }
+
+  std::span<const uint8_t> pw_src;
+
+  if (entry.pw_len > 0) {
+    pw_src = std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(new_pw.GetData()), entry.pw_len);
+  }
+
+  entry.pw_off = *cur + entry.PwOffset();
+
+  if (entry.Serialize(*out, pw_src) == 0) {
+    return UpdateResult::kError;  // LCOV_EXCL_LINE
+  }
 
   img_ = std::move(buff);
   entry_set_.erase(old_it);
   entry_set_.insert(std::move(entry));
+
+  if (VerifyImage() == Result::kFailure) {
+    return UpdateResult::kError;  // VerifyImage reported the error
+  }
 
   return UpdateResult::kSuccess;
 }
@@ -158,10 +236,77 @@ Result Vault::DeleteEntry(const std::string& site, const std::string& acc) {
 
   memcpy(nimg.Data(), &entry_cnt, kCountSize);
 
-  SerializeVault(nimg.Data(), kCountSize, it);
+  if (!SerializeVault(nimg, kCountSize, it).has_value()) {
+    return Result::kFailure;  // SerializeVault reported the error
+  }
 
   img_ = std::move(nimg);
   entry_set_.erase(it);
+
+  if (VerifyImage() == Result::kFailure) {
+    return Result::kFailure;  // VerifyImage reported the error
+  }
+
+  return Result::kSuccess;
+}
+
+Result Vault::VerifyImage() {
+  /* The trailing redzone must be intact after the last image mutation */
+
+  if (!img_.RedzoneIntact()) {
+    // LCOV_EXCL_START
+    ReportError("[Memory] Integrity check failed - Image redzone was overwritten\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  /* Re-parse the image and confirm the recorded offsets match a fresh parse */
+
+  std::span<const uint8_t> img = img_.Span();
+
+  uint32_t entry_cnt = 0;
+
+  memcpy(&entry_cnt, img.data(), kCountSize);
+
+  if (entry_cnt != entry_set_.size()) {
+    // LCOV_EXCL_START
+    ReportError("[Data] Integrity check failed - Image entry count mismatch\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  size_t cur = kCountSize;
+
+  for (uint32_t i = 0; i < entry_cnt; i++) {
+    Entry parsed;
+
+    size_t bytes = parsed.Deserialize(img.data() + cur, img.size() - cur, cur);
+
+    if (bytes == 0) {
+      // LCOV_EXCL_START
+      ReportError("[Data] Integrity check failed - Invalid entry data in image\n");
+      return Result::kFailure;
+      // LCOV_EXCL_STOP
+    }
+
+    auto match = entry_set_.find(parsed);
+
+    if (match == entry_set_.end() || match->pw_off != parsed.pw_off || match->pw_len != parsed.pw_len) {
+      // LCOV_EXCL_START
+      ReportError("[Data] Integrity check failed - Entry offset invariant violated\n");
+      return Result::kFailure;
+      // LCOV_EXCL_STOP
+    }
+
+    cur += bytes;
+  }
+
+  if (cur != img.size()) {
+    // LCOV_EXCL_START
+    ReportError("[Data] Integrity check failed - Trailing bytes after final entry\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
 
   return Result::kSuccess;
 }

@@ -76,6 +76,31 @@ class VaultFileTest : public ::testing::Test {
 
     return std::move(key.value());  // NOLINT(bugprone-unchecked-optional-access)
   }
+
+  /**
+   * @brief   Read an entire file into a byte vector
+   * @param   path    File path
+   * @return  File contents (empty on failure)
+   */
+  static std::vector<uint8_t> ReadFile(const std::string& path) {
+    FILE* file = nullptr;
+    std::vector<uint8_t> buff;
+
+    OpenFile(&file, path, "rb");
+
+    if (file) {
+      int64_t size = GetFileSize(file);
+
+      if (size > 0) {
+        buff.resize(static_cast<size_t>(size));
+        fread(buff.data(), sizeof(uint8_t), size, file);
+      }
+
+      fclose(file);
+    }
+
+    return buff;
+  }
 };
 
 /* ==================================================
@@ -251,7 +276,9 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
   memcpy(src.data() + cur, &entry_cnt, sizeof(uint32_t));
   cur += sizeof(uint32_t);
 
-  entry.Serialize(src.data() + cur, reinterpret_cast<const uint8_t*>(epw));
+  std::span<const uint8_t> epw_span(reinterpret_cast<const uint8_t*>(epw), entry.pw_len);
+
+  entry.Serialize(std::span(src).subspan(cur), epw_span);
 
   /* Encrypt with a key the vault will re-derive from "password" */
 
@@ -367,6 +394,43 @@ TEST_F(VaultFileTest, SaveEmptyVault) {
   EXPECT_EQ(vault_.GetEntryCount(), 0);
 }
 
+/**
+ * @brief   Verify each save reuses the session salt but writes a fresh IV
+ */
+TEST_F(VaultFileTest, SaveWritesFreshIV) {
+  vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
+
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+  std::vector<uint8_t> first = ReadFile(path_);
+
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+  std::vector<uint8_t> second = ReadFile(path_);
+
+  ASSERT_EQ(first.size(), second.size());
+  ASSERT_GT(first.size(), static_cast<size_t>(kMagicSize + kSaltSize + kIVSize + kTagSize));
+
+  const size_t salt_off = kMagicSize;
+  const size_t iv_off = kMagicSize + kSaltSize;
+  const size_t ct_off = kMagicSize + kSaltSize + kIVSize;
+
+  /* Salt is reused so the key stays stable */
+
+  EXPECT_EQ(memcmp(first.data() + salt_off, second.data() + salt_off, kSaltSize), 0);
+
+  /* IV is regenerated on every write */
+
+  EXPECT_NE(memcmp(first.data() + iv_off, second.data() + iv_off, kIVSize), 0);
+
+  /* Ciphertext and tag differ under the fresh IV */
+
+  EXPECT_NE(memcmp(first.data() + ct_off, second.data() + ct_off, first.size() - ct_off), 0);
+
+  /* The vault still opens correctly after the repeated saves */
+
+  EXPECT_EQ(Reload(), Result::kSuccess);
+  EXPECT_EQ(vault_.GetEntryCount(), 1);
+}
+
 /* ==================================================
  * Password Verification Test
  * ================================================== */
@@ -417,6 +481,16 @@ TEST_F(VaultFileTest, ChangePWUpdatesSession) {
 
   EXPECT_TRUE(vault_.VerifyPW(MakePW("asdf1234")));
   EXPECT_FALSE(vault_.VerifyPW(MakePW("password")));
+}
+
+/**
+ * @brief   Verify a failed save leaves the session key and salt untouched
+ */
+TEST_F(VaultFileTest, ChangePWSaveFailurePreservesSession) {
+  EXPECT_EQ(vault_.ChangePW(MakePW("asdf1234"), "no_such_dir/child.vault"), Result::kFailure);
+
+  EXPECT_TRUE(vault_.VerifyPW(MakePW("password")));
+  EXPECT_FALSE(vault_.VerifyPW(MakePW("asdf1234")));
 }
 
 /* ==================================================

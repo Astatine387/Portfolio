@@ -57,25 +57,25 @@ class Vault {
    * ================================================== */
 
   /**
-   * @brief	Create an empty new vault
-   * @param   path    Vault file path
-   * @param   pw      Master password (used to derive the session key)
-   * @return  kSuccess on success, kFailure on failure
+   * @brief     Create an empty new vault
+   * @param     path    Vault file path
+   * @param     pw      Master password (used to derive the session key)
+   * @return    kSuccess on success, kFailure on failure
    */
   Result NewVault(const std::string& path, const Password& pw);
 
   /**
-   * @brief	Open a vault and read its data
-   * @param   path    Vault file path
-   * @param   pw      Master password (used to derive the session key)
-   * @return  kSuccess on success, kFailure on failure
+   * @brief     Open a vault and read its data
+   * @param     path    Vault file path
+   * @param     pw      Master password (used to derive the session key)
+   * @return    kSuccess on success, kFailure on failure
    */
   Result OpenVault(const std::string& path, const Password& pw);
 
   /**
-   * @brief	Save the current vault, reusing the session key with a fresh IV
-   * @param   path    Vault file path
-   * @return	kSuccess on success, kFailure on failure
+   * @brief     Save the current vault, reusing the session key with a fresh IV
+   * @param     path    Vault file path
+   * @return    kSuccess on success, kFailure on failure
    */
   Result SaveVault(const std::string& path);
 
@@ -149,7 +149,7 @@ class Vault {
    * @param     dst     Destination password
    * @return    true if the entry was found and copied
    */
-  [[nodiscard]] bool GetEntryPW(const std::string& site, const std::string& acc, Password& dst) const;
+  [[nodiscard]] bool GetEntryPW(const std::string& site, const std::string& acc, Password& dst);
 
   /**
    * @brief     Get the number of entries
@@ -225,9 +225,16 @@ class Vault {
    * @param     dst		Destination image buffer
    * @param     cur		Current write cursor
    * @param     skip	Entry to skip (entry_set_.end() to skip none)
-   * @return	New write cursor
+   * @return	New write cursor, or std::nullopt when a span check fails
    */
-  size_t SerializeVault(uint8_t* dst, size_t cur, const std::set<Entry, EntryCmp>::const_iterator& skip);
+  std::optional<size_t> SerializeVault(SecureBuffer& dst, size_t cur,
+                                       const std::set<Entry, EntryCmp>::const_iterator& skip);
+
+  /**
+   * @brief     Verify the image redzone and the per-entry offset invariant
+   * @return	kSuccess when intact, kFailure on any mismatch
+   */
+  Result VerifyImage();
 
   /* ==================================================
    * Callback helper functions

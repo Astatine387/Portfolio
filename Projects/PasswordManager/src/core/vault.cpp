@@ -28,14 +28,23 @@ int Vault::GetEntryCount() const {
   return static_cast<int>(entry_set_.size());
 }
 
-bool Vault::GetEntryPW(const std::string& site, const std::string& acc, Password& dst) const {
+bool Vault::GetEntryPW(const std::string& site, const std::string& acc, Password& dst) {
   auto it = entry_set_.find(Entry{ .site = site, .acc = acc });
 
   if (it == entry_set_.end()) {
     return false;
   }
 
-  const char* pw_ptr = (it->pw_len > 0) ? reinterpret_cast<const char*>(img_.Data() + it->pw_off) : nullptr;
+  auto view = it->PwSpan(img_.Span());
+
+  if (!view.has_value()) {
+    // LCOV_EXCL_START
+    ReportError("[Data] Access failed - Password view falls outside the image\n");
+    return false;
+    // LCOV_EXCL_STOP
+  }
+
+  const char* pw_ptr = (it->pw_len > 0) ? reinterpret_cast<const char*>(view->data()) : nullptr;
 
   return dst.SetData(pw_ptr, it->pw_len) == Result::kSuccess;
 }

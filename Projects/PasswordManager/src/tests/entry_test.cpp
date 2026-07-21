@@ -11,15 +11,16 @@
 #include <cstdint>
 #include <cstring>
 #include <set>
+#include <span>
 #include <string>
 #include <vector>
 
 namespace {
 
-/* Reinterpret a C-string as a password source buffer */
+/* View a C-string as a password source span */
 
-const uint8_t* PwBytes(const char* pw) {
-  return reinterpret_cast<const uint8_t*>(pw);
+std::span<const uint8_t> PwBytes(const char* pw) {
+  return { reinterpret_cast<const uint8_t*>(pw), strlen(pw) };
 }
 
 }  // namespace
@@ -130,7 +131,7 @@ TEST(EntryTest, SerializeSize) {
 
   std::vector<uint8_t> vec(entry.Size());
 
-  size_t size = entry.Serialize(vec.data(), PwBytes(pw));
+  size_t size = entry.Serialize(vec, PwBytes(pw));
 
   EXPECT_EQ(size, entry.Size());
 }
@@ -150,7 +151,7 @@ TEST(EntryTest, SerializeDeserializeRoundTrip) {
 
   std::vector<uint8_t> vec(orig.Size());
 
-  size_t writ = orig.Serialize(vec.data(), PwBytes(pw));
+  size_t writ = orig.Serialize(vec, PwBytes(pw));
   size_t read = copy.Deserialize(vec.data(), vec.size(), 0);
 
   EXPECT_EQ(writ, read);
@@ -169,7 +170,7 @@ TEST(EntryTest, SerializeDeserializeEmpty) {
 
   std::vector<uint8_t> vec(orig.Size());
 
-  size_t writ = orig.Serialize(vec.data(), nullptr);
+  size_t writ = orig.Serialize(vec, {});
   size_t read = copy.Deserialize(vec.data(), vec.size(), 0);
 
   EXPECT_EQ(writ, read);
@@ -202,8 +203,8 @@ TEST(EntryTest, SerializeMultipleEntries) {
   std::vector<uint8_t> vec(total_size);
 
   size_t cur = 0;
-  cur += entry0.Serialize(vec.data() + cur, PwBytes(pw0));
-  cur += entry1.Serialize(vec.data() + cur, PwBytes(pw1));
+  cur += entry0.Serialize(std::span(vec).subspan(cur), PwBytes(pw0));
+  cur += entry1.Serialize(std::span(vec).subspan(cur), PwBytes(pw1));
 
   EXPECT_EQ(cur, total_size);
 
@@ -240,7 +241,7 @@ TEST(EntryTest, SerializeSpecialCharacters) {
 
   std::vector<uint8_t> vec(orig.Size());
 
-  orig.Serialize(vec.data(), PwBytes(pw));
+  orig.Serialize(vec, PwBytes(pw));
   copy.Deserialize(vec.data(), vec.size(), 0);
 
   EXPECT_EQ(copy.site, orig.site);
@@ -267,7 +268,7 @@ TEST(EntryTest, DeserializationBoundaryCheck) {
 
   std::vector<uint8_t> vec(src.Size());
 
-  src.Serialize(vec.data(), PwBytes(pw));
+  src.Serialize(vec, PwBytes(pw));
 
   /* Buffer truncated before site length */
 
@@ -373,4 +374,57 @@ TEST(EntryTest, DeserializeMaxFieldLengths) {
   EXPECT_EQ(entry.site.size(), kMaxSiteLen);
   EXPECT_EQ(entry.acc.size(), kMaxAccLen);
   EXPECT_EQ(entry.pw_len, kMaxPWLen);
+}
+
+/* ==================================================
+ * Password View Test
+ * ================================================== */
+
+/**
+ * @brief   Verify PwView maps the recorded offset onto an image span
+ */
+TEST(EntryTest, PwViewInRange) {
+  Entry entry;
+
+  entry.pw_off = 4;
+  entry.pw_len = 8;
+
+  std::vector<uint8_t> img(32, 0xAB);
+
+  auto view = entry.PwSpan(img);
+
+  ASSERT_TRUE(view.has_value());
+
+  std::span<const uint8_t> pw = view.value();  // NOLINT(bugprone-unchecked-optional-access)
+
+  EXPECT_EQ(pw.size(), 8u);
+  EXPECT_EQ(pw.data(), img.data() + 4);
+}
+
+/**
+ * @brief   Verify PwView rejects a view that runs past the end of the image
+ */
+TEST(EntryTest, PwViewOutsideImage) {
+  Entry entry;
+
+  entry.pw_off = 28;
+  entry.pw_len = 8;  // 28 + 8 > 32
+
+  std::vector<uint8_t> img(32, 0xAB);
+
+  PwSpanEXPECT_FALSE(entry.PwSpan(img).has_value());
+}
+
+/**
+ * @brief   Verify PwView rejects an offset past the end of the image
+ */
+TEST(EntryTest, PwViewOffsetPastEnd) {
+  Entry entry;
+
+  entry.pw_off = 40;  // Past the end of the image
+  entry.pw_len = 0;
+
+  std::vector<uint8_t> img(32, 0xAB);
+
+  PwSpanEXPECT_FALSE(entry.PwSpan(img).has_value());
 }
