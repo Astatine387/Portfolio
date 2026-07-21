@@ -6,8 +6,6 @@
 
 #include "utils/platform.h"
 
-#include <argon2.h>
-
 #include "common/constants.h"
 
 Result RandomRange(uint32_t* dst, uint32_t min, uint32_t max) {
@@ -34,14 +32,6 @@ Result RandomRange(uint32_t* dst, uint32_t min, uint32_t max) {
   } while (tmp >= limit);
 
   *dst = min + tmp % range;
-
-  return Result::kSuccess;
-}
-
-Result Argon2id(uint8_t* salt, const char* pw, size_t plen, uint8_t* key) {
-  if (argon2id_hash_raw(kTimeCost, kMemCost, kParallelism, pw, plen, salt, kSaltSize, key, kKeySize) != ARGON2_OK) {
-    return Result::kFailure;  // LCOV_EXCL_LINE
-  }
 
   return Result::kSuccess;
 }

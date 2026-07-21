@@ -160,7 +160,6 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
  */
 static void BenchArgon2id(benchmark::State& state) {
   std::array<uint8_t, kSaltSize> salt;
-  std::array<uint8_t, kKeySize> key;
 
   const char* pw = "password";
   size_t psize = strlen(pw);
@@ -172,7 +171,10 @@ static void BenchArgon2id(benchmark::State& state) {
   for (auto _ : state) {
     (void)_;
 
-    Argon2id(salt.data(), pw, psize, key.data());
+    /* Measure the production key-derivation path */
+
+    auto key = DeriveKey(std::span<const char>(pw, psize), salt);
+    benchmark::DoNotOptimize(key);
   }
 }
 

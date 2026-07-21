@@ -35,16 +35,6 @@ Result RandomRange(uint32_t* dst, uint32_t min, uint32_t max);
 bool FileExists(const std::string& path);
 
 /**
- * @brief	Derive a key using Argon2id
- * @param	salt	Input buffer for salt
- * @param	pw		Input buffer for password
- * @param	plen	Password length in bytes
- * @param	key		Output buffer for key
- * @return	kSuccess on success, kFailure on failure
- */
-Result Argon2id(uint8_t* salt, const char* pw, size_t plen, uint8_t* key);
-
-/**
  * @brief	Generates cryptographically secure random bytes
  * @param	dst		Output buffer for random bytes
  * @param	size	Output buffer size

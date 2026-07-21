@@ -102,6 +102,17 @@ TEST(SecureKeyTest, DifferentPasswordDiffersKey) {
   EXPECT_FALSE(k0.ConstantTimeEquals(k1));
 }
 
+/**
+ * @brief   Verify key derivation succeeds on an empty password
+ */
+TEST(SecureKeyTest, DeriveEmptyPassword) {
+  std::string pw;
+  auto salt = MakeSalt(0x01);
+  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt, FastParams());
+
+  EXPECT_TRUE(key.has_value());
+}
+
 /* ==================================================
  * Move Semantics Test
  * ================================================== */
