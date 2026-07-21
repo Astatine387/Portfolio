@@ -264,6 +264,13 @@ Result Vault::VerifyImage() {
 
   std::span<const uint8_t> img = img_.Span();
 
+  if (img.size() < kCountSize) {
+    // LCOV_EXCL_START
+    ReportError("[Data] Integrity check failed - Image too small for the entry count\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
   uint32_t entry_cnt = 0;
 
   memcpy(&entry_cnt, img.data(), kCountSize);

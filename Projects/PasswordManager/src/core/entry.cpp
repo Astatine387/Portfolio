@@ -29,6 +29,10 @@ size_t Entry::Serialize(std::span<uint8_t> dst, std::span<const uint8_t> pw_src)
     return 0;
   }
 
+  if (pw_src.size() < pw_len) {
+    return 0;
+  }
+
   size_t cur = 0;
   uint32_t dlen;
 
@@ -57,7 +61,7 @@ size_t Entry::Serialize(std::span<uint8_t> dst, std::span<const uint8_t> pw_src)
   memcpy(dst.data() + cur, &pw_len, sizeof(uint32_t));
   cur += sizeof(uint32_t);
 
-  if (pw_len > 0 && pw_src.size() >= pw_len) {
+  if (pw_len > 0) {
     memcpy(dst.data() + cur, pw_src.data(), pw_len);
   }
   cur += pw_len;

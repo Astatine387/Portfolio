@@ -249,6 +249,34 @@ TEST(EntryTest, SerializeSpecialCharacters) {
   EXPECT_EQ(memcmp(vec.data() + copy.pw_off, pw, copy.pw_len), 0);
 }
 
+/**
+ * @brief   Verify serialization rejects a password source shorter than pw_len
+ */
+TEST(EntryTest, SerializeShortSource) {
+  Entry entry;
+
+  const char* pw = "password";
+
+  entry.site = "Google";
+  entry.acc = "user@google.com";
+  entry.pw_len = static_cast<uint32_t>(strlen(pw));
+
+  std::vector<uint8_t> vec(entry.Size());
+
+  /* A source shorter than pw_len must be rejected */
+
+  std::vector<uint8_t> short_src(entry.pw_len - 1, 'a');
+
+  EXPECT_EQ(entry.Serialize(vec, short_src), 0u);
+
+  /* An empty password with an empty source still succeeds */
+
+  Entry empty;
+  std::vector<uint8_t> empty_vec(empty.Size());
+
+  EXPECT_EQ(empty.Serialize(empty_vec, {}), empty.Size());
+}
+
 /* ==================================================
  * Boundary Check Test
  * ================================================== */
