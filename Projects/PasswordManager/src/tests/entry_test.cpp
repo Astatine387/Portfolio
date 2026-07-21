@@ -412,7 +412,7 @@ TEST(EntryTest, PwViewOutsideImage) {
 
   std::vector<uint8_t> img(32, 0xAB);
 
-  PwSpanEXPECT_FALSE(entry.PwSpan(img).has_value());
+  EXPECT_FALSE(entry.PwSpan(img).has_value());
 }
 
 /**
@@ -426,5 +426,5 @@ TEST(EntryTest, PwViewOffsetPastEnd) {
 
   std::vector<uint8_t> img(32, 0xAB);
 
-  PwSpanEXPECT_FALSE(entry.PwSpan(img).has_value());
+  EXPECT_FALSE(entry.PwSpan(img).has_value());
 }
