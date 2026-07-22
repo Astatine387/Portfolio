@@ -282,6 +282,15 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::
     // LCOV_EXCL_STOP
   }
 
+  /* Sync the directory entry so the rename itself survives a crash */
+
+  if (SyncDir(path) == Result::kFailure) {
+    // LCOV_EXCL_START
+    ReportError("[File] Sync failed - Cannot flush directory entry to disk\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
   Clear();
 
   return Result::kSuccess;

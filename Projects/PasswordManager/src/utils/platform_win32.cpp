@@ -54,7 +54,7 @@ Result RenameFile(const std::string& src, const std::string& dst) {
   std::filesystem::path src_path(std::u8string(src.begin(), src.end()));
   std::filesystem::path dst_path(std::u8string(dst.begin(), dst.end()));
 
-  if (!MoveFileExW(src_path.c_str(), dst_path.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+  if (!MoveFileExW(src_path.c_str(), dst_path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
@@ -78,6 +78,11 @@ Result SyncFile(FILE* file) {
     return Result::kFailure;
   }
 
+  return Result::kSuccess;
+}
+
+Result SyncDir([[maybe_unused]] const std::string& path) {
+  /* Windows has no directory-fsync; rename durability is handled by MOVEFILE_WRITE_THROUGH in RenameFile */
   return Result::kSuccess;
 }
 

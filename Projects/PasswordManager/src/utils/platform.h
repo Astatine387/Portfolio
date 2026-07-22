@@ -65,6 +65,13 @@ Result RenameFile(const std::string& src, const std::string& dst);
 Result SyncFile(FILE* file);
 
 /**
+ * @brief	Flush the parent directory entry of a file to disk
+ * @param	path	File path whose parent directory is synced
+ * @return	kSuccess on success, kFailure on failure
+ */
+Result SyncDir(const std::string& path);
+
+/**
  * @brief	Open a file
  * @param	file	File pointer
  * @param	path	File path

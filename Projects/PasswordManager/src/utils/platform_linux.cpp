@@ -4,6 +4,7 @@
  * @author	Astatine387
  */
 
+#include <fcntl.h>
 #include <sys/random.h>
 #include <unistd.h>
 
@@ -76,6 +77,26 @@ Result SyncFile(FILE* file) {
   }
 
   if (fsync(fileno(file))) {
+    return Result::kFailure;
+  }
+
+  return Result::kSuccess;
+}
+
+Result SyncDir(const std::string& path) {
+  std::filesystem::path dir = std::filesystem::path(path).parent_path();
+
+  int fd = open(dir.empty() ? "." : dir.c_str(), O_RDONLY | O_DIRECTORY);
+
+  if (fd == -1) {
+    return Result::kFailure;
+  }
+
+  int res = fsync(fd);
+
+  close(fd);
+
+  if (res) {
     return Result::kFailure;
   }
 
