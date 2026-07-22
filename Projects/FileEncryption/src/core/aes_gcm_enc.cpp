@@ -24,6 +24,10 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<con
     write_result_ = Result::kSuccess;
   }
 
+  /* Drain the writer on every exit path so the caller can safely close the destination file */
+
+  WriterGuard writer_guard(this);
+
   if (EncryptInit(salt) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }

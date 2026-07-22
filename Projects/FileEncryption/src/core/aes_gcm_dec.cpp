@@ -24,6 +24,10 @@ Result AesGcm::Decrypt(FILE* src, FILE* dst, const SecureKey& key) {
     write_result_ = Result::kSuccess;
   }
 
+  /* Drain the writer on every exit path so the caller can safely close the destination file */
+
+  WriterGuard writer_guard(this);
+
   if (DecryptInit() == Result::kFailure) {
     return Result::kFailure;
   }

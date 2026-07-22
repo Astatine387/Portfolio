@@ -183,6 +183,24 @@ class AesGcm {
    */
   Result FlushWrite();
 
+  /**
+   * @class   WriterGuard
+   * @brief   Drain any in-flight asynchronous write when the scope exits
+   */
+  class WriterGuard {
+   public:
+    explicit WriterGuard(AesGcm* self) : self_(self) {}
+    ~WriterGuard() { self_->FlushWrite(); }
+
+    WriterGuard(const WriterGuard&) = delete;             // Delete copy constructor
+    WriterGuard& operator=(const WriterGuard&) = delete;  // Delete copy assignment operator
+    WriterGuard(WriterGuard&&) = delete;                  // Delete move constructor
+    WriterGuard& operator=(WriterGuard&&) = delete;       // Delete move assignment operator
+
+   private:
+    AesGcm* self_;  // Owner engine whose write is drained on scope exit
+  };
+
   /* ==================================================
    * Decryption functions
    * ================================================== */
