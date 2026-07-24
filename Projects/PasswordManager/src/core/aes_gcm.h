@@ -14,6 +14,7 @@
 #include <span>
 
 #include "common/constants.h"
+#include "core/secure_buffer.h"
 #include "core/secure_key.h"
 
 /**
@@ -96,7 +97,7 @@ class AesGcm {
   std::array<uint8_t, kIVSize> iv_{};    // Initial vector
   std::array<uint8_t, kTagSize> tag_{};  // Authentication tag read from buffer
 
-  std::array<uint8_t, kBuffSize * kBlockSize> verify_buff_{};  // Scratch buffer for the verify pass
+  SecureBuffer verify_buff_;  // Locked, guarded scratch buffer for the verify pass
 
   const SecureKey* key_ = nullptr;  // Session key for the current operation
 
@@ -109,6 +110,24 @@ class AesGcm {
   /* ==================================================
    * Decryption functions
    * ================================================== */
+
+  /**
+   * @class   VerifyBuffGuard
+   * @brief   Release the locked verify buffer when the scope exits
+   */
+  class VerifyBuffGuard {
+   public:
+    explicit VerifyBuffGuard(AesGcm* self) : self_(self) {}
+    ~VerifyBuffGuard() { self_->verify_buff_.Reset(); }
+
+    VerifyBuffGuard(const VerifyBuffGuard&) = delete;             // Delete copy constructor
+    VerifyBuffGuard& operator=(const VerifyBuffGuard&) = delete;  // Delete copy assignment operator
+    VerifyBuffGuard(VerifyBuffGuard&&) = delete;                  // Delete move constructor
+    VerifyBuffGuard& operator=(VerifyBuffGuard&&) = delete;       // Delete move assignment operator
+
+   private:
+    AesGcm* self_;  // Owner engine whose verify buffer is released on scope exit
+  };
 
   /**
    * @brief	Read the IV and authentication tag from the buffer

@@ -13,7 +13,6 @@
 
 AesGcm::~AesGcm() {
   sodium_memzero(iv_.data(), iv_.size());
-  sodium_memzero(verify_buff_.data(), verify_buff_.size());
 
   if (ctx_) {
     EVP_CIPHER_CTX_free(ctx_);

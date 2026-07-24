@@ -16,6 +16,19 @@ Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey&
   dst_crs_ = 0;
   key_ = &key;
 
+  /* Scratch plaintext must live in locked memory and must not outlive this call */
+
+  verify_buff_ = SecureBuffer(kBuffSize * kBlockSize);
+
+  if (!verify_buff_.Valid()) {
+    // LCOV_EXCL_START
+    ReportError("[Memory] Allocation failed - Cannot allocate verify buffer\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  VerifyBuffGuard verify_guard(this);
+
   DecryptInit();
 
   /* Pass 1 - verify authentication tag */
@@ -54,7 +67,7 @@ Result AesGcm::DecryptBatch(DecryptMode mode) {
 
     /* Decrypt into a temporary buffer */
 
-    uint8_t* dst = (mode == DecryptMode::kWrite) ? dst_buff_ + dst_crs : verify_buff_.data();
+    uint8_t* dst = (mode == DecryptMode::kWrite) ? dst_buff_ + dst_crs : verify_buff_.Data();
 
     if (DecryptBuff(src_buff_ + src_crs, dst, chunk) == Result::kFailure) {
       return Result::kFailure;  // LCOV_EXCL_LINE
