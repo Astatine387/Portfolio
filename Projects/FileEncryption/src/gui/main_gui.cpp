@@ -96,6 +96,8 @@ void MainGUI::OnProgressUpdated(int perc, const QString& status) {
 }
 
 void MainGUI::OnWorkFinished(const QString& msg) {
+  wrapper_ = nullptr;
+
   /* During shutdown keep the busy state; the window closes once the worker returns */
 
   if (closing_) {
