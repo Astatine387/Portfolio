@@ -92,7 +92,7 @@ class MainGUI : public QWidget {
   void Clean();
 
   /**
-   * @brief   Request cancel and wait for the worker
+   * @brief   Request cancel and defer the close until the worker returns
    * @param   event   Window close event
    */
   void closeEvent(QCloseEvent* event) override;
