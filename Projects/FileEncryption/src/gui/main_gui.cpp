@@ -6,6 +6,7 @@
 
 #include "gui/main_gui.h"
 
+#include <QCloseEvent>
 #include <QFileInfo>
 
 #include "gui/crypto_wrapper.h"
@@ -74,6 +75,10 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
     connect(wrapper_, &CryptoWrapper::Finished, thread_, &QThread::quit);
     connect(thread_, &QThread::finished, this, &MainGUI::OnThreadFinished);
 
+    /* Delete the worker when the thread finishes */
+
+    connect(thread_, &QThread::finished, wrapper_, &QObject::deleteLater);
+
     /* Start worker thread */
 
     thread_->start();
@@ -81,15 +86,40 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
 }
 
 void MainGUI::OnProgressUpdated(int perc, const QString& status) {
+  /* Keep the shutdown busy state visible once a close has been requested */
+
+  if (closing_) {
+    return;
+  }
+
   prg_gui_->Update(perc, status);
 }
 
 void MainGUI::OnWorkFinished(const QString& msg) {
+  /* During shutdown keep the busy state; the window closes once the worker returns */
+
+  if (closing_) {
+    return;
+  }
+
   prg_gui_->ShowResult(msg);
 }
 
 void MainGUI::OnThreadFinished() {
-  Clean();
+  /* The worker has returned; the wrapper is deleted by its finished/deleteLater connection */
+
+  if (thread_) {
+    thread_->deleteLater();
+    thread_ = nullptr;
+  }
+
+  wrapper_ = nullptr;
+
+  /* A close was suspended until the worker finished: now close for real */
+
+  if (closing_) {
+    close();
+  }
 }
 
 void MainGUI::OnCloseRequested() {
@@ -119,24 +149,33 @@ int MainGUI::ValidatePaths() {
 }
 
 void MainGUI::Clean() {
+  /* Last-resort forced-quit path; cancel the worker and wait for it with no timeout */
+
   if (thread_ && thread_->isRunning()) {
     if (wrapper_) {
       wrapper_->RequestCancel();
     }
+
     thread_->quit();
-    if (!thread_->wait(5000)) {
-      thread_->terminate();
-      thread_->wait();
+    thread_->wait();
+  }
+}
+
+void MainGUI::closeEvent(QCloseEvent* event) {
+  /* Request cancellation and keep the window alive in a busy state */
+
+  if (thread_ && thread_->isRunning()) {
+    if (wrapper_) {
+      wrapper_->RequestCancel();
     }
+
+    prg_gui_->Update(100, "Finishing, please wait...\n");
+
+    closing_ = true;
+    event->ignore();
+
+    return;
   }
 
-  if (wrapper_) {
-    wrapper_->deleteLater();
-    wrapper_ = nullptr;
-  }
-
-  if (thread_) {
-    thread_->deleteLater();
-    thread_ = nullptr;
-  }
+  QWidget::closeEvent(event);
 }

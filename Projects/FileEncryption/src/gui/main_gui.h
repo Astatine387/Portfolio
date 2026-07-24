@@ -78,6 +78,7 @@ class MainGUI : public QWidget {
   QThread* thread_ = nullptr;
   QVBoxLayout* vbox_ = nullptr;
   CryptoRequest req_;
+  bool closing_ = false;
 
   /**
    * @brief   Check the file paths are valid
@@ -86,7 +87,13 @@ class MainGUI : public QWidget {
   int ValidatePaths();
 
   /**
-   * @brief   Clean all resources
+   * @brief   Wait for a running worker to finish on forced shutdown
    */
   void Clean();
+
+  /**
+   * @brief   Request cancel and wait for the worker
+   * @param   event   Window close event
+   */
+  void closeEvent(QCloseEvent* event) override;
 };
