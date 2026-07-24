@@ -94,6 +94,7 @@ endif()
 
 set(GUI_SOURCES
     src/gui/change_pw_gui.cpp
+    src/gui/clipboard.cpp
     src/gui/entry_gui.cpp
     src/gui/list_gui.cpp
     src/gui/login_gui.cpp
@@ -105,6 +106,7 @@ set(GUI_SOURCES
 
 set(GUI_HEADERS
     src/gui/change_pw_gui.h
+    src/gui/clipboard.h
     src/gui/entry_gui.h
     src/gui/entry_interface.h
     src/gui/list_gui.h

@@ -7,9 +7,9 @@
 #include "gui/main_gui.h"
 
 #include <QApplication>
-#include <QClipboard>
 #include <QGuiApplication>
 
+#include "gui/clipboard.h"
 #include "gui/entry_interface.h"
 
 MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
@@ -170,11 +170,9 @@ void MainGUI::OnCopyPWRequested(const QString& site, const QString& acc) {
     return;
   }
 
-  /* Copy password to clipboard */
+  /* Copy password to clipboard, excluded from OS history and cloud sync */
 
-  QClipboard* board = QGuiApplication::clipboard();
-
-  board->setText(QString::fromUtf8(pw.GetData(), static_cast<int>(pw.GetSize())));
+  clipboard::SetSecret(pw);
 
   /* Auto-clear clipboard after 30 seconds */
 
@@ -190,7 +188,7 @@ void MainGUI::OnCopyPWRequested(const QString& site, const QString& acc) {
     timer_ = new QTimer(this);
   }
 
-  connect(timer_, &QTimer::timeout, this, [this, board]() {
+  connect(timer_, &QTimer::timeout, this, [this]() {
     countdown_--;
 
     if (countdown_ > 0) {
@@ -198,8 +196,16 @@ void MainGUI::OnCopyPWRequested(const QString& site, const QString& acc) {
     }
     else {
       timer_->stop();
-      board->clear();
-      list_gui_->SetErrMsg("Clipboard cleared");
+
+      /* Only clear if we still own the clipboard */
+
+      if (clipboard::ClearIfOwned()) {
+        list_gui_->SetErrMsg("Clipboard cleared");
+      }
+      else {
+        list_gui_->SetErrMsg("Clipboard already replaced");
+      }
+
       timer_->deleteLater();
       timer_ = nullptr;
     }
@@ -259,8 +265,7 @@ void MainGUI::closeEvent(QCloseEvent* event) {
     timer_->deleteLater();
     timer_ = nullptr;
 
-    QClipboard* board = QGuiApplication::clipboard();
-    board->clear();
+    clipboard::ClearIfOwned();
   }
 
   QWidget::closeEvent(event);

@@ -37,7 +37,8 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 
 ## 2-2. Security Considerations
 
-* Automatic clipboard clear after 30 seconds of password copy
+* Automatic clipboard clear after 30 seconds
+* Copied passwords are excluded from OS clipboard history and cloud clipboard sync
 * Constant time password comparison
 * GCM tag provides integrity check, and two-pass decryption procedure verifies it before writing any plaintext into disk
 * Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
@@ -134,6 +135,7 @@ src
 * No key file support (Password only)
 * No cloud sync (Local vault file only)
 * No auto-lock on idle
+* No auto-type (clipboard only)
 
 # 4. Build and Usage
 ## 4-1. Prerequisites
