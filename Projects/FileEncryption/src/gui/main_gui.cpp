@@ -171,7 +171,7 @@ void MainGUI::closeEvent(QCloseEvent* event) {
       wrapper_->RequestCancel();
     }
 
-    prg_gui_->Update(100, "Finishing, please wait...\n");
+    prg_gui_->ShowBusy("Finishing, please wait...\n");
 
     closing_ = true;
     event->ignore();
