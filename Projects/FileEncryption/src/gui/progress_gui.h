@@ -46,6 +46,12 @@ class ProgressGUI : public QWidget {
    */
   void ShowResult(const QString& msg);
 
+  /**
+   * @brief   Show the shutdown busy state while the worker drains
+   * @param   msg     Status message
+   */
+  void ShowBusy(const QString& msg);
+
  signals:
   /**
    * @brief   Signal when cancel button clicked

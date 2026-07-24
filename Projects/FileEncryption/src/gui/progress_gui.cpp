@@ -63,6 +63,12 @@ void ProgressGUI::ShowResult(const QString& msg) {
   close_btn_->show();
 }
 
+void ProgressGUI::ShowBusy(const QString& msg) {
+  prg_label_->setText(msg);
+  prg_bar_->setRange(0, 0);
+  cancel_btn_->setEnabled(false);
+}
+
 void ProgressGUI::OnCancelClicked() {
   cancelled_ = true;
   emit CancelRequested();
