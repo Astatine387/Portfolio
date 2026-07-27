@@ -180,7 +180,11 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
 
     cur += bytes;
 
-    tmp.insert(std::move(entry));
+    if (!tmp.insert(std::move(entry)).second) {
+      Reset();
+      ReportError("[Data] Validation failed - Duplicate entry in vault file\n");
+      return Result::kFailure;
+    }
   }
 
   entry_set_ = std::move(tmp);
