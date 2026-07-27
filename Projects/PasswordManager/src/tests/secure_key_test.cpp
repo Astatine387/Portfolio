@@ -113,6 +113,19 @@ TEST(SecureKeyTest, DeriveEmptyPassword) {
   EXPECT_TRUE(key.has_value());
 }
 
+/**
+ * @brief   Verify DeriveKey fails when Argon2id rejects the cost parameters
+ */
+TEST(SecureKeyTest, DeriveFailsInvalidParams) {
+  std::string pw = "password";
+  auto salt = MakeSalt(0x01);
+  std::span<const char> pw_span(pw.data(), pw.size());
+
+  EXPECT_FALSE(DeriveKey(pw_span, salt, KdfParams{ .time_cost = 0, .mem_cost = 8, .parallelism = 1 }).has_value());
+  EXPECT_FALSE(DeriveKey(pw_span, salt, KdfParams{ .time_cost = 1, .mem_cost = 0, .parallelism = 1 }).has_value());
+  EXPECT_FALSE(DeriveKey(pw_span, salt, KdfParams{ .time_cost = 1, .mem_cost = 8, .parallelism = 0 }).has_value());
+}
+
 /* ==================================================
  * Move Semantics Test
  * ================================================== */

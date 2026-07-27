@@ -100,7 +100,7 @@ std::optional<SecureKey> DeriveKey(std::span<const char> pw, std::span<const uin
   if (argon2id_hash_raw(params.time_cost, params.mem_cost, params.parallelism, pw.data(), pw.size(), salt.data(),
                         salt.size(), key, kKeySize) != ARGON2_OK) {
     sodium_free(key);
-    return std::nullopt;  // LCOV_EXCL_LINE
+    return std::nullopt;
   }
 
   return SecureKey(key);

@@ -10,8 +10,8 @@
 
 #include <cstdint>
 #include <cstring>
-#include <utility>
 #include <span>
+#include <utility>
 
 /* ==================================================
  * Allocation Test

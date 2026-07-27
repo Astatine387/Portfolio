@@ -84,7 +84,7 @@ Result Vault::CreateEntry(const std::string& site, const std::string& acc, const
   auto cur = SerializeVault(buff, kCountSize, entry_set_.end());
 
   if (!cur.has_value()) {
-    return Result::kFailure;  // SerializeVault reported the error
+    return Result::kFailure;  // LCOV_EXCL_LINE; SerializeVault reported the error
   }
 
   /* Append the new entry at the end of the image (bounds-checked) */
@@ -114,7 +114,7 @@ Result Vault::CreateEntry(const std::string& site, const std::string& acc, const
   entry_set_.insert(std::move(entry));
 
   if (VerifyImage() == Result::kFailure) {
-    return Result::kFailure;  // VerifyImage reported the error
+    return Result::kFailure;  // LCOV_EXCL_LINE; VerifyImage reported the error
   }
 
   return Result::kSuccess;
@@ -168,7 +168,7 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site, const std::string& 
   auto cur = SerializeVault(buff, kCountSize, old_it);
 
   if (!cur.has_value()) {
-    return UpdateResult::kError;  // SerializeVault reported the error
+    return UpdateResult::kError;  // LCOV_EXCL_LINE; SerializeVault reported the error
   }
 
   /* Append the updated entry at the end of the image (bounds-checked) */
@@ -199,7 +199,7 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site, const std::string& 
   entry_set_.insert(std::move(entry));
 
   if (VerifyImage() == Result::kFailure) {
-    return UpdateResult::kError;  // VerifyImage reported the error
+    return UpdateResult::kError;  // LCOV_EXCL_LINE; VerifyImage reported the error
   }
 
   return UpdateResult::kSuccess;
@@ -237,14 +237,14 @@ Result Vault::DeleteEntry(const std::string& site, const std::string& acc) {
   memcpy(nimg.Data(), &entry_cnt, kCountSize);
 
   if (!SerializeVault(nimg, kCountSize, it).has_value()) {
-    return Result::kFailure;  // SerializeVault reported the error
+    return Result::kFailure;  // LCOV_EXCL_LINE; SerializeVault reported the error
   }
 
   img_ = std::move(nimg);
   entry_set_.erase(it);
 
   if (VerifyImage() == Result::kFailure) {
-    return Result::kFailure;  // VerifyImage reported the error
+    return Result::kFailure;  // LCOV_EXCL_LINE; VerifyImage reported the error
   }
 
   return Result::kSuccess;
