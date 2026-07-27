@@ -122,13 +122,18 @@ void ChangePWGUI::OnOKClicked() {
     return;
   }
 
+  if (!vcb_) {
+    err_msg_->setText("Password verifier not configured");
+    return;
+  }
+
   /* Re-authorize the current password */
 
   err_msg_->setText("Verifying...");
   QApplication::setOverrideCursor(Qt::WaitCursor);
   QApplication::processEvents();
 
-  bool auth_res = (!vcb_ || vcb_(cur_pw));
+  bool auth_res = vcb_(cur_pw);
 
   QApplication::restoreOverrideCursor();
 
