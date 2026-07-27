@@ -389,7 +389,7 @@ TEST(EntryTest, DeserializeOversizedAccount) {
 TEST(EntryTest, DeserializeOversizedPassword) {
   Entry entry;
 
-  EXPECT_EQ(BuildAndDeser(entry, 1, 1, kMaxPWLen + 1), 0);
+  EXPECT_EQ(BuildAndDeser(entry, 1, 1, kMaxMasterPwLen + 1), 0);
 }
 
 /**
@@ -398,10 +398,10 @@ TEST(EntryTest, DeserializeOversizedPassword) {
 TEST(EntryTest, DeserializeMaxFieldLengths) {
   Entry entry;
 
-  EXPECT_NE(BuildAndDeser(entry, kMaxSiteLen, kMaxAccLen, kMaxPWLen), 0);
+  EXPECT_NE(BuildAndDeser(entry, kMaxSiteLen, kMaxAccLen, kMaxMasterPwLen), 0);
   EXPECT_EQ(entry.site.size(), kMaxSiteLen);
   EXPECT_EQ(entry.acc.size(), kMaxAccLen);
-  EXPECT_EQ(entry.pw_len, kMaxPWLen);
+  EXPECT_EQ(entry.pw_len, kMaxMasterPwLen);
 }
 
 /* ==================================================

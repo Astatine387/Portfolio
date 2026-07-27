@@ -35,23 +35,3 @@ Result RandomRange(uint32_t* dst, uint32_t min, uint32_t max) {
 
   return Result::kSuccess;
 }
-
-Result Shuffle(uint8_t* arr, int size) {
-  uint32_t idx;
-
-  for (int i = 0; i < size; i++) {
-    if (RandomRange(&idx, i, size - 1) == Result::kFailure) {
-      return Result::kFailure;  // LCOV_EXCL_LINE
-    }
-
-    Swap(&arr[i], &arr[idx]);
-  }
-
-  return Result::kSuccess;
-}
-
-void Swap(uint8_t* a, uint8_t* b) {
-  uint8_t tmp = *a;
-  *a = *b;
-  *b = tmp;
-}

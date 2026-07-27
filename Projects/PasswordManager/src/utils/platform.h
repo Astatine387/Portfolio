@@ -78,18 +78,3 @@ Result SyncDir(const std::string& path);
  * @param	mode	Mode
  */
 void OpenFile(FILE** file, const std::string& path, const char* mode);
-
-/**
- * @brief	Shuffle an array
- * @param	arr		Array to shuffle
- * @param	size	Array size
- * @return	kSuccess on success, kFailure on failure
- */
-Result Shuffle(uint8_t* arr, int size);
-
-/**
- * @brief	Swap two data
- * @param	a	First datum
- * @param	b	Second datum
- */
-void Swap(uint8_t* a, uint8_t* b);

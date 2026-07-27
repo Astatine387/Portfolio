@@ -18,7 +18,7 @@ PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
   /* Configure input line */
 
   pw_line_->setPlaceholderText("Password");
-  pw_line_->setMaxLength(kMaxPWLen);
+  pw_line_->setMaxLength(kMaxMasterPwLen);
   pw_line_->setEchoMode(QLineEdit::Password);
 
   /* Configure masking toggle button */

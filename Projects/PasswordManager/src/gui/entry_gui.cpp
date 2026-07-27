@@ -61,8 +61,8 @@ EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
 
   /* Configure password length slider */
 
-  len_slider_->setRange(8, 32);
-  len_slider_->setValue(16);
+  len_slider_->setRange(kMinPwLen, kMaxPwLen);
+  len_slider_->setValue(kdefaultPwLen);
 
   len_box_->addWidget(len_label_);
   len_box_->addWidget(len_slider_);
@@ -216,7 +216,7 @@ void EntryGUI::OnGenerateClicked() {
   Password res;
   int size = len_slider_->value();
 
-  if (GenPW(res, spc_list, size) == Result::kFailure) {
+  if (GenPw(res, spc_list, size) == Result::kFailure) {
     err_msg_->setText("Failed to generate password");
     return;
   }
@@ -262,8 +262,8 @@ bool EntryGUI::HasSpecialSelected() const {
   return false;
 }
 
-Result EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size) {
-  constexpr size_t kPoolMax = 62 + 32;  // 62 alphanumeric + up to 32 special characters
+Result EntryGUI::GenPw(Password& dst, const QVector<bool>& spc_list, int pw_size) {
+  constexpr size_t kPoolMax = 94;  // 62 alphanumeric + up to 32 special characters
 
   std::string lower = "abcdefghijklmnopqrstuvwxyz";
   std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -329,7 +329,7 @@ Result EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size
 
   Result res = Result::kSuccess;
 
-  /* Pick a random character from src into out, flagging failure if the CSPRNG fails */
+  /* Pick a random character from src into out */
 
   auto fill = [&res](char& out, const auto& src, uint32_t lo, uint32_t hi) {
     uint32_t idx;
@@ -344,24 +344,43 @@ Result EntryGUI::GenPW(Password& dst, const QVector<bool>& spc_list, int pw_size
     out = src[idx];
   };
 
-  /* Guarantee at least one lowercase, uppercase, number, and special character */
+  /* Check whether the password has at least one each of four categories */
 
-  fill(pw[0], lower, 0, 25);
-  fill(pw[1], upper, 0, 25);
-  fill(pw[2], num, 0, 9);
-  fill(pw[3], pool, 62, static_cast<uint32_t>(pool_size) - 1);
+  auto has_all = [](const char* buf, int len) {
+    bool has_lower = false;
+    bool has_upper = false;
+    bool has_num = false;
+    bool has_spc = false;
 
-  /* Fill the remaining positions from the full pool */
+    for (int i = 0; i < len; i++) {
+      unsigned char c = static_cast<unsigned char>(buf[i]);
 
-  for (int i = 4; i < pw_size; i++) {
-    fill(pw[i], pool, 0, static_cast<uint32_t>(pool_size) - 1);
-  }
+      if (c >= 'a' && c <= 'z') {
+        has_lower = true;
+      }
+      else if (c >= 'A' && c <= 'Z') {
+        has_upper = true;
+      }
+      else if (c >= '0' && c <= '9') {
+        has_num = true;
+      }
+      else {
+        has_spc = true;
+      }
+    }
 
-  /* Shuffle and store only if every draw succeeded */
+    return has_lower && has_upper && has_num && has_spc;
+  };
 
-  if (res == Result::kSuccess) {
-    res = Shuffle(reinterpret_cast<uint8_t*>(pw), pw_size);
-  }
+  /* Re-generate if the password doesn't have at least one each of four categories */
+
+  do {
+    for (int i = 0; i < pw_size; i++) {
+      fill(pw[i], pool, 0, static_cast<uint32_t>(pool_size) - 1);
+    }
+  } while (res == Result::kSuccess && !has_all(pw, pw_size));
+
+  /* Store only if every draw succeeded */
 
   if (res == Result::kSuccess) {
     res = dst.SetData(pw, pw_size);

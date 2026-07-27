@@ -335,10 +335,10 @@ TEST(PasswordTest, CleanEmpty) {
  */
 TEST(PasswordTest, SetDataMaxSize) {
   Password pw;
-  std::string data(kMaxPWLen, 'a');
+  std::string data(kMaxMasterPwLen, 'a');
 
   EXPECT_EQ(pw.SetData(data.c_str(), data.size()), Result::kSuccess);
-  EXPECT_EQ(pw.GetSize(), kMaxPWLen);
+  EXPECT_EQ(pw.GetSize(), kMaxMasterPwLen);
 }
 
 /**
@@ -346,7 +346,7 @@ TEST(PasswordTest, SetDataMaxSize) {
  */
 TEST(PasswordTest, SetDataExceedsMaxSize) {
   Password pw;
-  std::string data(kMaxPWLen + 1, 'a');
+  std::string data(kMaxMasterPwLen + 1, 'a');
 
   EXPECT_EQ(pw.SetData(data.c_str(), data.size()), Result::kFailure);
   EXPECT_TRUE(pw.IsEmpty());

@@ -114,7 +114,7 @@ size_t Entry::Deserialize(const uint8_t* src, size_t srclen, size_t base_off) {
   memcpy(&dlen, src + cur, sizeof(uint32_t));
   cur += sizeof(uint32_t);
 
-  if (cur + dlen > srclen || dlen > kMaxPWLen) {
+  if (cur + dlen > srclen || dlen > kMaxMasterPwLen) {
     return 0;
   }
 
