@@ -43,17 +43,11 @@ MainGUI::~MainGUI() {
   Clean();
 }
 
-CryptoRequest MainGUI::GetUserInput() {
-  return req_;
-}
-
 void MainGUI::OnStartRequested(const CryptoRequest& input) {
-  /* Copy user input parameters */
+  /* Copy paths */
 
-  req_.mode = input.mode;
-  req_.src = input.src;
-  req_.dst = input.dst;
-  req_.pw.SetData(input.pw);
+  src_path_ = input.src;
+  dst_path_ = input.dst;
 
   if (ValidatePaths() == 0) {
     /* Switch to progress window */
@@ -63,7 +57,7 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
     /* Create worker thread */
 
     thread_ = new QThread(this);
-    wrapper_ = new CryptoWrapper(req_.src, req_.dst, req_.pw, req_.mode);
+    wrapper_ = new CryptoWrapper(src_path_, dst_path_, input.pw, input.mode);
     wrapper_->moveToThread(thread_);
 
     /* Connect signals */
@@ -129,8 +123,8 @@ void MainGUI::OnCloseRequested() {
 }
 
 int MainGUI::ValidatePaths() {
-  QFileInfo src_info(req_.src);
-  QFileInfo dst_info(req_.dst);
+  QFileInfo src_info(src_path_);
+  QFileInfo dst_info(dst_path_);
 
   if (!src_info.exists()) {
     input_gui_->SetErrMsg("Source file does not exist");

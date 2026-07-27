@@ -34,12 +34,6 @@ class MainGUI : public QWidget {
    */
   ~MainGUI() override;
 
-  /**
-   * @brief   Get the current user input
-   * @return  Current user input
-   */
-  CryptoRequest GetUserInput();
-
  private slots:
   /**
    * @brief	Start encryption/decryption process
@@ -75,9 +69,10 @@ class MainGUI : public QWidget {
   InputGUI* input_gui_ = nullptr;
   ProgressGUI* prg_gui_ = nullptr;
   QStackedWidget* widget_ = nullptr;
+  QString src_path_;
+  QString dst_path_;
   QThread* thread_ = nullptr;
   QVBoxLayout* vbox_ = nullptr;
-  CryptoRequest req_;
   bool closing_ = false;
 
   /**
