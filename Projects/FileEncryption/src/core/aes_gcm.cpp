@@ -94,7 +94,7 @@ void AesGcm::WriterLoop() noexcept {
     /* Write outside the lock so the producer can keep reading and encrypting */
 
     lk.unlock();
-    
+
     Result res = Result::kFailure;
 
     try {
