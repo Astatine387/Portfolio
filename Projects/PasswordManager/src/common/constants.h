@@ -31,11 +31,11 @@ inline constexpr int64_t kMaxSize = 2ULL * 1024 * 1024 * 1024;  /// Maximum vaul
 inline constexpr int64_t kMinSize =
     (kMagicSize + kSaltSize + kIVSize + kCountSize + kTagSize);  /// Mininum vault file size
 
-inline constexpr int kMaxSiteLen = 256;     /// Maximum length of site name
-inline constexpr int kMaxAccLen = 256;      /// Maximum length of account
-inline constexpr int kMaxPwLen = 32;        /// Maximum length of entry password
-inline constexpr int kMinPwLen = 8;         /// Minimum length of entry password
-inline constexpr int kdefaultPwLen = 16;    /// Default length of entry password
+inline constexpr int kMaxSiteLen = 256;   /// Maximum length of site name
+inline constexpr int kMaxAccLen = 256;    /// Maximum length of account
+inline constexpr int kMaxPwLen = 32;      /// Maximum length of entry password
+inline constexpr int kMinPwLen = 8;       /// Minimum length of entry password
+inline constexpr int kdefaultPwLen = 16;  /// Default length of entry password
 
 inline constexpr size_t kMinEntrySize = (sizeof(uint32_t) + 1) * 3;  // Minimum serialized entry size
 
