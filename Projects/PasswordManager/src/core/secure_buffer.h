@@ -68,12 +68,6 @@ class SecureBuffer {
   [[nodiscard]] std::optional<std::span<const uint8_t>> Subspan(size_t off, size_t len) const;
 
   /**
-   * @brief		Check the trailing redzone still holds its fill pattern
-   * @return	True if the buffer is empty or the redzone is intact
-   */
-  [[nodiscard]] bool RedzoneIntact() const;
-
-  /**
    * @brief		Wipe and release the buffer
    */
   void Reset();

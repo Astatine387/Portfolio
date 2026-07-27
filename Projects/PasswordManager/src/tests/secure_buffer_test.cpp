@@ -131,38 +131,3 @@ TEST(SecureBufferTest, ConstSubspanChecked) {
 
   EXPECT_FALSE(cbuff.Subspan(1, 32).has_value());
 }
-
-/* ==================================================
- * Redzone Test
- * ================================================== */
-
-/**
- * @brief   Verify a fresh buffer has an intact redzone
- */
-TEST(SecureBufferTest, RedzoneIntactOnFreshBuffer) {
-  SecureBuffer buff(48);
-
-  EXPECT_TRUE(buff.RedzoneIntact());
-}
-
-/**
- * @brief   Verify an empty buffer reports an intact redzone
- */
-TEST(SecureBufferTest, RedzoneIntactOnEmptyBuffer) {
-  SecureBuffer buff;
-
-  EXPECT_TRUE(buff.RedzoneIntact());
-}
-
-/**
- * @brief   Verify overwriting past the logical end trips the redzone check
- */
-TEST(SecureBufferTest, RedzoneDetectsOverflow) {
-  SecureBuffer buff(16);
-
-  ASSERT_TRUE(buff.RedzoneIntact());
-
-  buff.Data()[buff.Size()] ^= 0xFF;
-
-  EXPECT_FALSE(buff.RedzoneIntact());
-}

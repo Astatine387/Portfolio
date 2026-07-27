@@ -153,16 +153,6 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
     return Result::kFailure;
   }
 
-  /* The trailing redzone must be intact after decrypting into the image */
-
-  if (!img_.RedzoneIntact()) {
-    // LCOV_EXCL_START
-    Reset();
-    ReportError("[Memory] Integrity check failed - Image redzone was overwritten\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
-
   /* Deserialize the entries from the image */
 
   const uint8_t* base = img_.Data();

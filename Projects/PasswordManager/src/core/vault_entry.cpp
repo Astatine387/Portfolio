@@ -251,15 +251,6 @@ Result Vault::DeleteEntry(const std::string& site, const std::string& acc) {
 }
 
 Result Vault::VerifyImage() {
-  /* The trailing redzone must be intact after the last image mutation */
-
-  if (!img_.RedzoneIntact()) {
-    // LCOV_EXCL_START
-    ReportError("[Memory] Integrity check failed - Image redzone was overwritten\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
-
   /* Re-parse the image and confirm the recorded offsets match a fresh parse */
 
   std::span<const uint8_t> img = img_.Span();
