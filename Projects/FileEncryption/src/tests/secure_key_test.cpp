@@ -39,18 +39,22 @@ KdfParams FastParams() {
   return KdfParams{ .time_cost = 1, .mem_cost = 8, .parallelism = 1 };
 }
 
-std::array<uint8_t, kSaltSize> MakeSalt(uint8_t fill) {
-  std::array<uint8_t, kSaltSize> salt{};
-  salt.fill(fill);
-  return salt;
-}
-
 /* Derive a key, failing the test if derivation unexpectedly fails */
 
 SecureKey Derive(const std::string& pw, const std::array<uint8_t, kSaltSize>& salt) {
   auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt, FastParams());
   EXPECT_TRUE(key.has_value());
   return std::move(key.value());  // NOLINT(bugprone-unchecked-optional-access)
+}
+
+std::array<uint8_t, kSaltSize> MakeSalt(uint8_t fill) {
+  std::array<uint8_t, kSaltSize> salt{};
+  salt.fill(fill);
+  return salt;
+}
+
+void MoveAssign(SecureKey& dst, SecureKey& src) {
+  dst = std::move(src);
 }
 
 }  // namespace
@@ -113,6 +117,20 @@ TEST(SecureKeyTest, DeriveEmptyPassword) {
   EXPECT_TRUE(key.has_value());
 }
 
+/**
+ * @brief   Verify key derivation fails on invalid Argon2id parameters
+ */
+TEST(SecureKeyTest, DeriveFailsInvalidParams) {
+  std::string pw = "password";
+  auto salt = MakeSalt(0x01);
+  KdfParams params = FastParams();
+  params.time_cost = 0;  // Argon2id requires a time cost of at least 1
+
+  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt, params);
+
+  EXPECT_FALSE(key.has_value());
+}
+
 /* ==================================================
  * Move Semantics Test
  * ================================================== */
@@ -128,4 +146,44 @@ TEST(SecureKeyTest, MoveTransfersKey) {
   SecureKey moved = std::move(src);
 
   EXPECT_TRUE(moved.ConstantTimeEquals(ref));
+}
+
+/**
+ * @brief   Verify move assignment transfers the key and releases the previous one
+ */
+TEST(SecureKeyTest, MoveAssignTransfersKey) {
+  SecureKey src = Derive("password", MakeSalt(0x01));
+  SecureKey ref = Derive("password", MakeSalt(0x01));
+  SecureKey dst = Derive("asdf1234", MakeSalt(0x02));
+
+  dst = std::move(src);
+
+  EXPECT_TRUE(dst.ConstantTimeEquals(ref));
+}
+
+/**
+ * @brief   Verify move assignment onto a moved-from key succeeds
+ */
+TEST(SecureKeyTest, MoveAssignOntoMovedFrom) {
+  auto salt = MakeSalt(0x01);
+  SecureKey src = Derive("password", salt);
+  SecureKey ref = std::move(src);  // src no longer owns a key
+  SecureKey tmp = Derive("password", salt);
+
+  src = std::move(tmp);
+
+  EXPECT_TRUE(src.ConstantTimeEquals(ref));
+}
+
+/**
+ * @brief   Verify self move assignment leaves the key intact
+ */
+TEST(SecureKeyTest, SelfMoveAssignKeepsKey) {
+  auto salt = MakeSalt(0x01);
+  SecureKey key = Derive("password", salt);
+  SecureKey ref = Derive("password", salt);
+
+  MoveAssign(key, key);
+
+  EXPECT_TRUE(key.ConstantTimeEquals(ref));
 }
