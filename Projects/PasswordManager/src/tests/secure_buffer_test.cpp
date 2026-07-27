@@ -9,6 +9,8 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <cstring>
+#include <utility>
 #include <span>
 
 /* ==================================================
@@ -130,4 +132,77 @@ TEST(SecureBufferTest, ConstSubspanChecked) {
   EXPECT_EQ(ok.value().size(), 32u);  // NOLINT(bugprone-unchecked-optional-access)
 
   EXPECT_FALSE(cbuff.Subspan(1, 32).has_value());
+}
+
+/* ==================================================
+ * Move Test
+ * ================================================== */
+
+/**
+ * @brief   Verify the move constructor transfers ownership without reallocating
+ */
+TEST(SecureBufferTest, MoveConstructTransfersOwnership) {
+  SecureBuffer src(32);
+
+  ASSERT_TRUE(src.Valid());
+  ASSERT_NE(src.Data(), nullptr);
+
+  memset(src.Data(), 0xAB, 32);
+
+  const uint8_t* data = src.Data();
+
+  SecureBuffer dst(std::move(src));
+
+  EXPECT_EQ(dst.Data(), data);  // Same allocation, not a copy
+  EXPECT_EQ(dst.Size(), 32u);
+  EXPECT_TRUE(dst.Valid());
+  EXPECT_EQ(dst.Data()[0], 0xAB);  // Contents survive the move
+}
+
+/**
+ * @brief   Verify the moved-from buffer is left empty and safely destructible
+ */
+TEST(SecureBufferTest, MoveConstructClearsSource) {
+  SecureBuffer src(32);
+
+  ASSERT_TRUE(src.Valid());
+
+  SecureBuffer dst(std::move(src));
+
+  /* Inspecting the moved-from object is the point of this test */
+
+  // NOLINTBEGIN(bugprone-use-after-move)
+  EXPECT_EQ(src.Data(), nullptr);
+  EXPECT_EQ(src.Size(), 0u);
+  EXPECT_TRUE(src.Valid());
+  EXPECT_TRUE(src.Span().empty());
+  // NOLINTEND(bugprone-use-after-move)
+}
+
+/**
+ * @brief   Verify move-constructing from an empty buffer works
+ */
+TEST(SecureBufferTest, MoveConstructEmptyBuffer) {
+  SecureBuffer src;
+  SecureBuffer dst(std::move(src));
+
+  EXPECT_EQ(dst.Size(), 0u);
+  EXPECT_EQ(dst.Data(), nullptr);
+  EXPECT_TRUE(dst.Valid());
+}
+
+/**
+ * @brief   Verify self-move-assignment leaves the buffer intact
+ */
+TEST(SecureBufferTest, SelfMoveAssign) {
+  SecureBuffer buff(32);
+
+  const uint8_t* addr = buff.Data();
+  SecureBuffer& ref = buff;
+
+  buff = std::move(ref);
+
+  EXPECT_EQ(buff.Data(), addr);
+  EXPECT_EQ(buff.Size(), 32u);
+  EXPECT_TRUE(buff.Valid());
 }

@@ -213,8 +213,10 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::
   dst_size_ = static_cast<int64_t>(kMagicSize + kSaltSize + kIVSize + img_.Size() + kTagSize);
 
   if (dst_size_ > kMaxSize) {
+    // LCOV_EXCL_START
     ReportError("[Data] Validation failed - Vault exceeds maximum size (2 GiB)\n");
     return Result::kFailure;
+    // LCOV_EXCL_STOP
   }
 
   dst_buff_.assign(dst_size_, 0);

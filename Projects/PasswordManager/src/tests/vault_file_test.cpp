@@ -431,6 +431,26 @@ TEST_F(VaultFileTest, SaveWritesFreshIV) {
   EXPECT_EQ(vault_.GetEntryCount(), 1);
 }
 
+/**
+ * @brief   Verify SaveVault fails when no vault is open
+ */
+TEST_F(VaultFileTest, SaveWithoutOpenVault) {
+  vault_.CloseVault();
+
+  EXPECT_EQ(vault_.SaveVault(path_), Result::kFailure);
+  EXPECT_NE(vault_.GetLastError().find("No vault is open"), std::string::npos);
+}
+
+/**
+ * @brief   Verify ChangePW fails when no vault is open
+ */
+TEST_F(VaultFileTest, ChangePWWithoutOpenVault) {
+  vault_.CloseVault();
+
+  EXPECT_EQ(vault_.ChangePW(MakePW("asdf1234"), path_), Result::kFailure);
+  EXPECT_NE(vault_.GetLastError().find("No vault is open"), std::string::npos);
+}
+
 /* ==================================================
  * Password Verification Test
  * ================================================== */

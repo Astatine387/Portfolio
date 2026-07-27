@@ -456,3 +456,72 @@ TEST(UtilsTest, RenameFileOverwrite) {
 
   RemoveFile(dst);
 }
+
+/* ==================================================
+ * SyncFile Test
+ * ================================================== */
+
+/**
+ * @class   SyncFileTest
+ * @brief   Test class for SyncFile function
+ */
+class SyncFileTest : public ::testing::Test {
+ protected:
+  FILE* file_ = nullptr;
+  std::string path_ = "test.tmp";
+
+  /**
+   * @brief   Clean up temporary files after each test
+   */
+  void TearDown() override {
+    if (file_) {
+      fclose(file_);
+      file_ = nullptr;
+    }
+
+    RemoveFile(path_);
+  }
+
+  /**
+   * @brief   Write a small amount of data to the current file
+   */
+  void Write() {
+    const char* data = "Hello, world!";
+
+    fwrite(data, 1, strlen(data), file_);
+  }
+};
+
+/**
+ * @brief   Verify SyncFile succeeds
+ */
+TEST_F(SyncFileTest, SyncFile) {
+  OpenFile(&file_, path_, "wb");
+  ASSERT_NE(file_, nullptr);
+
+  Write();
+
+  EXPECT_EQ(SyncFile(file_), Result::kSuccess);
+}
+
+/* ==================================================
+ * SyncDir Test
+ * ================================================== */
+
+/**
+ * @brief   Verify SyncDir succeeds for a file in the current directory
+ */
+TEST(SyncDirTest, CurrentDirectory) {
+  EXPECT_EQ(SyncDir("test.tmp"), Result::kSuccess);
+}
+
+#ifndef _WIN32
+
+/**
+ * @brief   Verify SyncDir fails when the parent directory cannot be opened
+ */
+TEST(SyncDirTest, OpenFailure) {
+  EXPECT_EQ(SyncDir("no_such_dir/test.tmp"), Result::kFailure);
+}
+
+#endif /* !_WIN32 */

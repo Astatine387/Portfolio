@@ -43,9 +43,9 @@ Result Random(uint8_t* dst, size_t size) {
       if (errno == EINTR) {
         continue;
       }
-      // LCOV_EXCL_STOP
 
       return Result::kFailure;
+      // LCOV_EXCL_STOP
     }
 
     dst += result;
