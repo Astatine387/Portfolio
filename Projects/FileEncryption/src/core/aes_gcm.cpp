@@ -76,7 +76,7 @@ Result AesGcm::WriteFile(const void* buff, size_t size) {
   return Result::kSuccess;
 }
 
-void AesGcm::WriterLoop() {
+void AesGcm::WriterLoop() noexcept {
   std::unique_lock<std::mutex> lk(write_mtx_);
 
   for (;;) {
@@ -94,7 +94,16 @@ void AesGcm::WriterLoop() {
     /* Write outside the lock so the producer can keep reading and encrypting */
 
     lk.unlock();
-    Result res = WriteFile(buff, size);
+    
+    Result res = Result::kFailure;
+
+    try {
+      res = WriteFile(buff, size);
+    }
+    catch (...) {
+      res = Result::kFailure;
+    }
+
     lk.lock();
 
     if (res != Result::kSuccess) {

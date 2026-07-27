@@ -21,7 +21,6 @@ void CryptoWorker::Work() {
   AesGcm aes;
   FILE* src_file = nullptr;
   FILE* dst_file = nullptr;
-  std::string err;
   std::string msg;
   bool should_delete = false;
   Result res;
@@ -84,7 +83,7 @@ void CryptoWorker::Work() {
 
   /* Set up callbacks */
 
-  aes.SetErrorCallback([&err](const char* m) { err = m; });
+  aes.SetErrorCallback([this](const char* m) { err_ = m; });
 
   aes.SetProgressCallback([this](int perc, bool* cancelled) {
     if (pcb_) {
@@ -114,7 +113,7 @@ void CryptoWorker::Work() {
     }
     else if (res == Result::kFailure) {
       // LCOV_EXCL_START
-      msg = err + "Encryption failed\n";
+      msg = err_ + "Encryption failed\n";
       should_delete = true;
       // LCOV_EXCL_STOP
     }
@@ -130,7 +129,7 @@ void CryptoWorker::Work() {
       should_delete = true;
     }
     else if (res == Result::kFailure) {
-      msg = err + "Decryption failed\n";
+      msg = err_ + "Decryption failed\n";
       should_delete = true;
     }
     else {

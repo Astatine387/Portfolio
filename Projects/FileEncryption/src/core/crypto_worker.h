@@ -73,4 +73,5 @@ class CryptoWorker {
   std::atomic<bool> should_cancel_{ false };
   ProgressCallback pcb_;
   FinishedCallback fcb_;
+  std::string err_;
 };

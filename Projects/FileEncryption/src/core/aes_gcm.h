@@ -167,7 +167,7 @@ class AesGcm {
   /**
    * @brief	    Body of the persistent asynchronous write thread
    */
-  void WriterLoop();
+  void WriterLoop() noexcept;
 
   /**
    * @brief	    Queue a buffer for asynchronous writing
