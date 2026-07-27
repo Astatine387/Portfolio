@@ -35,7 +35,7 @@ inline constexpr int kMaxSiteLen = 256;   /// Maximum length of site name
 inline constexpr int kMaxAccLen = 256;    /// Maximum length of account
 inline constexpr int kMaxPwLen = 32;      /// Maximum length of entry password
 inline constexpr int kMinPwLen = 8;       /// Minimum length of entry password
-inline constexpr int kdefaultPwLen = 16;  /// Default length of entry password
+inline constexpr int kDefaultPwLen = 16;  /// Default length of entry password
 
 inline constexpr size_t kMinEntrySize = (sizeof(uint32_t) + 1) * 3;  // Minimum serialized entry size
 

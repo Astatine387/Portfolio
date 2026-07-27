@@ -62,7 +62,7 @@ EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
   /* Configure password length slider */
 
   len_slider_->setRange(kMinPwLen, kMaxPwLen);
-  len_slider_->setValue(kdefaultPwLen);
+  len_slider_->setValue(kDefaultPwLen);
 
   len_box_->addWidget(len_label_);
   len_box_->addWidget(len_slider_);
