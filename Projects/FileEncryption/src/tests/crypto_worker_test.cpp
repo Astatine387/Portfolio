@@ -284,6 +284,25 @@ TEST_F(CryptoWorkerTest, WrongPasswordRemovesOutput) {
 }
 
 /**
+ * @brief   Verify a source too short to hold a salt fails key derivation
+ */
+TEST_F(CryptoWorkerTest, TooShortSourceFailsKeyDerivation) {
+  std::vector<uint8_t> buff(kSaltSize - 1, 'a');
+  std::string msg;
+
+  Create(src_path_, buff);
+
+  CryptoWorker dec(src_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
+
+  dec.SetFinishedCallback([&](const std::string& m) { msg = m; });
+
+  dec.Work();
+
+  EXPECT_NE(msg.find("Key derivation failed"), std::string::npos);
+  EXPECT_FALSE(FileExists(dec_path_));
+}
+
+/**
  * @brief   Verify a missing source file reports an open failure
  */
 TEST_F(CryptoWorkerTest, MissingSourceReportsError) {

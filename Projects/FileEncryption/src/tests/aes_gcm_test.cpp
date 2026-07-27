@@ -877,3 +877,123 @@ TEST_F(AesGcmTest, CancelDuringWritePass) {
 
   EXPECT_EQ(res, Result::kFailure);
 }
+
+/* ==================================================
+ * Write Failure Tests
+ * ================================================== */
+
+/**
+ * @brief   Verify a failed asynchronous write is recorded and reported
+ */
+TEST_F(AesGcmTest, WriteFailureIsSticky) {
+  AesGcm aes;
+  FILE *src = nullptr, *dst = nullptr;
+  std::vector<uint8_t> orig;
+  int dsize = kBlockSize * kBuffSize * 4;
+  std::string captured;
+  Result res;
+
+  auto salt = MakeSalt(0x00);
+  SecureKey key = MakeKey("password", salt);
+
+  orig.resize(dsize, 'a');
+
+  Create(src_path_, orig, dsize);
+
+  /* Encrypt first to produce a valid ciphertext */
+
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
+
+  aes.Encrypt(src, dst, key, salt);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  /* Decrypt into a read-only destination so every asynchronous write fails */
+
+  Create(dec_path_, orig, 1);
+
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "rb");
+
+  aes.SetErrorCallback([&](const char* msg) { captured += msg; });
+
+  res = aes.Decrypt(src, dst, key);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_NE(captured.find("Write failed"), std::string::npos);
+}
+
+/**
+ * @brief   Verify a thrown error callback doesn't escape the noexcept writer thread
+ */
+TEST_F(AesGcmTest, ThrowingErrorCallbackDoesNotTerminate) {
+  AesGcm aes;
+  FILE *src = nullptr, *dst = nullptr;
+  std::vector<uint8_t> orig;
+  int dsize = kBlockSize * kBuffSize * 4;
+  int calls = 0;
+  Result res = Result::kSuccess;
+
+  auto salt = MakeSalt(0x00);
+  SecureKey key = MakeKey("password", salt);
+
+  orig.resize(dsize, 'a');
+
+  Create(src_path_, orig, dsize);
+
+  /* Encrypt first to produce a valid ciphertext */
+
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
+
+  aes.Encrypt(src, dst, key, salt);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  /* A write failure drives ReportError, and the callback throws out of the writer thread */
+
+  Create(dec_path_, orig, 1);
+
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "rb");
+
+  aes.SetErrorCallback([&](const char* msg) {
+    calls++;
+
+    throw std::runtime_error("error callback failed");
+  });
+
+  EXPECT_NO_THROW(res = aes.Decrypt(src, dst, key));
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_GT(calls, 0);
+}

@@ -374,3 +374,10 @@ TEST_F(SeekTest, SeekToMiddle) {
 TEST_F(SeekTest, SeekFromEnd) {
   EXPECT_EQ(Seek(file_, -10, SEEK_END), Result::kSuccess);
 }
+
+/**
+ * @brief   Verify Seek fails on a negative absolute offset
+ */
+TEST_F(SeekTest, SeekBeforeBeginningFails) {
+  EXPECT_EQ(Seek(file_, -1, SEEK_SET), Result::kFailure);
+}
