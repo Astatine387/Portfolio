@@ -18,35 +18,35 @@ class CryptoWrapper : public QObject {
  public:
   /**
    * @brief	Constructor for CryptoWrapper class
-   * @param     src_path    Source file path
-   * @param     dst_path    Destination file path
-   * @param     pw          Password
-   * @param     mode        Encryption/decryption mode
+   * @param		src_path	Source file path
+   * @param		dst_path	Destination file path
+   * @param		pw			Password, moved into the worker
+   * @param		mode		Encryption/decryption mode
    */
-  CryptoWrapper(const QString& src_path, const QString& dst_path, const Password& pw, CryptoMode mode);
+  CryptoWrapper(const QString& src_path, const QString& dst_path, Password&& pw, CryptoMode mode);
 
  signals:
   /**
-   * @brief	Signal when encryption/decryption is completed
-   * @param   msg             Result message
+   * @brief		Signal when encryption/decryption is completed
+   * @param		msg		Result message
    */
   void Finished(const QString& msg);
 
   /**
-   * @brief   Update progress bar and status message
-   * @param   perc     Progress percentage
-   * @param   status  Status message
+   * @brief		Update progress bar and status message
+   * @param		perc	Progress percentage
+   * @param		status	Status message
    */
   void ProgressUpdate(int perc, const QString& status);
 
  public slots:
   /**
-   * @brief   Cancel the process
+   * @brief		Cancel the process
    */
   void RequestCancel();
 
   /**
-   * @brief   Perform encryption/decryption
+   * @brief		Perform encryption/decryption
    */
   void Run();
 

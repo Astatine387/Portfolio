@@ -6,8 +6,10 @@
 
 #include "gui/crypto_wrapper.h"
 
-CryptoWrapper::CryptoWrapper(const QString& src_path, const QString& dst_path, const Password& pw, CryptoMode mode)
-    : worker_(src_path.toStdString(), dst_path.toStdString(), pw, mode) {
+#include <utility>
+
+CryptoWrapper::CryptoWrapper(const QString& src_path, const QString& dst_path, Password&& pw, CryptoMode mode)
+    : worker_(src_path.toStdString(), dst_path.toStdString(), std::move(pw), mode) {
   worker_.SetProgressCallback(
       [this](int perc, const std::string& s) { emit ProgressUpdate(perc, QString::fromStdString(s)); });
 

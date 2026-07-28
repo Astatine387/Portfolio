@@ -24,11 +24,15 @@ size_t Password::GetSize() const {
   return size_;
 }
 
-void Password::SetData(const Password& pw) {
-  SetData(pw.GetData(), pw.GetSize());
+Result Password::SetData(const Password& pw) {
+  if (this == &pw) {
+    return Result::kSuccess;
+  }
+
+  return SetData(pw.GetData(), pw.GetSize());
 }
 
-void Password::SetData(const char* str, size_t len) {
+Result Password::SetData(const char* str, size_t len) {
   Clean();
 
   if (str != nullptr) {
@@ -37,7 +41,7 @@ void Password::SetData(const char* str, size_t len) {
     data_ = static_cast<char*>(sodium_malloc(len + 1));
 
     if (data_ == nullptr) {
-      return;  // LCOV_EXCL_LINE  secure allocation failed; the password stays empty
+      return Result::kFailure;  // LCOV_EXCL_LINE  secure allocation failed
     }
 
     size_ = len;
@@ -45,6 +49,8 @@ void Password::SetData(const char* str, size_t len) {
 
     data_[size_] = '\0';
   }
+
+  return Result::kSuccess;
 }
 
 void Password::Clean() {

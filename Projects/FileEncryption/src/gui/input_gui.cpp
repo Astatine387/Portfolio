@@ -73,7 +73,10 @@ void InputGUI::OnStartClicked() {
 
   Password tmp;
 
-  pw_line_->Extract(tmp);
+  if (pw_line_->Extract(tmp) == Result::kFailure) {
+    err_msg_->setText("Cannot allocate secure memory for the password");
+    return;
+  }
 
   if (tmp.IsEmpty()) {
     err_msg_->setText("Password is not input");

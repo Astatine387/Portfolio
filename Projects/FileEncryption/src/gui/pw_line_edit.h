@@ -14,33 +14,34 @@
 #include "utils/password.h"
 
 /**
- * @class   PWLineEdit
- * @brief   Password input window with show/hide toggle
+ * @class	PWLineEdit
+ * @brief	Password input window with show/hide toggle
  */
 class PWLineEdit : public QWidget {
   Q_OBJECT
 
  public:
   /**
-   * @brief   Constructor of PWLineEdit class
-   * @param   parent  Parent widget
+   * @brief		Constructor of PWLineEdit class
+   * @param		parent  Parent widget
    */
   explicit PWLineEdit(QWidget* parent = nullptr);
 
   /**
-   * @brief   Clear the input field
+   * @brief		Clear the input field
    */
   void Clear();
 
   /**
-   * @brief   Extract data from the input line to Password class
-   * @param   pw  Destination
+   * @brief		Extract data from the input line to Password class
+   * @param		pw	Destination
+   * @return	kSuccess on success, kFailure when secure allocation fails
    */
-  void Extract(Password& pw);
+  [[nodiscard]] Result Extract(Password& pw);
 
  private slots:
   /**
-   * @brief   Signal when toggle masking button clicked
+   * @brief		Signal when toggle masking button clicked
    */
   void ToggleMask();
 

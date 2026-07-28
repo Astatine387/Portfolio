@@ -45,16 +45,18 @@ void PWLineEdit::Clear() {
   pw_line_->clear();
 }
 
-void PWLineEdit::Extract(Password& pw) {
+Result PWLineEdit::Extract(Password& pw) {
   QByteArray data = pw_line_->text().toUtf8();
 
-  pw.SetData(data.constData(), static_cast<size_t>(data.size()));
+  Result res = pw.SetData(data.constData(), static_cast<size_t>(data.size()));
 
   /* Wipe the transient UTF-8 copy */
 
   sodium_memzero(data.data(), static_cast<size_t>(data.size()));
 
   pw_line_->clear();
+
+  return res;
 }
 
 void PWLineEdit::ToggleMask() {

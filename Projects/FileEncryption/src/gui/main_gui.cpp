@@ -8,6 +8,7 @@
 
 #include <QCloseEvent>
 #include <QFileInfo>
+#include <utility>
 
 #include "gui/crypto_wrapper.h"
 #include "utils/platform.h"
@@ -50,6 +51,13 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
   dst_path_ = input.dst;
 
   if (ValidatePaths() == 0) {
+    Password pw;
+
+    if (pw.SetData(input.pw) == Result::kFailure) {
+      input_gui_->SetErrMsg("Cannot allocate secure memory for the password");
+      return;
+    }
+
     /* Switch to progress window */
 
     widget_->setCurrentWidget(prg_gui_);
@@ -57,7 +65,7 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
     /* Create worker thread */
 
     thread_ = new QThread(this);
-    wrapper_ = new CryptoWrapper(src_path_, dst_path_, input.pw, input.mode);
+    wrapper_ = new CryptoWrapper(src_path_, dst_path_, std::move(pw), input.mode);
     wrapper_->moveToThread(thread_);
 
     /* Connect signals */
@@ -80,8 +88,6 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
 }
 
 void MainGUI::OnProgressUpdated(int perc, const QString& status) {
-  /* Keep the shutdown busy state visible once a close has been requested */
-
   if (closing_) {
     return;
   }
@@ -92,8 +98,6 @@ void MainGUI::OnProgressUpdated(int perc, const QString& status) {
 void MainGUI::OnWorkFinished(const QString& msg) {
   wrapper_ = nullptr;
 
-  /* During shutdown keep the busy state; the window closes once the worker returns */
-
   if (closing_) {
     return;
   }
@@ -102,16 +106,12 @@ void MainGUI::OnWorkFinished(const QString& msg) {
 }
 
 void MainGUI::OnThreadFinished() {
-  /* The worker has returned; the wrapper is deleted by its finished/deleteLater connection */
-
   if (thread_) {
     thread_->deleteLater();
     thread_ = nullptr;
   }
 
   wrapper_ = nullptr;
-
-  /* A close was suspended until the worker finished: now close for real */
 
   if (closing_) {
     close();
