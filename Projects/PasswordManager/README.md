@@ -41,10 +41,10 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 * Copied passwords are excluded from OS clipboard history and cloud clipboard sync
 * Constant time password comparison
 * GCM tag provides integrity check, and two-pass decryption procedure verifies it before writing any plaintext into disk
-* Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
-* Keys are locked in memory using `VirtualLock`/`mlock` to prevent them from being swapped to disk
 * Newly and randomly generated salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * Password generator guarantees at least one each of uppercase, lowercase, digit, and special character
+* RAII pattern ensures memory wipe for sensitive data, using `sodium_free` and `sodium_memzero`
+* Sensitive data is held in `sodium_malloc` memory, which provides guard pages and lock against swap
 * Vault files are re-encrypted with new salt and initial vector for each save or master password change
 
 # 3. Specifications

@@ -41,9 +41,9 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 ## 2-2. Security Considerations
 
 * GCM tag provides integrity check, and two-pass decryption procedure verifies it before writing any plaintext into disk
-* Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
-* Keys are locked in memory using `VirtualLock`/`mlock` to prevent them from being swapped to disk
 * Newly and randomly generated salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
+* RAII pattern ensures memory wipe for sensitive data, using `sodium_free` and `sodium_memzero`
+* Sensitive data is held in `sodium_malloc` memory, which provides guard pages and lock against swap
 
 # 3. Specifications
 
