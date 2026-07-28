@@ -16,47 +16,13 @@ Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey&
   dst_crs_ = 0;
   key_ = &key;
 
-  /* Scratch plaintext must live in locked memory and must not outlive this call */
-
-  verify_buff_ = SecureBuffer(kBuffSize * kBlockSize);
-
-  if (!verify_buff_.Valid()) {
-    // LCOV_EXCL_START
-    ReportError("[Memory] Allocation failed - Cannot allocate verify buffer\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
-
-  VerifyBuffGuard verify_guard(this);
-
   DecryptInit();
 
-  /* Pass 1 - verify authentication tag */
-
-  if (DecryptBatch(DecryptMode::kVerify) == Result::kFailure) {
-    return Result::kFailure;
-  }
-
-  /* Pass 2 - write plaintext */
-
-  if (DecryptBatch(DecryptMode::kWrite) == Result::kFailure) {
-    return Result::kFailure;  // LCOV_EXCL_LINE
-  }
-
-  return Result::kSuccess;
-}
-
-void AesGcm::DecryptInit() {
-  /* Read the IV from the header */
-
-  memcpy(iv_.data(), src_buff_ + kSaltSize, kIVSize);
-  memcpy(tag_.data(), src_buff_ + size_ - kTagSize, kTagSize);
-}
-
-Result AesGcm::DecryptBatch(DecryptMode mode) {
   if (SetupDecryptCtx() == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
+
+  /* Decrypt the ciphertext in chunks */
 
   int64_t rem = static_cast<int64_t>(size_ - kSaltSize - kIVSize - kTagSize);
   size_t src_crs = kSaltSize + kIVSize;
@@ -65,11 +31,7 @@ Result AesGcm::DecryptBatch(DecryptMode mode) {
   while (rem > 0) {
     int chunk = static_cast<int>(std::min<int64_t>(rem, kBuffSize * kBlockSize));
 
-    /* Decrypt into a temporary buffer */
-
-    uint8_t* dst = (mode == DecryptMode::kWrite) ? dst_buff_ + dst_crs : verify_buff_.Data();
-
-    if (DecryptBuff(src_buff_ + src_crs, dst, chunk) == Result::kFailure) {
+    if (DecryptBuff(src_buff_ + src_crs, dst_buff_ + dst_crs, chunk) == Result::kFailure) {
       return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
@@ -78,11 +40,14 @@ Result AesGcm::DecryptBatch(DecryptMode mode) {
     rem -= chunk;
   }
 
-  if (DecryptFinal() == Result::kFailure) {
-    return Result::kFailure;
-  }
+  return DecryptFinal();
+}
 
-  return Result::kSuccess;
+void AesGcm::DecryptInit() {
+  /* Read the IV from the header */
+
+  memcpy(iv_.data(), src_buff_ + kSaltSize, kIVSize);
+  memcpy(tag_.data(), src_buff_ + size_ - kTagSize, kTagSize);
 }
 
 Result AesGcm::SetupDecryptCtx() {

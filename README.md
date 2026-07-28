@@ -44,9 +44,9 @@ Password-based file encryption tool using AES-256-GCM, Argon2id, and Qt6.
 **Security Considerations**
 * Argon2id memory hard and data independent key derivation, resistant to both brute force attacks and side channel attacks
 * GCM tag provides integrity check, and two-pass decryption procedure verifies it before writing any plaintext into disk
-* Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
-* Keys are locked in memory using `VirtualLock`/`mlock` to prevent them from being swapped to disk
-* Randomized salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
+* Newly and randomly generated salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
+* RAII pattern ensures memory wipe for sensitive data, using `sodium_free` and `sodium_memzero`
+* Sensitive data is held in `sodium_malloc` memory, which provides guard pages and lock against swap
 
 ## 3-2. [PasswordManager](./Projects/PasswordManager)
 
@@ -57,20 +57,20 @@ Encrypted password vault manager using AES-256-GCM, Argon2id, and Qt6.
 **Features**
 * AES-256-GCM for vault encryption and integrity check
 * Qt6 graphical user interface
-* Two-pass decryption that never writes unverified plaintext into disk
+* Vault is never written to disk in plaintext; unverified plaintext exists only in locked memory
 * Random password generator with customizable length and special characters
 * Search and filter entries by keyword
 
 **Security Considerations**
-* Argon2id memory hard and data independent key derivation, resistant to both brute force attacks and side channel attacks
-* GCM tag provides integrity check, and two-pass decryption procedure verifies it before writing any plaintext into disk
-* Automatic clipboard clear after 30 seconds of password copy
+* Automatic clipboard clear after 30 seconds
+* Copied passwords are excluded from OS clipboard history and cloud clipboard sync
 * Constant time password comparison
-* Ensured memory wipe for sensitive data using RAII pattern and `SecureZeroMemory`/`explicit_bzero`
-* Keys are locked in memory using `VirtualLock`/`mlock` to prevent them from being swapped to disk
+* GCM tag provides integrity check, and two-pass decryption procedure verifies it before writing any plaintext into disk
+* Newly and randomly generated initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * Password generator guarantees at least one each of uppercase, lowercase, digit, and special character
-* Randomized salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
-* Vault files are re-encrypted with new salt and IV for each save or master password change
+* RAII pattern ensures memory wipe for sensitive data, using `sodium_free` and `sodium_memzero`
+* Sensitive data is held in `sodium_malloc` memory, which provides guard pages and lock against swap
+* Vault files are re-encrypted with new salt and initial vector for each save or master password change
 
 # 4. LeetCode
 

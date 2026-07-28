@@ -11,7 +11,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 * AES-256-GCM for vault encryption and integrity check
 * Argon2id for key derivation from master password
 * Qt6 graphical user interface
-* Two-pass decryption that never writes unverified plaintext into disk
+* Vault is never written to disk in plaintext; unverified plaintext exists only in locked memory
 * Random password generator with customizable length and special characters
 * Automatic clipboard clear after 30 seconds of password copy
 * Search and filter entries by keyword

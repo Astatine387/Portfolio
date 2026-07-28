@@ -14,17 +14,7 @@
 #include <span>
 
 #include "common/constants.h"
-#include "core/secure_buffer.h"
 #include "core/secure_key.h"
-
-/**
- * @enum	DecryptMode
- * @brief	Whether a decryption pass verifies the tag or writes plaintext
- */
-enum class DecryptMode : std::uint8_t {
-  kVerify,
-  kWrite,
-};
 
 class AesGcm {
  public:
@@ -58,6 +48,9 @@ class AesGcm {
    * @param		size	Source buffer size
    * @param		key		Session key
    * @return		kSuccess on success, kFailure on failure
+   *
+   * AES-GCM cannot authenticate the ciphertext until the whole message has been processed. On kFailure @p dst holds
+   * unverified plaintext. The caller owns that buffer and must wipe it before doing anything else with it.
    */
   Result Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key);
 
@@ -97,8 +90,6 @@ class AesGcm {
   std::array<uint8_t, kIVSize> iv_{};    // Initial vector
   std::array<uint8_t, kTagSize> tag_{};  // Authentication tag read from buffer
 
-  SecureBuffer verify_buff_;  // Locked, guarded scratch buffer for the verify pass
-
   const SecureKey* key_ = nullptr;  // Session key for the current operation
 
   uint8_t* src_buff_ = nullptr;  // Source buffer
@@ -112,36 +103,11 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @class   VerifyBuffGuard
-   * @brief   Release the locked verify buffer when the scope exits
-   */
-  class VerifyBuffGuard {
-   public:
-    explicit VerifyBuffGuard(AesGcm* self) : self_(self) {}
-    ~VerifyBuffGuard() { self_->verify_buff_.Reset(); }
-
-    VerifyBuffGuard(const VerifyBuffGuard&) = delete;             // Delete copy constructor
-    VerifyBuffGuard& operator=(const VerifyBuffGuard&) = delete;  // Delete copy assignment operator
-    VerifyBuffGuard(VerifyBuffGuard&&) = delete;                  // Delete move constructor
-    VerifyBuffGuard& operator=(VerifyBuffGuard&&) = delete;       // Delete move assignment operator
-
-   private:
-    AesGcm* self_;  // Owner engine whose verify buffer is released on scope exit
-  };
-
-  /**
    * @brief	Read the IV and authentication tag from the buffer
    *
    * The salt was already consumed by the caller to derive the session key.
    */
   void DecryptInit();
-
-  /**
-   * @brief	Run one decryption pass over the ciphertext
-   * @param	mode	kVerify to only check the tag, kWrite to emit plaintext
-   * @return	kSuccess on success, kFailure on failure
-   */
-  Result DecryptBatch(DecryptMode mode);
 
   /**
    * @brief	Create the decryption context and set key, IV, and tag
