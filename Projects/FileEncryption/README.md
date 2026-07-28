@@ -73,22 +73,23 @@ Salt (16 Bytes) │ IV (12 Bytes) │ Encrypted Data │ Tag (16 Bytes)
 
 ```
 src
-├── Common
+├── common
 │   ├── constants.h           # Constant values
 │   └── main.cpp              # Application entry point
-├── Core
+├── core
 │   ├── aes_gcm.h/cpp         # AES-GCM engine
-│   ├── aes_gcm_enc.cpp       # Encryption implementation
-│   ├── aes_gcm_dec.cpp       # Decryption implementation
-│   └── crypto_worker.h/cpp   # Asynchronous worker thread
-├── GUI
+│   ├── aes_gcm_enc.cpp       # Encryption
+│   ├── aes_gcm_dec.cpp       # Decryption
+│   ├── crypto_worker.h/cpp   # Asynchronous worker thread
+│   └── secure_key.h/cpp      # Secure AES key handler
+├── gui
 │   ├── crypto_wrapper.h/cpp  # Wrapper class for CryptoWorker
 │   ├── main_gui.h/cpp        # Main workflow controller
 │   ├── input_gui.h/cpp       # Source, destination, and password input
 │   ├── progress_gui.h/cpp    # Progress tracking
 │   ├── mode_button.h/cpp     # Encrypt/Decrypt mode selection widget
 │   └── pw_line_edit.h/cpp    # Password input widget
-└── Utils
+└── utils
     ├── password.h/cpp        # Secure password container
     ├── platform.h            # Utility function declarations
     ├── platform_linux.cpp    # Linux utility functions
