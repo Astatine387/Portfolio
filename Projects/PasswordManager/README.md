@@ -141,7 +141,7 @@ src
 ## 4-1. Prerequisites
 
 **Windows:**
-* Visual Studio 2022+ with C++ workload
+* Visual Studio 2022+ with the "Desktop development with C++" workload
 * CMake 3.16+
 * vcpkg
 * Qt 6.7+
@@ -151,27 +151,59 @@ src
 * CMake 3.16+
 * Qt6 development packages
 
+Dependencies (OpenSSL 3.0+, Argon2, libsodium, Google Test) are declared in
+`vcpkg.json` and installed automatically when building with the vcpkg toolchain.
+
 ## 4-2. Build
 
-**Windows:**
+**Windows** (vcpkg manifest mode — dependencies are resolved from `vcpkg.json`):
 ```cmd
-# Install dependencies
-vcpkg install openssl:x64-windows argon2:x64-windows gtest:x64-windows
+cd Projects\PasswordManager
 
-# Configure and build
-cd Projects/PasswordManager
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake
+cmake -B build ^
+  -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake ^
+  -DVCPKG_TARGET_TRIPLET=x64-windows ^
+  -DCMAKE_PREFIX_PATH=C:\Qt\6.7.0\msvc2019_64
+
 cmake --build build --config Release
 ```
+Replace `CMAKE_PREFIX_PATH` with your Qt installation path.
 
-**Linux:**
+**Linux** (system packages):
 ```bash
-# Install dependencies
-sudo apt-get install qt6-base-dev libssl-dev libargon2-dev libgtest-dev
+sudo apt-get update
+sudo apt-get install -y qt6-base-dev libssl-dev libargon2-dev \
+                        libsodium-dev libgtest-dev
 
-# Configure and build
 cd Projects/PasswordManager
 cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
+**Linux** (vcpkg): libsodium must be linked dynamically, so an overlay triplet
+is supplied in `triplets/`:
+```bash
+cd Projects/PasswordManager
+
+cmake -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_TARGET_TRIPLET=x64-linux-dynsodium \
+  -DVCPKG_OVERLAY_TRIPLETS="$PWD/triplets"
+
+cmake --build build
+```
+
+**Build Options:** 
+
+| Option     | Default | Description                                   |
+| ---------- | ------- | --------------------------------------------- |
+| `COVERAGE` | `OFF`   | Coverage instrumentation (GCC/Clang)          |
+| `SANITIZE` | `OFF`   | AddressSanitizer + UndefinedBehaviorSanitizer |
+
+Sanitizer and coverage builds require `-DCMAKE_BUILD_TYPE=Debug`:
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DTHREAD_SANITIZE=ON
 cmake --build build
 ```
 
@@ -187,11 +219,11 @@ cmake --build build
 
 ![ChangePWGUI](ChangePWGUI.png)
 
-1. Run the executable `PasswordManager.exe` or `PasswordManager`
-2. Create a new vault or open an existing vault
-3. Enter master password
-4. Add, edit, or delete password entries
-5. Click Save to encrypt and store the vault
+1\. Run the executable `PasswordManager.exe` or `PasswordManager`
+2\. Create a new vault or open an existing vault
+3\. Enter master password
+4\. Add, edit, or delete password entries
+5\. Click Save to encrypt and store the vault
 
 # 5. Testing
 ## 5-1. Coverage

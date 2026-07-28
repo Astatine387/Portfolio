@@ -107,7 +107,7 @@ src
 ## 4-1. Prerequisites
 
 **Windows:**
-* Visual Studio 2022+ with C++ workload
+* Visual Studio 2022+ with the "Desktop development with C++" workload
 * CMake 3.16+
 * vcpkg
 * Qt 6.7+
@@ -117,27 +117,62 @@ src
 * CMake 3.16+
 * Qt6 development packages
 
+Dependencies (OpenSSL 3.0+, Argon2, libsodium, Google Test, Google Benchmark)
+are declared in `vcpkg.json` and installed automatically when building with the
+vcpkg toolchain. Google Benchmark is optional: without it the `FileEncryption-bench`
+target is simply not generated.
+
 ## 4-2. Build
 
-**Windows:**
+**Windows** (vcpkg manifest mode — dependencies are resolved from `vcpkg.json`):
 ```cmd
-# Install dependencies
-vcpkg install openssl:x64-windows argon2:x64-windows gtest:x64-windows
+cd Projects\FileEncryption
 
-# Configure and build
-cd Projects/FileEncryption
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake
+cmake -B build ^
+  -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake ^
+  -DVCPKG_TARGET_TRIPLET=x64-windows ^
+  -DCMAKE_PREFIX_PATH=C:\Qt\6.7.0\msvc2019_64
+
 cmake --build build --config Release
 ```
+* Replace `CMAKE_PREFIX_PATH` with your Qt installation path.
 
-**Linux:**
+**Linux** (system packages):
 ```bash
-# Install dependencies
-sudo apt-get install qt6-base-dev libssl-dev libargon2-dev libgtest-dev
+sudo apt-get update
+sudo apt-get install -y qt6-base-dev libssl-dev libargon2-dev \
+                        libsodium-dev libgtest-dev libbenchmark-dev
 
-# Configure and build
 cd Projects/FileEncryption
 cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
+**Linux** (vcpkg): libsodium must be linked dynamically, so an overlay triplet
+is supplied in `triplets/`:
+```bash
+cd Projects/FileEncryption
+
+cmake -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_TARGET_TRIPLET=x64-linux-dynsodium \
+  -DVCPKG_OVERLAY_TRIPLETS="$PWD/triplets"
+
+cmake --build build
+```
+
+**Build Options:** 
+
+| Option            | Default | Description                                   |
+| ----------------- | ------- | --------------------------------------------- |
+| `COVERAGE`        | `OFF`   | Coverage instrumentation (GCC/Clang)          |
+| `SANITIZE`        | `OFF`   | AddressSanitizer + UndefinedBehaviorSanitizer |
+| `THREAD_SANITIZE` | `OFF`   | ThreadSanitizer                               |
+
+Sanitizer and coverage builds require `-DCMAKE_BUILD_TYPE=Debug`:
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DTHREAD_SANITIZE=ON
 cmake --build build
 ```
 
@@ -147,12 +182,12 @@ cmake --build build
 
 ![ProgressGUI](ProgressGUI.png)
 
-1. Run the executable `FileEncryption.exe` or `FileEncryption`
-2. Select mode
-3. Enter source file path
-4. Enter destination file path
-5. Enter password
-6. Click Start
+1\. Run the executable `FileEncryption.exe` or `FileEncryption`
+2\. Select mode
+3\. Enter source file path
+4\. Enter destination file path
+5\. Enter password
+6\. Click Start
 
 # 5. Testing
 ## 5-1. Coverage
