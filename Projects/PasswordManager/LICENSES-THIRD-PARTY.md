@@ -8,6 +8,11 @@
 * Licensed under BSD 3-Clause
 * https://github.com/google/googletest/blob/main/LICENSE
 
+**libsodium**
+* Copyright (c) 2013-2025 Frank Denis
+* Licensed under the ISC License
+* https://github.com/jedisct1/libsodium/blob/master/LICENSE
+
 **OpenSSL**
 * Copyright (c) 1998-2024 The OpenSSL Project
 * Licensed under the Apache License 2.0

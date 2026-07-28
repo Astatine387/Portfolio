@@ -3,10 +3,20 @@
 * Licensed under CC0 1.0 Universal / Apache 2.0
 * https://github.com/P-H-C/phc-winner-argon2
 
+**Google Benchmark**
+* Copyright (c) Google Inc.
+* Licensed under the Apache License 2.0
+* https://github.com/google/benchmark/blob/main/LICENSE
+
 **Google Test**
 * Copyright (c) Google LLC
 * Licensed under BSD 3-Clause
 * https://github.com/google/googletest/blob/main/LICENSE
+
+**libsodium**
+* Copyright (c) 2013-2025 Frank Denis
+* Licensed under the ISC License
+* https://github.com/jedisct1/libsodium/blob/master/LICENSE
 
 **OpenSSL**
 * Copyright (c) 1998-2024 The OpenSSL Project
