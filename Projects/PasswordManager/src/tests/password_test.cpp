@@ -10,6 +10,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <string>
+#include <type_traits>
+#include <utility>
 
 #include "common/constants.h"
 
@@ -33,14 +37,14 @@ TEST(PasswordTest, IsDefaultEmpty) {
  * ================================================== */
 
 /**
- * @brief   Verify setData works with C-style string and length
+ * @brief   Verify SetData works with C-style string and length
  */
 TEST(PasswordTest, SetDataCString) {
   Password pw;
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw.SetData(data, size);
+  ASSERT_EQ(pw.SetData(data, size), Result::kSuccess);
 
   EXPECT_FALSE(pw.IsEmpty());
   EXPECT_STREQ(pw.GetData(), data);
@@ -49,18 +53,18 @@ TEST(PasswordTest, SetDataCString) {
 }
 
 /**
- * @brief   Verify setData works with another Password
+ * @brief   Verify SetData works with another Password
  */
 TEST(PasswordTest, SetDataPassword) {
   Password pw0;
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw0.SetData(data, size);
+  ASSERT_EQ(pw0.SetData(data, size), Result::kSuccess);
 
   Password pw1;
 
-  pw1.SetData(pw0);
+  ASSERT_EQ(pw1.SetData(pw0), Result::kSuccess);
 
   EXPECT_FALSE(pw1.IsEmpty());
   EXPECT_STREQ(pw1.GetData(), data);
@@ -69,7 +73,7 @@ TEST(PasswordTest, SetDataPassword) {
 }
 
 /**
- * @brief   Verify setData replaces existing data
+ * @brief   Verify SetData replaces existing data
  */
 TEST(PasswordTest, SetDataReplace) {
   Password pw;
@@ -79,8 +83,8 @@ TEST(PasswordTest, SetDataReplace) {
   size_t size0 = strlen(data0);
   size_t size1 = strlen(data1);
 
-  pw.SetData(data0, size0);
-  pw.SetData(data1, size1);
+  ASSERT_EQ(pw.SetData(data0, size0), Result::kSuccess);
+  ASSERT_EQ(pw.SetData(data1, size1), Result::kSuccess);
 
   EXPECT_STREQ(pw.GetData(), data1);
   EXPECT_EQ(pw.GetSize(), size1);
@@ -91,31 +95,28 @@ TEST(PasswordTest, SetDataReplace) {
  * ================================================== */
 
 /**
- * @brief   Verify copy constructor performs deep copy
+ * @brief   Verify Password is move-only
  *
- * Deep copy means identical values, but different memory addresses
+ * A copy allocates locked memory and can fail, and a constructor cannot report
+ * that failure, so copying is deleted in favour of SetData(const Password&)
  */
-TEST(PasswordTest, CopyConstructor) {
-  Password pw0;
+TEST(PasswordTest, IsMoveOnly) {
+  static_assert(!std::is_copy_constructible_v<Password>, "Password must not be copy constructible");
+  static_assert(!std::is_copy_assignable_v<Password>, "Password must not be copy assignable");
+  static_assert(std::is_move_constructible_v<Password>, "Password must be move constructible");
+  static_assert(std::is_move_assignable_v<Password>, "Password must be move assignable");
+  static_assert(std::is_nothrow_move_constructible_v<Password>, "Password move must be noexcept");
+  static_assert(std::is_nothrow_move_assignable_v<Password>, "Password move must be noexcept");
 
-  const char* data = "password";
-  size_t size = strlen(data);
-
-  pw0.SetData(data, size);
-
-  Password pw1(pw0);
-
-  EXPECT_STREQ(pw0.GetData(), pw1.GetData());
-  EXPECT_EQ(pw0.GetSize(), pw1.GetSize());
-  EXPECT_NE(pw0.GetData(), pw1.GetData());
+  SUCCEED();
 }
 
 /**
- * @brief   Verify copy assignment performs deep copy
+ * @brief   Verify the checked copy performs a deep copy
  *
  * Deep copy means identical values, but different memory addresses
  */
-TEST(PasswordTest, CopyAssignment) {
+TEST(PasswordTest, CheckedCopyIsDeep) {
   Password pw0, pw1;
 
   const char* data0 = "qwerty1234";
@@ -123,10 +124,10 @@ TEST(PasswordTest, CopyAssignment) {
   size_t size0 = strlen(data0);
   size_t size1 = strlen(data1);
 
-  pw0.SetData(data0, size0);
-  pw1.SetData(data1, size1);
+  ASSERT_EQ(pw0.SetData(data0, size0), Result::kSuccess);
+  ASSERT_EQ(pw1.SetData(data1, size1), Result::kSuccess);
 
-  pw1 = pw0;
+  ASSERT_EQ(pw1.SetData(pw0), Result::kSuccess);
 
   EXPECT_STREQ(pw1.GetData(), data0);
   EXPECT_EQ(pw1.GetSize(), size0);
@@ -144,7 +145,7 @@ TEST(PasswordTest, MoveConstructor) {
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw0.SetData(data, size);
+  ASSERT_EQ(pw0.SetData(data, size), Result::kSuccess);
 
   const char* orig_ptr = pw0.GetData();
 
@@ -170,8 +171,8 @@ TEST(PasswordTest, MoveAssignment) {
   size_t size0 = strlen(data0);
   size_t size1 = strlen(data1);
 
-  pw0.SetData(data0, size0);
-  pw1.SetData(data1, size1);
+  ASSERT_EQ(pw0.SetData(data0, size0), Result::kSuccess);
+  ASSERT_EQ(pw1.SetData(data1, size1), Result::kSuccess);
 
   const char* orig_ptr = pw0.GetData();
 
@@ -189,18 +190,42 @@ TEST(PasswordTest, MoveAssignment) {
  * ================================================== */
 
 /**
- * @brief   Verify self-assignment does not corrupt data
+ * @brief   Verify a self-copy through SetData does not touch freed memory
+ *
+ * Without the guard, Clean() unmaps the buffer that SetData then reads from,
+ * which sodium_free turns into a fault rather than a silent read
  */
-TEST(PasswordTest, SelfAssignment) {
+TEST(PasswordTest, SetDataSelf) {
   Password pw;
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw.SetData(data, size);
+  ASSERT_EQ(pw.SetData(data, size), Result::kSuccess);
 
-  pw = pw;
+  const char* orig_ptr = pw.GetData();
+
+  EXPECT_EQ(pw.SetData(pw), Result::kSuccess);
 
   EXPECT_STREQ(pw.GetData(), data);
+  EXPECT_EQ(pw.GetSize(), size);
+  EXPECT_EQ(pw.GetData(), orig_ptr);
+}
+
+/**
+ * @brief   Verify self-move leaves the object usable
+ */
+TEST(PasswordTest, SelfMoveAssignment) {
+  Password pw;
+  const char* data = "password";
+  size_t size = strlen(data);
+
+  ASSERT_EQ(pw.SetData(data, size), Result::kSuccess);
+
+  Password& alias = pw;
+
+  pw = std::move(alias);
+
+  EXPECT_STREQ(pw.GetData(), data);  // NOLINT(bugprone-use-after-move)
   EXPECT_EQ(pw.GetSize(), size);
 }
 
@@ -209,8 +234,8 @@ TEST(PasswordTest, SelfAssignment) {
  */
 TEST(PasswordTest, SetDataNull) {
   Password pw;
-  pw.SetData(nullptr, 0);
 
+  EXPECT_EQ(pw.SetData(nullptr, 0), Result::kSuccess);
   EXPECT_TRUE(pw.IsEmpty());
 }
 
@@ -222,7 +247,7 @@ TEST(PasswordTest, DestructorAfterMove) {
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw0->SetData(data, size);
+  ASSERT_EQ(pw0->SetData(data, size), Result::kSuccess);
 
   Password pw1(std::move(*pw0));
 
@@ -242,8 +267,8 @@ TEST(PasswordTest, CompareEqual) {
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw0.SetData(data, size);
-  pw1.SetData(data, size);
+  ASSERT_EQ(pw0.SetData(data, size), Result::kSuccess);
+  ASSERT_EQ(pw1.SetData(data, size), Result::kSuccess);
 
   EXPECT_TRUE(pw0.Equal(pw1));
   EXPECT_TRUE(pw1.Equal(pw0));
@@ -259,8 +284,8 @@ TEST(PasswordTest, CompareDifferent) {
   size_t size0 = strlen(data0);
   size_t size1 = strlen(data1);
 
-  pw0.SetData(data0, size0);
-  pw1.SetData(data1, size1);
+  ASSERT_EQ(pw0.SetData(data0, size0), Result::kSuccess);
+  ASSERT_EQ(pw1.SetData(data1, size1), Result::kSuccess);
 
   EXPECT_FALSE(pw0.Equal(pw1));
   EXPECT_FALSE(pw1.Equal(pw0));
@@ -276,8 +301,8 @@ TEST(PasswordTest, CompareSameLenDifferent) {
   size_t size0 = strlen(data0);
   size_t size1 = strlen(data1);
 
-  pw0.SetData(data0, size0);
-  pw1.SetData(data1, size1);
+  ASSERT_EQ(pw0.SetData(data0, size0), Result::kSuccess);
+  ASSERT_EQ(pw1.SetData(data1, size1), Result::kSuccess);
 
   EXPECT_FALSE(pw0.Equal(pw1));
 }
@@ -290,9 +315,22 @@ TEST(PasswordTest, CompareWithEmpty) {
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw0.SetData(data, size);
+  ASSERT_EQ(pw0.SetData(data, size), Result::kSuccess);
 
   EXPECT_FALSE(pw0.Equal(pw1));
+}
+
+/**
+ * @brief   Verify compare against itself returns true
+ */
+TEST(PasswordTest, CompareSelf) {
+  Password pw;
+  const char* data = "password";
+  size_t size = strlen(data);
+
+  ASSERT_EQ(pw.SetData(data, size), Result::kSuccess);
+
+  EXPECT_TRUE(pw.Equal(pw));
 }
 
 /* ==================================================
@@ -307,7 +345,8 @@ TEST(PasswordTest, Clean) {
   const char* data = "password";
   size_t size = strlen(data);
 
-  pw.SetData(data, size);
+  ASSERT_EQ(pw.SetData(data, size), Result::kSuccess);
+
   pw.Clean();
 
   EXPECT_TRUE(pw.IsEmpty());
@@ -331,7 +370,7 @@ TEST(PasswordTest, CleanEmpty) {
  * ================================================== */
 
 /**
- * @brief   Verify setData succeeds at exactly MAX_SIZE
+ * @brief   Verify SetData succeeds at exactly MAX_SIZE
  */
 TEST(PasswordTest, SetDataMaxSize) {
   Password pw;
@@ -342,7 +381,7 @@ TEST(PasswordTest, SetDataMaxSize) {
 }
 
 /**
- * @brief   Verify setData rejects data exceeding MAX_SIZE
+ * @brief   Verify SetData rejects data exceeding MAX_SIZE
  */
 TEST(PasswordTest, SetDataExceedsMaxSize) {
   Password pw;

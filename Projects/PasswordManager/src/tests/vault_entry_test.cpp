@@ -29,7 +29,7 @@ class VaultEntryTest : public ::testing::Test {
   static Password MakePW(const char* str) {
     Password pw;
 
-    pw.SetData(str, strlen(str));
+    EXPECT_EQ(pw.SetData(str, strlen(str)), Result::kSuccess);
 
     return pw;
   }

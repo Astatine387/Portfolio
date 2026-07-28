@@ -42,6 +42,10 @@ size_t Password::GetSize() const {
 }
 
 Result Password::SetData(const Password& pw) {
+  if (this == &pw) {
+    return Result::kSuccess;
+  }
+
   return SetData(pw.GetData(), pw.GetSize());
 }
 
