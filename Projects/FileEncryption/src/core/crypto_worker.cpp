@@ -14,7 +14,7 @@
 #include "utils/platform.h"
 
 void CryptoWorker::RequestCancel() {
-  should_cancel_.store(true, std::memory_order_release);
+  should_cancel_.store(true, std::memory_order_relaxed);
 }
 
 void CryptoWorker::Work() {
@@ -85,21 +85,23 @@ void CryptoWorker::Work() {
 
   aes.SetErrorCallback([this](const char* m) { err_ = m; });
 
-  aes.SetProgressCallback([this](int perc, bool* cancelled) {
-    if (pcb_) {
-      std::string status;
+  aes.SetCancelFlag(&should_cancel_);
 
-      if (mode_ == CryptoMode::kEncrypt) {
-        status = "Encrypting... " + std::to_string(perc) + "%\n";
-      }
-      else {
-        status = "Decrypting... " + std::to_string(perc) + "%\n";
-      }
-
-      pcb_(perc, status);
+  aes.SetProgressCallback([this](int perc) {
+    if (!pcb_) {
+      return;
     }
 
-    *cancelled = should_cancel_.load(std::memory_order_acquire);
+    std::string status;
+
+    if (mode_ == CryptoMode::kEncrypt) {
+      status = "Encrypting... " + std::to_string(perc) + "%\n";
+    }
+    else {
+      status = "Decrypting... " + std::to_string(perc) + "%\n";
+    }
+
+    pcb_(perc, status);
   });
 
   /* Encrypt or decrypt */

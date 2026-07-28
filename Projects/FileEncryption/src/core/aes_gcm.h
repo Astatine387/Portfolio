@@ -13,6 +13,7 @@
 #include <openssl/evp.h>
 
 #include <array>
+#include <atomic>
 #include <condition_variable>
 #include <cstdint>
 #include <functional>
@@ -26,15 +27,6 @@
 enum class DecryptMode : std::uint8_t {
   kVerify,
   kWrite,
-};
-
-/**
- * @enum	Progress
- * @brief	Whether processing should continue or was cancelled by the user
- */
-enum class Progress : std::uint8_t {
-  kContinue,
-  kCancelled,
 };
 
 /**
@@ -98,9 +90,8 @@ class AesGcm {
   /**
    * @brief		Callback function for progress reporting
    * @param		perc		Current progress in percentage
-   * @param		cancelled	Pointer of cancellation flag
    */
-  using ProgressCallback = std::function<void(int perc, bool* cancelled)>;
+  using ProgressCallback = std::function<void(int perc)>;
 
   /**
    * @brief		Set error callback function
@@ -114,6 +105,12 @@ class AesGcm {
    */
   void SetProgressCallback(ProgressCallback pcb) { pcb_ = std::move(pcb); }
 
+  /**
+   * @brief		Set the cancellation flag
+   * @param		flag	Cancellation flag
+   */
+  void SetCancelFlag(const std::atomic<bool>* flag) { cancel_ = flag; }
+
  private:
   EVP_CIPHER_CTX* ctx_ = nullptr;  // OpenSSL encryption/decryption context
 
@@ -124,9 +121,12 @@ class AesGcm {
   ProgressCallback pcb_ = nullptr;  // Progress reporting callback function
   std::mutex error_mtx_;            // Serializes error callback calls from the read and write threads
 
+  const std::atomic<bool>* cancel_ = nullptr;  // Cancellation flag
+
   int64_t src_size_ = 0;      // Source file size
   int64_t progress_cur_ = 0;  // Current progress
   int64_t progress_max_ = 0;  // Total work for progress reporting
+  int last_perc_ = -1;        // Last reported whole percent, -1 before the first report
 
   std::array<std::array<std::array<uint8_t, kBlockSize>, kBuffSize>, kBuffNum> buff_{};  // Buffer
   std::array<uint8_t, kIVSize> iv_{};                                                    // Initial vector
@@ -289,9 +289,14 @@ class AesGcm {
 
   /**
    * @brief		Report current progress via callback
-   * @return	kContinue to continue, kCancelled if the user cancelled
    */
-  Progress ReportProgress();
+  void ReportProgress();
+
+  /**
+   * @brief		Poll the cancellation flag
+   * @return	true if the user requested cancellation
+   */
+  [[nodiscard]] bool IsCancelled() const;
 
   /**
    * @brief		Report error via callback

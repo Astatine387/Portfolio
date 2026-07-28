@@ -13,6 +13,7 @@
 #include <sodium.h>
 
 #include <array>
+#include <atomic>
 #include <string>
 
 AesGcm::AesGcm() {
@@ -146,20 +147,26 @@ Result AesGcm::FlushWrite() {
   return write_result_;
 }
 
-Progress AesGcm::ReportProgress() {
-  if (pcb_) {
-    int perc = static_cast<int>(progress_max_ > 0 ? progress_cur_ * 100 / progress_max_ : 100);
-
-    bool should_cancel = false;
-
-    pcb_(perc, &should_cancel);
-
-    if (should_cancel) {
-      return Progress::kCancelled;
-    }
+void AesGcm::ReportProgress() {
+  if (!pcb_) {
+    return;
   }
 
-  return Progress::kContinue;
+  int perc = static_cast<int>(progress_max_ > 0 ? progress_cur_ * 100 / progress_max_ : 100);
+
+  /* Report only when the whole percent changes */
+
+  if (perc == last_perc_) {
+    return;
+  }
+
+  last_perc_ = perc;
+
+  pcb_(perc);
+}
+
+bool AesGcm::IsCancelled() const {
+  return cancel_ != nullptr && cancel_->load(std::memory_order_relaxed);
 }
 
 void AesGcm::ReportError(const char* msg) {

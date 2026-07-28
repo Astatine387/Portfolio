@@ -13,6 +13,7 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<con
   src_file_ = src;
   dst_file_ = dst;
   progress_cur_ = 0;
+  last_perc_ = -1;
   key_ = &key;
 
   /* Drain any write left over from a previous (possibly aborted) run, then arm a clean result */
@@ -188,7 +189,9 @@ Result AesGcm::EncryptBatch() {
 
     progress_cur_ += kBuffSize * kBlockSize;
 
-    if (ReportProgress() == Progress::kCancelled) {
+    ReportProgress();
+
+    if (IsCancelled()) {
       FlushWrite();
       return Result::kFailure;
     }
@@ -222,7 +225,9 @@ Result AesGcm::EncryptRemain() {
 
   progress_cur_ += rem;
 
-  if (ReportProgress() == Progress::kCancelled) {
+  ReportProgress();
+
+  if (IsCancelled()) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 

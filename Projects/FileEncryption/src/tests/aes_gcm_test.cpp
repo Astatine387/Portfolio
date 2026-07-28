@@ -10,6 +10,7 @@
 #include <openssl/err.h>
 
 #include <array>
+#include <atomic>
 #include <cstring>
 #include <optional>
 #include <span>
@@ -638,7 +639,7 @@ TEST_F(AesGcmTest, ProgressCallback) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.SetProgressCallback([&](int perc, bool* cancelled) {
+  aes.SetProgressCallback([&](int perc) {
     cnt++;
 
     EXPECT_GE(perc, last);
@@ -785,6 +786,7 @@ TEST_F(AesGcmTest, Cancellation) {
   int dsize = kBlockSize * kBuffSize * 10;
   int cnt = 0;
   Result res;
+  std::atomic<bool> cancel{ false };
 
   auto salt = MakeSalt(0xA5);
   SecureKey key = MakeKey("password", salt);
@@ -798,11 +800,13 @@ TEST_F(AesGcmTest, Cancellation) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.SetProgressCallback([&](int perc, bool* cancelled) {
+  aes.SetCancelFlag(&cancel);
+
+  aes.SetProgressCallback([&](int) {
     cnt++;
 
     if (cnt >= 2) {
-      *cancelled = true;
+      cancel.store(true, std::memory_order_relaxed);
     }
   });
 
@@ -831,6 +835,7 @@ TEST_F(AesGcmTest, CancelDuringWritePass) {
   std::vector<uint8_t> orig;
   int dsize = kBlockSize * kBuffSize * 10;
   Result res;
+  std::atomic<bool> cancel{ false };
 
   auto salt = MakeSalt(0xA5);
   SecureKey key = MakeKey("password", salt);
@@ -859,9 +864,11 @@ TEST_F(AesGcmTest, CancelDuringWritePass) {
   OpenFile(&src, enc_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
 
-  aes.SetProgressCallback([&](int perc, bool* cancelled) {
+  aes.SetCancelFlag(&cancel);
+
+  aes.SetProgressCallback([&](int perc) {
     if (perc > 50) {
-      *cancelled = true;
+      cancel.store(true, std::memory_order_relaxed);
     }
   });
 
