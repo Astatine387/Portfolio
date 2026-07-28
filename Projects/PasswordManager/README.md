@@ -230,22 +230,7 @@ cmake --build build
 
 ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=passwordmanager)
 
-| File                     | Tracked Lines | Covered | Partial | Missed | Coverage % |
-| ------------------------ | ------------- | ------- | ------- | ------ | ---------- |
-| core/aes_gcm.cpp         | 23            | 23      | 0       | 0      | 100.00%    |
-| core/aes_gcm.h           | 1             | 1       | 0       | 0      | 100.00%    |
-| core/aes_gcm_dec.cpp     | 53            | 53      | 0       | 0      | 100.00%    |
-| core/aes_gcm_enc.cpp     | 46            | 46      | 0       | 0      | 100.00%    |
-| core/entry.cpp           | 48            | 48      | 0       | 0      | 100.00%    |
-| core/entry.h             | 4             | 4       | 0       | 0      | 100.00%    |
-| core/vault.cpp           | 27            | 27      | 0       | 0      | 100.00%    |
-| core/vault.h             | 1             | 1       | 0       | 0      | 100.00%    |
-| core/vault_entry.cpp     | 29            | 29      | 0       | 0      | 100.00%    |
-| core/vault_file.cpp      | 104           | 102     | 0       | 2      | 98.08%     |
-| utils/password.cpp       | 35            | 35      | 0       | 0      | 100.00%    |
-| utils/password.h         | 25            | 25      | 0       | 0      | 100.00%    |
-| utils/platform.cpp       | 23            | 23      | 0       | 0      | 100.00%    |
-| utils/platform_linux.cpp | 39            | 35      | 0       | 8      | 89.74%     |
+**Codecov Report:** https://app.codecov.io/gh/Astatine387/Portfolio/tree/main/Projects%2FPasswordManager%2Fsrc
 
 | Module   | Test File              | Test Cases                                                                                                                       |
 | -------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |

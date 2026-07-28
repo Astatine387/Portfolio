@@ -194,17 +194,7 @@ cmake --build build
 
 ![Codecov](https://codecov.io/gh/Astatine387/Portfolio/branch/main/graph/badge.svg?flag=fileencryption)
 
-| File                     | Tracked Lines | Covered | Partial | Missed | Coverage % |
-| ------------------------ | ------------- | ------- | ------- | ------ | ---------- |
-| core/aes_gcm.cpp         | 75            | 74      | 0       | 1      | 98.67%     |
-| core/aes_gcm.h           | 2             | 2       | 0       | 0      | 100.00%    |
-| core/aes_gcm_dec.cpp     | 67            | 67      | 0       | 0      | 100.00%    |
-| core/aes_gcm_enc.cpp     | 68            | 68      | 0       | 0      | 100.00%    |
-| core/crypto_worker.cpp   | 51            | 51      | 0       | 0      | 100.00%    |
-| core/crypto_worker.h     | 4             | 4       | 0       | 0      | 100.00%    |
-| utils/password.cpp       | 26            | 26      | 0       | 0      | 100.00%    |
-| utils/password.h         | 25            | 25      | 0       | 0      | 100.00%    |
-| utils/platform_linux.cpp | 33            | 30      | 0       | 6      | 90.91%     |
+**Codecov Report:** https://app.codecov.io/gh/Astatine387/Portfolio/tree/main/Projects%2FFileEncryption%2Fsrc
 
 | Module       | Test File                | Test Cases                                                                                   |
 | ------------ | ------------------------ | -------------------------------------------------------------------------------------------- |

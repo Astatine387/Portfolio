@@ -22,7 +22,7 @@ I'm Astatine387, a C/C++ software engineer building cross-platform desktop appli
 	* Runtime memory safety check (AddressSanitizer)
 	* Static analysis and Linting (clang-tidy, cppcheck)
 	* Unit tests (Google Test)
-	* Coverage report (Codecov): https://app.codecov.io/gh/Astatine387/Portfolio/tree/main/Projects
+	* Coverage report (Codecov)
 
 ## 3-1. [FileEncryption](./Projects/FileEncryption)
 
