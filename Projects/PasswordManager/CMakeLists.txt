@@ -5,6 +5,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
+# Compiler warnings
+
+add_library(project_warnings INTERFACE)
+
+if(MSVC)
+    target_compile_options(project_warnings INTERFACE /W4)
+else()
+    target_compile_options(project_warnings INTERFACE -Wall -Wextra)
+endif()
+
 option(COVERAGE "Enable coverage reporting" OFF)
 
 if(COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -86,6 +96,8 @@ target_link_libraries(PasswordManager-core PUBLIC
     ${SODIUM_LIBRARY}
 )
 
+target_link_libraries(PasswordManager-core PRIVATE project_warnings)
+
 if(WIN32)
     target_link_libraries(PasswordManager-core PUBLIC bcrypt)
 else()
@@ -126,8 +138,10 @@ target_link_libraries(PasswordManager-gui PUBLIC
     Qt6::Widgets
 )
 
+target_link_libraries(PasswordManager-gui PRIVATE project_warnings)
+
 add_executable(${PROJECT_NAME} src/common/main.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE PasswordManager-gui)
+target_link_libraries(${PROJECT_NAME} PRIVATE PasswordManager-gui project_warnings)
 
 enable_testing()
 
@@ -148,6 +162,7 @@ target_link_libraries(PasswordManager-tests PRIVATE
     PasswordManager-core
     GTest::gtest
     GTest::gtest_main
+    project_warnings
 )
 
 include(GoogleTest)

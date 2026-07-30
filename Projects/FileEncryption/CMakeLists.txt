@@ -5,6 +5,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
+add_library(project_warnings INTERFACE)
+
+if(MSVC)
+    target_compile_options(project_warnings INTERFACE /W4)
+else()
+    target_compile_options(project_warnings INTERFACE -Wall -Wextra)
+endif()
+
 option(COVERAGE "Enable coverage reporting" OFF)
 
 if(COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -92,6 +100,8 @@ target_link_libraries(FileEncryption-core PUBLIC
     ${SODIUM_LIBRARY}
 )
 
+target_link_libraries(FileEncryption-core PRIVATE project_warnings)
+
 if(WIN32)
     target_link_libraries(FileEncryption-core PUBLIC bcrypt)
 else()
@@ -125,8 +135,10 @@ target_link_libraries(FileEncryption-gui PUBLIC
     Qt6::Widgets
 )
 
+target_link_libraries(FileEncryption-gui PRIVATE project_warnings)
+
 add_executable(${PROJECT_NAME} src/common/main.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE FileEncryption-gui)
+target_link_libraries(${PROJECT_NAME} PRIVATE FileEncryption-gui project_warnings)
 
 enable_testing()
 
@@ -145,6 +157,7 @@ target_link_libraries(FileEncryption-tests PRIVATE
     GTest::gtest
     GTest::gtest_main
     Threads::Threads
+    project_warnings
 )
 
 include(GoogleTest)
@@ -172,6 +185,7 @@ if(benchmark_FOUND)
         FileEncryption-core
         benchmark::benchmark
         benchmark::benchmark_main
+        project_warnings
     )
 endif()
 

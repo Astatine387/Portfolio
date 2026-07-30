@@ -523,7 +523,7 @@ TEST_F(VaultFileTest, ChangePWSaveFailurePreservesSession) {
 TEST_F(VaultFileTest, ErrorCallback) {
   bool cb = false;
 
-  vault_.SetErrorCallback([&](const char* msg) { cb = true; });
+  vault_.SetErrorCallback([&](const char*) { cb = true; });
 
   vault_.CloseVault();
   vault_.OpenVault("nonexistent.vault", MakePW("password"));

@@ -45,7 +45,7 @@ class CryptoWorkerTest : public ::testing::Test {
   static Password MakePw(const char* str) {
     Password pw;
 
-    pw.SetData(str, strlen(str));
+    EXPECT_EQ(pw.SetData(str, strlen(str)), Result::kSuccess);
 
     return pw;
   }
@@ -152,7 +152,7 @@ TEST_F(CryptoWorkerTest, ProgressCallbackReportsStatus) {
 
   CryptoWorker worker(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
 
-  worker.SetProgressCallback([&](int perc, const std::string& msg) {
+  worker.SetProgressCallback([&](int, const std::string& msg) {
     cnt++;
 
     status = msg;

@@ -111,21 +111,22 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
   }
 
   /* Encrypt */
+  {
+    AesGcm aes;
+    FILE *src = nullptr, *dst = nullptr;
 
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
+    OpenFile(&src, src_path_, "rb");
+    OpenFile(&dst, enc_path_, "wb+");
 
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
+    aes.Encrypt(src, dst, *key, salt);
 
-  aes.Encrypt(src, dst, *key, salt);
+    if (src) {
+      fclose(src);
+    }
 
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
+    if (dst) {
+      fclose(dst);
+    }
   }
 
   /* Decrypt and test performance */
@@ -159,13 +160,13 @@ BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
  * @brief   Argon2id benchmark
  */
 static void BenchArgon2id(benchmark::State& state) {
-  std::array<uint8_t, kSaltSize> salt;
+  std::array<uint8_t, kSaltSize> salt{};
 
   const char* pw = "password";
   size_t psize = strlen(pw);
 
   for (size_t i = 0; i < kSaltSize; i++) {
-    salt[i] = i;
+    salt[i] = static_cast<uint8_t>(i);
   }
 
   for (auto _ : state) {

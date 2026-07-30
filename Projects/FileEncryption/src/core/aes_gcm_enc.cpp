@@ -164,7 +164,7 @@ Result AesGcm::EncryptBuff(void* src, void* dst, int srclen) {
 Result AesGcm::EncryptBatch() {
   int cur = 0;
 
-  while (progress_cur_ + kBuffSize * kBlockSize <= src_size_) {
+  while (progress_cur_ + static_cast<int64_t>(kBuffSize * kBlockSize) <= src_size_) {
     /* Read and encrypt current buffer */
 
     if (ReadFile(buff_[cur].data(), kBuffSize * kBlockSize) == Result::kFailure) {

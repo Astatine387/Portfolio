@@ -300,7 +300,7 @@ TEST(AesGcmTest, ErrorCallback) {
 
   aes.Encrypt(src.data(), enc.data(), dsize, key0, salt);
 
-  aes.SetErrorCallback([&](const char* msg) { cb_called = true; });
+  aes.SetErrorCallback([&](const char*) { cb_called = true; });
 
   aes.Decrypt(enc.data(), dec.data(), enc_size, key1);
 

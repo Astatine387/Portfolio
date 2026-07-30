@@ -697,7 +697,7 @@ TEST_F(AesGcmTest, ErrorCallback) {
   OpenFile(&src, enc_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
 
-  aes.SetErrorCallback([&](const char* msg) { b = true; });
+  aes.SetErrorCallback([&](const char*) { b = true; });
 
   aes.Decrypt(src, dst, key1);
 

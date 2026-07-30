@@ -103,9 +103,11 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
 
   /* Read vault */
 
-  src_buff_.assign(src_size_, 0);
+  const size_t src_bytes = static_cast<size_t>(src_size_);
 
-  if (fread(src_buff_.data(), sizeof(uint8_t), src_size_, file_) != src_size_) {
+  src_buff_.assign(src_bytes, 0);
+
+  if (fread(src_buff_.data(), sizeof(uint8_t), src_bytes, file_) != src_bytes) {
     // LCOV_EXCL_START
     ReportError("[File] Read failed - Cannot read vault file data\n");
     return Result::kFailure;
@@ -223,7 +225,9 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::
     // LCOV_EXCL_STOP
   }
 
-  dst_buff_.assign(dst_size_, 0);
+  const size_t dst_bytes = static_cast<size_t>(dst_size_);
+
+  dst_buff_.assign(dst_bytes, 0);
 
   memcpy(dst_buff_.data(), &magic_num_, kMagicSize);
 
@@ -247,7 +251,7 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::
     return Result::kFailure;
   }
 
-  if (fwrite(dst_buff_.data(), sizeof(uint8_t), dst_size_, file_) != dst_size_) {
+  if (fwrite(dst_buff_.data(), sizeof(uint8_t), dst_bytes, file_) != dst_bytes) {
     // LCOV_EXCL_START
     ReportError("[File] Write failed - Cannot write temporary file\n");
     RemoveFile(tmp_path);

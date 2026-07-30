@@ -41,13 +41,13 @@ PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
 }
 
 Result PWLineEdit::Extract(Password& pw) {
-  QByteArray data = pw_line_->text().toUtf8();
+  QByteArray utf8 = pw_line_->text().toUtf8();
 
-  Result res = pw.SetData(data.constData(), static_cast<size_t>(data.size()));
+  Result res = pw.SetData(utf8.constData(), static_cast<size_t>(utf8.size()));
 
   /* Wipe the transient UTF-8 copy */
 
-  sodium_memzero(data.data(), static_cast<size_t>(data.size()));
+  sodium_memzero(utf8.data(), static_cast<size_t>(utf8.size()));
 
   pw_line_->clear();
 
