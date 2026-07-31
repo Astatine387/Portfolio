@@ -5,14 +5,22 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-# Compiler warnings
+option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 add_library(project_warnings INTERFACE)
 
 if(MSVC)
-    target_compile_options(project_warnings INTERFACE /W4)
+    target_compile_options(project_warnings INTERFACE /W4 /utf-8)
+
+    if(WARNINGS_AS_ERRORS)
+        target_compile_options(project_warnings INTERFACE /WX)
+    endif()
 else()
     target_compile_options(project_warnings INTERFACE -Wall -Wextra)
+
+    if(WARNINGS_AS_ERRORS)
+        target_compile_options(project_warnings INTERFACE -Werror)
+    endif()
 endif()
 
 option(COVERAGE "Enable coverage reporting" OFF)
