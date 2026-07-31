@@ -115,6 +115,7 @@ jobs:
           cd Projects/FileEncryption
           cmake -B build `
             -DCMAKE_BUILD_TYPE=Release `
+            -DWARNINGS_AS_ERRORS=ON `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
           cmake --build build --config Release
 
@@ -181,7 +182,7 @@ jobs:
       - name: Build with Coverage (Debug)
         run: |
           cd Projects/FileEncryption
-          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE=ON
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCOVERAGE=ON -DWARNINGS_AS_ERRORS=ON
           cmake --build build
 
       - name: Test
@@ -234,7 +235,7 @@ jobs:
       - name: Build with AddressSanitizer (Debug)
         run: |
           cd Projects/FileEncryption
-          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DSANITIZE=ON
+          cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSANITIZE=ON -DWARNINGS_AS_ERRORS=ON
           cmake --build build
 
       - name: Test
