@@ -87,9 +87,11 @@ class CryptoWorkerTest : public ::testing::Test {
 
     vec.resize(static_cast<size_t>(size));
 
-    fread(vec.data(), sizeof(uint8_t), vec.size(), file);
+    size_t res = fread(vec.data(), sizeof(uint8_t), vec.size(), file);
 
     fclose(file);
+
+    EXPECT_EQ(res, vec.size());
   }
 };
 

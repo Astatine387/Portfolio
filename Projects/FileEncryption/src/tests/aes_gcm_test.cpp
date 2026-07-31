@@ -99,9 +99,11 @@ class AesGcmTest : public ::testing::Test {
 
     vec.resize(size);
 
-    fread(vec.data(), sizeof(uint8_t), size, file);
+    size_t res = fread(vec.data(), sizeof(uint8_t), vec.size(), file);
 
     fclose(file);
+
+    EXPECT_EQ(res, vec.size());
   }
 };
 

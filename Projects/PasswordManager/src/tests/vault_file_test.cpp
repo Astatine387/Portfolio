@@ -93,7 +93,8 @@ class VaultFileTest : public ::testing::Test {
 
       if (size > 0) {
         buff.resize(static_cast<size_t>(size));
-        fread(buff.data(), sizeof(uint8_t), size, file);
+
+        EXPECT_EQ(fread(buff.data(), sizeof(uint8_t), buff.size(), file), buff.size());
       }
 
       fclose(file);

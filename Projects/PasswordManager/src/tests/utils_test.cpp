@@ -447,7 +447,8 @@ TEST(UtilsTest, RenameFileOverwrite) {
 
   std::array<char, 32> arr{};
 
-  fread(arr.data(), 1, size, file);
+  EXPECT_EQ(fread(arr.data(), 1, size, file), static_cast<size_t>(size));
+
   fclose(file);
 
   EXPECT_EQ(memcmp(arr.data(), src_data, strlen(src_data)), 0);
