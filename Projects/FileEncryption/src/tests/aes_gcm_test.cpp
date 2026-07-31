@@ -985,7 +985,7 @@ TEST_F(AesGcmTest, ThrowingErrorCallbackDoesNotTerminate) {
   OpenFile(&src, enc_path_, "rb");
   OpenFile(&dst, dec_path_, "rb");
 
-  aes.SetErrorCallback([&](const char* msg) {
+  aes.SetErrorCallback([&](const char*) {
     calls++;
 
     throw std::runtime_error("error callback failed");

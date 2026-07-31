@@ -60,14 +60,16 @@ Result AesGcm::DecryptInit() {
     // LCOV_EXCL_STOP
   }
 
-  if (src_size_ < kSaltSize + kIVSize + kTagSize) {
+  constexpr int64_t kHeaderSize = static_cast<int64_t>(kSaltSize + kIVSize + kTagSize);
+
+  if (src_size_ < kHeaderSize) {
     // LCOV_EXCL_START
     ReportError("[File] Validation failed - File should be at least 44 bytes\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  src_size_ -= kSaltSize + kIVSize + kTagSize;
+  src_size_ -= kHeaderSize;
 
   /* Double the progress as there are two passes */
 

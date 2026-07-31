@@ -183,7 +183,7 @@ TEST_F(CryptoWorkerTest, ProgressCallbackReportsDecrypting) {
 
   CryptoWorker dec(enc_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
 
-  dec.SetProgressCallback([&](int perc, const std::string& msg) { status = msg; });
+  dec.SetProgressCallback([&](int, const std::string& msg) { status = msg; });
 
   dec.Work();
 
