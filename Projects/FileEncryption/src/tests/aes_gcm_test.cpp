@@ -59,7 +59,7 @@ class AesGcmTest : public ::testing::Test {
   static std::vector<uint8_t> ToBytes(const char* str) {
     const auto* bytes = reinterpret_cast<const uint8_t*>(str);
 
-    return std::vector<uint8_t>(bytes, bytes + strlen(str));
+    return { bytes, bytes + strlen(str) };
   }
 
   /**
