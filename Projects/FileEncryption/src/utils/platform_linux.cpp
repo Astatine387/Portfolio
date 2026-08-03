@@ -48,7 +48,7 @@ Result Random(uint8_t* dst, size_t size) {
     }
 
     dst += result;
-    remaining -= result;
+    remaining -= static_cast<size_t>(result);
   }
 
   return Result::kSuccess;

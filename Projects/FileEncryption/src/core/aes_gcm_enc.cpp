@@ -192,7 +192,7 @@ Result AesGcm::EncryptBatch() {
 
     /* Update progress */
 
-    progress_cur_ += kBuffSize * kBlockSize;
+    progress_cur_ += static_cast<int64_t>(kBuffSize * kBlockSize);
 
     ReportProgress();
 
