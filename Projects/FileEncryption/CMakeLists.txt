@@ -9,12 +9,16 @@ option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 add_library(project_warnings INTERFACE)
 
+add_library(project_warnings_strict INTERFACE)
+target_link_libraries(project_warnings_strict INTERFACE project_warnings)
+
 if(MSVC)
     target_compile_options(project_warnings INTERFACE
         /W4 /utf-8
-        /w14365
         /external:anglebrackets
         /external:W0)
+
+    target_compile_options(project_warnings_strict INTERFACE /w14365)
 
     if(WARNINGS_AS_ERRORS)
         target_compile_options(project_warnings INTERFACE /WX)
@@ -116,7 +120,7 @@ target_link_libraries(FileEncryption-core PUBLIC
     ${SODIUM_LIBRARY}
 )
 
-target_link_libraries(FileEncryption-core PRIVATE project_warnings)
+target_link_libraries(FileEncryption-core PRIVATE project_warnings_strict)
 
 if(WIN32)
     target_link_libraries(FileEncryption-core PUBLIC bcrypt)
@@ -173,7 +177,7 @@ target_link_libraries(FileEncryption-tests PRIVATE
     GTest::gtest
     GTest::gtest_main
     Threads::Threads
-    project_warnings
+    project_warnings_strict
 )
 
 include(GoogleTest)
@@ -201,7 +205,7 @@ if(benchmark_FOUND)
         FileEncryption-core
         benchmark::benchmark
         benchmark::benchmark_main
-        project_warnings
+        project_warnings_strict
     )
 endif()
 
