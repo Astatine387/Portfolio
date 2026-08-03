@@ -51,6 +51,15 @@ class CryptoWorkerTest : public ::testing::Test {
   }
 
   /**
+   * @brief   Convert a C string to a byte vector
+   */
+  static std::vector<uint8_t> ToBytes(const char* str) {
+    const auto* bytes = reinterpret_cast<const uint8_t*>(str);
+
+    return { bytes, bytes + strlen(str) };
+  }
+
+  /**
    * @brief   Create test file
    * @param   path    File path
    * @param   data    File content
@@ -104,8 +113,7 @@ class CryptoWorkerTest : public ::testing::Test {
  */
 TEST_F(CryptoWorkerTest, EncryptDecryptRoundTrip) {
   const char* data = "Hello, world!";
-  int dsize = static_cast<int>(strlen(data));
-  std::vector<uint8_t> orig(data, data + dsize), copy;
+  std::vector<uint8_t> orig = ToBytes(data), copy;
   std::string enc_msg, dec_msg;
 
   Create(src_path_, orig);
@@ -257,8 +265,7 @@ TEST_F(CryptoWorkerTest, CancelRemovesOutput) {
  */
 TEST_F(CryptoWorkerTest, WrongPasswordRemovesOutput) {
   const char* data = "Hello, world!";
-  int dsize = static_cast<int>(strlen(data));
-  std::vector<uint8_t> orig(data, data + dsize);
+  std::vector<uint8_t> orig = ToBytes(data);
   std::string enc_msg, dec_msg;
 
   Create(src_path_, orig);
@@ -325,8 +332,7 @@ TEST_F(CryptoWorkerTest, MissingSourceReportsError) {
  */
 TEST_F(CryptoWorkerTest, UncreatableDestinationReportsError) {
   const char* data = "Hello, world!";
-  int dsize = static_cast<int>(strlen(data));
-  std::vector<uint8_t> orig(data, data + dsize);
+  std::vector<uint8_t> orig = ToBytes(data);
   std::string msg;
 
   Create(src_path_, orig);
