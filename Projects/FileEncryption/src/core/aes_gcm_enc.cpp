@@ -140,18 +140,23 @@ Result AesGcm::EncryptInit(std::span<const uint8_t, kSaltSize> salt) {
   return Result::kSuccess;
 }
 
-Result AesGcm::EncryptBuff(void* src, void* dst, int srclen) {
+Result AesGcm::EncryptBuff(void* src, void* dst, size_t srclen) {
+  if (srclen > kBuffSize * kBlockSize) {
+    ReportError("[Crypto] Encryption failed - Buffer is too large\n");
+    return Result::kFailure;
+  }
+
+  const int len = static_cast<int>(srclen);
   int dstlen;
 
-  if (EVP_EncryptUpdate(ctx_, static_cast<unsigned char*>(dst), &dstlen, static_cast<unsigned char*>(src), srclen) !=
-      1) {
+  if (EVP_EncryptUpdate(ctx_, static_cast<unsigned char*>(dst), &dstlen, static_cast<unsigned char*>(src), len) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  if (dstlen != srclen) {
+  if (dstlen != len) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
     return Result::kFailure;
@@ -162,7 +167,7 @@ Result AesGcm::EncryptBuff(void* src, void* dst, int srclen) {
 }
 
 Result AesGcm::EncryptBatch() {
-  int cur = 0;
+  size_t cur = 0;
 
   while (progress_cur_ + static_cast<int64_t>(kBuffSize * kBlockSize) <= src_size_) {
     /* Read and encrypt current buffer */
@@ -207,7 +212,7 @@ Result AesGcm::EncryptBatch() {
 }
 
 Result AesGcm::EncryptRemain() {
-  int rem = static_cast<int>(src_size_ % (kBuffSize * kBlockSize));
+  const size_t rem = static_cast<size_t>(src_size_ % static_cast<int64_t>(kBuffSize * kBlockSize));
 
   if (ReadFile(buff_[0].data(), rem) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
@@ -223,7 +228,7 @@ Result AesGcm::EncryptRemain() {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  progress_cur_ += rem;
+  progress_cur_ += static_cast<int64_t>(rem);
 
   ReportProgress();
 
@@ -245,7 +250,7 @@ Result AesGcm::EncryptFinal() {
     // LCOV_EXCL_STOP
   }
 
-  if (final_len > 0 && WriteFile(final_block.data(), final_len) == Result::kFailure) {
+  if (final_len > 0 && WriteFile(final_block.data(), static_cast<size_t>(final_len)) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 

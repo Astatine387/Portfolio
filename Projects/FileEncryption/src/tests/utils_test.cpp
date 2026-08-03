@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <string>
 
@@ -207,16 +208,10 @@ TEST_F(OpenFileTest, OpenExisting) {
  */
 TEST(RandomTest, GeneratesNonZero) {
   std::array<uint8_t, 32> buff{};
-  bool all_zero = true;
 
-  EXPECT_EQ(Random(buff.data(), 32), Result::kSuccess);
+  EXPECT_EQ(Random(buff.data(), buff.size()), Result::kSuccess);
 
-  for (int i = 0; i < 32; i++) {
-    if (buff[i]) {
-      all_zero = false;
-      break;
-    }
-  }
+  const bool all_zero = std::ranges::all_of(buff, [](uint8_t b) { return b == 0; });
 
   EXPECT_FALSE(all_zero);
 }

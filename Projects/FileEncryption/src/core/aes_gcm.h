@@ -225,7 +225,7 @@ class AesGcm {
    * @param	    srclen	Source buffer length
    * @return	kSuccess on success, kFailure on failure
    */
-  Result DecryptBuff(void* src, void* dst, int srclen);
+  Result DecryptBuff(void* src, void* dst, size_t srclen);
 
   /**
    * @brief	Finialize decryption
@@ -257,7 +257,7 @@ class AesGcm {
    * @param		srclen	Source buffer length
    * @return	kSuccess on success, kFailure on failure
    */
-  Result EncryptBuff(void* src, void* dst, int srclen);
+  Result EncryptBuff(void* src, void* dst, size_t srclen);
 
   /**
    * @brief		Encrypt multiple blocks in a batch

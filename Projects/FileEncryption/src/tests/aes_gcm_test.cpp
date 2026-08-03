@@ -54,6 +54,15 @@ class AesGcmTest : public ::testing::Test {
   }
 
   /**
+   * @brief   Convert a C string to a byte vector
+   */
+  static std::vector<uint8_t> ToBytes(const char* str) {
+    const auto* bytes = reinterpret_cast<const uint8_t*>(str);
+
+    return std::vector<uint8_t>(bytes, bytes + strlen(str));
+  }
+
+  /**
    * @brief   Derive a key from a password and salt
    */
   static SecureKey MakeKey(const char* pw, const std::array<uint8_t, kSaltSize>& salt) {
@@ -67,7 +76,7 @@ class AesGcmTest : public ::testing::Test {
    * @param   data    File content
    * @param   size    File size
    */
-  void Create(const std::string& path, std::vector<uint8_t>& data, int size) {
+  void Create(const std::string& path, std::vector<uint8_t>& data, size_t size) {
     FILE* file = nullptr;
 
     OpenFile(&file, path, "wb");
@@ -88,16 +97,21 @@ class AesGcmTest : public ::testing::Test {
    */
   void Read(std::string& path, std::vector<uint8_t>& vec) {
     FILE* file = nullptr;
-    uint64_t size;
 
     OpenFile(&file, path, "rb");
 
-    if (!file)
+    if (!file) {
       return;
+    }
 
-    size = GetFileSize(file);
+    const int64_t fsize = GetFileSize(file);
 
-    vec.resize(size);
+    if (fsize < 0) {
+      fclose(file);
+      return;
+    }
+
+    vec.resize(static_cast<size_t>(fsize));
 
     size_t res = fread(vec.data(), sizeof(uint8_t), vec.size(), file);
 
@@ -117,10 +131,10 @@ class AesGcmTest : public ::testing::Test {
 TEST_F(AesGcmTest, EncryptDecryptBasic) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  const char* data = "Hello, world!";
-  int dsize = static_cast<int>(strlen(data));
   Result res;
-  std::vector<uint8_t> orig(data, data + dsize), copy;
+  const char* data = "Hello, world!";
+  const size_t dsize = strlen(data);
+  std::vector<uint8_t> orig = ToBytes(data), copy;
 
   auto salt = MakeSalt(0xA5);
   SecureKey key = MakeKey("password", salt);
@@ -175,8 +189,8 @@ TEST_F(AesGcmTest, EncryptProducesDifferentOutput) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
-  int dsize = static_cast<int>(strlen(data));
-  std::vector<uint8_t> orig(data, data + dsize), enc0, enc1;
+  const size_t dsize = strlen(data);
+  std::vector<uint8_t> orig = ToBytes(data), enc0, enc1;
 
   auto salt = MakeSalt(0xA5);
   SecureKey key = MakeKey("password", salt);
@@ -227,10 +241,10 @@ TEST_F(AesGcmTest, EncryptProducesDifferentOutput) {
 TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  const char* data = "Hello, world!";
-  int dsize = static_cast<int>(strlen(data));
-  std::vector<uint8_t> orig(data, data + dsize);
   Result res0, res1;
+  const char* data = "Hello, world!";
+  const size_t dsize = strlen(data);
+  std::vector<uint8_t> orig = ToBytes(data);
 
   auto salt = MakeSalt(0xA5);
   SecureKey key = MakeKey("password", salt);
@@ -281,10 +295,10 @@ TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
 TEST_F(AesGcmTest, DecryptWrongKey) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  const char* data = "Hello, world!";
-  int dsize = static_cast<int>(strlen(data));
   Result res;
-  std::vector<uint8_t> orig(data, data + dsize);
+  const char* data = "Hello, world!";
+  const size_t dsize = strlen(data);
+  std::vector<uint8_t> orig = ToBytes(data);
 
   auto salt = MakeSalt(0xA5);
   SecureKey key0 = MakeKey("password", salt);
@@ -332,9 +346,9 @@ TEST_F(AesGcmTest, TamperedCiphertext) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   const char* data = "Hello, world!";
-  int dsize = static_cast<int>(strlen(data));
+  const size_t dsize = strlen(data);
   Result res;
-  std::vector<uint8_t> orig(data, data + dsize), copy;
+  std::vector<uint8_t> orig = ToBytes(data), copy;
 
   auto salt = MakeSalt(0xA5);
   SecureKey key = MakeKey("password", salt);
@@ -362,7 +376,7 @@ TEST_F(AesGcmTest, TamperedCiphertext) {
 
   copy[kSaltSize + kIVSize] ^= 0xFF;
 
-  Create(enc_path_, copy, static_cast<int>(copy.size()));
+  Create(enc_path_, copy, copy.size());
 
   /* Decrypt */
 
@@ -388,10 +402,10 @@ TEST_F(AesGcmTest, TamperedCiphertext) {
 TEST_F(AesGcmTest, TamperedTag) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  const char* data = "Hello, world!";
-  int dsize = static_cast<int>(strlen(data));
   Result res;
-  std::vector<uint8_t> orig(data, data + dsize), copy;
+  const char* data = "Hello, world!";
+  const size_t dsize = strlen(data);
+  std::vector<uint8_t> orig = ToBytes(data), copy;
 
   auto salt = MakeSalt(0xA5);
   SecureKey key = MakeKey("password", salt);
@@ -419,7 +433,7 @@ TEST_F(AesGcmTest, TamperedTag) {
 
   copy[copy.size() - 1] ^= 0xFF;
 
-  Create(enc_path_, copy, static_cast<int>(copy.size()));
+  Create(enc_path_, copy, copy.size());
 
   /* Decrypt */
 
@@ -450,7 +464,7 @@ TEST_F(AesGcmTest, EmptyFile) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig, copy;
-  int dsize = 0;
+  const size_t dsize = 0;
   Result res;
 
   auto salt = MakeSalt(0xA5);
@@ -505,14 +519,14 @@ TEST_F(AesGcmTest, EmptyFile) {
 TEST_F(AesGcmTest, ExactBuffSizeFile) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> orig, copy;
-  int dsize = kBlockSize * kBuffSize;
   Result res;
+  std::vector<uint8_t> orig, copy;
+  const size_t dsize = kBlockSize * kBuffSize;
 
   auto salt = MakeSalt(0xA5);
   SecureKey key = MakeKey("password", salt);
 
-  orig.resize(dsize, 'a');
+  orig.resize(dsize, uint8_t{ 'a' });
 
   Create(src_path_, orig, dsize);
 
@@ -563,14 +577,14 @@ TEST_F(AesGcmTest, ExactBuffSizeFile) {
 TEST_F(AesGcmTest, ArbitrarySizeFile) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> orig, copy;
-  int dsize = 50000;
   Result res;
+  std::vector<uint8_t> orig, copy;
+  const size_t dsize = 50000;
 
   auto salt = MakeSalt(0xA5);
   SecureKey key = MakeKey("password", salt);
 
-  orig.resize(dsize, 'a');
+  orig.resize(dsize, uint8_t{ 'a' });
 
   Create(src_path_, orig, dsize);
 
@@ -626,13 +640,13 @@ TEST_F(AesGcmTest, ProgressCallback) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   std::vector<uint8_t> orig;
-  int dsize = kBlockSize * kBuffSize * 10;
+  const size_t dsize = kBlockSize * kBuffSize * 10;
   int cnt = 0, last = -1;
 
   auto salt = MakeSalt(0xA5);
   SecureKey key = MakeKey("password", salt);
 
-  orig.resize(dsize, 'a');
+  orig.resize(dsize, uint8_t{ 'a' });
 
   Create(src_path_, orig, dsize);
 
@@ -670,8 +684,8 @@ TEST_F(AesGcmTest, ErrorCallback) {
   FILE *src = nullptr, *dst = nullptr;
   bool b = false;
   const char* data = "Hello, world!";
-  int dsize = static_cast<int>(strlen(data));
-  std::vector<uint8_t> orig(data, data + dsize);
+  const size_t dsize = strlen(data);
+  std::vector<uint8_t> orig = ToBytes(data);
 
   auto salt = MakeSalt(0xA5);
   SecureKey key0 = MakeKey("password", salt);
@@ -721,10 +735,10 @@ TEST_F(AesGcmTest, ErrorCallbackFormatsQueue) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
   bool called = false;
-  std::string captured;
   const char* data = "Hello, world!";
-  int dsize = static_cast<int>(strlen(data));
-  std::vector<uint8_t> orig(data, data + dsize);
+  const size_t dsize = strlen(data);
+  std::string captured;
+  std::vector<uint8_t> orig = ToBytes(data);
 
   auto salt = MakeSalt(0xA5);
   SecureKey key0 = MakeKey("password", salt);
@@ -784,16 +798,16 @@ TEST_F(AesGcmTest, ErrorCallbackFormatsQueue) {
 TEST_F(AesGcmTest, Cancellation) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> orig;
-  int dsize = kBlockSize * kBuffSize * 10;
-  int cnt = 0;
   Result res;
   std::atomic<bool> cancel{ false };
+  std::vector<uint8_t> orig;
+  const size_t dsize = kBlockSize * kBuffSize * 10;
+  int cnt = 0;
 
   auto salt = MakeSalt(0xA5);
   SecureKey key = MakeKey("password", salt);
 
-  orig.resize(dsize, 'a');
+  orig.resize(dsize, uint8_t{ 'a' });
 
   Create(src_path_, orig, dsize);
 
@@ -834,15 +848,15 @@ TEST_F(AesGcmTest, Cancellation) {
 TEST_F(AesGcmTest, CancelDuringWritePass) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> orig;
-  int dsize = kBlockSize * kBuffSize * 10;
   Result res;
   std::atomic<bool> cancel{ false };
+  std::vector<uint8_t> orig;
+  const size_t dsize = kBlockSize * kBuffSize * 10;
 
   auto salt = MakeSalt(0xA5);
   SecureKey key = MakeKey("password", salt);
 
-  orig.resize(dsize, 'a');
+  orig.resize(dsize, uint8_t{ 'a' });
 
   Create(src_path_, orig, dsize);
 
@@ -897,15 +911,15 @@ TEST_F(AesGcmTest, CancelDuringWritePass) {
 TEST_F(AesGcmTest, WriteFailureIsSticky) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> orig;
-  int dsize = kBlockSize * kBuffSize * 4;
-  std::string captured;
   Result res;
+  std::string captured;
+  std::vector<uint8_t> orig;
+  const size_t dsize = kBlockSize * kBuffSize * 4;
 
   auto salt = MakeSalt(0x00);
   SecureKey key = MakeKey("password", salt);
 
-  orig.resize(dsize, 'a');
+  orig.resize(dsize, uint8_t{ 'a' });
 
   Create(src_path_, orig, dsize);
 
@@ -953,15 +967,15 @@ TEST_F(AesGcmTest, WriteFailureIsSticky) {
 TEST_F(AesGcmTest, ThrowingErrorCallbackDoesNotTerminate) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> orig;
-  int dsize = kBlockSize * kBuffSize * 4;
-  int calls = 0;
   Result res = Result::kSuccess;
+  std::vector<uint8_t> orig;
+  const size_t dsize = kBlockSize * kBuffSize * 4;
+  int calls = 0;
 
   auto salt = MakeSalt(0x00);
   SecureKey key = MakeKey("password", salt);
 
-  orig.resize(dsize, 'a');
+  orig.resize(dsize, uint8_t{ 'a' });
 
   Create(src_path_, orig, dsize);
 

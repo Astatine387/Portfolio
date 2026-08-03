@@ -112,18 +112,23 @@ Result AesGcm::DecryptInit() {
   return Result::kSuccess;
 }
 
-Result AesGcm::DecryptBuff(void* src, void* dst, int srclen) {
+Result AesGcm::DecryptBuff(void* src, void* dst, size_t srclen) {
+  if (srclen > kBuffSize * kBlockSize) {
+    ReportError("[Crypto] Decryption failed - Buffer is too large\n");
+    return Result::kFailure;
+  }
+
+  const int len = static_cast<int>(srclen);
   int dstlen;
 
-  if (EVP_DecryptUpdate(ctx_, static_cast<unsigned char*>(dst), &dstlen, static_cast<unsigned char*>(src), srclen) !=
-      1) {
+  if (EVP_DecryptUpdate(ctx_, static_cast<unsigned char*>(dst), &dstlen, static_cast<unsigned char*>(src), len) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Decryption failed - Cannot decrypt buffer\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  if (dstlen != srclen) {
+  if (dstlen != len) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Decryption failed - Cannot decrypt buffer\n");
     return Result::kFailure;
@@ -139,25 +144,25 @@ Result AesGcm::DecryptBatch(DecryptMode mode) {
   }
 
   int64_t rem = src_size_;
-  int cur = 0;
+  size_t cur = 0;
 
   while (rem > 0) {
-    int chunk = static_cast<int>(std::min<int64_t>(rem, kBuffSize * kBlockSize));
+    const size_t chunk_size = static_cast<size_t>(std::min<int64_t>(rem, kBuffSize * kBlockSize));
 
     /* Read and decrypt current buffer */
 
-    if (ReadFile(buff_[cur].data(), chunk) == Result::kFailure) {
+    if (ReadFile(buff_[cur].data(), chunk_size) == Result::kFailure) {
       return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
-    if (DecryptBuff(buff_[cur].data(), buff_[cur].data(), chunk) == Result::kFailure) {
+    if (DecryptBuff(buff_[cur].data(), buff_[cur].data(), chunk_size) == Result::kFailure) {
       return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
     if (mode == DecryptMode::kWrite) {
       /* Queue the buffer for asynchronous writing (waits for the previous write to finish) */
 
-      if (SubmitWrite(buff_[cur].data(), chunk) == Result::kFailure) {
+      if (SubmitWrite(buff_[cur].data(), chunk_size) == Result::kFailure) {
         return Result::kFailure;  // LCOV_EXCL_LINE
       }
 
@@ -168,8 +173,8 @@ Result AesGcm::DecryptBatch(DecryptMode mode) {
 
     /* Update progress */
 
-    rem -= chunk;
-    progress_cur_ += chunk;
+    rem -= static_cast<int64_t>(chunk_size);
+    progress_cur_ += static_cast<int64_t>(chunk_size);
 
     ReportProgress();
 

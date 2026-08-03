@@ -35,7 +35,7 @@ AesGcm::~AesGcm() {
     writer_.join();
   }
 
-  for (int i = 0; i < kBuffNum; i++) {
+  for (size_t i = 0; i < kBuffNum; i++) {
     sodium_memzero(buff_[i].data(), sizeof(buff_[i]));
   }
 

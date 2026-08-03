@@ -10,13 +10,18 @@ option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 add_library(project_warnings INTERFACE)
 
 if(MSVC)
-    target_compile_options(project_warnings INTERFACE /W4 /utf-8)
+    target_compile_options(project_warnings INTERFACE
+        /W4 /utf-8
+        /w14365
+        /external:anglebrackets
+        /external:W0)
 
     if(WARNINGS_AS_ERRORS)
         target_compile_options(project_warnings INTERFACE /WX)
     endif()
 else()
-    target_compile_options(project_warnings INTERFACE -Wall -Wextra)
+    target_compile_options(project_warnings INTERFACE
+        -Wall -Wextra -Wsign-conversion)
 
     if(WARNINGS_AS_ERRORS)
         target_compile_options(project_warnings INTERFACE -Werror)
@@ -99,10 +104,11 @@ set(CORE_HEADERS
 add_library(FileEncryption-core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
 
 target_include_directories(FileEncryption-core PUBLIC
-    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src)
+
+target_include_directories(FileEncryption-core SYSTEM PUBLIC
     ${ARGON2_INCLUDE_DIR}
-    ${SODIUM_INCLUDE_DIR}
-)
+    ${SODIUM_INCLUDE_DIR})
 
 target_link_libraries(FileEncryption-core PUBLIC
     OpenSSL::Crypto

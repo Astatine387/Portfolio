@@ -36,7 +36,7 @@ class Benchmark : public benchmark::Fixture {
     OpenFile(&file, src_path_, "wb");
 
     if (file) {
-      std::vector<uint8_t> data(size, 'a');
+      std::vector<uint8_t> data(size, uint8_t{ 'a' });
       fwrite(data.data(), 1, size, file);
       fclose(file);
     }
@@ -53,7 +53,7 @@ class Benchmark : public benchmark::Fixture {
  * @brief   Encryption benchmark
  */
 BENCHMARK_DEFINE_F(Benchmark, Encrypt)(benchmark::State& state) {
-  size_t size = state.range(0);
+  const size_t size = static_cast<size_t>(state.range(0));
 
   Create(size);
 
@@ -97,7 +97,7 @@ BENCHMARK_DEFINE_F(Benchmark, Encrypt)(benchmark::State& state) {
  * @brief   Decryption benchmark
  */
 BENCHMARK_DEFINE_F(Benchmark, Decrypt)(benchmark::State& state) {
-  size_t size = state.range(0);
+  const size_t size = static_cast<size_t>(state.range(0));
   Create(size);
 
   /* Derive the key once so the benchmark measures AES throughput, not Argon2 */
