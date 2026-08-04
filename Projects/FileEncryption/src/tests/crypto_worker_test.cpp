@@ -92,9 +92,14 @@ class CryptoWorkerTest : public ::testing::Test {
       return;
     }
 
-    int64_t size = GetFileSize(file);
+    const int64_t fsize = GetFileSize(file);
 
-    vec.resize(static_cast<size_t>(size));
+    if (fsize < 0) {
+      fclose(file);
+      return;
+    }
+
+    vec.resize(static_cast<size_t>(fsize));
 
     size_t res = fread(vec.data(), sizeof(uint8_t), vec.size(), file);
 

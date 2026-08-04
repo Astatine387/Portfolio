@@ -149,7 +149,7 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
     // LCOV_EXCL_STOP
   }
 
-  if (aes_.Decrypt(src_buff_.data() + kMagicSize, img_.Data(), src_size_ - kMagicSize, *key_) == Result::kFailure) {
+  if (aes_.Decrypt(src_buff_.data() + kMagicSize, img_.Data(), src_bytes - kMagicSize, *key_) == Result::kFailure) {
     Reset();
     ReportError("[Auth] Decryption failed - Invalid password or corrupted vault\n");
     return Result::kFailure;

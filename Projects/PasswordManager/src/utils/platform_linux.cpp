@@ -33,14 +33,14 @@ bool FileExists(const std::string& path) {
 }
 
 Result Random(uint8_t* dst, size_t size) {
-  size_t remaining = size;
+  size_t rem = size;
 
-  while (remaining > 0) {
-    ssize_t result = getrandom(dst, remaining, 0);
+  while (rem > 0) {
+    ssize_t res = getrandom(dst, rem, 0);
 
-    if (result == -1) {
+    if (res <= 0) {
       // LCOV_EXCL_START
-      if (errno == EINTR) {
+      if (res == -1 && errno == EINTR) {
         continue;
       }
 
@@ -48,8 +48,10 @@ Result Random(uint8_t* dst, size_t size) {
       // LCOV_EXCL_STOP
     }
 
-    dst += result;
-    remaining -= result;
+    const size_t size = static_cast<size_t>(res);
+
+    dst += size;
+    rem -= size;
   }
 
   return Result::kSuccess;

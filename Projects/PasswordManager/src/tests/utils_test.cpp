@@ -206,17 +206,11 @@ TEST_F(OpenFileTest, OpenExisting) {
  * The probability of 32 random bytes being all zero is negligible (2^-256)
  */
 TEST(RandomTest, GeneratesNonZero) {
-  std::array<uint8_t, 32> arr{};
-  bool all_zero = true;
+  std::array<uint8_t, 32> buff{};
 
-  EXPECT_EQ(Random(arr.data(), 32), Result::kSuccess);
+  EXPECT_EQ(Random(buff.data(), buff.size()), Result::kSuccess);
 
-  for (int i = 0; i < 32; i++) {
-    if (arr[i]) {
-      all_zero = false;
-      break;
-    }
-  }
+  const bool all_zero = std::ranges::all_of(buff, [](uint8_t b) { return b == 0; });
 
   EXPECT_FALSE(all_zero);
 }
@@ -441,13 +435,17 @@ TEST(UtilsTest, RenameFileOverwrite) {
   OpenFile(&file, dst, "rb");
   ASSERT_NE(file, nullptr);
 
-  int64_t size = GetFileSize(file);
+  int64_t tmp = GetFileSize(file);
 
-  EXPECT_EQ(size, static_cast<int64_t>(strlen(src_data)));
+  ASSERT_GT(tmp, 0);
+  EXPECT_EQ(tmp, static_cast<int64_t>(strlen(src_data)));
+
+  const size_t fsize = static_cast<size_t>(tmp);
 
   std::array<char, 32> arr{};
 
-  EXPECT_EQ(fread(arr.data(), 1, size, file), static_cast<size_t>(size));
+  ASSERT_LE(fsize, arr.size());
+  EXPECT_EQ(fread(arr.data(), 1, fsize, file), fsize);
 
   fclose(file);
 

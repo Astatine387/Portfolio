@@ -137,9 +137,6 @@ Result AesGcm::EncryptFinal() {
     // LCOV_EXCL_STOP
   }
 
-  memcpy(dst_buff_ + dst_crs_, final_block.data(), final_len);
-  dst_crs_ += final_len;
-
   return Result::kSuccess;
 }
 

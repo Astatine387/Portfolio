@@ -318,30 +318,38 @@ TEST_F(VaultFileTest, OpenTamperedCiphertext) {
   /* Read back the valid vault file created in SetUp */
 
   OpenFile(&file, path_, "rb");
+
   ASSERT_NE(file, nullptr);
 
-  int64_t size = GetFileSize(file);
-  ASSERT_GT(size, 0);
+  const int64_t tmp = GetFileSize(file);
 
-  std::vector<uint8_t> buff(size);
+  ASSERT_GT(tmp, 0);
 
-  ASSERT_EQ(fread(buff.data(), sizeof(uint8_t), size, file), static_cast<size_t>(size));
+  const size_t fsize = static_cast<size_t>(tmp);
+
+  std::vector<uint8_t> buff(fsize);
+
+  ASSERT_EQ(fread(buff.data(), sizeof(uint8_t), fsize, file), fsize);
+
   fclose(file);
 
   /* Flip the first ciphertext byte, leaving magic, salt and IV intact */
 
-  size_t ct_off = kMagicSize + kSaltSize + kIVSize;
+  const size_t offset = kMagicSize + kSaltSize + kIVSize;
 
-  buff[ct_off] ^= 0xFF;
+  ASSERT_LT(offset, fsize);
+
+  buff[offset] ^= 0xFF;
 
   EXPECT_EQ(memcmp(buff.data(), &kMagicNum, kMagicSize), 0);
 
   /* Write the tampered vault back */
 
   OpenFile(&file, path_, "wb");
-  ASSERT_NE(file, nullptr);
 
-  fwrite(buff.data(), sizeof(uint8_t), size, file);
+  ASSERT_NE(file, nullptr);
+  ASSERT_EQ(fwrite(buff.data(), sizeof(uint8_t), fsize, file), fsize);
+
   fclose(file);
 
   EXPECT_EQ(Reload(), Result::kFailure);

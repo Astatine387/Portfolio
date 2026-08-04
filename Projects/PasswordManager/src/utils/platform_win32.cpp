@@ -13,6 +13,14 @@
 
 #include "utils/platform.h"
 
+namespace {
+
+std::filesystem::path ToPath(const std::string& path) {
+  return std::filesystem::path(std::u8string(reinterpret_cast<const char8_t*>(path.data()), path.size()));
+}
+
+}  // namespace
+
 int64_t GetFileSize(FILE* file) {
   if (_fseeki64(file, 0, SEEK_END)) {
     return -1;
@@ -28,7 +36,7 @@ int64_t GetFileSize(FILE* file) {
 }
 
 bool FileExists(const std::string& path) {
-  std::filesystem::path fs_path(std::u8string(path.begin(), path.end()));
+  std::filesystem::path fs_path = ToPath(path);
   return std::filesystem::exists(fs_path);
 }
 
@@ -41,7 +49,7 @@ Result Random(uint8_t* dst, size_t size) {
 }
 
 Result RemoveFile(const std::string& path) {
-  std::filesystem::path fs_path(std::u8string(path.begin(), path.end()));
+  std::filesystem::path fs_path = ToPath(path);
 
   if (_wunlink(fs_path.c_str())) {
     return Result::kFailure;
@@ -51,8 +59,8 @@ Result RemoveFile(const std::string& path) {
 }
 
 Result RenameFile(const std::string& src, const std::string& dst) {
-  std::filesystem::path src_path(std::u8string(src.begin(), src.end()));
-  std::filesystem::path dst_path(std::u8string(dst.begin(), dst.end()));
+  std::filesystem::path src_path = ToPath(src);
+  std::filesystem::path dst_path = ToPath(dst);
 
   if (!MoveFileExW(src_path.c_str(), dst_path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
     return Result::kFailure;  // LCOV_EXCL_LINE
@@ -87,7 +95,7 @@ Result SyncDir([[maybe_unused]] const std::string& path) {
 }
 
 void OpenFile(FILE** file, const std::string& path, const char* mode) {
-  std::filesystem::path fs_path(std::u8string(path.begin(), path.end()));
+  std::filesystem::path fs_path = ToPath(path);
   std::wstring wmode;
 
   for (const char* p = mode; *p; ++p) {

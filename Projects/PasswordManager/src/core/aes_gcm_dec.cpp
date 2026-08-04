@@ -29,15 +29,17 @@ Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey&
   size_t dst_crs = 0;
 
   while (rem > 0) {
-    int chunk = static_cast<int>(std::min<int64_t>(rem, kBuffSize * kBlockSize));
+    int chunk_size = static_cast<int>(std::min<int64_t>(rem, kBuffSize * kBlockSize));
 
-    if (DecryptBuff(src_buff_ + src_crs, dst_buff_ + dst_crs, chunk) == Result::kFailure) {
+    if (DecryptBuff(src_buff_ + src_crs, dst_buff_ + dst_crs, chunk_size) == Result::kFailure) {
       return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
-    src_crs += chunk;
-    dst_crs += chunk;
-    rem -= chunk;
+    const size_t adv = static_cast<size_t>(chunk_size);
+
+    src_crs += adv;
+    dst_crs += adv;
+    rem -= chunk_size;
   }
 
   return DecryptFinal();
