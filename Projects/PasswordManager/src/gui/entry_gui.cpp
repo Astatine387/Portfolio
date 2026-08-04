@@ -29,6 +29,8 @@ const std::array<bool, 32> kDefaultSpcs = {
   false, false, true, false, false, false, false, true
   //  '      "     ,      <      .      >      /     ?
 };
+
+static_assert(kSpcs.size() == kDefaultSpcs.size(), "Special character table and its default flags must be in sync");
 }  // namespace
 
 EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
@@ -71,13 +73,13 @@ EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
 
   /* Configure special character checkboxes */
 
-  for (int i = 0; i < 32; i++) {
+  for (size_t i = 0; i < spc_checks_.size(); i++) {
     QString label = QString(kSpcs[i]);
 
     spc_checks_[i] = new QCheckBox(label);
     spc_checks_[i]->setChecked(kDefaultSpcs[i]);
 
-    spc_grid_->addWidget(spc_checks_[i], i / 8, i % 8);
+    spc_grid_->addWidget(spc_checks_[i], static_cast<int>(i / 8), static_cast<int>(i % 8));
   }
 
   spc_grid_->setSpacing(5);
@@ -237,16 +239,18 @@ void EntryGUI::OnUncheckAllClicked() {
 }
 
 void EntryGUI::OnResetClicked() {
-  for (int i = 0; i < 32; i++) {
+  for (size_t i = 0; i < spc_checks_.size(); i++) {
     spc_checks_[i]->setChecked(kDefaultSpcs[i]);
   }
 }
 
 QVector<bool> EntryGUI::GetSpecialsList() {
-  QVector<bool> list(32);
+  QVector<bool> list;
 
-  for (int i = 0; i < 32; i++) {
-    list[i] = spc_checks_[i]->isChecked();
+  list.reserve(static_cast<qsizetype>(spc_checks_.size()));
+
+  for (auto spc : spc_checks_) {
+    list.append(spc->isChecked());
   }
 
   return list;
@@ -271,7 +275,7 @@ Result EntryGUI::GenPw(Password& dst, const QVector<bool>& spc_list, int pw_size
   std::array<char, kPoolMax> pool{};
   size_t pool_size = 62;
   char* pw;
-  int crs = 0;
+  size_t crs = 0;
 
   /* Check the special character list size is valid */
 
@@ -285,6 +289,8 @@ Result EntryGUI::GenPw(Password& dst, const QVector<bool>& spc_list, int pw_size
     return Result::kFailure;
   }
 
+  const size_t pw_len = static_cast<size_t>(pw_size);
+
   /* Add characters to pool */
 
   for (int i = 0; i < 32; i++) {
@@ -293,20 +299,20 @@ Result EntryGUI::GenPw(Password& dst, const QVector<bool>& spc_list, int pw_size
     }
   }
 
-  for (int i = 0; i < 26; i++) {
-    pool[crs++] = lower[i];
+  for (char c : lower) {
+    pool[crs++] = c;
   }
 
-  for (int i = 0; i < 26; i++) {
-    pool[crs++] = upper[i];
+  for (char c : upper) {
+    pool[crs++] = c;
   }
 
-  for (int i = 0; i < 10; i++) {
-    pool[crs++] = num[i];
+  for (char c : num) {
+    pool[crs++] = c;
   }
 
-  for (int i = 0; i < 32; i++) {
-    if (spc_list[i]) {
+  for (size_t i = 0; i < kSpcs.size(); i++) {
+    if (spc_list[static_cast<qsizetype>(i)]) {
       pool[crs++] = kSpcs[i];
     }
   }
@@ -321,7 +327,7 @@ Result EntryGUI::GenPw(Password& dst, const QVector<bool>& spc_list, int pw_size
 
   InitCrypto();
 
-  pw = static_cast<char*>(sodium_malloc(pw_size));
+  pw = static_cast<char*>(sodium_malloc(pw_len));
 
   if (pw == nullptr) {
     return Result::kFailure;
@@ -383,7 +389,7 @@ Result EntryGUI::GenPw(Password& dst, const QVector<bool>& spc_list, int pw_size
   /* Store only if every draw succeeded */
 
   if (res == Result::kSuccess) {
-    res = dst.SetData(pw, pw_size);
+    res = dst.SetData(pw, pw_len);
   }
 
   /* Cleanup */
