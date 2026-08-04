@@ -48,10 +48,10 @@ Result Random(uint8_t* dst, size_t size) {
       // LCOV_EXCL_STOP
     }
 
-    const size_t size = static_cast<size_t>(res);
+    const size_t len = static_cast<size_t>(res);
 
-    dst += size;
-    rem -= size;
+    dst += len;
+    rem -= len;
   }
 
   return Result::kSuccess;
