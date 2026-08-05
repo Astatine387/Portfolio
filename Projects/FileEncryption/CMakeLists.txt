@@ -7,30 +7,38 @@ set(CMAKE_AUTOMOC ON)
 
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
-add_library(project_warnings INTERFACE)
-
-add_library(project_warnings_strict INTERFACE)
-target_link_libraries(project_warnings_strict INTERFACE project_warnings)
-
 if(MSVC)
-    target_compile_options(project_warnings INTERFACE
+    set(BASE_WARNINGS
         /W4 /utf-8
         /external:anglebrackets
         /external:W0)
-
-    target_compile_options(project_warnings_strict INTERFACE /w14365)
-
-    if(WARNINGS_AS_ERRORS)
-        target_compile_options(project_warnings INTERFACE /WX)
-    endif()
+    set(STRICT_WARNINGS /w14365)
+    set(WARNINGS_AS_ERRORS_FLAG /WX)
 else()
-    target_compile_options(project_warnings INTERFACE
-        -Wall -Wextra -Wsign-conversion)
-
-    if(WARNINGS_AS_ERRORS)
-        target_compile_options(project_warnings INTERFACE -Werror)
-    endif()
+    set(BASE_WARNINGS -Wall -Wextra)
+    set(STRICT_WARNINGS -Wsign-conversion)
+    set(WARNINGS_AS_ERRORS_FLAG -Werror)
 endif()
+
+if(NOT BASE_WARNINGS OR NOT STRICT_WARNINGS OR NOT WARNINGS_AS_ERRORS_FLAG)
+    message(FATAL_ERROR
+        "Warning tiers are not fully defined for compiler "
+        "'${CMAKE_CXX_COMPILER_ID}'")
+endif()
+
+add_library(project_warnings INTERFACE)
+target_compile_options(project_warnings INTERFACE ${BASE_WARNINGS})
+
+add_library(project_warnings_strict INTERFACE)
+target_link_libraries(project_warnings_strict INTERFACE project_warnings)
+target_compile_options(project_warnings_strict INTERFACE ${STRICT_WARNINGS})
+
+if(WARNINGS_AS_ERRORS)
+    target_compile_options(project_warnings INTERFACE ${WARNINGS_AS_ERRORS_FLAG})
+endif()
+
+message(STATUS "Warnings (base)   : ${BASE_WARNINGS}")
+message(STATUS "Warnings (strict) : ${BASE_WARNINGS};${STRICT_WARNINGS}")
 
 option(COVERAGE "Enable coverage reporting" OFF)
 
