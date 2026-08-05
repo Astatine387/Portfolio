@@ -23,7 +23,7 @@ jobs:
   # ============================================================
 
   format-check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
   # ============================================================
 
   tidy-check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: format-check
     steps:
       - name: Checkout code
@@ -59,14 +59,16 @@ jobs:
         with:
           vcpkgGitCommitId: '0a434205c521ca43d66921271ae2a1d051e718a5'
 
-      - name: Install clang-tidy
-        run: sudo apt-get update && sudo apt-get install -y clang-tidy
+      - name: Install clang and clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y clang clang-tidy
 
       - name: Configure (generate compile_commands.json)
         run: |
           cd Projects/FileEncryption
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DWARNINGS_AS_ERRORS=ON \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DVCPKG_TARGET_TRIPLET=x64-linux-dynsodium \
             -DVCPKG_OVERLAY_TRIPLETS="$PWD/triplets" \
@@ -88,7 +90,7 @@ jobs:
 
   build-windows-fileencryption:
     needs: format-check
-    runs-on: windows-latest
+    runs-on: windows-2025
     
     steps:
       - name: Checkout code
@@ -155,7 +157,7 @@ jobs:
   # ============================================================
 
   build-linux-fileencryption:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       
@@ -219,7 +221,7 @@ jobs:
   # ============================================================
 
   sanitize-linux-fileencryption:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -248,7 +250,7 @@ jobs:
   # ============================================================
 
   tsan-linux-fileencryption:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -264,7 +266,7 @@ jobs:
       - name: Build with ThreadSanitizer (Debug)
         run: |
           cd Projects/FileEncryption
-          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DTHREAD_SANITIZE=ON
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DTHREAD_SANITIZE=ON -DWARNINGS_AS_ERRORS=ON
           cmake --build build
 
       - name: Test
