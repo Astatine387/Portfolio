@@ -18,6 +18,10 @@ else()
     set(BASE_WARNINGS -Wall -Wextra)
     set(STRICT_WARNINGS -Wsign-conversion)
     set(WARNINGS_AS_ERRORS_FLAG -Werror)
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        list(APPEND BASE_WARNINGS -Wthread-safety)
+    endif()
 endif()
 
 if(NOT BASE_WARNINGS OR NOT STRICT_WARNINGS OR NOT WARNINGS_AS_ERRORS_FLAG)
@@ -109,8 +113,10 @@ set(CORE_HEADERS
     src/core/aes_gcm.h
     src/core/crypto_worker.h
     src/core/secure_key.h
+    src/utils/mutex.h
     src/utils/password.h
     src/utils/platform.h
+    src/utils/thread_annotations.h
 )
 
 add_library(FileEncryption-core STATIC ${CORE_SOURCES} ${CORE_HEADERS})

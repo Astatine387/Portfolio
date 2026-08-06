@@ -21,7 +21,7 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<con
   FlushWrite();
 
   {
-    std::scoped_lock lk(write_mtx_);
+    UniqueLock lk(write_mtx_);
     write_result_ = Result::kSuccess;
   }
 

@@ -25,11 +25,11 @@ AesGcm::~AesGcm() {
   /* Stop the writer thread, draining any ongoing write first */
 
   {
-    std::scoped_lock lk(write_mtx_);
+    UniqueLock lk(write_mtx_);
     writer_stop_ = true;
   }
 
-  write_cv_.notify_one();
+  write_cv_.NotifyOne();
 
   if (writer_.joinable()) {
     writer_.join();
@@ -78,10 +78,10 @@ Result AesGcm::WriteFile(const void* buff, size_t size) {
 }
 
 void AesGcm::WriterLoop() noexcept {
-  std::unique_lock<std::mutex> lk(write_mtx_);
+  UniqueLock lk(write_mtx_);
 
   for (;;) {
-    write_cv_.wait(lk, [this] { return write_pending_ || writer_stop_; });
+    write_cv_.Wait(lk, [this]() REQUIRES(write_mtx_) { return write_pending_ || writer_stop_; });
 
     /* Exit once a shutdown was requested and no job is left to drain */
 
@@ -94,7 +94,7 @@ void AesGcm::WriterLoop() noexcept {
 
     /* Write outside the lock so the producer can keep reading and encrypting */
 
-    lk.unlock();
+    lk.Unlock();
 
     Result res = Result::kFailure;
 
@@ -105,23 +105,23 @@ void AesGcm::WriterLoop() noexcept {
       res = Result::kFailure;
     }
 
-    lk.lock();
+    lk.Lock();
 
     if (res != Result::kSuccess) {
       write_result_ = res;  // Sticky: never mask a failure with a later success
     }
 
     write_pending_ = false;
-    write_cv_.notify_one();
+    write_cv_.NotifyOne();
   }
 }
 
 Result AesGcm::SubmitWrite(const void* buff, size_t size) {
-  std::unique_lock<std::mutex> lk(write_mtx_);
+  UniqueLock lk(write_mtx_);
 
   /* Wait for the previous write to finish */
 
-  write_cv_.wait(lk, [this] { return !write_pending_; });
+  write_cv_.Wait(lk, [this]() REQUIRES(write_mtx_) { return !write_pending_; });
 
   if (write_result_ != Result::kSuccess) {
     return Result::kFailure;  // LCOV_EXCL_LINE
@@ -133,16 +133,16 @@ Result AesGcm::SubmitWrite(const void* buff, size_t size) {
   write_size_ = size;
   write_pending_ = true;
 
-  lk.unlock();
-  write_cv_.notify_one();
+  lk.Unlock();
+  write_cv_.NotifyOne();
 
   return Result::kSuccess;
 }
 
 Result AesGcm::FlushWrite() {
-  std::unique_lock<std::mutex> lk(write_mtx_);
+  UniqueLock lk(write_mtx_);
 
-  write_cv_.wait(lk, [this] { return !write_pending_; });
+  write_cv_.Wait(lk, [this]() REQUIRES(write_mtx_) { return !write_pending_; });
 
   return write_result_;
 }
@@ -190,6 +190,6 @@ void AesGcm::ReportError(const char* msg) {
 
   /* Serialize the callback so a write-thread error cannot race a read/encrypt-thread error */
 
-  std::scoped_lock lk(error_mtx_);
+  UniqueLock lk(error_mtx_);
   ecb_(res.c_str());
 }

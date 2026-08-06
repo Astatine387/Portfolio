@@ -14,15 +14,15 @@
 
 #include <array>
 #include <atomic>
-#include <condition_variable>
 #include <cstdint>
 #include <functional>
-#include <mutex>
 #include <span>
 #include <thread>
 
 #include "common/constants.h"
 #include "core/secure_key.h"
+#include "utils/mutex.h"
+#include "utils/thread_annotations.h"
 
 enum class DecryptMode : std::uint8_t {
   kVerify,
@@ -117,9 +117,9 @@ class AesGcm {
   FILE* src_file_ = nullptr;  // Source file
   FILE* dst_file_ = nullptr;  // Destination file
 
-  ErrorCallback ecb_ = nullptr;     // Error reporting callback function
-  ProgressCallback pcb_ = nullptr;  // Progress reporting callback function
-  std::mutex error_mtx_;            // Serializes error callback calls from the read and write threads
+  ErrorCallback ecb_ GUARDED_BY(error_mtx_) = nullptr;  // Error reporting callback function
+  ProgressCallback pcb_ = nullptr;                      // Progress reporting callback function
+  Mutex error_mtx_;  // Serializes error callback calls from the read and write threads
 
   const std::atomic<bool>* cancel_ = nullptr;  // Cancellation flag
 
@@ -135,14 +135,15 @@ class AesGcm {
 
   const SecureKey* key_ = nullptr;  // Session key for the current operation (non-owning)
 
-  std::thread writer_;                      // Long-lived asynchronous write worker
-  std::mutex write_mtx_;                    // Guards the write hand-off state below
-  std::condition_variable write_cv_;        // Signals job-ready and job-done transitions
-  const void* write_buff_ = nullptr;        // Buffer queued for writing
-  size_t write_size_ = 0;                   // Number of bytes queued for writing
-  bool write_pending_ = false;              // Whether a write job is queued or in progress
-  bool writer_stop_ = false;                // Whether the writer thread should exit
-  Result write_result_ = Result::kSuccess;  // Result of the most recent write
+  std::thread writer_;          // Long-lived asynchronous write worker
+  Mutex write_mtx_;             // Serializes the write hand-off state
+  ConditionVariable write_cv_;  // Signals job-ready and job-done transitions
+
+  const void* write_buff_ GUARDED_BY(write_mtx_) = nullptr;        // Buffer queued for writing
+  size_t write_size_ GUARDED_BY(write_mtx_) = 0;                   // Number of bytes queued for writing
+  bool write_pending_ GUARDED_BY(write_mtx_) = false;              // Whether a write job is queued or in progress
+  bool writer_stop_ GUARDED_BY(write_mtx_) = false;                // Whether the writer thread should exit
+  Result write_result_ GUARDED_BY(write_mtx_) = Result::kSuccess;  // Result of the most recent write
 
   /* ==================================================
    * I/O helper functions
