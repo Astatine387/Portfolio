@@ -170,6 +170,10 @@ bool AesGcm::IsCancelled() const {
 }
 
 void AesGcm::ReportError(const char* msg) {
+  /* Serialize the callback so a write-thread error cannot race a read/encrypt-thread error */
+
+  UniqueLock lk(error_mtx_);
+
   if (!ecb_) {
     return;
   }
@@ -188,8 +192,5 @@ void AesGcm::ReportError(const char* msg) {
     res += '\n';
   }
 
-  /* Serialize the callback so a write-thread error cannot race a read/encrypt-thread error */
-
-  UniqueLock lk(error_mtx_);
   ecb_(res.c_str());
 }

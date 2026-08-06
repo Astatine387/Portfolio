@@ -97,7 +97,10 @@ class AesGcm {
    * @brief		Set error callback function
    * @param		ecb		Error callback function
    */
-  void SetErrorCallback(ErrorCallback ecb) { ecb_ = std::move(ecb); }
+  void SetErrorCallback(ErrorCallback ecb) {
+    UniqueLock lk(error_mtx_);
+    ecb_ = std::move(ecb);
+  }
 
   /**
    * @brief		Set progress callback function
