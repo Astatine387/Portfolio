@@ -40,7 +40,6 @@ class CryptoWorker {
   /**
    * @brief		Callback function for job finished
    * @param		msg             Result message
-   * @param		should_delete   Destination file deletion flag value
    */
   using FinishedCallback = std::function<void(const std::string& msg)>;
 

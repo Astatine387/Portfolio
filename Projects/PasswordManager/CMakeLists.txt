@@ -29,6 +29,8 @@ else()
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         list(APPEND BASE_WARNINGS -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wredundant-tags)
         list(APPEND STRICT_WARNINGS -Wuseless-cast)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        list(APPEND BASE_WARNINGS -Wdocumentation -Wconditional-uninitialized)
     endif()
 endif()
 

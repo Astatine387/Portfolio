@@ -45,7 +45,7 @@ class MainGUI : public QWidget {
 
   /**
    * @brief	Callback function for error reporting
-   * @param	errMsg	Error message string
+   * @param	err_msg	Error message string
    */
   using ErrorCallback = std::function<void(const char* err_msg)>;
 
@@ -65,7 +65,7 @@ class MainGUI : public QWidget {
 
   /**
    * @brief	Process vault login request
-   * @param	input	Login input parameters
+   * @param	req	Login input parameters
    */
   void OnLoginRequested(const LoginRequest& req);
 

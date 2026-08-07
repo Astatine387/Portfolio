@@ -57,7 +57,7 @@ class PasswordGUI : public QWidget {
  signals:
   /**
    * @brief	Signal when login is confirmed
-   * @param	input	Login input parameters
+   * @param	req	Login input parameters
    */
   void LoginRequested(const LoginRequest& req);
 

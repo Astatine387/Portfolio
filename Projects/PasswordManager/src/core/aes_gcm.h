@@ -72,7 +72,7 @@ class AesGcm {
 
   /**
    * @brief	Callback function for error reporting
-   * @param	errMsg	Error message string
+   * @param	msg	Error message string
    */
   using ErrorCallback = std::function<void(const char* msg)>;
 

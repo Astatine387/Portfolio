@@ -55,7 +55,7 @@ class ChangePWGUI : public QDialog {
 
   /**
    * @brief	Callback function for verifying current password
-   * @param	curPW	Current password to verify
+   * @param	cur_pw	Current password to verify
    * @return	true if password is correct
    */
   using VerifyCallback = std::function<bool(const Password& cur_pw)>;

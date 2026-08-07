@@ -30,7 +30,7 @@ else()
         list(APPEND BASE_WARNINGS -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wredundant-tags)
         list(APPEND STRICT_WARNINGS -Wuseless-cast)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        list(APPEND BASE_WARNINGS -Wthread-safety)
+        list(APPEND BASE_WARNINGS -Wthread-safety -Wdocumentation -Wconditional-uninitialized)
     endif()
 endif()
 
