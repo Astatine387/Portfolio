@@ -58,4 +58,5 @@ BraceWrapping:
   SplitEmptyRecord:      false
   SplitEmptyNamespace:   false
 Cpp11BracedListStyle: false                 # Add space between braces and elements
+InsertNewlineAtEOF: true                    # Always end a file with a newline
 SpaceBeforeParens: ControlStatements        # Use space before control statements only
