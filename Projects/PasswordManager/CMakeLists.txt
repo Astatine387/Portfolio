@@ -15,9 +15,19 @@ if(MSVC)
     set(STRICT_WARNINGS /w14365)
     set(WARNINGS_AS_ERRORS_FLAG /WX)
 else()
-    set(BASE_WARNINGS -Wall -Wextra)
-    set(STRICT_WARNINGS -Wsign-conversion)
+    set(BASE_WARNINGS
+        -Wall -Wextra
+        -Wpedantic -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wsuggest-override
+        -Wold-style-cast -Wformat=2 -Wimplicit-fallthrough -Wzero-as-null-pointer-constant
+        -Wundef -Wvla -Walloca -Wdate-time -Wnull-dereference -Wmismatched-tags)
+    set(STRICT_WARNINGS
+        -Wsign-conversion -Wconversion
+        -Wcast-qual -Wcast-align -Wdouble-promotion)
     set(WARNINGS_AS_ERRORS_FLAG -Werror)
+
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        list(APPEND BASE_WARNINGS -Wduplicated-cond -Wduplicated-branches -Wlogical-op)
+    endif()
 endif()
 
 if(NOT BASE_WARNINGS OR NOT STRICT_WARNINGS OR NOT WARNINGS_AS_ERRORS_FLAG)
