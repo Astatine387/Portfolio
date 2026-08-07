@@ -19,7 +19,8 @@ else()
         -Wall -Wextra
         -Wpedantic -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wsuggest-override
         -Wold-style-cast -Wformat=2 -Wimplicit-fallthrough -Wzero-as-null-pointer-constant
-        -Wundef -Wvla -Walloca -Wdate-time -Wnull-dereference -Wmismatched-tags)
+        -Wundef -Wvla -Walloca -Wdate-time -Wnull-dereference -Wmismatched-tags
+        -Wextra-semi)
     set(STRICT_WARNINGS
         -Wsign-conversion -Wconversion
         -Wcast-qual -Wcast-align -Wdouble-promotion)
@@ -27,6 +28,7 @@ else()
 
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         list(APPEND BASE_WARNINGS -Wduplicated-cond -Wduplicated-branches -Wlogical-op)
+        list(APPEND STRICT_WARNINGS -Wuseless-cast)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         list(APPEND BASE_WARNINGS -Wthread-safety)
     endif()

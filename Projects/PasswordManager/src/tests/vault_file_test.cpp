@@ -416,7 +416,7 @@ TEST_F(VaultFileTest, SaveWritesFreshIV) {
   std::vector<uint8_t> second = ReadFile(path_);
 
   ASSERT_EQ(first.size(), second.size());
-  ASSERT_GT(first.size(), static_cast<size_t>(kMagicSize + kSaltSize + kIVSize + kTagSize));
+  ASSERT_GT(first.size(), kMagicSize + kSaltSize + kIVSize + kTagSize);
 
   const size_t salt_off = kMagicSize;
   const size_t iv_off = kMagicSize + kSaltSize;

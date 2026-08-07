@@ -171,7 +171,7 @@ class Vault {
    * @brief     Set error callback function
    * @param     ecb		Error callback function
    */
-  void SetErrorCallback(ErrorCallback ecb) { ecb_ = std::move(ecb); };
+  void SetErrorCallback(ErrorCallback ecb) { ecb_ = std::move(ecb); }
 
   /**
    * @brief     Get the last error message
