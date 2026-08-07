@@ -27,7 +27,7 @@ else()
     set(WARNINGS_AS_ERRORS_FLAG -Werror)
 
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        list(APPEND BASE_WARNINGS -Wduplicated-cond -Wduplicated-branches -Wlogical-op)
+        list(APPEND BASE_WARNINGS -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wredundant-tags)
         list(APPEND STRICT_WARNINGS -Wuseless-cast)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         list(APPEND BASE_WARNINGS -Wthread-safety)
