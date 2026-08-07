@@ -14,6 +14,7 @@ if(MSVC)
         /external:W0)
     set(STRICT_WARNINGS /w14365)
     set(WARNINGS_AS_ERRORS_FLAG /WX)
+    set(FRAME_BUDGET_FLAG "")
 else()
     set(BASE_WARNINGS
         -Wall -Wextra
@@ -25,6 +26,7 @@ else()
         -Wsign-conversion -Wconversion
         -Wcast-qual -Wcast-align -Wdouble-promotion)
     set(WARNINGS_AS_ERRORS_FLAG -Werror)
+    set(FRAME_BUDGET_FLAG -Wframe-larger-than=16384)
 
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         list(APPEND BASE_WARNINGS -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wredundant-tags)
@@ -145,6 +147,10 @@ target_link_libraries(FileEncryption-core PUBLIC
 )
 
 target_link_libraries(FileEncryption-core PRIVATE project_warnings_strict)
+
+# Production-library-only stack budget. Not in the shared tiers: tests and the
+# benchmark stack-allocate AesGcm (128 KiB buffer) and would breach it.
+target_compile_options(FileEncryption-core PRIVATE ${FRAME_BUDGET_FLAG})
 
 if(WIN32)
     target_link_libraries(FileEncryption-core PUBLIC bcrypt)

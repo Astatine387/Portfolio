@@ -7,6 +7,7 @@
 #include "core/crypto_worker.h"
 
 #include <array>
+#include <memory>
 #include <optional>
 #include <span>
 
@@ -18,7 +19,11 @@ void CryptoWorker::RequestCancel() {
 }
 
 void CryptoWorker::Work() {
-  AesGcm aes;
+  /* Heap-allocated: AesGcm carries a 128 KiB buffer, too large for a worker thread's stack frame */
+
+  auto aes_ptr = std::make_unique<AesGcm>();
+  AesGcm& aes = *aes_ptr;
+
   FILE* src_file = nullptr;
   FILE* dst_file = nullptr;
   std::string msg;
