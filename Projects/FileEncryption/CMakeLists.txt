@@ -11,8 +11,20 @@ if(MSVC)
     set(BASE_WARNINGS
         /W4 /utf-8
         /external:anglebrackets
-        /external:W0)
-    set(STRICT_WARNINGS /w14365)
+        /external:W0
+        /Zc:__cplusplus /Zc:preprocessor
+        /w14263  # member function does not override any base class virtual
+        /w14265  # class has virtual functions but destructor is not virtual
+        /w14296  # expression is always true/false
+        /w14640  # thread-unsafe static member initialization
+        /w14826  # conversion is sign-extended
+        /w14928  # illegal copy-initialization
+    )
+    set(STRICT_WARNINGS
+        /w14365  # conversion, signed/unsigned mismatch
+        /w14242  # conversion, possible loss of data
+        /w14311  # pointer truncation
+    )
     set(WARNINGS_AS_ERRORS_FLAG /WX)
     set(FRAME_BUDGET_FLAG "")
 else()
