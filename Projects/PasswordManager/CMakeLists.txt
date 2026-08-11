@@ -13,12 +13,16 @@ if(MSVC)
         /external:anglebrackets
         /external:W0
         /Zc:__cplusplus /Zc:preprocessor
+        /w14062  # enumerator in switch is not handled; mirrors -Wswitch
         /w14263  # member function does not override any base class virtual
         /w14265  # class has virtual functions but destructor is not virtual
         /w14296  # expression is always true/false
+        /w14388  # signed/unsigned mismatch; mirrors -Wsign-compare
         /w14640  # thread-unsafe static member initialization
         /w14826  # conversion is sign-extended
         /w14928  # illegal copy-initialization
+        /w15038  # data member init out of order; mirrors -Wreorder
+        /w15262  # implicit fall-through; mirrors -Wimplicit-fallthrough
     )
     set(STRICT_WARNINGS
         /w14365  # conversion, signed/unsigned mismatch
@@ -36,15 +40,19 @@ else()
         -Wextra-semi)
     set(STRICT_WARNINGS
         -Wsign-conversion -Wconversion
-        -Wcast-qual -Wcast-align -Wdouble-promotion)
+        -Wcast-qual -Wdouble-promotion)
     set(WARNINGS_AS_ERRORS_FLAG -Werror)
     set(FRAME_BUDGET_FLAG -Wframe-larger-than=16384)
 
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         list(APPEND BASE_WARNINGS -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wredundant-tags)
-        list(APPEND STRICT_WARNINGS -Wuseless-cast)
+        # Plain -Wcast-align never fires on x86-64; only the =strict form does.
+        list(APPEND STRICT_WARNINGS -Wuseless-cast -Wcast-align=strict)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        list(APPEND BASE_WARNINGS -Wdocumentation -Wconditional-uninitialized)
+        list(APPEND BASE_WARNINGS -Wdocumentation -Wconditional-uninitialized
+                                  -Wsuggest-destructor-override -Wshadow-all)
+        # Clang rejects -Wcast-align=strict outright, so it keeps the plain form.
+        list(APPEND STRICT_WARNINGS -Wcast-align)
     endif()
 endif()
 
