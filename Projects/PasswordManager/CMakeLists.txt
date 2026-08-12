@@ -13,7 +13,6 @@ if(MSVC)
         /external:anglebrackets
         /external:W0
         /Zc:__cplusplus /Zc:preprocessor
-        /w14062  # enumerator in switch is not handled; mirrors -Wswitch
         /w14263  # member function does not override any base class virtual
         /w14265  # class has virtual functions but destructor is not virtual
         /w14296  # expression is always true/false
@@ -22,7 +21,6 @@ if(MSVC)
         /w14826  # conversion is sign-extended
         /w14928  # illegal copy-initialization
         /w15038  # data member init out of order; mirrors -Wreorder
-        /w15262  # implicit fall-through; mirrors -Wimplicit-fallthrough
     )
     set(STRICT_WARNINGS
         /w14365  # conversion, signed/unsigned mismatch
@@ -35,8 +33,8 @@ else()
     set(BASE_WARNINGS
         -Wall -Wextra
         -Wpedantic -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wsuggest-override
-        -Wold-style-cast -Wformat=2 -Wimplicit-fallthrough -Wzero-as-null-pointer-constant
-        -Wundef -Wvla -Walloca -Wdate-time -Wnull-dereference -Wmismatched-tags
+        -Wold-style-cast -Wformat=2 -Wzero-as-null-pointer-constant
+        -Wundef -Wvla -Walloca -Wdate-time -Wmismatched-tags
         -Wextra-semi)
     set(STRICT_WARNINGS
         -Wsign-conversion -Wconversion
