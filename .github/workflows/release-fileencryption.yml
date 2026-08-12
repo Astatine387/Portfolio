@@ -37,7 +37,7 @@ jobs:
       - name: Build
         run: |
           cd Projects/FileEncryption
-          cmake -B build `
+          cmake -B build -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_BUILD_TYPE=Release `
             -DWARNINGS_AS_ERRORS=ON `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
@@ -94,12 +94,13 @@ jobs:
                      /etc/apt/sources.list.d/azure-cli.sources
           sudo apt-get update
           sudo apt-get install -y qt6-base-dev qt6-base-dev-tools libssl-dev libargon2-dev libsodium-dev libgtest-dev file
-          sudo apt-get install -y qt6-base-dev qt6-base-dev-tools libssl-dev libargon2-dev libsodium-dev libgtest-dev file imagemagick
+          sudo apt-get install -y g++-13 qt6-base-dev qt6-base-dev-tools libssl-dev libargon2-dev libsodium-dev libgtest-dev file imagemagick
 
       - name: Build
         run: |
           cd Projects/FileEncryption
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DWARNINGS_AS_ERRORS=ON
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DWARNINGS_AS_ERRORS=ON \
+            -DCMAKE_CXX_COMPILER=g++-13
           cmake --build build
 
       - name: Test
