@@ -1,5 +1,5 @@
 /.vs
-/.obsidian
+/__cmake_systeminformation
 /Projects/DigitalLogicSimulator/.vs
 /Projects/DigitalLogicSimulator/build
 /Projects/DigitalLogicSimulator/build-tidy

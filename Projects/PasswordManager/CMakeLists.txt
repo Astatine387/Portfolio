@@ -46,18 +46,16 @@ else()
         list(APPEND BASE_WARNINGS -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wredundant-tags)
         # Plain -Wcast-align never fires on x86-64; only the =strict form does.
         list(APPEND STRICT_WARNINGS -Wuseless-cast -Wcast-align=strict)
-    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
         list(APPEND BASE_WARNINGS -Wdocumentation -Wconditional-uninitialized
                                   -Wsuggest-destructor-override -Wshadow-all)
         # Clang rejects -Wcast-align=strict outright, so it keeps the plain form.
         list(APPEND STRICT_WARNINGS -Wcast-align)
+    else()
+        message(FATAL_ERROR
+            "Warning tiers are not fully defined for compiler "
+            "'${CMAKE_CXX_COMPILER_ID}'")
     endif()
-endif()
-
-if(NOT BASE_WARNINGS OR NOT STRICT_WARNINGS OR NOT WARNINGS_AS_ERRORS_FLAG)
-    message(FATAL_ERROR
-        "Warning tiers are not fully defined for compiler "
-        "'${CMAKE_CXX_COMPILER_ID}'")
 endif()
 
 add_library(project_warnings INTERFACE)
