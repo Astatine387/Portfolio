@@ -13,14 +13,21 @@ if(MSVC)
         /external:anglebrackets
         /external:W0
         /Zc:__cplusplus /Zc:preprocessor
+        /w14061  # enumerator not explicitly handled by a case label; mirrors -Wswitch-enum
+        /w14062  # enumerator not handled, no default label; mirrors -Wswitch
         /w14263  # member function does not override any base class virtual
         /w14265  # class has virtual functions but destructor is not virtual
+        /w14266  # virtual hidden by a derived overload; mirrors -Woverloaded-virtual
         /w14296  # expression is always true/false
         /w14388  # signed/unsigned mismatch; mirrors -Wsign-compare
         /w14640  # thread-unsafe static member initialization
         /w14826  # conversion is sign-extended
         /w14928  # illegal copy-initialization
         /w15038  # data member init out of order; mirrors -Wreorder
+        /w15204  # virtual functions but trivial destructor is not virtual; 4265 misses this
+        /w15262  # implicit fall-through; mirrors -Wimplicit-fallthrough
+        /w15264  # unused 'const' variable; mirrors -Wunused-const-variable
+        /w15267  # implicit copy ctor deprecated; mirrors -Wdeprecated-copy-dtor
     )
     set(STRICT_WARNINGS
         /w14365  # conversion, signed/unsigned mismatch
@@ -35,7 +42,9 @@ else()
         -Wpedantic -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wsuggest-override
         -Wold-style-cast -Wformat=2 -Wzero-as-null-pointer-constant
         -Wundef -Wvla -Walloca -Wdate-time -Wmismatched-tags
-        -Wextra-semi)
+        -Wextra-semi -Wswitch-enum -Wdeprecated-copy-dtor
+        # GCC already gets this from -Wextra; Clang enables it at no -W level.
+        -Wimplicit-fallthrough)
     set(STRICT_WARNINGS
         -Wsign-conversion -Wconversion
         -Wcast-qual -Wdouble-promotion)
@@ -43,7 +52,10 @@ else()
     set(FRAME_BUDGET_FLAG -Wframe-larger-than=16384)
 
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        list(APPEND BASE_WARNINGS -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wredundant-tags)
+        # Clang rejects -Wunused-const-variable=2 outright and already covers the
+        # plain form through -Wall, so the level stays on the GCC side.
+        list(APPEND BASE_WARNINGS -Wduplicated-cond -Wduplicated-branches -Wlogical-op
+                                  -Wredundant-tags -Wunused-const-variable=2)
         # Plain -Wcast-align never fires on x86-64; only the =strict form does.
         list(APPEND STRICT_WARNINGS -Wuseless-cast -Wcast-align=strict)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
