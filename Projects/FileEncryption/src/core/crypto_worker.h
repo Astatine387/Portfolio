@@ -44,12 +44,12 @@ class CryptoWorker {
   using FinishedCallback = std::function<void(const std::string& msg)>;
 
   /**
-   * @brief   Cancel the process
+   * @brief     Cancel the process
    */
   void RequestCancel();
 
   /**
-   * @brief   Perform encryption/decryption
+   * @brief     Perform encryption/decryption
    */
   void Work();
 

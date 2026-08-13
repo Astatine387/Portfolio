@@ -42,7 +42,7 @@ void CryptoWorker::Work() {
     return;
   }
 
-  OpenFile(&dst_file, dst_path_, "wb+");
+  OpenFile(&dst_file, dst_path_, "wb+x");
 
   if (dst_file == nullptr) {
     fclose(src_file);
