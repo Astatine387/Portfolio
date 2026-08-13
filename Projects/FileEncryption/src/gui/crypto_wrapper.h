@@ -22,8 +22,10 @@ class CryptoWrapper : public QObject {
    * @param		dst_path	Destination file path
    * @param		pw			Password, moved into the worker
    * @param		mode		Encryption/decryption mode
+   * @param		cancel		Cancellation flag shared with the caller
    */
-  CryptoWrapper(const QString& src_path, const QString& dst_path, Password&& pw, CryptoMode mode);
+  CryptoWrapper(const QString& src_path, const QString& dst_path, Password&& pw, CryptoMode mode,
+                CryptoWorker::CancelFlag cancel);
 
  signals:
   /**
@@ -40,11 +42,6 @@ class CryptoWrapper : public QObject {
   void ProgressUpdate(int perc, const QString& status);
 
  public slots:
-  /**
-   * @brief		Cancel the process
-   */
-  void RequestCancel();
-
   /**
    * @brief		Perform encryption/decryption
    */

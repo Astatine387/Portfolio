@@ -8,6 +8,8 @@
 
 #include <QCloseEvent>
 #include <QFileInfo>
+#include <atomic>
+#include <memory>
 #include <utility>
 
 #include "gui/crypto_wrapper.h"
@@ -38,6 +40,7 @@ MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
 
   connect(input_gui_, &InputGUI::StartRequested, this, &MainGUI::OnStartRequested);
   connect(prg_gui_, &ProgressGUI::CloseRequested, this, &QWidget::close);
+  connect(prg_gui_, &ProgressGUI::CancelRequested, this, &MainGUI::RequestCancel);
 }
 
 MainGUI::~MainGUI() {
@@ -62,24 +65,29 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
 
     widget_->setCurrentWidget(prg_gui_);
 
+    /* Arm a cancellation flag */
+
+    cancel_flag_ = std::make_shared<std::atomic<bool>>(false);
+
     /* Create worker thread */
 
     thread_ = new QThread(this);
-    wrapper_ = new CryptoWrapper(src_path_, dst_path_, std::move(pw), input.mode);
-    wrapper_->moveToThread(thread_);
+
+    CryptoWrapper* wrapper = new CryptoWrapper(src_path_, dst_path_, std::move(pw), input.mode, cancel_flag_);
+
+    wrapper->moveToThread(thread_);
 
     /* Connect signals */
 
-    connect(thread_, &QThread::started, wrapper_, &CryptoWrapper::Run);
-    connect(wrapper_, &CryptoWrapper::ProgressUpdate, this, &MainGUI::OnProgressUpdated);
-    connect(wrapper_, &CryptoWrapper::Finished, this, &MainGUI::OnWorkFinished);
-    connect(prg_gui_, &ProgressGUI::CancelRequested, wrapper_, &CryptoWrapper::RequestCancel, Qt::DirectConnection);
-    connect(wrapper_, &CryptoWrapper::Finished, thread_, &QThread::quit);
+    connect(thread_, &QThread::started, wrapper, &CryptoWrapper::Run);
+    connect(wrapper, &CryptoWrapper::ProgressUpdate, this, &MainGUI::OnProgressUpdated);
+    connect(wrapper, &CryptoWrapper::Finished, this, &MainGUI::OnWorkFinished);
+    connect(wrapper, &CryptoWrapper::Finished, thread_, &QThread::quit);
     connect(thread_, &QThread::finished, this, &MainGUI::OnThreadFinished);
 
     /* Delete the worker when the thread finishes */
 
-    connect(thread_, &QThread::finished, wrapper_, &QObject::deleteLater);
+    connect(thread_, &QThread::finished, wrapper, &QObject::deleteLater);
 
     /* Start worker thread */
 
@@ -96,8 +104,6 @@ void MainGUI::OnProgressUpdated(int perc, const QString& status) {
 }
 
 void MainGUI::OnWorkFinished(const QString& msg) {
-  wrapper_ = nullptr;
-
   if (closing_) {
     return;
   }
@@ -111,7 +117,7 @@ void MainGUI::OnThreadFinished() {
     thread_ = nullptr;
   }
 
-  wrapper_ = nullptr;
+  cancel_flag_.reset();
 
   if (closing_) {
     close();
@@ -120,6 +126,12 @@ void MainGUI::OnThreadFinished() {
 
 void MainGUI::OnCloseRequested() {
   close();
+}
+
+void MainGUI::RequestCancel() {
+  if (cancel_flag_) {
+    cancel_flag_->store(true, std::memory_order_relaxed);
+  }
 }
 
 int MainGUI::ValidatePaths() {
@@ -147,11 +159,9 @@ int MainGUI::ValidatePaths() {
 void MainGUI::Clean() {
   /* Last-resort forced-quit path; cancel the worker and wait for it with no timeout */
 
-  if (thread_ && thread_->isRunning()) {
-    if (wrapper_) {
-      wrapper_->RequestCancel();
-    }
+  RequestCancel();
 
+  if (thread_) {
     thread_->quit();
     thread_->wait();
   }
@@ -161,9 +171,7 @@ void MainGUI::closeEvent(QCloseEvent* event) {
   /* Request cancellation and keep the window alive in a busy state */
 
   if (thread_ && thread_->isRunning()) {
-    if (wrapper_) {
-      wrapper_->RequestCancel();
-    }
+    RequestCancel();
 
     prg_gui_->ShowBusy("Finishing, please wait...\n");
 

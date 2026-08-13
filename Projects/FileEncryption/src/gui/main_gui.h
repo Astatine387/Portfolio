@@ -11,7 +11,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
-#include "gui/crypto_wrapper.h"
+#include "core/crypto_worker.h"
 #include "gui/input_gui.h"
 #include "gui/progress_gui.h"
 
@@ -64,8 +64,13 @@ class MainGUI : public QWidget {
    */
   void OnCloseRequested();
 
+  /**
+   * @brief	Raise the shared cancellation flag for the running worker
+   */
+  void RequestCancel();
+
  private:
-  CryptoWrapper* wrapper_ = nullptr;
+  CryptoWorker::CancelFlag cancel_flag_;
   InputGUI* input_gui_ = nullptr;
   ProgressGUI* prg_gui_ = nullptr;
   QStackedWidget* widget_ = nullptr;

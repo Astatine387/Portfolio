@@ -15,7 +15,7 @@
 #include "utils/platform.h"
 
 void CryptoWorker::RequestCancel() {
-  should_cancel_.store(true, std::memory_order_relaxed);
+  cancel_->store(true, std::memory_order_relaxed);
 }
 
 void CryptoWorker::Work() {
@@ -42,7 +42,7 @@ void CryptoWorker::Work() {
     return;
   }
 
-  OpenFile(&dst_file, dst_path_, "wb+x");
+  OpenFile(&dst_file, dst_path_, "wb+");
 
   if (dst_file == nullptr) {
     fclose(src_file);
@@ -90,7 +90,7 @@ void CryptoWorker::Work() {
 
   aes.SetErrorCallback([this](const char* m) { err_ = m; });
 
-  aes.SetCancelFlag(&should_cancel_);
+  aes.SetCancelFlag(cancel_.get());
 
   aes.SetProgressCallback([this](int perc) {
     if (!pcb_) {
@@ -114,7 +114,7 @@ void CryptoWorker::Work() {
   if (mode_ == CryptoMode::kEncrypt) {
     res = aes.Encrypt(src_file, dst_file, *key, salt);
 
-    if (should_cancel_) {
+    if (IsCancelled()) {
       msg = "Encryption canceled\n";
       should_delete = true;
     }
@@ -131,7 +131,7 @@ void CryptoWorker::Work() {
   else {
     res = aes.Decrypt(src_file, dst_file, *key);
 
-    if (should_cancel_) {
+    if (IsCancelled()) {
       msg = "Decryption canceled\n";
       should_delete = true;
     }
