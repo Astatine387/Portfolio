@@ -183,7 +183,7 @@ class Vault {
   AesGcm aes_;
   std::optional<SecureKey> key_;           // Session key derived at open/change
   std::array<uint8_t, kSaltSize> salt_{};  // Session salt (also written to the file header)
-  KdfParams kdf_;                          // Argon2id parameters for this session
+  KdfParams kdf_;                          // Argon2id parameters of the open vault (also written to the header)
   SecureBuffer img_;                       // Decrypted vault image (entry passwords live here)
   std::set<Entry, EntryCmp> entry_set_;
   std::string last_error_;
@@ -216,9 +216,11 @@ class Vault {
    * @param     path	Vault file path
    * @param     key		Key to encrypt with
    * @param     salt	Salt to write to the header
+   * @param     params	Argon2id parameters
    * @return	kSuccess on success, kFailure on failure
    */
-  Result SaveVaultWith(const std::string& path, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt);
+  Result SaveVaultWith(const std::string& path, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt,
+                       const KdfParams& params);
 
   /**
    * @brief     Serialize every entry except one into a new image and refresh offsets

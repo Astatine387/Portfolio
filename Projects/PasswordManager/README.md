@@ -44,6 +44,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 * Newly and randomly generated initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * Password generator guarantees at least one each of uppercase, lowercase, digit, and special character
 * RAII pattern ensures memory wipe for sensitive data, using `sodium_free` and `sodium_memzero`
+* Range check for key derivation parameters before Argon2id runs
 * Sensitive data is held in `sodium_malloc` memory, which provides guard pages and lock against swap
 * Vault files are re-encrypted with new salt and initial vector for each save or master password change
 
@@ -60,6 +61,8 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 	* **Time Cost:** 4 iterations
 	* **Parallelism:** 4
 	* **Salt Size:** 128 bits
+	* Parameters are stored in the vault header, so a vault stays readable after the defaults change
+	* A vault adopts the current defaults when it is created or when the master password is changed
 
 * **Entry**
 	* **Maximum Site Name Length:** 256 characters
@@ -74,8 +77,10 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 
 **Vault Format:** 
 ```
-Magic Number (4 Bytes) | Salt (16 Bytes) | IV (12 Bytes) | Encrypted Data | Tag (16 Bytes)
+Magic Number (4 Bytes) | Time Cost (4 Bytes) | Memory Cost (4 Bytes) | Parallelism (4 Bytes) | Salt (16 Bytes) | IV (12 Bytes) | Encrypted Data | Tag (16 Bytes)
 ```
+
+* Multi-byte integers are stored little-endian, and the memory cost is stored in KiB.
 
 **Encrypted Data Format:** 
 ```
@@ -241,7 +246,7 @@ cmake --build build
 | Password | `password_test.cpp`    | Initialization, Setting Data, Copy and Move Semantics, Memory Safety, RAII, Comparison, Data, Cleanup, Maximum Size, Memory Lock |
 | Utils    | `utils_test.cpp`       | File Handling, Argon2id Key Derivation, Random Number Generation, Memory Wipe                                                    |
 | Vault    | `vault_entry_test.cpp` | Entry CRUD Operation, Duplication Check, Existence Check, Conflict Check, Accessor, Master Password Verification                 |
-| Vault    | `vault_file_test.cpp`  | Vault Creation, Opening, Validation, Save, Password Change, Error Handling                                                       |
+| Vault    | `vault_file_test.cpp`  | Vault Creation, Opening, Validation, Header Parameters, Save, Password Change, Error Handling                                    |
 
 **Note:** GUI files, error messages for external libraries and system calls are excluded from tests.
 

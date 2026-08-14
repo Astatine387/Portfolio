@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cstddef>
 #include <cstring>
 #include <optional>
 #include <span>
@@ -69,12 +70,21 @@ class VaultFileTest : public ::testing::Test {
   /**
    * @brief   Derive a session-compatible key for crafting vault files
    * @param   salt    Salt to derive with
+   * @param   params  Argon2id parameters to derive with
    * @return  Derived key
    */
-  static SecureKey KeyForFile(const std::array<uint8_t, kSaltSize>& salt) {
-    auto key = DeriveKey(std::span<const char>("password", 8), salt, KdfParams{});
+  static SecureKey KeyForFile(const std::array<uint8_t, kSaltSize>& salt, const KdfParams& params = {}) {
+    auto key = DeriveKey(std::span<const char>("password", 8), salt, params);
 
     return std::move(key.value());  // NOLINT(bugprone-unchecked-optional-access)
+  }
+
+  /**
+   * @brief   Cheapest parameter a vault header can legally carry
+   * @return  Argon2id parameter of minimal value
+   */
+  static KdfParams MinParams() {
+    return KdfParams{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism };
   }
 
   /**
@@ -101,6 +111,97 @@ class VaultFileTest : public ::testing::Test {
     }
 
     return buff;
+  }
+
+  /**
+   * @brief   Overwrite a file with the given bytes
+   * @param   path    File path
+   * @param   buff    Bytes to write
+   */
+  static void WriteFile(const std::string& path, const std::vector<uint8_t>& buff) {
+    FILE* file = nullptr;
+
+    OpenFile(&file, path, "wb");
+
+    if (file) {
+      EXPECT_EQ(fwrite(buff.data(), sizeof(uint8_t), buff.size(), file), buff.size());
+
+      fclose(file);
+    }
+  }
+
+  /**
+   * @brief   Write a vault file from a header parameter block and an encrypted body
+   * @param   path    File path
+   * @param   enc     Encrypted body (salt, IV, ciphertext and tag)
+   * @param   params  Argon2id parameters to record in the header
+   */
+  static void WriteVault(const std::string& path, const std::vector<uint8_t>& enc, const KdfParams& params = {}) {
+    std::vector<uint8_t> buff(kKdfParamSize + enc.size());
+
+    memcpy(buff.data(), &kMagicNum, kMagicSize);
+    memcpy(buff.data() + kMagicSize, &params.time_cost, sizeof(uint32_t));
+    memcpy(buff.data() + kMagicSize + sizeof(uint32_t), &params.mem_cost, sizeof(uint32_t));
+    memcpy(buff.data() + kMagicSize + 2 * sizeof(uint32_t), &params.parallelism, sizeof(uint32_t));
+    memcpy(buff.data() + kKdfParamSize, enc.data(), enc.size());
+
+    WriteFile(path, buff);
+  }
+
+  /**
+   * @brief   Read the Argon2id parameters out of a vault file header
+   * @param   buff    Vault file contents
+   * @return  Parameters as stored in the header
+   */
+  static KdfParams ReadHeaderParams(const std::vector<uint8_t>& buff) {
+    KdfParams params{};
+
+    EXPECT_GE(buff.size(), kKdfParamSize);
+
+    memcpy(&params.time_cost, buff.data() + kMagicSize, sizeof(uint32_t));
+    memcpy(&params.mem_cost, buff.data() + kMagicSize + sizeof(uint32_t), sizeof(uint32_t));
+    memcpy(&params.parallelism, buff.data() + kMagicSize + 2 * sizeof(uint32_t), sizeof(uint32_t));
+
+    return params;
+  }
+
+  /**
+   * @brief   Replace the Argon2id parameters in the vault file, leaving the body untouched
+   * @param   params  Parameters to store
+   */
+  void PatchHeaderParams(const KdfParams& params) {
+    std::vector<uint8_t> buff = ReadFile(path_);
+
+    ASSERT_GE(buff.size(), kKdfParamSize);
+
+    memcpy(buff.data() + kMagicSize, &params.time_cost, sizeof(uint32_t));
+    memcpy(buff.data() + kMagicSize + sizeof(uint32_t), &params.mem_cost, sizeof(uint32_t));
+    memcpy(buff.data() + kMagicSize + 2 * sizeof(uint32_t), &params.parallelism, sizeof(uint32_t));
+
+    WriteFile(path_, buff);
+  }
+
+  /**
+   * @brief   Replace the vault file with an empty vault built under the given parameters
+   * @param   params  Argon2id parameters to derive with and record
+   */
+  void MakeVaultWith(const KdfParams& params) {
+    uint32_t entry_cnt = 0;
+    std::vector<uint8_t> src(kCountSize);
+
+    memcpy(src.data(), &entry_cnt, kCountSize);
+
+    std::array<uint8_t, kSaltSize> salt{};
+    salt.fill(0x33);
+
+    SecureKey key = KeyForFile(salt, params);
+    std::vector<uint8_t> enc(kSaltSize + kIVSize + src.size() + kTagSize);
+
+    AesGcm aes;
+
+    ASSERT_EQ(aes.Encrypt(src.data(), enc.data(), src.size(), key, salt), Result::kSuccess);
+
+    WriteVault(path_, enc, params);
   }
 };
 
@@ -239,16 +340,7 @@ TEST_F(VaultFileTest, OpenInflatedEntryCount) {
 
   /* Write vault file */
 
-  FILE* file = nullptr;
-  uint32_t magic = kMagicNum;
-
-  OpenFile(&file, path_, "wb");
-
-  if (file) {
-    fwrite(&magic, sizeof(uint32_t), 1, file);
-    fwrite(enc.data(), sizeof(uint8_t), enc_size, file);
-    fclose(file);
-  }
+  WriteVault(path_, enc);
 
   EXPECT_EQ(Reload(), Result::kFailure);
 }
@@ -295,16 +387,7 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
 
   /* Write vault file */
 
-  FILE* file = nullptr;
-  uint32_t magic = kMagicNum;
-
-  OpenFile(&file, path_, "wb");
-
-  if (file) {
-    fwrite(&magic, sizeof(uint32_t), 1, file);
-    fwrite(enc.data(), sizeof(uint8_t), enc_size, file);
-    fclose(file);
-  }
+  WriteVault(path_, enc);
 
   EXPECT_EQ(Reload(), Result::kFailure);
 }
@@ -333,9 +416,9 @@ TEST_F(VaultFileTest, OpenTamperedCiphertext) {
 
   fclose(file);
 
-  /* Flip the first ciphertext byte, leaving magic, salt and IV intact */
+  /* Flip the first ciphertext byte, leaving the header, salt and IV intact */
 
-  const size_t offset = kMagicSize + kSaltSize + kIVSize;
+  const size_t offset = kKdfParamSize + kSaltSize + kIVSize;
 
   ASSERT_LT(offset, fsize);
 
@@ -353,6 +436,115 @@ TEST_F(VaultFileTest, OpenTamperedCiphertext) {
   fclose(file);
 
   EXPECT_EQ(Reload(), Result::kFailure);
+}
+
+/* ==================================================
+ * Header Parameter Test
+ * ================================================== */
+
+/**
+ * @brief   Verify a new vault records the current default Argon2id parameters
+ */
+TEST_F(VaultFileTest, HeaderRecordsKdfParams) {
+  const std::vector<uint8_t> buff = ReadFile(path_);
+
+  ASSERT_EQ(buff.size(), static_cast<size_t>(kMinSize));
+
+  const KdfParams params = ReadHeaderParams(buff);
+
+  EXPECT_EQ(params.time_cost, kTimeCost);
+  EXPECT_EQ(params.mem_cost, kMemCost);
+  EXPECT_EQ(params.parallelism, kParallelism);
+}
+
+/**
+ * @brief   Verify the key is derived with the header parameters rather than the build defaults
+ */
+TEST_F(VaultFileTest, OpenUsesHeaderKdfParams) {
+  MakeVaultWith(MinParams());
+
+  EXPECT_EQ(Reload(), Result::kSuccess);
+  EXPECT_EQ(vault_.GetEntryCount(), 0);
+}
+
+/**
+ * @brief   Verify parameters outside the accepted range are rejected before any key derivation
+ */
+TEST_F(VaultFileTest, OpenRejectsOutOfRangeKdfParams) {
+  const std::array<KdfParams, 6> cases{
+    KdfParams{ .time_cost = kMinTimeCost - 1, .mem_cost = kMemCost, .parallelism = kParallelism },
+    KdfParams{ .time_cost = kMaxTimeCost + 1, .mem_cost = kMemCost, .parallelism = kParallelism },
+    KdfParams{ .time_cost = kTimeCost, .mem_cost = kMinMemCost - 1, .parallelism = kParallelism },
+    KdfParams{ .time_cost = kTimeCost, .mem_cost = kMaxMemCost + 1, .parallelism = kParallelism },
+    KdfParams{ .time_cost = kTimeCost, .mem_cost = kMemCost, .parallelism = kMinParallelism - 1 },
+    KdfParams{ .time_cost = kTimeCost, .mem_cost = kMemCost, .parallelism = kMaxParallelism + 1 },
+  };
+
+  for (const KdfParams& params : cases) {
+    SCOPED_TRACE(testing::Message() << "t=" << params.time_cost << " m=" << params.mem_cost
+                                    << " p=" << params.parallelism);
+
+    PatchHeaderParams(params);
+
+    EXPECT_EQ(Reload(), Result::kFailure);
+    EXPECT_NE(vault_.GetLastError().find("Invalid vault file format"), std::string::npos);
+  }
+}
+
+/**
+ * @brief   Verify a file written before the parameter block existed is rejected as malformed
+ */
+TEST_F(VaultFileTest, OpenLegacyFormatFails) {
+  vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
+
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+
+  /* Rebuild the file without the parameter block, the way older builds wrote it */
+
+  std::vector<uint8_t> buff = ReadFile(path_);
+
+  buff.erase(buff.begin() + kMagicSize, buff.begin() + static_cast<std::ptrdiff_t>(kKdfParamSize));
+
+  ASSERT_GE(buff.size(), static_cast<size_t>(kMinSize));
+
+  WriteFile(path_, buff);
+
+  /* The leading salt bytes now sit where the parameters belong and fall outside the accepted range */
+
+  EXPECT_EQ(Reload(), Result::kFailure);
+  EXPECT_NE(vault_.GetLastError().find("Invalid vault file format"), std::string::npos);
+}
+
+/**
+ * @brief   Verify a save keeps the parameters the open vault was derived with
+ */
+TEST_F(VaultFileTest, SavePreservesKdfParams) {
+  MakeVaultWith(MinParams());
+
+  ASSERT_EQ(Reload(), Result::kSuccess);
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+
+  const KdfParams params = ReadHeaderParams(ReadFile(path_));
+
+  EXPECT_EQ(params.time_cost, kMinTimeCost);
+  EXPECT_EQ(params.mem_cost, kMinMemCost);
+  EXPECT_EQ(params.parallelism, kMinParallelism);
+}
+
+/**
+ * @brief   Verify a password change lifts the vault to the current default parameters
+ */
+TEST_F(VaultFileTest, ChangePWUpdatesKdfParams) {
+  MakeVaultWith(MinParams());
+
+  ASSERT_EQ(Reload(), Result::kSuccess);
+  ASSERT_EQ(vault_.ChangePW(MakePW("asdf1234"), path_), Result::kSuccess);
+
+  const KdfParams params = ReadHeaderParams(ReadFile(path_));
+
+  EXPECT_EQ(params.time_cost, kTimeCost);
+  EXPECT_EQ(params.mem_cost, kMemCost);
+  EXPECT_EQ(params.parallelism, kParallelism);
 }
 
 /* ==================================================
@@ -416,11 +608,11 @@ TEST_F(VaultFileTest, SaveWritesFreshIV) {
   std::vector<uint8_t> second = ReadFile(path_);
 
   ASSERT_EQ(first.size(), second.size());
-  ASSERT_GT(first.size(), kMagicSize + kSaltSize + kIVSize + kTagSize);
+  ASSERT_GT(first.size(), kKdfParamSize + kSaltSize + kIVSize + kTagSize);
 
-  const size_t salt_off = kMagicSize;
-  const size_t iv_off = kMagicSize + kSaltSize;
-  const size_t ct_off = kMagicSize + kSaltSize + kIVSize;
+  const size_t salt_off = kKdfParamSize;
+  const size_t iv_off = kKdfParamSize + kSaltSize;
+  const size_t ct_off = kKdfParamSize + kSaltSize + kIVSize;
 
   /* Salt is reused so the key stays stable */
 

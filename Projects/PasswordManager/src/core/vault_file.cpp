@@ -11,6 +11,57 @@
 #include "core/vault.h"
 #include "utils/platform.h"
 
+namespace {
+
+/**
+ * @brief	Read the Argon2id parameter block from a vault header
+ * @param	src		Vault file buffer holding at least kKdfParamSize bytes
+ * @return	Parameters stored in the header
+ */
+KdfParams ReadKdfParams(const uint8_t* src) {
+  KdfParams params{};
+
+  memcpy(&params.time_cost, src + kMagicSize, sizeof(uint32_t));
+  memcpy(&params.mem_cost, src + kMagicSize + sizeof(uint32_t), sizeof(uint32_t));
+  memcpy(&params.parallelism, src + kMagicSize + 2 * sizeof(uint32_t), sizeof(uint32_t));
+
+  return params;
+}
+
+/**
+ * @brief	Write the Argon2id parameter block into a vault header
+ * @param	dst			Vault file buffer holding at least kKdfParamSize bytes
+ * @param	params		Parameters to store
+ */
+void WriteKdfParams(uint8_t* dst, const KdfParams& params) {
+  memcpy(dst + kMagicSize, &params.time_cost, sizeof(uint32_t));
+  memcpy(dst + kMagicSize + sizeof(uint32_t), &params.mem_cost, sizeof(uint32_t));
+  memcpy(dst + kMagicSize + 2 * sizeof(uint32_t), &params.parallelism, sizeof(uint32_t));
+}
+
+/**
+ * @brief	Check whether KDF parameters are within the accepted range
+ * @param	params	Parameters read from header
+ * @return	kSuccess when every field is in range, kFailure otherwise
+ */
+Result ValidateKdfParams(const KdfParams& params) {
+  if (params.time_cost < kMinTimeCost || params.time_cost > kMaxTimeCost) {
+    return Result::kFailure;
+  }
+
+  if (params.mem_cost < kMinMemCost || params.mem_cost > kMaxMemCost) {
+    return Result::kFailure;
+  }
+
+  if (params.parallelism < kMinParallelism || params.parallelism > kMaxParallelism) {
+    return Result::kFailure;
+  }
+
+  return Result::kSuccess;
+}
+
+}  // namespace
+
 Result Vault::NewVault(const std::string& path, const Password& pw) {
   last_error_.clear();
 
@@ -55,7 +106,7 @@ Result Vault::NewVault(const std::string& path, const Password& pw) {
 
   /* Encrypt and write the vault file atomically */
 
-  if (SaveVaultWith(path, *key_, salt_) == Result::kFailure) {
+  if (SaveVaultWith(path, *key_, salt_, kdf_) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
@@ -121,9 +172,20 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
     return Result::kFailure;
   }
 
+  /* Adopt the key-derivation parameters recorded in the header */
+
+  const KdfParams params = ReadKdfParams(src_buff_.data());
+
+  if (ValidateKdfParams(params) == Result::kFailure) {
+    ReportError("[File] Validation failed - Invalid vault file format\n");
+    return Result::kFailure;
+  }
+
+  kdf_ = params;
+
   /* Read the salt from the header and derive the session key */
 
-  memcpy(salt_.data(), src_buff_.data() + kMagicSize, kSaltSize);
+  memcpy(salt_.data(), src_buff_.data() + kKdfParamSize, kSaltSize);
 
   key_ = DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()), salt_, kdf_);
 
@@ -137,7 +199,7 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
 
   /* Decrypt into the session image */
 
-  int64_t img_size = src_size_ - static_cast<int64_t>(kMagicSize + kSaltSize + kIVSize + kTagSize);
+  int64_t img_size = src_size_ - static_cast<int64_t>(kKdfParamSize + kSaltSize + kIVSize + kTagSize);
 
   img_ = SecureBuffer(static_cast<size_t>(img_size));
 
@@ -149,7 +211,8 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
     // LCOV_EXCL_STOP
   }
 
-  if (aes_.Decrypt(src_buff_.data() + kMagicSize, img_.Data(), src_bytes - kMagicSize, *key_) == Result::kFailure) {
+  if (aes_.Decrypt(src_buff_.data() + kKdfParamSize, img_.Data(), src_bytes - kKdfParamSize, *key_) ==
+      Result::kFailure) {
     Reset();
     ReportError("[Auth] Decryption failed - Invalid password or corrupted vault\n");
     return Result::kFailure;
@@ -204,10 +267,11 @@ Result Vault::SaveVault(const std::string& path) {
     return Result::kFailure;
   }
 
-  return SaveVaultWith(path, *key_, salt_);
+  return SaveVaultWith(path, *key_, salt_, kdf_);
 }
 
-Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt) {
+Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt,
+                            const KdfParams& params) {
   /* Verify the image redzone and offset invariant before encrypting */
 
   if (VerifyImage() == Result::kFailure) {
@@ -216,7 +280,7 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::
 
   /* Calculate file size */
 
-  dst_size_ = static_cast<int64_t>(kMagicSize + kSaltSize + kIVSize + img_.Size() + kTagSize);
+  dst_size_ = static_cast<int64_t>(kKdfParamSize + kSaltSize + kIVSize + img_.Size() + kTagSize);
 
   if (dst_size_ > kMaxSize) {
     // LCOV_EXCL_START
@@ -229,11 +293,15 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::
 
   dst_buff_.assign(dst_bytes, 0);
 
+  /* Write the magic number and the parameters the key was derived with */
+
   memcpy(dst_buff_.data(), &magic_num_, kMagicSize);
+
+  WriteKdfParams(dst_buff_.data(), params);
 
   /* Encrypt the image; the session salt is written and a fresh IV is generated */
 
-  if (aes_.Encrypt(img_.Data(), dst_buff_.data() + kMagicSize, img_.Size(), key, salt) == Result::kFailure) {
+  if (aes_.Encrypt(img_.Data(), dst_buff_.data() + kKdfParamSize, img_.Size(), key, salt) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt vault data\n");
     return Result::kFailure;
@@ -334,9 +402,11 @@ Result Vault::ChangePW(const Password& pw, const std::string& path) {
     // LCOV_EXCL_STOP
   }
 
-  /* Derive a new key */
+  /* Derive a new key with the current defaults, upgrading a vault written by an older build */
 
-  auto new_key = DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()), new_salt, kdf_);
+  const KdfParams new_kdf{};
+
+  auto new_key = DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()), new_salt, new_kdf);
 
   if (!new_key.has_value()) {
     // LCOV_EXCL_START
@@ -347,7 +417,7 @@ Result Vault::ChangePW(const Password& pw, const std::string& path) {
 
   /* Persist with the new key before changing session state */
 
-  if (SaveVaultWith(path, *new_key, new_salt) == Result::kFailure) {
+  if (SaveVaultWith(path, *new_key, new_salt, new_kdf) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
@@ -355,6 +425,7 @@ Result Vault::ChangePW(const Password& pw, const std::string& path) {
 
   key_ = std::move(new_key);
   salt_ = new_salt;
+  kdf_ = new_kdf;
 
   return Result::kSuccess;
 }
