@@ -43,6 +43,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * GCM tag provides integrity check, and two-pass decryption procedure verifies it before writing any plaintext into disk
 * Newly and randomly generated salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * RAII pattern ensures memory wipe for sensitive data, using `sodium_free` and `sodium_memzero`
+* Range check for key derivation parameters before Argon2id runs
 * Sensitive data is held in `sodium_malloc` memory, which provides guard pages and lock against swap
 
 # 3. Specifications
@@ -66,8 +67,10 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 ## 3-1. Encrypted File Format
 
 ```
-Salt (16 Bytes) │ IV (12 Bytes) │ Encrypted Data │ Tag (16 Bytes)
+Magic Number (4 Bytes) │ Time Cost (4 Bytes) │ Memory Cost (4 Bytes) │ Parallelism (4 Bytes) │ Salt (16 Bytes) │ IV (12 Bytes) │ Encrypted Data │ Tag (16 Bytes)
 ```
+
+* Multi-byte integers are stored little-endian, and the memory cost is stored in KiB.
 
 ## 3-2. Source Code Architecture
 
@@ -81,6 +84,7 @@ src
 │   ├── aes_gcm_enc.cpp       # Encryption
 │   ├── aes_gcm_dec.cpp       # Decryption
 │   ├── crypto_worker.h/cpp   # Asynchronous worker thread
+│   ├── file_header.h/cpp     # Encrypted file header
 │   └── secure_key.h/cpp      # Secure AES key handler
 ├── gui
 │   ├── crypto_wrapper.h/cpp  # Wrapper class for CryptoWorker
@@ -197,12 +201,13 @@ cmake --build build
 
 **Codecov Report:** https://app.codecov.io/gh/Astatine387/Portfolio/tree/main/Projects%2FFileEncryption%2Fsrc
 
-| Module       | Test File                | Test Cases                                                                                   |
-| ------------ | ------------------------ | -------------------------------------------------------------------------------------------- |
-| AesGcm       | `aes_gcm_test.cpp`       | Encryption, Decryption, Authentication, Integrity Check, Edge Cases, Callbacks, Cancellation |
-| CryptoWorker | `crypto_worker_test.cpp` | Encryption, Decryption, Callbacks, Cancellation, Error Handling, Concurrency                 |
-| Password     | `password_test.cpp`      | Initialization, Setting Data, Copy and Move Semantics, Memory Safety, RAII                   |
-| Utils        | `utils_test.cpp`         | File Handling, Argon2id Key Derivation, Random Number Generation, Memory Wipe                |
+| Module       | Test File                | Test Cases                                                                                          |
+| ------------ | ------------------------ | --------------------------------------------------------------------------------------------------- |
+| AesGcm       | `aes_gcm_test.cpp`       | Encryption, Decryption, Header, Authentication, Integrity Check, Edge Cases, Callbacks, Cancellation |
+| CryptoWorker | `crypto_worker_test.cpp` | Encryption, Decryption, Header Parameters, Callbacks, Cancellation, Error Handling, Concurrency      |
+| FileHeader   | `file_header_test.cpp`   | Header Layout, Magic Number, Parameter Validation, Error Messages                                    |
+| Password     | `password_test.cpp`      | Initialization, Setting Data, Copy and Move Semantics, Memory Safety, RAII                          |
+| Utils        | `utils_test.cpp`         | File Handling, Argon2id Key Derivation, Random Number Generation, Memory Wipe                       |
 
 **Note:** GUI files, error messages for external libraries and system calls are excluded from tests.
 

@@ -8,13 +8,20 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <atomic>
 #include <cstring>
+#include <optional>
+#include <span>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "common/constants.h"
+#include "core/aes_gcm.h"
+#include "core/file_header.h"
+#include "core/secure_key.h"
 #include "utils/password.h"
 #include "utils/platform.h"
 
@@ -106,6 +113,61 @@ class CryptoWorkerTest : public ::testing::Test {
     fclose(file);
 
     EXPECT_EQ(res, vec.size());
+  }
+
+  /**
+   * @brief   Replace the Argon2id parameters in a file header, leaving the body untouched
+   * @param   path    Encrypted file path
+   * @param   params  Parameters to store
+   */
+  void PatchHeaderParams(const std::string& path, const KdfParams& params) {
+    std::vector<uint8_t> buff;
+
+    Read(path, buff);
+
+    ASSERT_GE(buff.size(), kKdfParamSize);
+
+    memcpy(buff.data() + kMagicSize, &params.time_cost, sizeof(uint32_t));
+    memcpy(buff.data() + kMagicSize + sizeof(uint32_t), &params.mem_cost, sizeof(uint32_t));
+    memcpy(buff.data() + kMagicSize + 2 * sizeof(uint32_t), &params.parallelism, sizeof(uint32_t));
+
+    Create(path, buff);
+  }
+
+  /**
+   * @brief   Write an encrypted file whose header records the given parameters
+   * @param   params  Argon2id parameters to derive with and record
+   * @param   data    Plaintext to encrypt
+   */
+  void MakeFileWith(const KdfParams& params, const std::vector<uint8_t>& data) {
+    FILE *src = nullptr, *dst = nullptr;
+    std::array<uint8_t, kSaltSize> salt{};
+
+    salt.fill(0x33);
+
+    Create(src_path_, data);
+
+    auto derived = DeriveKey(std::span<const char>("password", 8), salt, params);
+
+    ASSERT_TRUE(derived.has_value());
+
+    SecureKey key = std::move(derived.value());  // NOLINT(bugprone-unchecked-optional-access)
+    AesGcm aes;
+
+    OpenFile(&src, src_path_, "rb");
+    OpenFile(&dst, enc_path_, "wb+");
+
+    if (src && dst) {
+      EXPECT_EQ(aes.Encrypt(src, dst, key, salt, params), Result::kSuccess);
+    }
+
+    if (src) {
+      fclose(src);
+    }
+
+    if (dst) {
+      fclose(dst);
+    }
   }
 };
 
@@ -298,10 +360,10 @@ TEST_F(CryptoWorkerTest, WrongPasswordRemovesOutput) {
 }
 
 /**
- * @brief   Verify a source too short to hold a salt fails key derivation
+ * @brief   Verify a source too short to hold a header is rejected before key derivation
  */
-TEST_F(CryptoWorkerTest, TooShortSourceFailsKeyDerivation) {
-  std::vector<uint8_t> buff(kSaltSize - 1, 'a');
+TEST_F(CryptoWorkerTest, TooShortSourceIsRejected) {
+  std::vector<uint8_t> buff(kDataOffset - 1, 'a');
   std::string msg;
 
   Create(src_path_, buff);
@@ -312,8 +374,100 @@ TEST_F(CryptoWorkerTest, TooShortSourceFailsKeyDerivation) {
 
   dec.Work();
 
-  EXPECT_NE(msg.find("Key derivation failed"), std::string::npos);
+  EXPECT_NE(msg.find("Cannot read the file header"), std::string::npos);
   EXPECT_FALSE(FileExists(dec_path_));
+}
+
+/**
+ * @brief   Verify a file written by another tool is rejected on the magic number
+ */
+TEST_F(CryptoWorkerTest, ForeignSourceIsRejected) {
+  std::vector<uint8_t> buff(static_cast<size_t>(kMinSize), 'a');
+  std::string msg;
+
+  Create(src_path_, buff);
+
+  CryptoWorker dec(src_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
+
+  dec.SetFinishedCallback([&](const std::string& m) { msg = m; });
+
+  dec.Work();
+
+  EXPECT_NE(msg.find("Not a FileEncryption file"), std::string::npos);
+  EXPECT_FALSE(FileExists(dec_path_));
+}
+
+/**
+ * @brief   Verify parameters outside the accepted range are rejected before Argon2id runs
+ */
+TEST_F(CryptoWorkerTest, OutOfRangeHeaderParamsAreRejected) {
+  const char* data = "Hello, world!";
+  std::string enc_msg;
+
+  Create(src_path_, ToBytes(data));
+
+  /* One real encryption supplies a valid file for every case below */
+
+  CryptoWorker enc(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
+
+  enc.SetFinishedCallback([&](const std::string& m) { enc_msg = m; });
+
+  enc.Work();
+
+  ASSERT_NE(enc_msg.find("complete"), std::string::npos);
+
+  const std::array<KdfParams, 6> cases{
+    KdfParams{ .time_cost = kMinTimeCost - 1, .mem_cost = kMemCost, .parallelism = kParallelism },
+    KdfParams{ .time_cost = kMaxTimeCost + 1, .mem_cost = kMemCost, .parallelism = kParallelism },
+    KdfParams{ .time_cost = kTimeCost, .mem_cost = kMinMemCost - 1, .parallelism = kParallelism },
+    KdfParams{ .time_cost = kTimeCost, .mem_cost = kMaxMemCost + 1, .parallelism = kParallelism },
+    KdfParams{ .time_cost = kTimeCost, .mem_cost = kMemCost, .parallelism = kMinParallelism - 1 },
+    KdfParams{ .time_cost = kTimeCost, .mem_cost = kMemCost, .parallelism = kMaxParallelism + 1 },
+  };
+
+  for (const KdfParams& params : cases) {
+    SCOPED_TRACE(testing::Message() << "t=" << params.time_cost << " m=" << params.mem_cost
+                                    << " p=" << params.parallelism);
+
+    std::string dec_msg;
+
+    PatchHeaderParams(enc_path_, params);
+
+    CryptoWorker dec(enc_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
+
+    dec.SetFinishedCallback([&](const std::string& m) { dec_msg = m; });
+
+    dec.Work();
+
+    EXPECT_NE(dec_msg.find("Unsupported key derivation parameters"), std::string::npos);
+    EXPECT_FALSE(FileExists(dec_path_));
+  }
+}
+
+/**
+ * @brief   Verify a file is decrypted with the parameters its header records
+ */
+TEST_F(CryptoWorkerTest, DecryptUsesHeaderKdfParams) {
+  const char* data = "Hello, world!";
+  const KdfParams params{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism };
+  std::vector<uint8_t> orig = ToBytes(data), copy;
+  std::string msg;
+
+  /* Build a file under the cheapest accepted parameters rather than the build defaults */
+
+  MakeFileWith(params, orig);
+
+  CryptoWorker dec(enc_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
+
+  dec.SetFinishedCallback([&](const std::string& m) { msg = m; });
+
+  dec.Work();
+
+  EXPECT_NE(msg.find("complete"), std::string::npos);
+
+  Read(dec_path_, copy);
+
+  EXPECT_EQ(orig, copy);
 }
 
 /**

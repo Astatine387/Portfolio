@@ -138,6 +138,7 @@ set(CORE_SOURCES
     src/core/aes_gcm_dec.cpp
     src/core/aes_gcm_enc.cpp
     src/core/crypto_worker.cpp
+    src/core/file_header.cpp
     src/core/secure_key.cpp
     src/utils/password.cpp
 )
@@ -152,6 +153,7 @@ set(CORE_HEADERS
     src/common/constants.h
     src/core/aes_gcm.h
     src/core/crypto_worker.h
+    src/core/file_header.h
     src/core/secure_key.h
     src/utils/mutex.h
     src/utils/password.h
@@ -223,6 +225,7 @@ enable_testing()
 set(TEST_SOURCES
     src/tests/aes_gcm_test.cpp
     src/tests/crypto_worker_test.cpp
+    src/tests/file_header_test.cpp
     src/tests/password_test.cpp
     src/tests/secure_key_test.cpp
     src/tests/utils_test.cpp

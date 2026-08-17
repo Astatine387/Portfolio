@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "core/file_header.h"
 #include "core/secure_key.h"
 #include "utils/platform.h"
 
@@ -146,7 +147,7 @@ TEST_F(AesGcmTest, EncryptDecryptBasic) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  res = aes.Encrypt(src, dst, key, salt);
+  res = aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -202,7 +203,7 @@ TEST_F(AesGcmTest, EncryptProducesDifferentOutput) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, key, salt);
+  aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -217,7 +218,7 @@ TEST_F(AesGcmTest, EncryptProducesDifferentOutput) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
 
-  aes.Encrypt(src, dst, key, salt);
+  aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -256,7 +257,7 @@ TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  res0 = aes.Encrypt(src, dst, key, salt);
+  res0 = aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -271,7 +272,7 @@ TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, dec_path_, "wb+");
 
-  res1 = aes.Encrypt(src, dst, key, salt);
+  res1 = aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -283,6 +284,123 @@ TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
 
   EXPECT_EQ(res0, Result::kSuccess);
   EXPECT_EQ(res1, Result::kSuccess);
+}
+
+/* ==================================================
+ * Header Tests
+ * ================================================== */
+
+/**
+ * @brief   Verify encryption records the magic number and the parameters it was given
+ */
+TEST_F(AesGcmTest, EncryptWritesHeader) {
+  AesGcm aes;
+  FILE *src = nullptr, *dst = nullptr;
+  const char* data = "Hello, world!";
+  const size_t dsize = strlen(data);
+  std::vector<uint8_t> orig = ToBytes(data);
+  FileHeader header;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
+
+  Create(src_path_, orig, dsize);
+
+  OpenFile(&src, src_path_, "rb");
+  OpenFile(&dst, enc_path_, "wb+");
+
+  EXPECT_EQ(aes.Encrypt(src, dst, key, salt, FastParams()), Result::kSuccess);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  /* The header must describe the salt and the parameters the caller derived with */
+
+  OpenFile(&src, enc_path_, "rb");
+
+  ASSERT_NE(src, nullptr);
+
+  EXPECT_EQ(ReadHeader(src, header), HeaderStatus::kOk);
+
+  fclose(src);
+
+  EXPECT_EQ(header.params.time_cost, FastParams().time_cost);
+  EXPECT_EQ(header.params.mem_cost, FastParams().mem_cost);
+  EXPECT_EQ(header.params.parallelism, FastParams().parallelism);
+  EXPECT_EQ(header.salt, salt);
+}
+
+/**
+ * @brief   Verify a file too small to hold a header is rejected before anything is parsed
+ */
+TEST_F(AesGcmTest, DecryptRejectsUndersizedFile) {
+  AesGcm aes;
+  FILE *src = nullptr, *dst = nullptr;
+  std::vector<uint8_t> buff(static_cast<size_t>(kMinSize) - 1, 0x00);
+  std::string err;
+  Result res;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
+
+  Create(enc_path_, buff, buff.size());
+
+  aes.SetErrorCallback([&](const char* msg) { err = msg; });
+
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb+");
+
+  res = aes.Decrypt(src, dst, key);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_NE(err.find("too small"), std::string::npos);
+}
+
+/**
+ * @brief   Verify a file written by another tool is rejected on the magic number
+ */
+TEST_F(AesGcmTest, DecryptRejectsForeignFile) {
+  AesGcm aes;
+  FILE *src = nullptr, *dst = nullptr;
+  std::vector<uint8_t> buff(static_cast<size_t>(kMinSize), 0x00);
+  std::string err;
+  Result res;
+
+  auto salt = MakeSalt(0xA5);
+  SecureKey key = MakeKey("password", salt);
+
+  Create(enc_path_, buff, buff.size());
+
+  aes.SetErrorCallback([&](const char* msg) { err = msg; });
+
+  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&dst, dec_path_, "wb+");
+
+  res = aes.Decrypt(src, dst, key);
+
+  if (src) {
+    fclose(src);
+  }
+
+  if (dst) {
+    fclose(dst);
+  }
+
+  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_NE(err.find("Not a FileEncryption file"), std::string::npos);
 }
 
 /* ==================================================
@@ -311,7 +429,7 @@ TEST_F(AesGcmTest, DecryptWrongKey) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, key0, salt);
+  aes.Encrypt(src, dst, key0, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -360,7 +478,7 @@ TEST_F(AesGcmTest, TamperedCiphertext) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, key, salt);
+  aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -374,7 +492,7 @@ TEST_F(AesGcmTest, TamperedCiphertext) {
 
   Read(enc_path_, copy);
 
-  copy[kSaltSize + kIVSize] ^= 0xFF;
+  copy[kDataOffset] ^= 0xFF;
 
   Create(enc_path_, copy, copy.size());
 
@@ -417,7 +535,7 @@ TEST_F(AesGcmTest, TamperedTag) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, key, salt);
+  aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -477,7 +595,7 @@ TEST_F(AesGcmTest, EmptyFile) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  res = aes.Encrypt(src, dst, key, salt);
+  res = aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -535,7 +653,7 @@ TEST_F(AesGcmTest, ExactBuffSizeFile) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  res = aes.Encrypt(src, dst, key, salt);
+  res = aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -593,7 +711,7 @@ TEST_F(AesGcmTest, ArbitrarySizeFile) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  res = aes.Encrypt(src, dst, key, salt);
+  res = aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -663,7 +781,7 @@ TEST_F(AesGcmTest, ProgressCallback) {
     last = perc;
   });
 
-  aes.Encrypt(src, dst, key, salt);
+  aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -698,7 +816,7 @@ TEST_F(AesGcmTest, ErrorCallback) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, key0, salt);
+  aes.Encrypt(src, dst, key0, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -751,7 +869,7 @@ TEST_F(AesGcmTest, ErrorCallbackFormatsQueue) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, key0, salt);
+  aes.Encrypt(src, dst, key0, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -826,7 +944,7 @@ TEST_F(AesGcmTest, Cancellation) {
     }
   });
 
-  res = aes.Encrypt(src, dst, key, salt);
+  res = aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -865,7 +983,7 @@ TEST_F(AesGcmTest, CancelDuringWritePass) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, key, salt);
+  aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -928,7 +1046,7 @@ TEST_F(AesGcmTest, WriteFailureIsSticky) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, key, salt);
+  aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);
@@ -984,7 +1102,7 @@ TEST_F(AesGcmTest, ThrowingErrorCallbackDoesNotTerminate) {
   OpenFile(&src, src_path_, "rb");
   OpenFile(&dst, enc_path_, "wb+");
 
-  aes.Encrypt(src, dst, key, salt);
+  aes.Encrypt(src, dst, key, salt, FastParams());
 
   if (src) {
     fclose(src);

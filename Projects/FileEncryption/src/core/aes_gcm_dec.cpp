@@ -60,38 +60,30 @@ Result AesGcm::DecryptInit() {
     // LCOV_EXCL_STOP
   }
 
-  constexpr int64_t kHeaderSize = static_cast<int64_t>(kSaltSize + kIVSize + kTagSize);
-
-  if (src_size_ < kHeaderSize) {
-    // LCOV_EXCL_START
-    ReportError("[File] Validation failed - File should be at least 44 bytes\n");
+  if (src_size_ < kMinSize) {
+    ReportError("[File] Validation failed - File is too small to be an encrypted file\n");
     return Result::kFailure;
-    // LCOV_EXCL_STOP
   }
 
-  src_size_ -= kHeaderSize;
+  src_size_ -= static_cast<int64_t>(kDataOffset + kTagSize);
 
   /* Double the progress as there are two passes */
 
   progress_max_ = 2 * src_size_;
 
-  /* Read salt and IV from header */
+  /* Read the header */
 
-  if (fread(salt_.data(), sizeof(uint8_t), kSaltSize, src_file_) != kSaltSize) {
-    // LCOV_EXCL_START
-    ReportError("[File] Read failed - Cannot read salt from source file header\n");
+  FileHeader header;
+
+  const HeaderStatus status = ReadHeader(src_file_, header);
+
+  if (status != HeaderStatus::kOk) {
+    ReportError(HeaderErrorMessage(status));
     return Result::kFailure;
-    // LCOV_EXCL_STOP
   }
 
-  if (fread(iv_.data(), sizeof(uint8_t), kIVSize, src_file_) != kIVSize) {
-    // LCOV_EXCL_START
-    ReportError(
-        "[File] Read failed - Cannot read initial vector from source file "
-        "header\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
+  salt_ = header.salt;
+  iv_ = header.iv;
 
   /* Read authentication tag from the end of the file */
 
@@ -256,7 +248,7 @@ Result AesGcm::SetupDecryptCtx() {
 
   /* Move file pointer to the start of the ciphertext */
 
-  if (Seek(src_file_, kSaltSize + kIVSize, SEEK_SET) == Result::kFailure) {
+  if (Seek(src_file_, kDataOffset, SEEK_SET) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[File] Seek failed - Cannot move file pointer to data\n");
     return Result::kFailure;

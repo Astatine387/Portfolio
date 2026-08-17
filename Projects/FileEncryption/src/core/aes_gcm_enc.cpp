@@ -4,12 +4,14 @@
  * @author	Astatine387
  */
 
+#include <algorithm>
 #include <array>
 
 #include "core/aes_gcm.h"
 #include "utils/platform.h"
 
-Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt) {
+Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt,
+                       const KdfParams& params) {
   src_file_ = src;
   dst_file_ = dst;
   progress_cur_ = 0;
@@ -29,7 +31,7 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<con
 
   WriterGuard writer_guard(this);
 
-  if (EncryptInit(salt) == Result::kFailure) {
+  if (EncryptInit(salt, params) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
@@ -52,7 +54,7 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<con
   return Result::kSuccess;
 }
 
-Result AesGcm::EncryptInit(std::span<const uint8_t, kSaltSize> salt) {
+Result AesGcm::EncryptInit(std::span<const uint8_t, kSaltSize> salt, const KdfParams& params) {
   /* Clear existing context */
 
   if (ctx_) {
@@ -121,18 +123,17 @@ Result AesGcm::EncryptInit(std::span<const uint8_t, kSaltSize> salt) {
     // LCOV_EXCL_STOP
   }
 
-  /* Write the salt and the fresh IV to the header */
+  /* Write the magic number */
 
-  if (fwrite(salt.data(), sizeof(uint8_t), kSaltSize, dst_file_) != kSaltSize) {
-    // LCOV_EXCL_START
-    ReportError("[File] Write failed - Cannot write salt to destination file header\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
-  }
+  FileHeader header;
 
-  if (fwrite(iv_.data(), sizeof(uint8_t), kIVSize, dst_file_) != kIVSize) {
+  header.params = params;
+  std::ranges::copy(salt, header.salt.begin());
+  header.iv = iv_;
+
+  if (WriteHeader(dst_file_, header) == Result::kFailure) {
     // LCOV_EXCL_START
-    ReportError("[File] Write failed - Cannot write IV to destination file header\n");
+    ReportError("[File] Write failed - Cannot write destination file header\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }

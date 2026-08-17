@@ -20,6 +20,7 @@
 #include <thread>
 
 #include "common/constants.h"
+#include "core/file_header.h"
 #include "core/secure_key.h"
 #include "utils/mutex.h"
 #include "utils/thread_annotations.h"
@@ -72,10 +73,12 @@ class AesGcm {
    * @param		src		Source file
    * @param		dst		Destination file
    * @param		key		Key derived from the password and salt
-   * @param		salt	Salt from the file header
+   * @param		salt	Salt written to the file header
+   * @param		params	Argon2id parameters the key was derived with, written to the file header
    * @return    kSuccess on success, kFailure on failure
    */
-  Result Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt);
+  Result Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt,
+                 const KdfParams& params = {});
 
   /* ==================================================
    * Callback functions
@@ -250,9 +253,10 @@ class AesGcm {
   /**
    * @brief		Intialize encryption context and write the header
    * @param		salt	Salt written to the file header
+   * @param		params	Argon2id parameters written to the file header
    * @return	kSuccess on success, kFailure on failure
    */
-  Result EncryptInit(std::span<const uint8_t, kSaltSize> salt);
+  Result EncryptInit(std::span<const uint8_t, kSaltSize> salt, const KdfParams& params);
 
   /**
    * @brief		Encrypt buffer

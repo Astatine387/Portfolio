@@ -259,6 +259,7 @@ TEST_F(VaultFileTest, OpenCorruptedFile) {
   }
 
   EXPECT_EQ(Reload(), Result::kFailure);
+  EXPECT_NE(vault_.GetLastError().find("Not a vault file"), std::string::npos);
 }
 
 /**
@@ -487,7 +488,7 @@ TEST_F(VaultFileTest, OpenRejectsOutOfRangeKdfParams) {
     PatchHeaderParams(params);
 
     EXPECT_EQ(Reload(), Result::kFailure);
-    EXPECT_NE(vault_.GetLastError().find("Invalid vault file format"), std::string::npos);
+    EXPECT_NE(vault_.GetLastError().find("Unsupported key derivation parameters"), std::string::npos);
   }
 }
 
@@ -512,7 +513,7 @@ TEST_F(VaultFileTest, OpenLegacyFormatFails) {
   /* The leading salt bytes now sit where the parameters belong and fall outside the accepted range */
 
   EXPECT_EQ(Reload(), Result::kFailure);
-  EXPECT_NE(vault_.GetLastError().find("Invalid vault file format"), std::string::npos);
+  EXPECT_NE(vault_.GetLastError().find("Unsupported key derivation parameters"), std::string::npos);
 }
 
 /**

@@ -11,6 +11,7 @@
 #include <optional>
 #include <span>
 
+#include "core/file_header.h"
 #include "core/secure_key.h"
 #include "utils/platform.h"
 
@@ -57,17 +58,32 @@ void CryptoWorker::Work() {
   /* Derive the session key */
 
   std::array<uint8_t, kSaltSize> salt{};
+  KdfParams params;
   std::optional<SecureKey> key;
+  std::string reason;
 
   if (mode_ == CryptoMode::kEncrypt) {
     if (Random(salt.data(), kSaltSize) == Result::kSuccess) {
-      key = DeriveKey(std::span<const char>(pw_.GetData(), pw_.GetSize()), salt);
+      key = DeriveKey(std::span<const char>(pw_.GetData(), pw_.GetSize()), salt, params);
     }
   }
   else {
-    if (fread(salt.data(), sizeof(uint8_t), kSaltSize, src_file) == kSaltSize &&
-        Seek(src_file, 0, SEEK_SET) == Result::kSuccess) {
-      key = DeriveKey(std::span<const char>(pw_.GetData(), pw_.GetSize()), salt);
+    FileHeader header;
+
+    HeaderStatus status = ReadHeader(src_file, header);
+
+    if (status == HeaderStatus::kOk) {
+      status = ValidateKdfParams(header.params);
+    }
+
+    if (status == HeaderStatus::kOk) {
+      salt = header.salt;
+      params = header.params;
+
+      key = DeriveKey(std::span<const char>(pw_.GetData(), pw_.GetSize()), salt, params);
+    }
+    else {
+      reason = HeaderErrorMessage(status);
     }
   }
 
@@ -78,9 +94,12 @@ void CryptoWorker::Work() {
     fclose(dst_file);
     RemoveFile(dst_path_);
 
+    if (reason.empty()) {
+      reason = "[Crypto] Key derivation failed\n";
+    }
+
     if (fcb_) {
-      fcb_(mode_ == CryptoMode::kEncrypt ? "[Crypto] Key derivation failed\nEncryption failed\n"
-                                         : "[Crypto] Key derivation failed\nDecryption failed\n");
+      fcb_(reason + (mode_ == CryptoMode::kEncrypt ? "Encryption failed\n" : "Decryption failed\n"));
     }
 
     return;
@@ -112,7 +131,7 @@ void CryptoWorker::Work() {
   /* Encrypt or decrypt */
 
   if (mode_ == CryptoMode::kEncrypt) {
-    res = aes.Encrypt(src_file, dst_file, *key, salt);
+    res = aes.Encrypt(src_file, dst_file, *key, salt, params);
 
     if (IsCancelled()) {
       msg = "Encryption canceled\n";

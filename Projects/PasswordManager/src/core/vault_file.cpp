@@ -168,7 +168,7 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
   /* Check magic number */
 
   if (memcmp(src_buff_.data(), &magic_num_, kMagicSize) != 0) {
-    ReportError("[File] Validation failed - Invalid vault file format\n");
+    ReportError("[File] Validation failed - Not a vault file\n");
     return Result::kFailure;
   }
 
@@ -177,7 +177,7 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
   const KdfParams params = ReadKdfParams(src_buff_.data());
 
   if (ValidateKdfParams(params) == Result::kFailure) {
-    ReportError("[File] Validation failed - Invalid vault file format\n");
+    ReportError("[File] Validation failed - Unsupported key derivation parameters\n");
     return Result::kFailure;
   }
 
