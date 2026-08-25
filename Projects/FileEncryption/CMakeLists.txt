@@ -254,20 +254,25 @@ endif()
 
 gtest_discover_tests(FileEncryption-tests)
 
-find_package(benchmark CONFIG QUIET)
+# Linux-only. The benchmark is driven by benchmark-fileencryption.yml, which
+# runs on ubuntu and points FE_BENCH_DIR at a tmpfs; the harness reads that with
+# getenv, which the MSVC CRT deprecates and /WX then turns into an error.
+if(NOT WIN32)
+    find_package(benchmark CONFIG QUIET)
 
-if(benchmark_FOUND)
-    set(BENCH_SOURCES
-        src/benchmark/benchmark.cpp
-    )
+    if(benchmark_FOUND)
+        set(BENCH_SOURCES
+            src/benchmark/benchmark.cpp
+        )
 
-    add_executable(FileEncryption-bench ${BENCH_SOURCES})
-    target_link_libraries(FileEncryption-bench PRIVATE
-        FileEncryption-core
-        benchmark::benchmark
-        benchmark::benchmark_main
-        project_warnings_strict
-    )
+        add_executable(FileEncryption-bench ${BENCH_SOURCES})
+        target_link_libraries(FileEncryption-bench PRIVATE
+            FileEncryption-core
+            benchmark::benchmark
+            benchmark::benchmark_main
+            project_warnings_strict
+        )
+    endif()
 endif()
 
 file(GLOB_RECURSE ALL_CXX_SOURCE_FILES

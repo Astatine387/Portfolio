@@ -124,8 +124,8 @@ src
 
 Dependencies (OpenSSL 3.0+, Argon2, libsodium, Google Test, Google Benchmark)
 are declared in `vcpkg.json` and installed automatically when building with the
-vcpkg toolchain. Google Benchmark is optional: without it the `FileEncryption-bench`
-target is simply not generated.
+vcpkg toolchain. Google Benchmark is Linux-only and optional: `FileEncryption-bench`
+is never generated on Windows, and on Linux it is skipped when Benchmark is absent.
 
 ## 4-2. Build
 
@@ -257,12 +257,16 @@ ctest --test-dir build --output-on-failure
 	* **Decryption:** 1.3 ~ 1.4 GiB/s
 	* **Argon2id Key Derivation:** 380 ~ 400 ms
 
-**Running Benchmarks Locally:** 
-```cmd
+**Running Benchmarks Locally** (Linux only):
+```bash
 cd Projects/FileEncryption
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake" -DCMAKE_PREFIX_PATH="C:/Qt/6.10.1/msvc2022_64" -DVCPKG_TARGET_TRIPLET=x64-windows
-cmake --build build --config Release --target FileEncryption-bench
-.\build\Release\FileEncryption-bench.exe
+
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target FileEncryption-bench
+
+# FE_BENCH_DIR holds the scratch files; a tmpfs keeps disk I/O out of the numbers.
+mkdir -p /dev/shm/fe-bench
+FE_BENCH_DIR=/dev/shm/fe-bench ./build/FileEncryption-bench
 ```
 
 # 7. License

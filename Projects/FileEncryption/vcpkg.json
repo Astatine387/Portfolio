@@ -7,6 +7,9 @@
     "argon2",
     "libsodium",
     "gtest",
-    "benchmark"
+    {
+      "name": "benchmark",
+      "platform": "!windows"
+    }
   ]
 }
