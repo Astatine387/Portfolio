@@ -1,0 +1,111 @@
+name: Benchmark FileEncryption
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1' # Mondays, 03:17 UTC
+  push:
+    branches: [main]
+    paths:
+      - 'Projects/FileEncryption/src/**'
+      - 'Projects/FileEncryption/CMakeLists.txt'
+      - 'Projects/FileEncryption/scripts/bench_report.py'
+      - '.github/workflows/benchmark-fileencryption.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmark-fileencryption-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Relative throughput (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    env:
+      FE_BENCH_DIR: /dev/shm/fe-bench
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-13 qt6-base-dev libssl-dev libargon2-dev \
+                                  libsodium-dev libgtest-dev libbenchmark-dev
+
+      - name: Record environment
+        run: |
+          {
+            echo '## FileEncryption benchmark'
+            echo
+            echo '### Runner'
+            echo
+            echo '| Item | Value |'
+            echo '| --- | --- |'
+            echo "| CPU | $(lscpu | sed -n 's/^Model name:[[:space:]]*//p' | head -1) |"
+            echo "| Crypto ISA | \`$(grep -o -E '\b(aes|vaes|pclmulqdq|vpclmulqdq|avx512f)\b' /proc/cpuinfo | sort -u | tr '\n' ' ')\` |"
+            echo "| vCPU | $(nproc) |"
+            echo "| RAM | $(free -g | awk '/^Mem:/ {print $2" GiB"}') |"
+            echo "| Governor | $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo 'n/a') |"
+            echo "| OpenSSL | $(openssl version) |"
+            echo "| Compiler | $(g++-13 --version | head -1) |"
+            echo "| Scratch | tmpfs (\`$FE_BENCH_DIR\`) |"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Configure
+        working-directory: Projects/FileEncryption
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=g++-13 \
+            -DWARNINGS_AS_ERRORS=ON
+
+      - name: Build benchmark
+        working-directory: Projects/FileEncryption
+        run: cmake --build build --target FileEncryption-bench -j "$(nproc)"
+
+      - name: Reference measurement (openssl speed)
+        run: |
+          {
+            echo '### Reference: `openssl speed -evp aes-256-gcm`'
+            echo
+            echo '```'
+            openssl speed -elapsed -evp aes-256-gcm 2>&1 | tail -n 4
+            echo '```'
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run benchmark
+        working-directory: Projects/FileEncryption
+        run: |
+          mkdir -p "$FE_BENCH_DIR"
+          df -h /dev/shm
+          ./build/FileEncryption-bench \
+            --benchmark_repetitions=10 \
+            --benchmark_report_aggregates_only=true \
+            --benchmark_min_warmup_time=1 \
+            --benchmark_out=benchmark.json \
+            --benchmark_out_format=json
+
+      - name: Report relative throughput
+        if: always()
+        working-directory: Projects/FileEncryption
+        run: python3 scripts/bench_report.py benchmark.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload raw results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fileencryption-benchmark-json
+          path: Projects/FileEncryption/benchmark.json
+          if-no-files-found: warn
+
+      - name: Remove scratch files
+        if: always()
+        run: rm -rf "$FE_BENCH_DIR"
