@@ -17,7 +17,7 @@
 bool Password::Equal(const Password& other) const {
   /* Compare over the full buffer in constant time; also require equal length */
 
-  static const std::array<uint8_t, kMaxMasterPwLen + 1> kZero{};
+  static constexpr std::array<uint8_t, kMaxMasterPwLen + 1> kZero{};
 
   const void* lhs = (data_ != nullptr) ? static_cast<const void*>(data_) : static_cast<const void*>(kZero.data());
   const void* rhs =

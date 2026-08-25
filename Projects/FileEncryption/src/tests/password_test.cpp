@@ -151,8 +151,8 @@ TEST(PasswordTest, MoveConstructor) {
   EXPECT_STREQ(pw1.GetData(), data);
   EXPECT_EQ(pw1.GetSize(), size);
   EXPECT_EQ(pw1.GetData(), orig_ptr);
-  EXPECT_TRUE(pw0.IsEmpty());  // NOLINT(bugprone-use-after-move)
-  EXPECT_EQ(pw0.GetData(), nullptr);
+  EXPECT_TRUE(pw0.IsEmpty());         // NOLINT(bugprone-use-after-move)
+  EXPECT_EQ(pw0.GetData(), nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
 }
 
 /**
@@ -178,8 +178,8 @@ TEST(PasswordTest, MoveAssignment) {
   EXPECT_STREQ(pw1.GetData(), data0);
   EXPECT_EQ(pw1.GetSize(), size0);
   EXPECT_EQ(pw1.GetData(), orig_ptr);
-  EXPECT_TRUE(pw0.IsEmpty());  // NOLINT(bugprone-use-after-move)
-  EXPECT_EQ(pw0.GetData(), nullptr);
+  EXPECT_TRUE(pw0.IsEmpty());         // NOLINT(bugprone-use-after-move)
+  EXPECT_EQ(pw0.GetData(), nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
 }
 
 /* ==================================================
