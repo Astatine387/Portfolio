@@ -6,13 +6,19 @@
 
 #include <fcntl.h>
 #include <sys/random.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cerrno>
+#include <cstdlib>
 #include <filesystem>
 #include <thread>
 
 #include "utils/platform.h"
+
+bool FileExists(const std::string& path) {
+  return std::filesystem::exists(path);
+}
 
 int64_t GetFileSize(FILE* file) {
   if (fseeko(file, 0, SEEK_END)) {
@@ -26,10 +32,6 @@ int64_t GetFileSize(FILE* file) {
   }
 
   return size;
-}
-
-bool FileExists(const std::string& path) {
-  return std::filesystem::exists(path);
 }
 
 Result Random(uint8_t* dst, size_t size) {
@@ -107,4 +109,40 @@ Result SyncDir(const std::string& path) {
 
 void OpenFile(FILE** file, const std::string& path, const char* mode) {
   *file = fopen(path.c_str(), mode);
+}
+
+Result OpenTempFile(FILE** file, std::string& path, const std::string& model) {
+  *file = nullptr;
+
+  const int fd = mkstemp(path.data());
+
+  if (fd == -1) {
+    return Result::kFailure;
+  }
+
+  if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1) {
+    // LCOV_EXCL_START
+    close(fd);
+    unlink(path.c_str());
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  struct stat st = {};
+
+  if (!model.empty() && stat(model.c_str(), &st) == 0) {
+    fchmod(fd, st.st_mode & 07777);
+  }
+
+  *file = fdopen(fd, "wb");
+
+  if (*file == nullptr) {
+    // LCOV_EXCL_START
+    close(fd);
+    unlink(path.c_str());
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  return Result::kSuccess;
 }

@@ -7,6 +7,8 @@
 #include <windows.h>
 
 #include <bcrypt.h>
+#include <fcntl.h>
+#include <io.h>
 
 #include <filesystem>
 
@@ -20,6 +22,11 @@ std::filesystem::path ToPath(const std::string& path) {
 
 }  // namespace
 
+bool FileExists(const std::string& path) {
+  std::filesystem::path fs_path = ToPath(path);
+  return std::filesystem::exists(fs_path);
+}
+
 int64_t GetFileSize(FILE* file) {
   if (_fseeki64(file, 0, SEEK_END)) {
     return -1;
@@ -32,11 +39,6 @@ int64_t GetFileSize(FILE* file) {
   }
 
   return size;
-}
-
-bool FileExists(const std::string& path) {
-  std::filesystem::path fs_path = ToPath(path);
-  return std::filesystem::exists(fs_path);
 }
 
 Result Random(uint8_t* dst, size_t size) {
@@ -74,4 +76,39 @@ void OpenFile(FILE** file, const std::string& path, const char* mode) {
   }
 
   _wfopen_s(file, fs_path.c_str(), wmode.c_str());
+}
+
+Result OpenNewFile(FILE** file, const std::string& path) {
+  *file = nullptr;
+
+  std::filesystem::path fs_path = ToPath(path);
+
+  HANDLE handle = CreateFileW(fs_path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW,
+                              FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+
+  if (handle == INVALID_HANDLE_VALUE) {
+    return Result::kFailure;
+  }
+
+  const int fd = _open_osfhandle(reinterpret_cast<intptr_t>(handle), _O_WRONLY | _O_BINARY);
+
+  if (fd == -1) {
+    // LCOV_EXCL_START
+    CloseHandle(handle);
+    _wunlink(fs_path.c_str());
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  *file = _fdopen(fd, "wb");
+
+  if (*file == nullptr) {
+    // LCOV_EXCL_START
+    _close(fd);
+    _wunlink(fs_path.c_str());
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  return Result::kSuccess;
 }

@@ -308,20 +308,18 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::
     // LCOV_EXCL_STOP
   }
 
-  /* Save to temporary file */
+  /* Save to a temporary file */
 
-  std::string tmp_path = path + ".tmp";
+  std::string tmp_path = path + ".XXXXXX";
 
-  OpenFile(&file_, tmp_path, "wb");
-
-  if (file_ == nullptr) {
-    ReportError("[File] Open failed - Cannot open temporary file for writing\n");
+  if (OpenTempFile(&file_, tmp_path, path) == Result::kFailure) {
+    ReportError("[File] Open failed - Cannot create temporary file for writing\n");
     return Result::kFailure;
   }
 
   if (fwrite(dst_buff_.data(), sizeof(uint8_t), dst_bytes, file_) != dst_bytes) {
     // LCOV_EXCL_START
-    ReportError("[File] Write failed - Cannot write temporary file\n");
+    ReportError("[File] Write failed - Cannot write temporary file");
     RemoveFile(tmp_path);
     return Result::kFailure;
     // LCOV_EXCL_STOP

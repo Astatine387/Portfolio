@@ -7,8 +7,10 @@
 #include <windows.h>
 
 #include <bcrypt.h>
+#include <fcntl.h>
 #include <io.h>
 
+#include <array>
 #include <filesystem>
 
 #include "utils/platform.h"
@@ -17,6 +19,10 @@ namespace {
 
 std::filesystem::path ToPath(const std::string& path) {
   return std::filesystem::path(std::u8string(reinterpret_cast<const char8_t*>(path.data()), path.size()));
+}
+
+bool CheckNameCollision(DWORD err) {
+  return err == ERROR_FILE_EXISTS || err == ERROR_ALREADY_EXISTS;
 }
 
 }  // namespace
@@ -103,4 +109,69 @@ void OpenFile(FILE** file, const std::string& path, const char* mode) {
   }
 
   _wfopen_s(file, fs_path.c_str(), wmode.c_str());
+}
+
+Result OpenTempFile(FILE** file, std::string& path, [[maybe_unused]] const std::string& model) {
+  *file = nullptr;
+
+  constexpr int kAttempts = 16;
+  constexpr size_t kSuffixLen = 6;
+  constexpr std::string_view kPool = "abcdefghijklmnopqrstuvwxyz0123456789";
+
+  if (path.size() < kSuffixLen) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  const size_t suffix_pos = path.size() - kSuffixLen;
+
+  for (int i = 0; i < kAttempts; i++) {
+    for (size_t j = 0; j < kSuffixLen; j++) {
+      uint32_t idx = 0;
+
+      if (RandomRange(&idx, 0, static_cast<uint32_t>(kPool.size()) - 1) == Result::kFailure) {
+        return Result::kFailure;  // LCOV_EXCL_LINE
+      }
+
+      path[suffix_pos + j] = kPool[idx];
+    }
+
+    std::filesystem::path fs_path = ToPath(path);
+
+    HANDLE handle = CreateFileW(fs_path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW,
+                                FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+
+    if (handle == INVALID_HANDLE_VALUE) {
+      /* Give up on a denied ACL, a missing directory or a full disk */
+
+      if (!CheckNameCollision(GetLastError())) {
+        return Result::kFailure;
+      }
+
+      continue;
+    }
+
+    const int fd = _open_osfhandle(reinterpret_cast<intptr_t>(handle), _O_WRONLY | _O_BINARY);
+
+    if (fd == -1) {
+      // LCOV_EXCL_START
+      CloseHandle(handle);
+      _wunlink(fs_path.c_str());
+      return Result::kFailure;
+      // LCOV_EXCL_STOP
+    }
+
+    *file = _fdopen(fd, "wb");
+
+    if (*file == nullptr) {
+      // LCOV_EXCL_START
+      _close(fd);
+      _wunlink(fs_path.c_str());
+      return Result::kFailure;
+      // LCOV_EXCL_STOP
+    }
+
+    return Result::kSuccess;
+  }
+
+  return Result::kFailure;  // LCOV_EXCL_LINE
 }

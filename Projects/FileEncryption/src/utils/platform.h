@@ -12,47 +12,55 @@
 #include "common/constants.h"
 
 /**
- * @brief	Get the size of a file in bytes
- * @param	file	File pointer in read binary mode
- * @return	file size in bytes on success, -1 on failure
- */
-int64_t GetFileSize(FILE* file);
-
-/**
- * @brief	Check a file exists
- * @param	path	File path
+ * @brief   Check a file exists
+ * @param   path	File path
  * @return	1 if file exists, 0 if file not exists
  */
 bool FileExists(const std::string& path);
 
 /**
- * @brief	Generates cryptographically secure random bytes
- * @param	dst		Output buffer for random bytes
- * @param	size	Output buffer size
+ * @brief   Get the size of a file in bytes
+ * @param   file	File pointer in read binary mode
+ * @return	file size in bytes on success, -1 on failure
+ */
+int64_t GetFileSize(FILE* file);
+
+/**
+ * @brief   Generates cryptographically secure random bytes
+ * @param   dst		Output buffer for random bytes
+ * @param   size	Output buffer size
  * @return	kSuccess on success, kFailure on failure
  */
 Result Random(uint8_t* dst, size_t size);
 
 /**
- * @brief	Delete a file
- * @param	path	File path
+ * @brief   Delete a file
+ * @param   path	File path
  * @return	kSuccess on success, kFailure on failure
  */
 Result RemoveFile(const std::string& path);
 
 /**
- * @brief	Move file pointer to specific position
- * @param	file	File pointer
- * @param	dist	Distance from reference point
- * @param	ref		Reference point
- * @return	kSuccess on success, kFailure on failure
+ * @brief   Move file pointer to specific position
+ * @param   file	File pointer
+ * @param   dist	Distance from reference point
+ * @param   ref		Reference point
+ * @return  kSuccess on success, kFailure on failure
  */
 Result Seek(FILE* file, int64_t dist, int ref);
 
 /**
- * @brief	Open a file
- * @param	file	File pointer
- * @param	path	File path
- * @param	mode	Mode
+ * @brief   Open a file
+ * @param   file	File pointer
+ * @param   path	File path
+ * @param   mode  Mode
  */
 void OpenFile(FILE** file, const std::string& path, const char* mode);
+
+/**
+ * @brief   Create and open a new file for writing, fail if it already exists
+ * @param   file  Opened stream on success, nullptr on failure
+ * @param   path  File path
+ * @return  kSuccess on success, kFailure on failure
+ */
+[[nodiscard]] Result OpenNewFile(FILE** file, const std::string& path);

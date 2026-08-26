@@ -20,16 +20,13 @@ void CryptoWorker::RequestCancel() {
 }
 
 void CryptoWorker::Work() {
-  /* Heap-allocated: AesGcm carries a 128 KiB buffer, too large for a worker thread's stack frame */
-
   auto aes_ptr = std::make_unique<AesGcm>();
   AesGcm& aes = *aes_ptr;
-
+  Result res;
   FILE* src_file = nullptr;
   FILE* dst_file = nullptr;
   std::string msg;
   bool should_delete = false;
-  Result res;
 
   /* Open files */
 
@@ -43,13 +40,11 @@ void CryptoWorker::Work() {
     return;
   }
 
-  OpenFile(&dst_file, dst_path_, "wb+");
-
-  if (dst_file == nullptr) {
+  if (OpenNewFile(&dst_file, dst_path_) == Result::kFailure) {
     fclose(src_file);
 
     if (fcb_) {
-      fcb_("[File] Open failed - Cannot create destination file\n");
+      fcb_("[File] Open failed - Cannot create destination file, or it already exists\n");
     }
 
     return;
@@ -167,8 +162,6 @@ void CryptoWorker::Work() {
 
   fclose(src_file);
   fclose(dst_file);
-
-  /* Delete destination file on failure */
 
   if (should_delete) {
     RemoveFile(dst_path_);

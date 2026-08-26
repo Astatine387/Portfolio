@@ -4,7 +4,9 @@
  * @author	Astatine387
  */
 
+#include <fcntl.h>
 #include <sys/random.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cerrno>
@@ -12,6 +14,10 @@
 #include <thread>
 
 #include "utils/platform.h"
+
+bool FileExists(const std::string& path) {
+  return std::filesystem::exists(path);
+}
 
 int64_t GetFileSize(FILE* file) {
   if (fseeko(file, 0, SEEK_END)) {
@@ -25,10 +31,6 @@ int64_t GetFileSize(FILE* file) {
   }
 
   return size;
-}
-
-bool FileExists(const std::string& path) {
-  return std::filesystem::exists(path);
 }
 
 Result Random(uint8_t* dst, size_t size) {
@@ -72,4 +74,26 @@ Result Seek(FILE* file, int64_t offset, int origin) {
 
 void OpenFile(FILE** file, const std::string& path, const char* mode) {
   *file = fopen(path.c_str(), mode);
+}
+
+Result OpenNewFile(FILE** file, const std::string& path) {
+  *file = nullptr;
+
+  const int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, S_IRUSR | S_IWUSR);
+
+  if (fd == -1) {
+    return Result::kFailure;
+  }
+
+  *file = fdopen(fd, "wb");
+
+  if (*file == nullptr) {
+    // LCOV_EXCL_START
+    close(fd);
+    unlink(path.c_str());
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  return Result::kSuccess;
 }
