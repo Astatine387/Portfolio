@@ -86,4 +86,4 @@ void OpenFile(FILE** file, const std::string& path, const char* mode);
  * @param   model	Existing file whose permission bits are adopted, empty to keep owner-only
  * @return	kSuccess on success, kFailure on failure
  */
-[[nodiscard]] Result OpenTempFile(FILE** file, const std::string& path, const std::string& model);
+[[nodiscard]] Result OpenTempFile(FILE** file, std::string& path, const std::string& model);

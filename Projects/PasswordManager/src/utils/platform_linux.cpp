@@ -111,7 +111,8 @@ void OpenFile(FILE** file, const std::string& path, const char* mode) {
   *file = fopen(path.c_str(), mode);
 }
 
-Result OpenTempFile(FILE** file, const std::string& path, const std::string& model) {
+// cppcheck-suppress constParameterReference
+Result OpenTempFile(FILE** file, std::string& path, const std::string& model) {
   *file = nullptr;
 
   const int fd = mkstemp(path.data());

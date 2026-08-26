@@ -111,7 +111,7 @@ void OpenFile(FILE** file, const std::string& path, const char* mode) {
   _wfopen_s(file, fs_path.c_str(), wmode.c_str());
 }
 
-Result OpenTempFile(FILE** file, const std::string& path, [[maybe_unused]] const std::string& model) {
+Result OpenTempFile(FILE** file, std::string& path, [[maybe_unused]] const std::string& model) {
   *file = nullptr;
 
   constexpr int kAttempts = 16;
