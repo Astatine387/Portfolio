@@ -31,7 +31,6 @@ I'm Astatine387, a C/C++ software engineer building cross-platform desktop appli
 Password-based file encryption tool using AES-256-GCM, Argon2id, and Qt6.
 
 **Features**
-* Up to 2+ GiB/s Google Benchmark throughput in encryption
 * AES-256-GCM for file encryption and integrity check
 * Argon2id for key derivation from password
 * Qt6 graphical user interface

@@ -8,7 +8,6 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 
 # 2. Features
 
-* Up to 2+ GiB/s Google Benchmark throughput in encryption
 * AES-256-GCM for file encryption and integrity check
 * Argon2id for key derivation from password
 * Qt6 graphical user interface
@@ -124,8 +123,9 @@ src
 
 Dependencies (OpenSSL 3.0+, Argon2, libsodium, Google Test, Google Benchmark)
 are declared in `vcpkg.json` and installed automatically when building with the
-vcpkg toolchain. Google Benchmark is Linux-only and optional: `FileEncryption-bench`
-is never generated on Windows, and on Linux it is skipped when Benchmark is absent.
+vcpkg toolchain.
+
+Google Benchmark is Linux-only and optional: `FileEncryption-bench` is never generated on Windows, and on Linux it is skipped when Benchmark is absent.
 
 ## 4-2. Build
 
@@ -240,34 +240,15 @@ ctest --test-dir build --output-on-failure
 
 # 6. Benchmark
 
-* **Test Environment** (Local)
-	* **OS:** Windows 11 Pro
-	* **CPU:** Intel Core i9-13980HX (24 Cores / 32 Threads)
-	* **RAM:** 16 GB DDR5-4800
-	* **Storage:** Micron 2400 NVMe SSD (1TB)
-	* **File Size:** 4 GiB
+**Source:** https://github.com/Astatine387/Portfolio/actions/runs/32839879304
 
-* **Results** (on cold start)
-	* **Encryption:** 1.5 ~ 1.6 GiB/s
-	* **Decryption:** 0.9 ~ 1.0 GiB/s
-	* **Argon2id Key Derivation:** 380 ~ 400 ms
+Measured on a GitHub-hosted `ubuntu-24.04` runner, 256 MiB file on tmpfs, median of 10 repetitions. Argon2id is a security parameter, not a performance target.
 
-* **Results** (after warm-up)
-	* **Encryption:** 1.9 ~ 2.1 GiB/s
-	* **Decryption:** 1.3 ~ 1.4 GiB/s
-	* **Argon2id Key Derivation:** 380 ~ 400 ms
-
-**Running Benchmarks Locally** (Linux only):
-```bash
-cd Projects/FileEncryption
-
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --target FileEncryption-bench
-
-# FE_BENCH_DIR holds the scratch files; a tmpfs keeps disk I/O out of the numbers.
-mkdir -p /dev/shm/fe-bench
-FE_BENCH_DIR=/dev/shm/fe-bench ./build/FileEncryption-bench
-```
+| Metric                                              |     Value |
+| --------------------------------------------------- | --------: |
+| Encryption pipeline / raw OpenSSL EVP               | **35.0%** |
+| Decryption pipeline / raw OpenSSL EVP               | **24.0%** |
+| Argon2id key derivation (m = 512 MiB, t = 4, p = 4) |     446ms |
 
 # 7. License
 
