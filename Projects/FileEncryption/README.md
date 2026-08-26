@@ -69,8 +69,6 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 Magic Number (4 Bytes) │ Time Cost (4 Bytes) │ Memory Cost (4 Bytes) │ Parallelism (4 Bytes) │ Salt (16 Bytes) │ IV (12 Bytes) │ Encrypted Data │ Tag (16 Bytes)
 ```
 
-* Multi-byte integers are stored little-endian, and the memory cost is stored in KiB.
-
 ## 3-2. Source Code Architecture
 
 ```

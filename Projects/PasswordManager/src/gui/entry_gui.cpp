@@ -192,7 +192,7 @@ void EntryGUI::OnOKClicked() {
   Password tmp;
 
   if (pwline_->Extract(tmp) == Result::kFailure) {
-    err_msg_->setText("Password exceeds maximum length (256 characters)");
+    err_msg_->setText("Password exceeds maximum length (256 bytes)");
     return;
   }
 

@@ -40,13 +40,13 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 * Automatic clipboard clear after 30 seconds
 * Copied passwords are excluded from OS clipboard history and cloud clipboard sync
 * Constant time password comparison
-* GCM tag provides integrity check, and two-pass decryption procedure verifies it before writing any plaintext into disk
+* GCM tag provides integrity check
 * Newly and randomly generated initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * Password generator guarantees at least one each of uppercase, lowercase, digit, and special character
 * RAII pattern ensures memory wipe for sensitive data, using `sodium_free` and `sodium_memzero`
 * Range check for key derivation parameters before Argon2id runs
 * Sensitive data is held in `sodium_malloc` memory, which provides guard pages and lock against swap
-* Vault files are re-encrypted with new salt and initial vector for each save or master password change
+* Vault files are re-encrypted with new initial vector for each save or master password change
 
 # 3. Specifications
 
@@ -65,13 +65,13 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 	* A vault adopts the current defaults when it is created or when the master password is changed
 
 * **Entry**
-	* **Maximum Site Name Length:** 256 characters
-	* **Maximum Account Length:** 256 characters
-	* **Maximum Password Length:** 256 characters
+	* **Maximum Site Name Length:** 256 bytes
+	* **Maximum Account Length:** 256 bytes
+	* **Maximum Password Length:** 256 bytes
 
 * **Vault**
 	* **Maximum Vault File Size:** 2 GiB
-	* **Maximum Master Password Length:** 256 Characters
+	* **Maximum Master Password Length:** 256 bytes
 
 ## 3-1. Vault File Format
 
@@ -79,8 +79,6 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 ```
 Magic Number (4 Bytes) | Time Cost (4 Bytes) | Memory Cost (4 Bytes) | Parallelism (4 Bytes) | Salt (16 Bytes) | IV (12 Bytes) | Encrypted Data | Tag (16 Bytes)
 ```
-
-* Multi-byte integers are stored little-endian, and the memory cost is stored in KiB.
 
 **Encrypted Data Format:** 
 ```
