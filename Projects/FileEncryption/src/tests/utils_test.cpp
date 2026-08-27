@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include <string>
+#include <string_view>
 
 #ifndef _WIN32
 #include <fcntl.h>
@@ -510,9 +511,9 @@ TEST_F(OpenNewFileTest, RefusesMissingDirectory) {
 TEST_F(OpenNewFileTest, StreamIsWritable) {
   ASSERT_EQ(OpenNewFile(&file_, path0_), Result::kSuccess);
 
-  const char kText[] = "Hello, world!";
+  constexpr std::string_view kText = "Hello, world!";
 
-  ASSERT_EQ(fwrite(kText, 1, sizeof(kText) - 1, file_), sizeof(kText) - 1);
+  ASSERT_EQ(fwrite(kText.data(), 1, kText.size(), file_), kText.size());
 
   fclose(file_);
   file_ = nullptr;
