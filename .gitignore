@@ -3,6 +3,9 @@
 /Projects/DigitalLogicSimulator/build-tidy
 /Projects/FileEncryption/.idea
 /Projects/FileEncryption/build
+/Projects/FileEncryption/build-asan
+/Projects/FileEncryption/build-tidy
+/Projects/FileEncryption/build-tsan
 /Projects/FileEncryption/cmake-build-debug
 /Projects/PasswordManager/.idea
 /Projects/PasswordManager/build

@@ -226,6 +226,7 @@ set(TEST_SOURCES
     src/tests/aes_gcm_test.cpp
     src/tests/crypto_worker_test.cpp
     src/tests/file_header_test.cpp
+    src/tests/kat_test.cpp
     src/tests/password_test.cpp
     src/tests/secure_key_test.cpp
     src/tests/utils_test.cpp
