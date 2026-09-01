@@ -22,6 +22,7 @@
 #include "core/aes_gcm.h"
 #include "core/file_header.h"
 #include "core/secure_key.h"
+#include "utils/byte_order.h"
 #include "utils/password.h"
 #include "utils/platform.h"
 
@@ -125,11 +126,11 @@ class CryptoWorkerTest : public ::testing::Test {
 
     Read(path, buff);
 
-    ASSERT_GE(buff.size(), kKdfParamSize);
+    ASSERT_GE(buff.size(), kHeaderSize);
 
-    memcpy(buff.data() + kMagicSize, &params.time_cost, sizeof(uint32_t));
-    memcpy(buff.data() + kMagicSize + sizeof(uint32_t), &params.mem_cost, sizeof(uint32_t));
-    memcpy(buff.data() + kMagicSize + 2 * sizeof(uint32_t), &params.parallelism, sizeof(uint32_t));
+    StoreLE32(buff.data() + kMagicSize + 1, params.time_cost);
+    StoreLE32(buff.data() + kMagicSize + 1 + sizeof(uint32_t), params.mem_cost);
+    StoreLE32(buff.data() + kMagicSize + 1 + 2 * sizeof(uint32_t), params.parallelism);
 
     Create(path, buff);
   }
@@ -221,7 +222,7 @@ TEST_F(CryptoWorkerTest, EncryptDecryptRoundTrip) {
  * @brief   Verify progress callback is invoked with an encrypting status
  */
 TEST_F(CryptoWorkerTest, ProgressCallbackReportsStatus) {
-  std::vector<uint8_t> orig(static_cast<size_t>(kBlockSize) * kBuffSize * 10, 'a');
+  std::vector<uint8_t> orig(kChunkSize * 10, 'a');
   int cnt = 0;
   std::string status;
 
@@ -245,7 +246,7 @@ TEST_F(CryptoWorkerTest, ProgressCallbackReportsStatus) {
  * @brief   Verify progress callback is invoked with a decrypting status
  */
 TEST_F(CryptoWorkerTest, ProgressCallbackReportsDecrypting) {
-  std::vector<uint8_t> orig(static_cast<size_t>(kBlockSize) * kBuffSize * 10, 'a');
+  std::vector<uint8_t> orig(kChunkSize * 10, 'a');
   std::string status;
 
   Create(src_path_, orig);
@@ -271,7 +272,7 @@ TEST_F(CryptoWorkerTest, ProgressCallbackReportsDecrypting) {
  * @brief   Verify a cancelled decryption reports cancellation and removes output
  */
 TEST_F(CryptoWorkerTest, CancelDecryptionRemovesOutput) {
-  std::vector<uint8_t> orig(static_cast<size_t>(kBlockSize) * kBuffSize * 10, 'a');
+  std::vector<uint8_t> orig(kChunkSize * 10, 'a');
   std::string msg;
 
   Create(src_path_, orig);
@@ -304,7 +305,7 @@ TEST_F(CryptoWorkerTest, CancelDecryptionRemovesOutput) {
  * @brief   Verify a cancelled job reports cancellation and removes its output
  */
 TEST_F(CryptoWorkerTest, CancelRemovesOutput) {
-  std::vector<uint8_t> orig(static_cast<size_t>(kBlockSize) * kBuffSize * 10, 'a');
+  std::vector<uint8_t> orig(kChunkSize * 10, 'a');
   std::string msg;
 
   Create(src_path_, orig);
@@ -363,7 +364,7 @@ TEST_F(CryptoWorkerTest, WrongPasswordRemovesOutput) {
  * @brief   Verify a source too short to hold a header is rejected before key derivation
  */
 TEST_F(CryptoWorkerTest, TooShortSourceIsRejected) {
-  std::vector<uint8_t> buff(kDataOffset - 1, 'a');
+  std::vector<uint8_t> buff(kHeaderSize - 1, 'a');
   std::string msg;
 
   Create(src_path_, buff);
@@ -515,7 +516,7 @@ TEST_F(CryptoWorkerTest, UncreatableDestinationReportsError) {
 TEST_F(CryptoWorkerTest, ConcurrentCancelDuringWork) {
   /* Large enough that encryption spans many progress checkpoints */
 
-  std::vector<uint8_t> orig(static_cast<size_t>(kBlockSize) * kBuffSize * 64, 'a');
+  std::vector<uint8_t> orig(kChunkSize * 64, 'a');
   std::atomic<bool> in_progress{ false };
   std::string msg;
 

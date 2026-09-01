@@ -65,11 +65,7 @@ void CryptoWorker::Work() {
   else {
     FileHeader header;
 
-    HeaderStatus status = ReadHeader(src_file, header);
-
-    if (status == HeaderStatus::kOk) {
-      status = ValidateKdfParams(header.params);
-    }
+    const HeaderStatus status = ReadHeader(src_file, header);
 
     if (status == HeaderStatus::kOk) {
       salt = header.salt;

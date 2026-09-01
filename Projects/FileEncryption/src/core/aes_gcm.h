@@ -18,17 +18,13 @@
 #include <functional>
 #include <span>
 #include <thread>
+#include <vector>
 
 #include "common/constants.h"
 #include "core/file_header.h"
 #include "core/secure_key.h"
 #include "utils/mutex.h"
 #include "utils/thread_annotations.h"
-
-enum class DecryptMode : std::uint8_t {
-  kVerify,
-  kWrite,
-};
 
 /**
  * @class	AesGcm
@@ -70,12 +66,12 @@ class AesGcm {
 
   /**
    * @brief		Encrypt a file
-   * @param		src		Source file
-   * @param		dst		Destination file
-   * @param		key		Key derived from the password and salt
-   * @param		salt	Salt written to the file header
-   * @param		params	Argon2id parameters the key was derived with, written to the file header
-   * @return    kSuccess on success, kFailure on failure
+   * @param		src     Source file
+   * @param		dst     Destination file
+   * @param		key     Key derived from the password and salt
+   * @param		salt    Salt written to the file header
+   * @param		params  Argon2id parameters
+   * @return  kSuccess on success, kFailure on failure
    */
   Result Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt,
                  const KdfParams& params = {});
@@ -134,10 +130,11 @@ class AesGcm {
   int64_t progress_max_ = 0;  // Total work for progress reporting
   int last_perc_ = -1;        // Last reported whole percent, -1 before the first report
 
-  std::array<std::array<std::array<uint8_t, kBlockSize>, kBuffSize>, kBuffNum> buff_{};  // Buffer
-  std::array<uint8_t, kIVSize> iv_{};                                                    // Initial vector
-  std::array<uint8_t, kSaltSize> salt_{};                                                // Salt read from the header
-  std::array<uint8_t, kTagSize> tag_{};  // Authentication tag read from file
+  size_t chunk_size_ = kChunkSize;                     // Chunk size of the current session
+  std::array<std::vector<uint8_t>, kBuffNum> buff_{};  // Chunk buffers
+  std::array<uint8_t, kHeaderSize> header_{};          // Serialized header, associated data of every chunk
+  std::array<uint8_t, kNonceSize> nonce_{};            // Nonce of the chunk being processed
+  std::array<uint8_t, kSaltSize> salt_{};              // Salt read from the header
 
   const SecureKey* key_ = nullptr;  // Session key for the current operation (non-owning)
 
@@ -209,87 +206,83 @@ class AesGcm {
   };
 
   /* ==================================================
+   * Chunk helper functions
+   * ================================================== */
+
+  /**
+   * @brief	    Build the nonce of one chunk
+   * @param	    idx       Chunk index
+   * @param	    is_last   Whether this is the final chunk
+   */
+  void BuildNonce(uint64_t idx, bool is_last);
+
+  /**
+   * @brief	    Size chunk buffers for the current session
+   */
+  void AllocBuffers();
+
+  /**
+   * @brief	    Set the session key on a freshly created context
+   * @param	    mode	kEncrypt for an encryption context, kDecrypt for a decryption context
+   * @return    kSuccess on success, kFailure on failure
+   *
+   * The key schedule is computed once here; each chunk only re-initializes the nonce.
+   */
+  Result SetupCtx(CryptoMode mode);
+
+  /* ==================================================
    * Decryption functions
    * ================================================== */
 
   /**
-   * @brief   Run one decryption pass over the ciphertext
-   * @param   mode   True for write, false for verify
-   * @return  kSuccess on success, kFailure on failure or cancellation
-   */
-  Result DecryptBatch(DecryptMode mode);
-
-  /**
-   * @brief	    Intialize decryption context by reading the header and tag
-   * @return	kSuccess on success, kFailure on failure
+   * @brief   Read and validate the header, then prepare the context and buffers
+   * @return  kSuccess on success, kFailure on failure
    */
   Result DecryptInit();
 
   /**
-   * @brief	    Decrypt buffer
-   * @param	    src		Source buffer
-   * @param	    dst		Destination buffer
-   * @param	    srclen	Source buffer length
-   * @return	kSuccess on success, kFailure on failure
+   * @brief   Verify and write every chunk of the file in a single pass
+   * @return	kSuccess on success, kFailure on failure or cancellation
    */
-  Result DecryptBuff(void* src, void* dst, size_t srclen);
+  Result DecryptLoop();
 
   /**
-   * @brief	Finialize decryption
-   * @return	kSuccess on success, kFailure on failure
+   * @brief	    Verify one chunk and decrypt it in place
+   * @param	    buff      Buffer holding the ciphertext followed by its tag
+   * @param	    len       Ciphertext length in bytes, tag excluded
+   * @param	    idx       Chunk index
+   * @param	    is_last   Whether this is the final chunk of the file
+   * @return	kSuccess when the tag verifies, kFailure otherwise
    */
-  Result DecryptFinal();
-
-  /**
-   * @brief   Set up decryption context and reset file cursor
-   * @return  kSuccess on success, kFailure on failure
-   */
-  Result SetupDecryptCtx();
+  Result DecryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_last);
 
   /* ==================================================
    * Encryption functions
    * ================================================== */
 
   /**
-   * @brief		Intialize encryption context and write the header
-   * @param		salt	Salt written to the file header
-   * @param		params	Argon2id parameters written to the file header
+   * @brief		Write the header, then prepare the context and buffers
+   * @param		salt    Salt written to the file header
+   * @param		params  Argon2id parameters written to the file header
    * @return	kSuccess on success, kFailure on failure
    */
   Result EncryptInit(std::span<const uint8_t, kSaltSize> salt, const KdfParams& params);
 
   /**
-   * @brief		Encrypt buffer
-   * @param		src		Source buffer
-   * @param		dst		Destination buffer
-   * @param		srclen	Source buffer length
-   * @return	kSuccess on success, kFailure on failure
+   * @brief		Encrypt and write every chunk of the file in a single pass
+   * @return	kSuccess on success, kFailure on failure or cancellation
    */
-  Result EncryptBuff(void* src, void* dst, size_t srclen);
+  Result EncryptLoop();
 
   /**
-   * @brief		Encrypt multiple blocks in a batch
+   * @brief		Encrypt one chunk in place and append its tag
+   * @param		buff      Buffer holding the plaintext, with room for the tag after it
+   * @param		len       Plaintext length in bytes
+   * @param		idx       Chunk index
+   * @param		is_last   Whether this is the final chunk of the file
    * @return	kSuccess on success, kFailure on failure
    */
-  Result EncryptBatch();
-
-  /**
-   * @brief		Encrypt remaining data smaller than buffer
-   * @return	kSuccess on success, kFailure on failure
-   */
-  Result EncryptRemain();
-
-  /**
-   * @brief		Finialize encryption
-   * @return	kSuccess on success, kFailure on failure
-   */
-  Result EncryptFinal();
-
-  /**
-   * @brief		Generate and write authentication tag
-   * @return	kSuccess on success, kFailure on failure
-   */
-  Result EncryptTag();
+  Result EncryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_last);
 
   /* ==================================================
    * Callback helper functions

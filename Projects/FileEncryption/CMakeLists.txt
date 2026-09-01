@@ -179,8 +179,8 @@ target_link_libraries(FileEncryption-core PUBLIC
 
 target_link_libraries(FileEncryption-core PRIVATE project_warnings_strict)
 
-# Production-library-only stack budget. Not in the shared tiers: tests and the
-# benchmark stack-allocate AesGcm (128 KiB buffer) and would breach it.
+# Production-library-only stack budget. Kept off the shared tiers so test and
+# benchmark translation units, which are free to be stack-hungry, are not bound by it.
 target_compile_options(FileEncryption-core PRIVATE ${FRAME_BUDGET_FLAG})
 
 if(WIN32)

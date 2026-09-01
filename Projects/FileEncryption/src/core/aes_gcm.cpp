@@ -15,6 +15,20 @@
 #include <array>
 #include <atomic>
 #include <string>
+#include <vector>
+
+#include "utils/byte_order.h"
+
+namespace {
+
+constexpr size_t kCounterOffset = kNonceSize - 1 - sizeof(uint64_t);
+
+constexpr uint8_t kNormalChunkFlag = 0x00;
+constexpr uint8_t kFinalChunkFlag = 0x01;
+
+static_assert(kCounterOffset + sizeof(uint64_t) + 1 == kNonceSize, "Nonce layout does not fill the nonce");
+
+}  // namespace
 
 AesGcm::AesGcm() {
   writer_ = std::thread(&AesGcm::WriterLoop, this);
@@ -35,13 +49,14 @@ AesGcm::~AesGcm() {
     writer_.join();
   }
 
-  for (size_t i = 0; i < kBuffNum; i++) {
-    sodium_memzero(buff_[i].data(), sizeof(buff_[i]));
+  for (std::vector<uint8_t>& buff : buff_) {
+    if (!buff.empty()) {
+      sodium_memzero(buff.data(), buff.size());
+    }
   }
 
-  sodium_memzero(iv_.data(), sizeof(iv_));
-  sodium_memzero(salt_.data(), sizeof(salt_));
-  sodium_memzero(tag_.data(), sizeof(tag_));
+  sodium_memzero(nonce_.data(), nonce_.size());
+  sodium_memzero(salt_.data(), salt_.size());
 
   if (ctx_) {
     EVP_CIPHER_CTX_free(ctx_);
@@ -193,4 +208,61 @@ void AesGcm::ReportError(const char* msg) {
   }
 
   ecb_(res.c_str());
+}
+
+void AesGcm::BuildNonce(uint64_t idx, bool is_last) {
+  nonce_.fill(0);
+
+  StoreBE64(nonce_.data() + kCounterOffset, idx);
+
+  nonce_[kNonceSize - 1] = is_last ? kFinalChunkFlag : kNormalChunkFlag;
+}
+
+void AesGcm::AllocBuffers() {
+  for (std::vector<uint8_t>& buff : buff_) {
+    buff.assign(chunk_size_ + kTagSize, 0);
+  }
+}
+
+Result AesGcm::SetupCtx(CryptoMode mode) {
+  /* Clear existing context */
+
+  if (ctx_) {
+    EVP_CIPHER_CTX_free(ctx_);
+    ctx_ = nullptr;
+  }
+
+  ctx_ = EVP_CIPHER_CTX_new();
+
+  if (!ctx_) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Initialization failed - Cannot create context\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  const auto init = mode == CryptoMode::kEncrypt ? &EVP_EncryptInit_ex : &EVP_DecryptInit_ex;
+
+  if (init(ctx_, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, static_cast<int>(kNonceSize), nullptr) != 1) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Initialization failed - Cannot set nonce size\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  if (init(ctx_, nullptr, nullptr, key_->Bytes().data(), nullptr) != 1) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Initialization failed - Cannot set key\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  return Result::kSuccess;
 }

@@ -1,17 +1,42 @@
 /**
- * @file	file_header.cpp
- * @brief	Implementation of encrypted file header handling
+ * @file    file_header.cpp
+ * @brief   Implementation of encrypted file header
  * @author	Astatine387
  */
 
 #include "core/file_header.h"
 
-#include <cstring>
+#include <algorithm>
 
+#include "utils/byte_order.h"
 #include "utils/platform.h"
 
+namespace {
+
+constexpr size_t kChunkLog2Offset = kMagicSize;            // 4
+constexpr size_t kTimeCostOffset = kChunkLog2Offset + 1;   // 5
+constexpr size_t kMemCostOffset = kTimeCostOffset + 4;     // 9
+constexpr size_t kParallelismOffset = kMemCostOffset + 4;  // 13
+constexpr size_t kSaltOffset = kParallelismOffset + 4;     // 17
+
+static_assert(kSaltOffset + kSaltSize == kHeaderSize, "Header field offsets do not fill the header");
+
+}  // namespace
+
+void SerializeHeader(std::span<uint8_t, kHeaderSize> dst, const FileHeader& header) {
+  std::ranges::copy(kMagic, dst.begin());
+
+  dst[kChunkLog2Offset] = header.chunk_log2;
+
+  StoreLE32(dst.data() + kTimeCostOffset, header.params.time_cost);
+  StoreLE32(dst.data() + kMemCostOffset, header.params.mem_cost);
+  StoreLE32(dst.data() + kParallelismOffset, header.params.parallelism);
+
+  std::ranges::copy(header.salt, dst.begin() + kSaltOffset);
+}
+
 HeaderStatus ReadHeader(FILE* file, FileHeader& header) {
-  std::array<uint8_t, kDataOffset> buff{};
+  std::array<uint8_t, kHeaderSize> buff{};
 
   if (Seek(file, 0, SEEK_SET) == Result::kFailure) {
     return HeaderStatus::kReadError;  // LCOV_EXCL_LINE
@@ -21,59 +46,65 @@ HeaderStatus ReadHeader(FILE* file, FileHeader& header) {
     return HeaderStatus::kReadError;
   }
 
-  /* Reject a foreign file before anything else in the header is trusted */
+  /* Check whether the file is encrypted by this program */
 
-  uint32_t magic = 0;
-
-  memcpy(&magic, buff.data(), kMagicSize);
-
-  if (magic != kMagicNum) {
+  if (!std::ranges::equal(kMagic, std::span(buff).first(kMagicSize))) {
     return HeaderStatus::kBadMagic;
   }
 
-  memcpy(&header.params.time_cost, buff.data() + kMagicSize, sizeof(uint32_t));
-  memcpy(&header.params.mem_cost, buff.data() + kMagicSize + sizeof(uint32_t), sizeof(uint32_t));
-  memcpy(&header.params.parallelism, buff.data() + kMagicSize + 2 * sizeof(uint32_t), sizeof(uint32_t));
+  FileHeader parsed;
 
-  memcpy(header.salt.data(), buff.data() + kKdfParamSize, kSaltSize);
-  memcpy(header.iv.data(), buff.data() + kKdfParamSize + kSaltSize, kIVSize);
+  parsed.chunk_log2 = buff[kChunkLog2Offset];
+
+  parsed.params.time_cost = LoadLE32(buff.data() + kTimeCostOffset);
+  parsed.params.mem_cost = LoadLE32(buff.data() + kMemCostOffset);
+  parsed.params.parallelism = LoadLE32(buff.data() + kParallelismOffset);
+
+  std::ranges::copy(std::span(buff).subspan(kSaltOffset, kSaltSize), parsed.salt.begin());
+
+  /* Hand back nothing the caller would still have to range-check */
+
+  const HeaderStatus status = ValidateHeader(parsed);
+
+  if (status != HeaderStatus::kOk) {
+    return status;
+  }
+
+  header = parsed;
+
+  return HeaderStatus::kOk;
+}
+
+HeaderStatus ValidateHeader(const FileHeader& header) {
+  if (header.chunk_log2 < kMinChunkSizeLog2 || kMaxChunkSizeLog2 < header.chunk_log2) {
+    return HeaderStatus::kBadChunkSize;
+  }
+
+  if (header.params.time_cost < kMinTimeCost || kMaxTimeCost < header.params.time_cost) {
+    return HeaderStatus::kBadParams;
+  }
+
+  if (header.params.mem_cost < kMinMemCost || kMaxMemCost < header.params.mem_cost) {
+    return HeaderStatus::kBadParams;
+  }
+
+  if (header.params.parallelism < kMinParallelism || kMaxParallelism < header.params.parallelism) {
+    return HeaderStatus::kBadParams;
+  }
 
   return HeaderStatus::kOk;
 }
 
 Result WriteHeader(FILE* file, const FileHeader& header) {
-  std::array<uint8_t, kDataOffset> buff{};
+  std::array<uint8_t, kHeaderSize> buff{};
 
-  memcpy(buff.data(), &kMagicNum, kMagicSize);
-
-  memcpy(buff.data() + kMagicSize, &header.params.time_cost, sizeof(uint32_t));
-  memcpy(buff.data() + kMagicSize + sizeof(uint32_t), &header.params.mem_cost, sizeof(uint32_t));
-  memcpy(buff.data() + kMagicSize + 2 * sizeof(uint32_t), &header.params.parallelism, sizeof(uint32_t));
-
-  memcpy(buff.data() + kKdfParamSize, header.salt.data(), kSaltSize);
-  memcpy(buff.data() + kKdfParamSize + kSaltSize, header.iv.data(), kIVSize);
+  SerializeHeader(buff, header);
 
   if (fwrite(buff.data(), sizeof(uint8_t), buff.size(), file) != buff.size()) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
   return Result::kSuccess;
-}
-
-HeaderStatus ValidateKdfParams(const KdfParams& params) {
-  if (params.time_cost < kMinTimeCost || params.time_cost > kMaxTimeCost) {
-    return HeaderStatus::kBadParams;
-  }
-
-  if (params.mem_cost < kMinMemCost || params.mem_cost > kMaxMemCost) {
-    return HeaderStatus::kBadParams;
-  }
-
-  if (params.parallelism < kMinParallelism || params.parallelism > kMaxParallelism) {
-    return HeaderStatus::kBadParams;
-  }
-
-  return HeaderStatus::kOk;
 }
 
 const char* HeaderErrorMessage(HeaderStatus status) {
@@ -83,6 +114,9 @@ const char* HeaderErrorMessage(HeaderStatus status) {
 
     case HeaderStatus::kBadMagic:
       return "[File] Validation failed - Not a FileEncryption file\n";
+
+    case HeaderStatus::kBadChunkSize:
+      return "[File] Validation failed - Unsupported chunk size\n";
 
     case HeaderStatus::kBadParams:
       return "[File] Validation failed - Unsupported key derivation parameters\n";

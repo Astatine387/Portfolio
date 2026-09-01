@@ -28,7 +28,7 @@ namespace {
 constexpr int64_t kBenchSize = 256LL * 1024 * 1024;
 constexpr int64_t kSpeedChunk = 16LL * 1024;
 
-constexpr int64_t kPipeChunk = static_cast<int64_t>(kBuffSize * kBlockSize);
+constexpr int64_t kPipeChunk = static_cast<int64_t>(kChunkSize);
 
 constexpr std::string_view kBenchPw = "benchmark-password";
 constexpr std::array<uint8_t, kSaltSize> kBenchSalt{};
@@ -196,9 +196,9 @@ void BenchRawEvpEncrypt(benchmark::State& state) {
     return;
   }
 
-  std::array<uint8_t, kIVSize> iv{};
+  std::array<uint8_t, kNonceSize> nonce{};
 
-  if (Random(iv.data(), iv.size()) == Result::kFailure) {
+  if (Random(nonce.data(), nonce.size()) == Result::kFailure) {
     state.SkipWithError("Random failed");
     return;
   }
@@ -214,8 +214,8 @@ void BenchRawEvpEncrypt(benchmark::State& state) {
     }
 
     bool res = EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) == 1 &&
-               EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, static_cast<int>(kIVSize), nullptr) == 1 &&
-               EVP_EncryptInit_ex(ctx, nullptr, nullptr, key->Bytes().data(), iv.data()) == 1;
+               EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, static_cast<int>(kNonceSize), nullptr) == 1 &&
+               EVP_EncryptInit_ex(ctx, nullptr, nullptr, key->Bytes().data(), nonce.data()) == 1;
 
     for (int64_t i = 0; res && i < rounds; i++) {
       int dstlen = 0;
