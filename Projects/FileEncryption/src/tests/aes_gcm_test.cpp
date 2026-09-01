@@ -341,7 +341,7 @@ TEST_F(AesGcmTest, EncryptWritesHeader) {
 TEST_F(AesGcmTest, DecryptRejectsUndersizedFile) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> buff(static_cast<size_t>(kMinSize) - 1, 0x00);
+  std::vector<uint8_t> buff(kMinSize - 1, 0x00);
   std::string err;
   Result res;
 
@@ -375,7 +375,7 @@ TEST_F(AesGcmTest, DecryptRejectsUndersizedFile) {
 TEST_F(AesGcmTest, DecryptRejectsForeignFile) {
   AesGcm aes;
   FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> buff(static_cast<size_t>(kMinSize), 0x00);
+  std::vector<uint8_t> buff(kMinSize, 0x00);
   std::string err;
   Result res;
 

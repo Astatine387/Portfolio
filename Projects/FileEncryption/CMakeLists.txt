@@ -155,6 +155,7 @@ set(CORE_HEADERS
     src/core/crypto_worker.h
     src/core/file_header.h
     src/core/secure_key.h
+    src/utils/byte_order.h
     src/utils/mutex.h
     src/utils/password.h
     src/utils/platform.h

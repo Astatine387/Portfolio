@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <utility>
 
 #include "core/aes_gcm.h"
 #include "utils/platform.h"
@@ -60,7 +61,7 @@ Result AesGcm::DecryptInit() {
     // LCOV_EXCL_STOP
   }
 
-  if (src_size_ < kMinSize) {
+  if (std::cmp_less(src_size_, kMinSize)) {
     ReportError("[File] Validation failed - File is too small to be an encrypted file\n");
     return Result::kFailure;
   }

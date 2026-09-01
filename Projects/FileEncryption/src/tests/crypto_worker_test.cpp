@@ -382,7 +382,7 @@ TEST_F(CryptoWorkerTest, TooShortSourceIsRejected) {
  * @brief   Verify a file written by another tool is rejected on the magic number
  */
 TEST_F(CryptoWorkerTest, ForeignSourceIsRejected) {
-  std::vector<uint8_t> buff(static_cast<size_t>(kMinSize), 'a');
+  std::vector<uint8_t> buff(kMinSize, 'a');
   std::string msg;
 
   Create(src_path_, buff);
