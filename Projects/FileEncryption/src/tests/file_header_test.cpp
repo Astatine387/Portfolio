@@ -137,12 +137,12 @@ class FileHeaderTest : public ::testing::Test {
  */
 TEST_F(FileHeaderTest, RoundTrip) {
   const std::array<FileHeader, 4> cases{
-    MakeHeader(), // Default values
+    MakeHeader(),  // Default values
     MakeHeader({ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism },
-               kMinChunkSizeLog2), // Minimum values
+               kMinChunkSizeLog2),  // Minimum values
     MakeHeader({ .time_cost = kMaxTimeCost, .mem_cost = kMaxMemCost, .parallelism = kMaxParallelism },
-               kMaxChunkSizeLog2), // Maximum values
-    MakeHeader({ .time_cost = 3, .mem_cost = 2 * kMinMemCost, .parallelism = 7 }, 14), // Arbitrary values
+               kMaxChunkSizeLog2),                                                      // Maximum values
+    MakeHeader({ .time_cost = 3, .mem_cost = 2 * kMinMemCost, .parallelism = 7 }, 14),  // Arbitrary values
   };
 
   for (const FileHeader& src : cases) {
