@@ -377,3 +377,156 @@ TEST_F(SeekTest, SeekFromEnd) {
 TEST_F(SeekTest, SeekBeforeBeginningFails) {
   EXPECT_EQ(Seek(file_, -1, SEEK_SET), Result::kFailure);
 }
+
+/* ==================================================
+ * Durability Helper Tests
+ * ================================================== */
+
+/**
+ * @class   DurabilityTest
+ * @brief   Test class for RenameNoReplace, SyncFile and SyncDir
+ */
+class DurabilityTest : public ::testing::Test {
+ protected:
+  std::string src_path_ = "durability_src.tmp";
+  std::string dst_path_ = "durability_dst.tmp";
+
+  /**
+   * @brief   Clean up temporary files after each test
+   */
+  void TearDown() override {
+    RemoveFile(src_path_);
+    RemoveFile(dst_path_);
+  }
+
+  /**
+   * @brief   Create a file holding the given text
+   * @param   path    File path
+   * @param   text    Content to write
+   */
+  static void Create(const std::string& path, const std::string& text) {
+    FILE* file = nullptr;
+
+    OpenFile(&file, path, "wb");
+
+    ASSERT_NE(file, nullptr);
+
+    EXPECT_EQ(fwrite(text.data(), sizeof(char), text.size(), file), text.size());
+
+    fclose(file);
+  }
+
+  /**
+   * @brief   Read a file back as text
+   * @param   path    File path
+   * @return  File contents, empty when the file cannot be read
+   */
+  static std::string Read(const std::string& path) {
+    FILE* file = nullptr;
+    std::string res;
+
+    OpenFile(&file, path, "rb");
+
+    if (!file) {
+      return res;
+    }
+
+    std::array<char, 128> buff{};
+
+    res.assign(buff.data(), fread(buff.data(), sizeof(char), buff.size(), file));
+
+    fclose(file);
+
+    return res;
+  }
+};
+
+/**
+ * @brief   Verify a move onto a free path carries the content and drops the source
+ */
+TEST_F(DurabilityTest, MovesOntoFreePath) {
+  Create(src_path_, "Hello, world!");
+
+  EXPECT_EQ(RenameFile(src_path_, dst_path_), Result::kSuccess);
+
+  EXPECT_FALSE(FileExists(src_path_));
+  EXPECT_TRUE(FileExists(dst_path_));
+  EXPECT_EQ(Read(dst_path_), "Hello, world!");
+}
+
+/**
+ * @brief   Verify an occupied destination is refused and both files survive untouched
+ */
+TEST_F(DurabilityTest, RefusesOccupiedDestination) {
+  Create(src_path_, "Hello, world!");
+  Create(dst_path_, "Don't overwrite this");
+
+  EXPECT_EQ(RenameFile(src_path_, dst_path_), Result::kFailure);
+
+  EXPECT_EQ(Read(src_path_), "Hello, world!");
+  EXPECT_EQ(Read(dst_path_), "Don't overwrite this");
+}
+
+/**
+ * @brief   Verify a missing source is refused rather than creating an empty destination
+ */
+TEST_F(DurabilityTest, RefusesMissingSource) {
+  EXPECT_EQ(RenameFile(src_path_, dst_path_), Result::kFailure);
+  EXPECT_FALSE(FileExists(dst_path_));
+}
+
+/**
+ * @brief   Verify syncing a written file reports success and the bytes are readable after
+ */
+TEST_F(DurabilityTest, SyncsFileContents) {
+  FILE* file = nullptr;
+
+  OpenFile(&file, src_path_, "wb");
+
+  ASSERT_NE(file, nullptr);
+
+  EXPECT_EQ(fwrite("Hello, world!", sizeof(char), 13, file), 13U);
+  EXPECT_EQ(SyncFile(file), Result::kSuccess);
+
+  fclose(file);
+
+  EXPECT_EQ(Read(src_path_), "Hello, world!");
+}
+
+/**
+ * @brief   Verify the parent directory of a path can be synced
+ */
+TEST_F(DurabilityTest, SyncsParentDirectory) {
+  Create(src_path_, "Hello, world!");
+
+  EXPECT_EQ(SyncDir(src_path_), Result::kSuccess);
+}
+
+/**
+ * @brief   Verify syncing reports failure when the parent directory does not exist
+ */
+TEST_F(DurabilityTest, SyncDirRejectsMissingDirectory) {
+  EXPECT_EQ(SyncDir("fake/file.tmp"), Result::kFailure);
+}
+
+#ifndef _WIN32
+
+/**
+ * @brief   Verify syncing reports failure when the buffered bytes cannot reach the device
+ */
+TEST_F(DurabilityTest, SyncFileRejectsFullDevice) {
+  FILE* file = nullptr;
+
+  OpenFile(&file, "/dev/full", "wb");
+
+  if (file == nullptr) {
+    GTEST_SKIP() << "/dev/full is not available";
+  }
+
+  EXPECT_EQ(fwrite("Hello, world!", sizeof(char), 13, file), 13U);
+  EXPECT_EQ(SyncFile(file), Result::kFailure);
+
+  fclose(file);
+}
+
+#endif  // !_WIN32

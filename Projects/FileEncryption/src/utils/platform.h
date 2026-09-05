@@ -41,6 +41,30 @@ Result Random(uint8_t* dst, size_t size);
 Result RemoveFile(const std::string& path);
 
 /**
+ * @brief   Move a file onto a path
+ * @param   src   Source file path
+ * @param   dst   Destination file path
+ * @return  kSuccess on success, kFailure on failure
+ *
+ * This doesn't overwrite an existing file
+ */
+Result RenameFile(const std::string& src, const std::string& dst);
+
+/**
+ * @brief   Flush and sync file data to disk
+ * @param   file  File pointer
+ * @return  kSuccess on success, kFailure on failure
+ */
+Result SyncFile(FILE* file);
+
+/**
+ * @brief   Flush the parent directory entry of a file to disk
+ * @param   path  File path whose parent directory is synced
+ * @return  kSuccess on success, kFailure on failure
+ */
+Result SyncDir(const std::string& path);
+
+/**
  * @brief   Move file pointer to specific position
  * @param   file	File pointer
  * @param   dist	Distance from reference point

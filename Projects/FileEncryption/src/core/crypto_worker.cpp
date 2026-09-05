@@ -10,10 +10,17 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <string_view>
 
 #include "core/file_header.h"
 #include "core/secure_key.h"
 #include "utils/platform.h"
+
+namespace {
+
+constexpr std::string_view kPartSuffix = ".tmp";
+
+}  // namespace
 
 void CryptoWorker::RequestCancel() {
   cancel_->store(true, std::memory_order_relaxed);
@@ -28,6 +35,10 @@ void CryptoWorker::Work() {
   std::string msg;
   bool should_delete = false;
 
+  std::string tmp_path = dst_path_;
+
+  tmp_path += kPartSuffix;
+
   /* Open files */
 
   OpenFile(&src_file, src_path_, "rb");
@@ -40,7 +51,9 @@ void CryptoWorker::Work() {
     return;
   }
 
-  if (OpenNewFile(&dst_file, dst_path_) == Result::kFailure) {
+  /* Refuse a destination that is already taken */
+
+  if (FileExists(dst_path_) || OpenNewFile(&dst_file, tmp_path) == Result::kFailure) {
     fclose(src_file);
 
     if (fcb_) {
@@ -83,7 +96,7 @@ void CryptoWorker::Work() {
   if (!key.has_value()) {
     fclose(src_file);
     fclose(dst_file);
-    RemoveFile(dst_path_);
+    RemoveFile(tmp_path);
 
     if (reason.empty()) {
       reason = "[Crypto] Key derivation failed\n";
@@ -121,46 +134,53 @@ void CryptoWorker::Work() {
 
   /* Encrypt or decrypt */
 
+  const std::string verb = mode_ == CryptoMode::kEncrypt ? "Encryption" : "Decryption";
+
   if (mode_ == CryptoMode::kEncrypt) {
     res = aes.Encrypt(src_file, dst_file, *key, salt, params);
-
-    if (IsCancelled()) {
-      msg = "Encryption cancelled\n";
-      should_delete = true;
-    }
-    else if (res == Result::kFailure) {
-      // LCOV_EXCL_START
-      msg = err_ + "Encryption failed\n";
-      should_delete = true;
-      // LCOV_EXCL_STOP
-    }
-    else {
-      msg = "Encryption complete\n";
-    }
   }
   else {
     res = aes.Decrypt(src_file, dst_file, *key);
-
-    if (IsCancelled()) {
-      msg = "Decryption cancelled\n";
-      should_delete = true;
-    }
-    else if (res == Result::kFailure) {
-      msg = err_ + "Decryption failed\n";
-      should_delete = true;
-    }
-    else {
-      msg = "Decryption complete\n";
-    }
   }
 
-  /* Close files */
-
   fclose(src_file);
+
+  /* The result is examined before the cancellation flag. A cancel that arrives after the
+   * work is already done must not throw away a complete and valid output. */
+
+  if (res == Result::kFailure) {
+    should_delete = true;
+
+    msg = IsCancelled() ? verb + " cancelled\n" : err_ + verb + " failed\n";
+  }
+  else if (SyncFile(dst_file) == Result::kFailure) {
+    // LCOV_EXCL_START
+    should_delete = true;
+
+    msg = "[File] Sync failed - Cannot flush the destination to disk\n" + verb + " failed\n";
+    // LCOV_EXCL_STOP
+  }
+
   fclose(dst_file);
 
+  /* Publish only once the bytes are on the disk, so success is never reported for data that
+   * a power loss could still take away */
+
   if (should_delete) {
-    RemoveFile(dst_path_);
+    RemoveFile(tmp_path);
+  }
+  else if (RenameFile(tmp_path, dst_path_) == Result::kFailure) {
+    RemoveFile(tmp_path);
+
+    msg = "[File] Move failed - Destination already exists or cannot be written\n" + verb + " failed\n";
+  }
+  else if (SyncDir(dst_path_) == Result::kFailure) {
+    /* The data is already at the destination, so it stays; only its durability is in doubt */
+
+    msg = "[File] Sync failed - Cannot flush the destination directory\n" + verb + " failed\n";  // LCOV_EXCL_LINE
+  }
+  else {
+    msg = verb + " complete\n";
   }
 
   if (fcb_) {

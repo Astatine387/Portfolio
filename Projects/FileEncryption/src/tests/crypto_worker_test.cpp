@@ -44,6 +44,8 @@ class CryptoWorkerTest : public ::testing::Test {
     RemoveFile(src_path_);
     RemoveFile(enc_path_);
     RemoveFile(dec_path_);
+    RemoveFile(enc_path_ + ".tmp");
+    RemoveFile(dec_path_ + ".tmp");
   }
 
   /**
@@ -453,8 +455,9 @@ TEST_F(CryptoWorkerTest, UncreatableDestinationReportsError) {
 TEST_F(CryptoWorkerTest, ConcurrentCancelDuringWork) {
   std::atomic<bool> in_progress{ false };
   std::string msg;
+  constexpr size_t kChunks = 64;
 
-  Create(src_path_, std::vector<uint8_t>(kChunkSize * 64, 'a'));
+  Create(src_path_, std::vector<uint8_t>(kChunkSize * kChunks, 'a'));
 
   CryptoWorker worker(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
 
@@ -477,4 +480,132 @@ TEST_F(CryptoWorkerTest, ConcurrentCancelDuringWork) {
   if (msg.find("cancelled") != std::string::npos) {
     EXPECT_FALSE(FileExists(enc_path_));
   }
+  else {
+    std::vector<uint8_t> cipher;
+
+    Read(enc_path_, cipher);
+
+    EXPECT_TRUE(FileExists(enc_path_));
+    EXPECT_EQ(cipher.size(), kHeaderSize + kChunkSize * kChunks + kTagSize * kChunks);
+  }
+
+  EXPECT_FALSE(FileExists(enc_path_ + ".part"));
+}
+
+/* ==================================================
+ * Atomic Publication Tests
+ * ================================================== */
+
+/**
+ * @brief   Verify a finished operation leaves the output and no temporary file behind
+ */
+TEST_F(CryptoWorkerTest, SuccessLeavesNoTemporaryFile) {
+  Create(src_path_, ToBytes("Hello, world!"));
+
+  CryptoWorker enc(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
+
+  enc.Work();
+
+  EXPECT_TRUE(FileExists(enc_path_));
+  EXPECT_FALSE(FileExists(enc_path_ + ".tmp"));
+}
+
+/**
+ * @brief   Verify a failed operation leaves neither the output nor a temporary file
+ */
+TEST_F(CryptoWorkerTest, FailureLeavesNoTemporaryFile) {
+  std::string msg;
+
+  Create(src_path_, ToBytes("Hello, world!"));
+
+  CryptoWorker enc(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
+
+  enc.Work();
+
+  CryptoWorker dec(enc_path_, dec_path_, MakePw("asdf1234"), CryptoMode::kDecrypt);
+
+  dec.SetFinishedCallback([&](const std::string& m) { msg = m; });
+
+  dec.Work();
+
+  EXPECT_NE(msg.find("failed"), std::string::npos);
+  EXPECT_FALSE(FileExists(dec_path_));
+  EXPECT_FALSE(FileExists(dec_path_ + ".tmp"));
+}
+
+/**
+ * @brief   Verify a cancelled operation leaves neither the output nor a temporary file
+ */
+TEST_F(CryptoWorkerTest, CancelLeavesNoTemporaryFile) {
+  std::string msg;
+
+  Create(src_path_, std::vector<uint8_t>(kChunkSize * 16, 'a'));
+
+  CryptoWorker enc(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
+
+  enc.SetProgressCallback([&](int, const std::string&) { enc.RequestCancel(); });
+
+  enc.SetFinishedCallback([&](const std::string& m) { msg = m; });
+
+  enc.Work();
+
+  EXPECT_NE(msg.find("cancelled"), std::string::npos);
+  EXPECT_FALSE(FileExists(enc_path_));
+  EXPECT_FALSE(FileExists(enc_path_ + ".tmp"));
+}
+
+/**
+ * @brief   Verify an occupied destination is refused and its contents are left alone
+ */
+TEST_F(CryptoWorkerTest, ExistingDestinationIsRefusedAndUntouched) {
+  std::string msg;
+
+  Create(src_path_, ToBytes("Hello, world!"));
+  Create(enc_path_, ToBytes("Don't overwrite this"));
+
+  CryptoWorker enc(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
+
+  enc.SetFinishedCallback([&](const std::string& m) { msg = m; });
+
+  enc.Work();
+
+  std::vector<uint8_t> kept;
+
+  Read(enc_path_, kept);
+
+  EXPECT_NE(msg.find("already exists"), std::string::npos);
+  EXPECT_EQ(kept, ToBytes("Don't overwrite this"));
+  EXPECT_FALSE(FileExists(enc_path_ + ".tmp"));
+}
+
+/**
+ * @brief   Verify a destination file created while the work is running is not overwritten
+ */
+TEST_F(CryptoWorkerTest, DestinationAppearingMidRunIsRefused) {
+  std::string msg;
+  bool b = false;
+
+  Create(src_path_, std::vector<uint8_t>(kChunkSize * 4, 'a'));
+
+  CryptoWorker enc(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
+
+  enc.SetProgressCallback([&](int, const std::string&) {
+    if (!b) {
+      b = true;
+      Create(enc_path_, ToBytes("Don't overwrite this"));
+    }
+  });
+
+  enc.SetFinishedCallback([&](const std::string& m) { msg = m; });
+
+  enc.Work();
+
+  std::vector<uint8_t> kept;
+
+  Read(enc_path_, kept);
+
+  EXPECT_TRUE(b);
+  EXPECT_NE(msg.find("failed"), std::string::npos);
+  EXPECT_EQ(kept, ToBytes("Don't overwrite this"));
+  EXPECT_FALSE(FileExists(enc_path_ + ".tmp"));
 }

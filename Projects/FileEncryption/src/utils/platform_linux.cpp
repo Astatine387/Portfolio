@@ -64,6 +64,48 @@ Result RemoveFile(const std::string& path) {
   return Result::kSuccess;
 }
 
+Result RenameFile(const std::string& src, const std::string& dst) {
+  if (link(src.c_str(), dst.c_str())) {
+    return Result::kFailure;
+  }
+
+  static_cast<void>(unlink(src.c_str()));
+
+  return Result::kSuccess;
+}
+
+Result SyncFile(FILE* file) {
+  if (fflush(file)) {
+    return Result::kFailure;
+  }
+
+  if (fsync(fileno(file))) {
+    return Result::kFailure;
+  }
+
+  return Result::kSuccess;
+}
+
+Result SyncDir(const std::string& path) {
+  std::filesystem::path dir = std::filesystem::path(path).parent_path();
+
+  int fd = open(dir.empty() ? "." : dir.c_str(), O_RDONLY | O_DIRECTORY);
+
+  if (fd == -1) {
+    return Result::kFailure;
+  }
+
+  int res = fsync(fd);
+
+  close(fd);
+
+  if (res) {
+    return Result::kFailure;
+  }
+
+  return Result::kSuccess;
+}
+
 Result Seek(FILE* file, int64_t offset, int origin) {
   if (fseeko(file, offset, origin)) {
     return Result::kFailure;
