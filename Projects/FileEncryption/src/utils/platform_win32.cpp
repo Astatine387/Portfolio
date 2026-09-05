@@ -90,7 +90,22 @@ Result SyncFile(FILE* file) {
   return Result::kSuccess;
 }
 
-Result SyncDir([[maybe_unused]] const std::string& path) {
+Result SyncDir(const std::string& path) {
+  std::filesystem::path dir = ToPath(path).parent_path();
+
+  HANDLE handle = CreateFileW(dir.empty() ? L"." : dir.c_str(), GENERIC_READ,
+                              FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING,
+                              FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+
+  if (handle == INVALID_HANDLE_VALUE) {
+    return Result::kFailure;
+  }
+
+  /* Windows has no directory fsync. MOVEFILE_WRITE_THROUGH in RenameFile already puts the directory
+   * entry on the disk, so opening the directory is the only step that can fail here. */
+
+  CloseHandle(handle);
+
   return Result::kSuccess;
 }
 
