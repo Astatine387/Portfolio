@@ -219,8 +219,8 @@ class AesGcmTest : public ::testing::Test {
     std::string hex;
 
     for (uint8_t byte : md) {
-      hex += kDigits[byte >> 4];
-      hex += kDigits[byte & 0x0F];
+      hex += kDigits[static_cast<size_t>(byte >> 4)];
+      hex += kDigits[static_cast<size_t>(byte & 0x0F)];
     }
 
     return hex;
