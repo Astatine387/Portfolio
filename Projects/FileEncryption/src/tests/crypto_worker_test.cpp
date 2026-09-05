@@ -11,6 +11,7 @@
 #include <array>
 #include <atomic>
 #include <cstring>
+#include <functional>
 #include <optional>
 #include <span>
 #include <string>
@@ -46,9 +47,9 @@ class CryptoWorkerTest : public ::testing::Test {
   }
 
   /**
-   * @brief   Build a locked Password from a C-style string
+   * @brief   Create a password from a C string
    * @param   str   Source password
-   * @return  Password holding a copy of str
+   * @return  Password holding a copy of the C string
    */
   static Password MakePw(const char* str) {
     Password pw;
@@ -56,6 +57,45 @@ class CryptoWorkerTest : public ::testing::Test {
     EXPECT_EQ(pw.SetData(str, strlen(str)), Result::kSuccess);
 
     return pw;
+  }
+
+  /**
+   * @brief   Get the cheapest Argon2id parameters this build accepts
+   * @return  The cheapest Argon2id parameters
+   */
+  static KdfParams MinParams() {
+    return KdfParams{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism };
+  }
+
+  /**
+   * @brief   Configuration applied to a worker before it runs
+   */
+  using WorkerSetup = std::function<void(CryptoWorker&)>;
+
+  /**
+   * @brief   Run one worker job to complete and hand back what it reported
+   * @param   src     Source file path
+   * @param   dst     Destination file path
+   * @param   pw      Password
+   * @param   mode    Encryption or decryption
+   * @param   setup   Applied to the worker before Work, for callbacks or an up-front cancel
+   * @return  Message passed to the finished callback
+   */
+  std::string RunWorker(const std::string& src, const std::string& dst, const char* pw, CryptoMode mode,
+                        const WorkerSetup& setup = nullptr) {
+    std::string msg;
+
+    CryptoWorker worker(src, dst, MakePw(pw), mode);
+
+    worker.SetFinishedCallback([&](const std::string& m) { msg = m; });
+
+    if (setup) {
+      setup(worker);
+    }
+
+    worker.Work();
+
+    return msg;
   }
 
   /**
@@ -130,7 +170,7 @@ class CryptoWorkerTest : public ::testing::Test {
 
     StoreLE32(buff.data() + kMagicSize + 1, params.time_cost);
     StoreLE32(buff.data() + kMagicSize + 1 + sizeof(uint32_t), params.mem_cost);
-    StoreLE32(buff.data() + kMagicSize + 1 + 2 * sizeof(uint32_t), params.parallelism);
+    StoreLE32(buff.data() + kMagicSize + 1 + sizeof(uint32_t) * 2, params.parallelism);
 
     Create(path, buff);
   }
@@ -141,18 +181,18 @@ class CryptoWorkerTest : public ::testing::Test {
    * @param   data    Plaintext to encrypt
    */
   void MakeFileWith(const KdfParams& params, const std::vector<uint8_t>& data) {
-    FILE *src = nullptr, *dst = nullptr;
     std::array<uint8_t, kSaltSize> salt{};
+    FILE *src = nullptr, *dst = nullptr;
 
     salt.fill(0x33);
 
     Create(src_path_, data);
 
-    auto derived = DeriveKey(std::span<const char>("password", 8), salt, params);
+    auto tmp = DeriveKey(std::span<const char>("password", 8), salt, params);
 
-    ASSERT_TRUE(derived.has_value());
+    ASSERT_TRUE(tmp.has_value());
 
-    SecureKey key = std::move(derived.value());  // NOLINT(bugprone-unchecked-optional-access)
+    SecureKey key = std::move(tmp.value());  // NOLINT(bugprone-unchecked-optional-access)
     AesGcm aes;
 
     OpenFile(&src, src_path_, "rb");
@@ -180,34 +220,14 @@ class CryptoWorkerTest : public ::testing::Test {
  * @brief   Verify a worker round-trip reports completion and preserves data
  */
 TEST_F(CryptoWorkerTest, EncryptDecryptRoundTrip) {
-  const char* data = "Hello, world!";
-  std::vector<uint8_t> orig = ToBytes(data), copy;
-  std::string enc_msg, dec_msg;
+  const std::vector<uint8_t> orig = ToBytes("Hello, world!");
+  std::vector<uint8_t> copy;
 
   Create(src_path_, orig);
 
-  /* Encrypt */
-
-  CryptoWorker enc(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
-
-  enc.SetFinishedCallback([&](const std::string& msg) { enc_msg = msg; });
-
-  enc.Work();
-
-  EXPECT_NE(enc_msg.find("complete"), std::string::npos);
+  EXPECT_NE(RunWorker(src_path_, enc_path_, "password", CryptoMode::kEncrypt).find("complete"), std::string::npos);
   EXPECT_TRUE(FileExists(enc_path_));
-
-  /* Decrypt */
-
-  CryptoWorker dec(enc_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
-
-  dec.SetFinishedCallback([&](const std::string& msg) { dec_msg = msg; });
-
-  dec.Work();
-
-  EXPECT_NE(dec_msg.find("complete"), std::string::npos);
-
-  /* Compare with original */
+  EXPECT_NE(RunWorker(enc_path_, dec_path_, "password", CryptoMode::kDecrypt).find("complete"), std::string::npos);
 
   Read(dec_path_, copy);
 
@@ -219,82 +239,45 @@ TEST_F(CryptoWorkerTest, EncryptDecryptRoundTrip) {
  * ================================================== */
 
 /**
- * @brief   Verify progress callback is invoked with an encrypting status
+ * @brief   Verify progress callback is invoked with an encrypting status carrying the percentage
  */
-TEST_F(CryptoWorkerTest, ProgressCallbackReportsStatus) {
-  std::vector<uint8_t> orig(kChunkSize * 10, 'a');
-  int cnt = 0;
+TEST_F(CryptoWorkerTest, ProgressCallbackReportsEncrypting) {
   std::string status;
+  int last = -1;
 
-  Create(src_path_, orig);
+  Create(src_path_, std::vector<uint8_t>(kChunkSize * 10, 'a'));
 
-  CryptoWorker worker(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
-
-  worker.SetProgressCallback([&](int, const std::string& msg) {
-    cnt++;
-
-    status = msg;
+  RunWorker(src_path_, enc_path_, "password", CryptoMode::kEncrypt, [&](CryptoWorker& worker) {
+    worker.SetProgressCallback([&](int perc, const std::string& msg) {
+      last = perc;
+      status = msg;
+    });
   });
 
-  worker.Work();
-
-  EXPECT_GT(cnt, 0);
+  EXPECT_GE(last, 0);
   EXPECT_NE(status.find("Encrypting"), std::string::npos);
+  EXPECT_NE(status.find(std::to_string(last) + "%"), std::string::npos);
 }
 
 /**
- * @brief   Verify progress callback is invoked with a decrypting status
+ * @brief   Verify progress callback is invoked with a decrypting status carrying the percentage
  */
 TEST_F(CryptoWorkerTest, ProgressCallbackReportsDecrypting) {
-  std::vector<uint8_t> orig(kChunkSize * 10, 'a');
   std::string status;
+  int last = -1;
 
-  Create(src_path_, orig);
+  MakeFileWith(MinParams(), std::vector<uint8_t>(kChunkSize * 10, 'a'));
 
-  /* Encrypt first to produce a valid ciphertext */
+  RunWorker(enc_path_, dec_path_, "password", CryptoMode::kDecrypt, [&](CryptoWorker& worker) {
+    worker.SetProgressCallback([&](int perc, const std::string& msg) {
+      last = perc;
+      status = msg;
+    });
+  });
 
-  CryptoWorker enc(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
-
-  enc.Work();
-
-  /* Decrypt with a progress callback */
-
-  CryptoWorker dec(enc_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
-
-  dec.SetProgressCallback([&](int, const std::string& msg) { status = msg; });
-
-  dec.Work();
-
-  EXPECT_NE(status.find("Decrypting"), std::string::npos);  // line 69
-}
-
-/**
- * @brief   Verify a cancelled decryption reports cancellation and removes output
- */
-TEST_F(CryptoWorkerTest, CancelDecryptionRemovesOutput) {
-  std::vector<uint8_t> orig(kChunkSize * 10, 'a');
-  std::string msg;
-
-  Create(src_path_, orig);
-
-  /* Encrypt first to produce a valid ciphertext */
-
-  CryptoWorker enc(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
-
-  enc.Work();
-
-  /* Decrypt, but cancel up front */
-
-  CryptoWorker dec(enc_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
-
-  dec.SetFinishedCallback([&](const std::string& m) { msg = m; });
-
-  dec.RequestCancel();
-
-  dec.Work();
-
-  EXPECT_NE(msg.find("canceled"), std::string::npos);  // lines 99-100
-  EXPECT_FALSE(FileExists(dec_path_));
+  EXPECT_GE(last, 0);
+  EXPECT_NE(status.find("Decrypting"), std::string::npos);
+  EXPECT_NE(status.find(std::to_string(last) + "%"), std::string::npos);
 }
 
 /* ==================================================
@@ -302,26 +285,29 @@ TEST_F(CryptoWorkerTest, CancelDecryptionRemovesOutput) {
  * ================================================== */
 
 /**
- * @brief   Verify a cancelled job reports cancellation and removes its output
+ * @brief   Verify a cancelled encryption reports cancellation and removes output
  */
-TEST_F(CryptoWorkerTest, CancelRemovesOutput) {
-  std::vector<uint8_t> orig(kChunkSize * 10, 'a');
-  std::string msg;
+TEST_F(CryptoWorkerTest, CancelEncryptionRemovesOutput) {
+  Create(src_path_, std::vector<uint8_t>(kChunkSize * 10, 'a'));
 
-  Create(src_path_, orig);
+  const std::string msg = RunWorker(src_path_, dec_path_, "password", CryptoMode::kEncrypt,
+                                    [](CryptoWorker& worker) { worker.RequestCancel(); });
 
-  CryptoWorker worker(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
+  EXPECT_NE(msg.find("cancelled"), std::string::npos);
+  EXPECT_FALSE(FileExists(dec_path_));
+}
 
-  worker.SetFinishedCallback([&](const std::string& m) { msg = m; });
+/**
+ * @brief   Verify a cancelled decryption reports cancellation and removes output
+ */
+TEST_F(CryptoWorkerTest, CancelDecryptionRemovesOutput) {
+  MakeFileWith(MinParams(), std::vector<uint8_t>(kChunkSize * 10, 'a'));
 
-  /* Request cancellation up front so the first progress check aborts */
+  const std::string msg = RunWorker(enc_path_, dec_path_, "password", CryptoMode::kDecrypt,
+                                    [](CryptoWorker& worker) { worker.RequestCancel(); });
 
-  worker.RequestCancel();
-
-  worker.Work();
-
-  EXPECT_NE(msg.find("canceled"), std::string::npos);
-  EXPECT_FALSE(FileExists(enc_path_));
+  EXPECT_NE(msg.find("cancelled"), std::string::npos);
+  EXPECT_FALSE(FileExists(dec_path_));
 }
 
 /* ==================================================
@@ -332,31 +318,37 @@ TEST_F(CryptoWorkerTest, CancelRemovesOutput) {
  * @brief   Verify a wrong password fails decryption and removes its output
  */
 TEST_F(CryptoWorkerTest, WrongPasswordRemovesOutput) {
-  const char* data = "Hello, world!";
-  std::vector<uint8_t> orig = ToBytes(data);
-  std::string enc_msg, dec_msg;
+  MakeFileWith(MinParams(), ToBytes("Hello, world!"));
 
-  Create(src_path_, orig);
+  const std::string msg = RunWorker(enc_path_, dec_path_, "asdf1234", CryptoMode::kDecrypt);
 
-  /* Encrypt with the correct password */
+  EXPECT_NE(msg.find("failed"), std::string::npos);
+  EXPECT_FALSE(FileExists(dec_path_));
+}
 
-  CryptoWorker enc(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
+/**
+ * @brief   Verify a corrupted chunk mid-file leaves no partial plaintext at the destination
+ */
+TEST_F(CryptoWorkerTest, CorruptChunkLeavesNoDestinationFile) {
+  constexpr size_t kChunks = 5;
+  constexpr size_t kBad = 3;
+  std::vector<uint8_t> cipher;
 
-  enc.SetFinishedCallback([&](const std::string& msg) { enc_msg = msg; });
+  MakeFileWith(MinParams(), std::vector<uint8_t>(kChunks * kChunkSize, 'a'));
 
-  enc.Work();
+  Read(enc_path_, cipher);
 
-  EXPECT_NE(enc_msg.find("complete"), std::string::npos);
+  ASSERT_EQ(cipher.size(), kHeaderSize + kChunks * (kChunkSize + kTagSize));
 
-  /* Decrypt with a wrong password */
+  /* Damage a byte inside the fourth chunk, leaving the three before it valid */
 
-  CryptoWorker dec(enc_path_, dec_path_, MakePw("asdf1234"), CryptoMode::kDecrypt);
+  cipher[kHeaderSize + kBad * (kChunkSize + kTagSize) + 10] ^= 0x01;
 
-  dec.SetFinishedCallback([&](const std::string& msg) { dec_msg = msg; });
+  Create(enc_path_, cipher);
 
-  dec.Work();
+  const std::string msg = RunWorker(enc_path_, dec_path_, "password", CryptoMode::kDecrypt);
 
-  EXPECT_NE(dec_msg.find("failed"), std::string::npos);
+  EXPECT_NE(msg.find("failed"), std::string::npos);
   EXPECT_FALSE(FileExists(dec_path_));
 }
 
@@ -364,16 +356,9 @@ TEST_F(CryptoWorkerTest, WrongPasswordRemovesOutput) {
  * @brief   Verify a source too short to hold a header is rejected before key derivation
  */
 TEST_F(CryptoWorkerTest, TooShortSourceIsRejected) {
-  std::vector<uint8_t> buff(kHeaderSize - 1, 'a');
-  std::string msg;
+  Create(src_path_, std::vector<uint8_t>(kHeaderSize - 1, 'a'));
 
-  Create(src_path_, buff);
-
-  CryptoWorker dec(src_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
-
-  dec.SetFinishedCallback([&](const std::string& m) { msg = m; });
-
-  dec.Work();
+  const std::string msg = RunWorker(src_path_, dec_path_, "password", CryptoMode::kDecrypt);
 
   EXPECT_NE(msg.find("Cannot read the file header"), std::string::npos);
   EXPECT_FALSE(FileExists(dec_path_));
@@ -383,16 +368,9 @@ TEST_F(CryptoWorkerTest, TooShortSourceIsRejected) {
  * @brief   Verify a file written by another tool is rejected on the magic number
  */
 TEST_F(CryptoWorkerTest, ForeignSourceIsRejected) {
-  std::vector<uint8_t> buff(kMinSize, 'a');
-  std::string msg;
+  Create(src_path_, std::vector<uint8_t>(kMinSize, 'a'));
 
-  Create(src_path_, buff);
-
-  CryptoWorker dec(src_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
-
-  dec.SetFinishedCallback([&](const std::string& m) { msg = m; });
-
-  dec.Work();
+  const std::string msg = RunWorker(src_path_, dec_path_, "password", CryptoMode::kDecrypt);
 
   EXPECT_NE(msg.find("Not a FileEncryption file"), std::string::npos);
   EXPECT_FALSE(FileExists(dec_path_));
@@ -402,21 +380,6 @@ TEST_F(CryptoWorkerTest, ForeignSourceIsRejected) {
  * @brief   Verify parameters outside the accepted range are rejected before Argon2id runs
  */
 TEST_F(CryptoWorkerTest, OutOfRangeHeaderParamsAreRejected) {
-  const char* data = "Hello, world!";
-  std::string enc_msg;
-
-  Create(src_path_, ToBytes(data));
-
-  /* One real encryption supplies a valid file for every case below */
-
-  CryptoWorker enc(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
-
-  enc.SetFinishedCallback([&](const std::string& m) { enc_msg = m; });
-
-  enc.Work();
-
-  ASSERT_NE(enc_msg.find("complete"), std::string::npos);
-
   const std::array<KdfParams, 6> cases{
     KdfParams{ .time_cost = kMinTimeCost - 1, .mem_cost = kMemCost, .parallelism = kParallelism },
     KdfParams{ .time_cost = kMaxTimeCost + 1, .mem_cost = kMemCost, .parallelism = kParallelism },
@@ -426,21 +389,17 @@ TEST_F(CryptoWorkerTest, OutOfRangeHeaderParamsAreRejected) {
     KdfParams{ .time_cost = kTimeCost, .mem_cost = kMemCost, .parallelism = kMaxParallelism + 1 },
   };
 
+  MakeFileWith(MinParams(), ToBytes("Hello, world!"));
+
   for (const KdfParams& params : cases) {
     SCOPED_TRACE(testing::Message() << "t=" << params.time_cost << " m=" << params.mem_cost
                                     << " p=" << params.parallelism);
 
-    std::string dec_msg;
-
     PatchHeaderParams(enc_path_, params);
 
-    CryptoWorker dec(enc_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
+    const std::string msg = RunWorker(enc_path_, dec_path_, "password", CryptoMode::kDecrypt);
 
-    dec.SetFinishedCallback([&](const std::string& m) { dec_msg = m; });
-
-    dec.Work();
-
-    EXPECT_NE(dec_msg.find("Unsupported key derivation parameters"), std::string::npos);
+    EXPECT_NE(msg.find("Unsupported key derivation parameters"), std::string::npos);
     EXPECT_FALSE(FileExists(dec_path_));
   }
 }
@@ -449,20 +408,12 @@ TEST_F(CryptoWorkerTest, OutOfRangeHeaderParamsAreRejected) {
  * @brief   Verify a file is decrypted with the parameters its header records
  */
 TEST_F(CryptoWorkerTest, DecryptUsesHeaderKdfParams) {
-  const char* data = "Hello, world!";
-  const KdfParams params{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism };
-  std::vector<uint8_t> orig = ToBytes(data), copy;
-  std::string msg;
+  const std::vector<uint8_t> orig = ToBytes("Hello, world!");
+  std::vector<uint8_t> copy;
 
-  /* Build a file under the cheapest accepted parameters rather than the build defaults */
+  MakeFileWith(MinParams(), orig);
 
-  MakeFileWith(params, orig);
-
-  CryptoWorker dec(enc_path_, dec_path_, MakePw("password"), CryptoMode::kDecrypt);
-
-  dec.SetFinishedCallback([&](const std::string& m) { msg = m; });
-
-  dec.Work();
+  const std::string msg = RunWorker(enc_path_, dec_path_, "password", CryptoMode::kDecrypt);
 
   EXPECT_NE(msg.find("complete"), std::string::npos);
 
@@ -475,13 +426,7 @@ TEST_F(CryptoWorkerTest, DecryptUsesHeaderKdfParams) {
  * @brief   Verify a missing source file reports an open failure
  */
 TEST_F(CryptoWorkerTest, MissingSourceReportsError) {
-  std::string msg;
-
-  CryptoWorker worker("fake.tmp", enc_path_, MakePw("password"), CryptoMode::kEncrypt);
-
-  worker.SetFinishedCallback([&](const std::string& m) { msg = m; });
-
-  worker.Work();
+  const std::string msg = RunWorker("fake.tmp", enc_path_, "password", CryptoMode::kEncrypt);
 
   EXPECT_NE(msg.find("Open failed"), std::string::npos);
   EXPECT_FALSE(FileExists(enc_path_));
@@ -491,17 +436,9 @@ TEST_F(CryptoWorkerTest, MissingSourceReportsError) {
  * @brief   Verify an uncreatable destination reports an open failure
  */
 TEST_F(CryptoWorkerTest, UncreatableDestinationReportsError) {
-  const char* data = "Hello, world!";
-  std::vector<uint8_t> orig = ToBytes(data);
-  std::string msg;
+  Create(src_path_, ToBytes("Hello, world!"));
 
-  Create(src_path_, orig);
-
-  CryptoWorker worker(src_path_, "no_such_dir/out.tmp", MakePw("password"), CryptoMode::kEncrypt);
-
-  worker.SetFinishedCallback([&](const std::string& m) { msg = m; });
-
-  worker.Work();
+  const std::string msg = RunWorker(src_path_, "fake/out.tmp", "password", CryptoMode::kEncrypt);
 
   EXPECT_NE(msg.find("Open failed"), std::string::npos);
 }
@@ -514,25 +451,18 @@ TEST_F(CryptoWorkerTest, UncreatableDestinationReportsError) {
  * @brief   Verify cancelling from another thread while the worker runs is race-free
  */
 TEST_F(CryptoWorkerTest, ConcurrentCancelDuringWork) {
-  /* Large enough that encryption spans many progress checkpoints */
-
-  std::vector<uint8_t> orig(kChunkSize * 64, 'a');
   std::atomic<bool> in_progress{ false };
   std::string msg;
 
-  Create(src_path_, orig);
+  Create(src_path_, std::vector<uint8_t>(kChunkSize * 64, 'a'));
 
   CryptoWorker worker(src_path_, enc_path_, MakePw("password"), CryptoMode::kEncrypt);
-
-  /* Signal once the worker is actively processing */
 
   worker.SetProgressCallback([&](int, const std::string&) { in_progress.store(true, std::memory_order_release); });
 
   worker.SetFinishedCallback([&](const std::string& m) { msg = m; });
 
   std::thread runner([&] { worker.Work(); });
-
-  /* Wait for the processing loop, then cancel concurrently with it */
 
   while (!in_progress.load(std::memory_order_acquire)) {
     std::this_thread::yield();
@@ -542,11 +472,9 @@ TEST_F(CryptoWorkerTest, ConcurrentCancelDuringWork) {
 
   runner.join();
 
-  /* The race is benign: completion and cancellation are both valid outcomes */
+  EXPECT_TRUE(msg.find("complete") != std::string::npos || msg.find("cancelled") != std::string::npos);
 
-  EXPECT_TRUE(msg.find("complete") != std::string::npos || msg.find("canceled") != std::string::npos);
-
-  if (msg.find("canceled") != std::string::npos) {
+  if (msg.find("cancelled") != std::string::npos) {
     EXPECT_FALSE(FileExists(enc_path_));
   }
 }

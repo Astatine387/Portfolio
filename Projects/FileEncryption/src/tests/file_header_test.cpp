@@ -74,7 +74,6 @@ class FileHeaderTest : public ::testing::Test {
     OpenFile(&file, path_, "wb");
 
     ASSERT_NE(file, nullptr);
-
     EXPECT_EQ(WriteHeader(file, header), Result::kSuccess);
 
     fclose(file);
@@ -85,8 +84,8 @@ class FileHeaderTest : public ::testing::Test {
    * @return  File contents
    */
   std::vector<uint8_t> Load() {
-    FILE* file = nullptr;
     std::vector<uint8_t> buff;
+    FILE* file = nullptr;
 
     OpenFile(&file, path_, "rb");
 
@@ -137,34 +136,32 @@ class FileHeaderTest : public ::testing::Test {
  * @brief   Verify a written header reads back field for field
  */
 TEST_F(FileHeaderTest, RoundTrip) {
-  const FileHeader src = MakeHeader();
-  FileHeader dst;
+  const std::array<FileHeader, 4> cases{
+    MakeHeader(), // Default values
+    MakeHeader({ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism },
+               kMinChunkSizeLog2), // Minimum values
+    MakeHeader({ .time_cost = kMaxTimeCost, .mem_cost = kMaxMemCost, .parallelism = kMaxParallelism },
+               kMaxChunkSizeLog2), // Maximum values
+    MakeHeader({ .time_cost = 3, .mem_cost = 2 * kMinMemCost, .parallelism = 7 }, 14), // Arbitrary values
+  };
 
-  Store(src);
+  for (const FileHeader& src : cases) {
+    SCOPED_TRACE(testing::Message() << "chunk_log2=" << static_cast<int>(src.chunk_log2)
+                                    << " t=" << src.params.time_cost << " m=" << src.params.mem_cost
+                                    << " p=" << src.params.parallelism);
 
-  EXPECT_EQ(Reload(dst), HeaderStatus::kOk);
+    FileHeader dst;
 
-  EXPECT_EQ(dst.params.time_cost, src.params.time_cost);
-  EXPECT_EQ(dst.params.mem_cost, src.params.mem_cost);
-  EXPECT_EQ(dst.params.parallelism, src.params.parallelism);
-  EXPECT_EQ(dst.salt, src.salt);
-  EXPECT_EQ(dst.chunk_log2, src.chunk_log2);
-}
+    Store(src);
 
-/**
- * @brief   Verify non-default parameters survive the round-trip rather than the build defaults
- */
-TEST_F(FileHeaderTest, RoundTripKeepsNonDefaultParams) {
-  const KdfParams params{ .time_cost = kMaxTimeCost, .mem_cost = kMinMemCost, .parallelism = kMaxParallelism };
-  FileHeader dst;
+    EXPECT_EQ(Reload(dst), HeaderStatus::kOk);
 
-  Store(MakeHeader(params));
-
-  EXPECT_EQ(Reload(dst), HeaderStatus::kOk);
-
-  EXPECT_EQ(dst.params.time_cost, kMaxTimeCost);
-  EXPECT_EQ(dst.params.mem_cost, kMinMemCost);
-  EXPECT_EQ(dst.params.parallelism, kMaxParallelism);
+    EXPECT_EQ(dst.params.time_cost, src.params.time_cost);
+    EXPECT_EQ(dst.params.mem_cost, src.params.mem_cost);
+    EXPECT_EQ(dst.params.parallelism, src.params.parallelism);
+    EXPECT_EQ(dst.salt, src.salt);
+    EXPECT_EQ(dst.chunk_log2, src.chunk_log2);
+  }
 }
 
 /**
@@ -172,7 +169,12 @@ TEST_F(FileHeaderTest, RoundTripKeepsNonDefaultParams) {
  */
 TEST_F(FileHeaderTest, WritesDocumentedLayout) {
   const KdfParams params{ .time_cost = 7, .mem_cost = 12345, .parallelism = 3 };
-  const FileHeader header = MakeHeader(params, 14);
+
+  FileHeader header = MakeHeader(params, 14);
+
+  for (size_t i = 0; i < kSaltSize; i++) {
+    header.salt[i] = static_cast<uint8_t>(0xB0 + i);
+  }
 
   Store(header);
 
@@ -181,12 +183,10 @@ TEST_F(FileHeaderTest, WritesDocumentedLayout) {
   ASSERT_EQ(buff.size(), kHeaderSize);
 
   EXPECT_EQ(memcmp(buff.data(), kMagic.data(), kMagicSize), 0);
-
   EXPECT_EQ(buff[4], 14);
-
-  EXPECT_EQ(LoadLE32(buff.data() + 5), params.time_cost);
-  EXPECT_EQ(LoadLE32(buff.data() + 9), params.mem_cost);
-  EXPECT_EQ(LoadLE32(buff.data() + 13), params.parallelism);
+  EXPECT_EQ(LoadLE32(buff.data() + 5), 7U);
+  EXPECT_EQ(LoadLE32(buff.data() + 9), 12345U);
+  EXPECT_EQ(LoadLE32(buff.data() + 13), 3U);
 
   EXPECT_EQ(memcmp(buff.data() + 17, header.salt.data(), kSaltSize), 0);
 }
@@ -195,16 +195,13 @@ TEST_F(FileHeaderTest, WritesDocumentedLayout) {
  * @brief   Verify reading starts from the beginning and stops at the ciphertext
  */
 TEST_F(FileHeaderTest, ReadLeavesCursorAtData) {
-  FILE* file = nullptr;
   FileHeader header;
+  FILE* file = nullptr;
 
   Store(MakeHeader());
-
   OpenFile(&file, path_, "rb");
 
   ASSERT_NE(file, nullptr);
-
-  /* Start from somewhere other than the beginning to prove the read seeks first */
 
   EXPECT_EQ(Seek(file, 3, SEEK_SET), Result::kSuccess);
   EXPECT_EQ(ReadHeader(file, header), HeaderStatus::kOk);
@@ -218,7 +215,7 @@ TEST_F(FileHeaderTest, ReadLeavesCursorAtData) {
  * ================================================== */
 
 /**
- * @brief   Verify a file written by another tool is rejected on the magic number
+ * @brief   Verify a file with wrong magic number is rejected
  */
 TEST_F(FileHeaderTest, RejectsForeignMagic) {
   std::vector<uint8_t> buff(kHeaderSize, 0x00);
@@ -230,33 +227,20 @@ TEST_F(FileHeaderTest, RejectsForeignMagic) {
 }
 
 /**
- * @brief   Verify a header one byte short of complete is rejected as unreadable
+ * @brief   Verify any file too short to hold a whole header is rejected as unreadable
  */
-TEST_F(FileHeaderTest, RejectsTruncatedHeader) {
-  FileHeader header;
+TEST_F(FileHeaderTest, RejectsShortFile) {
+  const std::array<size_t, 3> cases{ 0, 1, kHeaderSize - 1 };
 
-  Store(MakeHeader());
+  for (size_t size : cases) {
+    SCOPED_TRACE(testing::Message() << "size=" << size);
 
-  std::vector<uint8_t> buff = Load();
+    FileHeader header;
 
-  ASSERT_EQ(buff.size(), kHeaderSize);
+    WriteRaw(std::vector<uint8_t>(size, 0x00));
 
-  buff.pop_back();
-
-  WriteRaw(buff);
-
-  EXPECT_EQ(Reload(header), HeaderStatus::kReadError);
-}
-
-/**
- * @brief   Verify an empty file is rejected as unreadable
- */
-TEST_F(FileHeaderTest, RejectsEmptyFile) {
-  FileHeader header;
-
-  WriteRaw({});
-
-  EXPECT_EQ(Reload(header), HeaderStatus::kReadError);
+    EXPECT_EQ(Reload(header), HeaderStatus::kReadError);
+  }
 }
 
 /* ==================================================
@@ -274,15 +258,15 @@ TEST_F(FileHeaderTest, AcceptsDefaultHeader) {
  * @brief   Verify both ends of the accepted range pass validation
  */
 TEST_F(FileHeaderTest, AcceptsBoundaryHeader) {
-  const KdfParams low{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism };
-  const KdfParams high{ .time_cost = kMaxTimeCost, .mem_cost = kMaxMemCost, .parallelism = kMaxParallelism };
+  const KdfParams min_params{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism };
+  const KdfParams max_params{ .time_cost = kMaxTimeCost, .mem_cost = kMaxMemCost, .parallelism = kMaxParallelism };
 
-  EXPECT_EQ(ValidateHeader(MakeHeader(low, kMinChunkSizeLog2)), HeaderStatus::kOk);
-  EXPECT_EQ(ValidateHeader(MakeHeader(high, kMaxChunkSizeLog2)), HeaderStatus::kOk);
+  EXPECT_EQ(ValidateHeader(MakeHeader(min_params, kMinChunkSizeLog2)), HeaderStatus::kOk);
+  EXPECT_EQ(ValidateHeader(MakeHeader(max_params, kMaxChunkSizeLog2)), HeaderStatus::kOk);
 }
 
 /**
- * @brief   Verify a chunk size just outside the accepted range is rejected
+ * @brief   Verify a chunk size outside the accepted range is rejected
  */
 TEST_F(FileHeaderTest, RejectsOutOfRangeChunkSize) {
   const std::array<uint8_t, 2> cases{ kMinChunkSizeLog2 - 1, kMaxChunkSizeLog2 + 1 };
@@ -350,12 +334,17 @@ TEST_F(FileHeaderTest, ReadRejectsOutOfRangeHeader) {
 TEST_F(FileHeaderTest, ErrorMessagesAreDistinct) {
   const std::string read_error = HeaderErrorMessage(HeaderStatus::kReadError);
   const std::string bad_magic = HeaderErrorMessage(HeaderStatus::kBadMagic);
+  const std::string bad_chunk = HeaderErrorMessage(HeaderStatus::kBadChunkSize);
   const std::string bad_params = HeaderErrorMessage(HeaderStatus::kBadParams);
 
   EXPECT_FALSE(read_error.empty());
   EXPECT_FALSE(bad_magic.empty());
+  EXPECT_FALSE(bad_chunk.empty());
   EXPECT_FALSE(bad_params.empty());
 
+  EXPECT_NE(bad_chunk, read_error);
+  EXPECT_NE(bad_chunk, bad_magic);
+  EXPECT_NE(bad_chunk, bad_params);
   EXPECT_NE(read_error, bad_magic);
   EXPECT_NE(read_error, bad_params);
   EXPECT_NE(bad_magic, bad_params);

@@ -11,13 +11,13 @@
 /**
  * @brief   Store a 32-bit value in little-endian order
  * @param   dst   Destination buffer, at least 4 bytes
- * @param   v     Value to store
+ * @param   val     Value to store
  */
-constexpr void StoreLE32(uint8_t* dst, uint32_t v) {
-  dst[0] = static_cast<uint8_t>(v & 0xFFU);
-  dst[1] = static_cast<uint8_t>((v >> 8) & 0xFFU);
-  dst[2] = static_cast<uint8_t>((v >> 16) & 0xFFU);
-  dst[3] = static_cast<uint8_t>((v >> 24) & 0xFFU);
+constexpr void StoreLE32(uint8_t* dst, uint32_t val) {
+  dst[0] = static_cast<uint8_t>(val & 0xFFU);
+  dst[1] = static_cast<uint8_t>((val >> 8) & 0xFFU);
+  dst[2] = static_cast<uint8_t>((val >> 16) & 0xFFU);
+  dst[3] = static_cast<uint8_t>((val >> 24) & 0xFFU);
 }
 
 /**
@@ -33,15 +33,15 @@ constexpr void StoreLE32(uint8_t* dst, uint32_t v) {
 /**
  * @brief   Store a 64-bit value in big-endian order
  * @param   dst   Destination buffer, at least 8 bytes
- * @param   v     Value to store
+ * @param   val     Value to store
  */
-constexpr void StoreBE64(uint8_t* dst, uint64_t v) {
-  dst[0] = static_cast<uint8_t>((v >> 56) & 0xFFU);
-  dst[1] = static_cast<uint8_t>((v >> 48) & 0xFFU);
-  dst[2] = static_cast<uint8_t>((v >> 40) & 0xFFU);
-  dst[3] = static_cast<uint8_t>((v >> 32) & 0xFFU);
-  dst[4] = static_cast<uint8_t>((v >> 24) & 0xFFU);
-  dst[5] = static_cast<uint8_t>((v >> 16) & 0xFFU);
-  dst[6] = static_cast<uint8_t>((v >> 8) & 0xFFU);
-  dst[7] = static_cast<uint8_t>(v & 0xFFU);
+constexpr void StoreBE64(uint8_t* dst, uint64_t val) {
+  dst[0] = static_cast<uint8_t>((val >> 56) & 0xFFU);
+  dst[1] = static_cast<uint8_t>((val >> 48) & 0xFFU);
+  dst[2] = static_cast<uint8_t>((val >> 40) & 0xFFU);
+  dst[3] = static_cast<uint8_t>((val >> 32) & 0xFFU);
+  dst[4] = static_cast<uint8_t>((val >> 24) & 0xFFU);
+  dst[5] = static_cast<uint8_t>((val >> 16) & 0xFFU);
+  dst[6] = static_cast<uint8_t>((val >> 8) & 0xFFU);
+  dst[7] = static_cast<uint8_t>(val & 0xFFU);
 }

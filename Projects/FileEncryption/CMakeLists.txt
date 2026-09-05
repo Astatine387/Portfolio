@@ -224,16 +224,24 @@ target_link_libraries(${PROJECT_NAME} PRIVATE FileEncryption-gui project_warning
 enable_testing()
 
 set(TEST_SOURCES
+    src/tests/aes_gcm_format_test.cpp
+    src/tests/aes_gcm_tamper_test.cpp
     src/tests/aes_gcm_test.cpp
+    src/tests/byte_order_test.cpp
     src/tests/crypto_worker_test.cpp
     src/tests/file_header_test.cpp
     src/tests/kat_test.cpp
+    src/tests/open_new_file_test.cpp
     src/tests/password_test.cpp
     src/tests/secure_key_test.cpp
     src/tests/utils_test.cpp
 )
 
-add_executable(FileEncryption-tests ${TEST_SOURCES})
+set(TEST_HEADERS
+    src/tests/aes_gcm_fixture.h
+)
+
+add_executable(FileEncryption-tests ${TEST_SOURCES} ${TEST_HEADERS})
 
 target_link_libraries(FileEncryption-tests PRIVATE
     FileEncryption-core

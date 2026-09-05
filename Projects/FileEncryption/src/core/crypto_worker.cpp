@@ -125,7 +125,7 @@ void CryptoWorker::Work() {
     res = aes.Encrypt(src_file, dst_file, *key, salt, params);
 
     if (IsCancelled()) {
-      msg = "Encryption canceled\n";
+      msg = "Encryption cancelled\n";
       should_delete = true;
     }
     else if (res == Result::kFailure) {
@@ -142,7 +142,7 @@ void CryptoWorker::Work() {
     res = aes.Decrypt(src_file, dst_file, *key);
 
     if (IsCancelled()) {
-      msg = "Decryption canceled\n";
+      msg = "Decryption cancelled\n";
       should_delete = true;
     }
     else if (res == Result::kFailure) {

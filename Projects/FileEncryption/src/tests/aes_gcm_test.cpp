@@ -1,143 +1,18 @@
 /**
  * @file    aes_gcm_test.cpp
- * @brief   Unit tests for AES-GCM class
+ * @brief   Behaviour of the AES-GCM engine
  * @author  Astatine387
  */
-
-#include "core/aes_gcm.h"
 
 #include <gtest/gtest.h>
 #include <openssl/err.h>
 
-#include <array>
 #include <atomic>
-#include <cstring>
-#include <map>
-#include <optional>
-#include <span>
+#include <stdexcept>
 #include <string>
-#include <utility>
 #include <vector>
 
-#include "core/file_header.h"
-#include "core/secure_key.h"
-#include "utils/platform.h"
-
-/**
- * @class   AesGcmTest
- * @brief   Test fixture for AesGcm encryption/decryption tests
- */
-class AesGcmTest : public ::testing::Test {
- protected:
-  std::string src_path_ = "test_src.tmp";
-  std::string enc_path_ = "test_enc.tmp";
-  std::string dec_path_ = "test_dec.tmp";
-
-  /**
-   * @brief   Clean up temporary files after each test
-   */
-  void TearDown() override {
-    RemoveFile(src_path_);
-    RemoveFile(enc_path_);
-    RemoveFile(dec_path_);
-  }
-
-  /**
-   * @brief   The cheapest Argon2id parameters this build accepts
-   */
-  static KdfParams MinParams() {
-    return KdfParams{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism };
-  }
-
-  /**
-   * @brief   Build a fixed salt
-   */
-  static std::array<uint8_t, kSaltSize> MakeSalt(uint8_t fill) {
-    std::array<uint8_t, kSaltSize> salt{};
-    salt.fill(fill);
-    return salt;
-  }
-
-  /**
-   * @brief   Convert a C string to a byte vector
-   */
-  static std::vector<uint8_t> ToBytes(const char* str) {
-    const auto* bytes = reinterpret_cast<const uint8_t*>(str);
-
-    return { bytes, bytes + strlen(str) };
-  }
-
-  /**
-   * @brief   Derive a key from a password and salt, reusing an earlier derivation
-   */
-  static const SecureKey& MakeKey(const char* pw, const std::array<uint8_t, kSaltSize>& salt) {
-    using CacheKey = std::pair<std::string, std::array<uint8_t, kSaltSize>>;
-
-    static std::map<CacheKey, SecureKey> cache;
-
-    CacheKey entry{ pw, salt };
-    auto it = cache.find(entry);
-
-    if (it == cache.end()) {
-      auto key = DeriveKey(std::span<const char>(pw, std::strlen(pw)), salt, MinParams());
-
-      // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-      it = cache.emplace(std::move(entry), std::move(key.value())).first;
-    }
-
-    return it->second;
-  }
-
-  /**
-   * @brief   Create test file
-   * @param   path    File path
-   * @param   data    File content
-   * @param   size    File size
-   */
-  void Create(const std::string& path, std::vector<uint8_t>& data, size_t size) {
-    FILE* file = nullptr;
-
-    OpenFile(&file, path, "wb");
-
-    if (file) {
-      if (size > 0) {
-        fwrite(data.data(), sizeof(uint8_t), size, file);
-      }
-
-      fclose(file);
-    }
-  }
-
-  /**
-   * @brief   Read file into buffer
-   * @param   path    Source file path
-   * @param   vec     Destination buffer
-   */
-  void Read(std::string& path, std::vector<uint8_t>& vec) {
-    FILE* file = nullptr;
-
-    OpenFile(&file, path, "rb");
-
-    if (!file) {
-      return;
-    }
-
-    const int64_t fsize = GetFileSize(file);
-
-    if (fsize < 0) {
-      fclose(file);
-      return;
-    }
-
-    vec.resize(static_cast<size_t>(fsize));
-
-    size_t res = fread(vec.data(), sizeof(uint8_t), vec.size(), file);
-
-    fclose(file);
-
-    EXPECT_EQ(res, vec.size());
-  }
-};
+#include "tests/aes_gcm_fixture.h"
 
 /* ==================================================
  * Encryption/Decryption Tests
@@ -147,161 +22,52 @@ class AesGcmTest : public ::testing::Test {
  * @brief   Verify encryption and decryption round-trip preserves data
  */
 TEST_F(AesGcmTest, EncryptDecryptBasic) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  Result res;
-  const char* data = "Hello, world!";
-  const size_t dsize = strlen(data);
-  std::vector<uint8_t> orig = ToBytes(data), copy;
+  const auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> orig = ToBytes("Hello, world!");
+  std::vector<uint8_t> copy;
 
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key = MakeKey("password", salt);
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  res = aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kSuccess);
-
-  /* Decrypt */
-
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb+");
-
-  res = aes.Decrypt(src, dst, key);
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kSuccess);
-
-  /* Compare with original */
-
-  Read(dec_path_, copy);
-
-  EXPECT_EQ(orig, copy);
+  EXPECT_EQ(DecryptBytes(EncryptBytes(orig, salt, "password"), copy, salt, "password"), Result::kSuccess);
+  EXPECT_EQ(copy, orig);
 }
 
 /**
  * @brief   Verify encryption is deterministic, since the nonce is derived from the chunk counter
  */
 TEST_F(AesGcmTest, EncryptIsDeterministic) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  const char* data = "Hello, world!";
-  const size_t dsize = strlen(data);
-  std::vector<uint8_t> orig = ToBytes(data), enc0, enc1;
+  const auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> orig = ToBytes("Hello, world!");
+  const std::vector<uint8_t> copy1 = EncryptBytes(orig, salt, "password");
+  const std::vector<uint8_t> copy2 = EncryptBytes(orig, salt, "password");
 
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key = MakeKey("password", salt);
-
-  Create(src_path_, orig, dsize);
-
-  /* First encryption */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  /* Second encryption of the same source with the same key and salt */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb+");
-
-  aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  /* The same key, salt and plaintext must produce byte-identical output */
-
-  Read(enc_path_, enc0);
-  Read(dec_path_, enc1);
-
-  EXPECT_FALSE(enc0.empty());
-  EXPECT_EQ(enc0, enc1);
+  EXPECT_FALSE(copy1.empty());
+  EXPECT_EQ(copy1, copy2);
 }
 
 /**
- * @brief   Verify a reused AesGcm frees its previous context before re-init
+ * @brief   Verify a reused AesGcm can encrypt twice with one object
+ *
+ * The freeing of the previous context is not observable from here: leaking it would make
+ * both calls succeed just the same. What actually catches that is LeakSanitizer in the
+ * ASan build, which fails this test at process exit.
  */
 TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
   AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  Result res0, res1;
-  const char* data = "Hello, world!";
-  const size_t dsize = strlen(data);
-  std::vector<uint8_t> orig = ToBytes(data);
-
-  auto salt = MakeSalt(0xA5);
+  const auto salt = MakeSalt(0xA5);
   const SecureKey& key = MakeKey("password", salt);
 
-  Create(src_path_, orig, dsize);
+  Store(src_path_, ToBytes("Hello, world!"));
 
-  /* First encryption - leaves a live context on the object */
+  {
+    FilePair files(src_path_, enc_path_);
 
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  res0 = aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
+    EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), key, salt, MinParams()), Result::kSuccess);
   }
 
-  if (dst) {
-    fclose(dst);
+  {
+    FilePair files(src_path_, dec_path_);
+
+    EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), key, salt, MinParams()), Result::kSuccess);
   }
-
-  /* Second encryption - EncryptInit must free the previous context */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb+");
-
-  res1 = aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res0, Result::kSuccess);
-  EXPECT_EQ(res1, Result::kSuccess);
 }
 
 /* ==================================================
@@ -312,41 +78,22 @@ TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
  * @brief   Verify encryption records the magic number and the parameters it was given
  */
 TEST_F(AesGcmTest, EncryptWritesHeader) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  const char* data = "Hello, world!";
-  const size_t dsize = strlen(data);
-  std::vector<uint8_t> orig = ToBytes(data);
   FileHeader header;
+  FILE* file = nullptr;
+  const auto salt = MakeSalt(0xA5);
 
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key = MakeKey("password", salt);
-
-  Create(src_path_, orig, dsize);
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  EXPECT_EQ(aes.Encrypt(src, dst, key, salt, MinParams()), Result::kSuccess);
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
+  EncryptBytes(ToBytes("Hello, world!"), salt, "password");
 
   /* The header must describe the salt and the parameters the caller derived with */
 
-  OpenFile(&src, enc_path_, "rb");
+  OpenFile(&file, enc_path_, "rb");
 
-  ASSERT_NE(src, nullptr);
+  ASSERT_NE(file, nullptr);
+  EXPECT_EQ(ReadHeader(file, header), HeaderStatus::kOk);
 
-  EXPECT_EQ(ReadHeader(src, header), HeaderStatus::kOk);
+  fclose(file);
 
-  fclose(src);
-
+  EXPECT_EQ(header.chunk_log2, kChunkSizeLog2);
   EXPECT_EQ(header.params.time_cost, MinParams().time_cost);
   EXPECT_EQ(header.params.mem_cost, MinParams().mem_cost);
   EXPECT_EQ(header.params.parallelism, MinParams().parallelism);
@@ -357,68 +104,24 @@ TEST_F(AesGcmTest, EncryptWritesHeader) {
  * @brief   Verify a file too small to hold a header is rejected before anything is parsed
  */
 TEST_F(AesGcmTest, DecryptRejectsUndersizedFile) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> buff(kMinSize - 1, 0x00);
-  std::string err;
-  Result res;
+  const auto salt = MakeSalt(0xA5);
 
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key = MakeKey("password", salt);
+  std::vector<uint8_t> copy;
 
-  Create(enc_path_, buff, buff.size());
-
-  aes.SetErrorCallback([&](const char* msg) { err = msg; });
-
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb+");
-
-  res = aes.Decrypt(src, dst, key);
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kFailure);
-  EXPECT_NE(err.find("too small"), std::string::npos);
+  EXPECT_EQ(DecryptBytes(std::vector<uint8_t>(kMinSize - 1, 0x00), copy, salt, "password"), Result::kFailure);
+  EXPECT_NE(last_error_.find("too small"), std::string::npos);
 }
 
 /**
- * @brief   Verify a file written by another tool is rejected on the magic number
+ * @brief   Verify a file with a wrong magic number is rejected
  */
 TEST_F(AesGcmTest, DecryptRejectsForeignFile) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> buff(kMinSize, 0x00);
-  std::string err;
-  Result res;
+  const auto salt = MakeSalt(0xA5);
 
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key = MakeKey("password", salt);
+  std::vector<uint8_t> copy;
 
-  Create(enc_path_, buff, buff.size());
-
-  aes.SetErrorCallback([&](const char* msg) { err = msg; });
-
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb+");
-
-  res = aes.Decrypt(src, dst, key);
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kFailure);
-  EXPECT_NE(err.find("Not a FileEncryption file"), std::string::npos);
+  EXPECT_EQ(DecryptBytes(std::vector<uint8_t>(kMinSize, 0x00), copy, salt, "password"), Result::kFailure);
+  EXPECT_NE(last_error_.find("Not a FileEncryption file"), std::string::npos);
 }
 
 /* ==================================================
@@ -429,340 +132,11 @@ TEST_F(AesGcmTest, DecryptRejectsForeignFile) {
  * @brief   Verify decryption with the wrong key fails
  */
 TEST_F(AesGcmTest, DecryptWrongKey) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  Result res;
-  const char* data = "Hello, world!";
-  const size_t dsize = strlen(data);
-  std::vector<uint8_t> orig = ToBytes(data);
-
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key0 = MakeKey("password", salt);
-  const SecureKey& key1 = MakeKey("asdf1234", salt);
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  aes.Encrypt(src, dst, key0, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  /* Decrypt with the wrong key */
-
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb");
-
-  res = aes.Decrypt(src, dst, key1);
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kFailure);
-}
-
-/**
- * @brief   Verify tampering with ciphertext causes decryption failure
- */
-TEST_F(AesGcmTest, TamperedCiphertext) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  const char* data = "Hello, world!";
-  const size_t dsize = strlen(data);
-  Result res;
-  std::vector<uint8_t> orig = ToBytes(data), copy;
-
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key = MakeKey("password", salt);
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  /* Tamper ciphertext */
-
-  Read(enc_path_, copy);
-
-  copy[kHeaderSize] ^= 0xFF;
-
-  Create(enc_path_, copy, copy.size());
-
-  /* Decrypt */
-
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb+");
-
-  res = aes.Decrypt(src, dst, key);
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kFailure);
-}
-
-/**
- * @brief   Verify tampering with the authentication tag causes decryption failure
- */
-TEST_F(AesGcmTest, TamperedTag) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  Result res;
-  const char* data = "Hello, world!";
-  const size_t dsize = strlen(data);
-  std::vector<uint8_t> orig = ToBytes(data), copy;
-
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key = MakeKey("password", salt);
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  /* Tamper authentication tag (last byte of the file) */
-
-  Read(enc_path_, copy);
-
-  copy[copy.size() - 1] ^= 0xFF;
-
-  Create(enc_path_, copy, copy.size());
-
-  /* Decrypt */
-
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb+");
-
-  res = aes.Decrypt(src, dst, key);
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kFailure);
-}
-
-/* ==================================================
- * Edge Case Tests
- * ================================================== */
-
-/**
- * @brief   Verify empty file can be encrypted and decrypted
- */
-TEST_F(AesGcmTest, EmptyFile) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> orig, copy;
-  const size_t dsize = 0;
-  Result res;
-
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key = MakeKey("password", salt);
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  res = aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kSuccess);
-
-  /* Decrypt */
-
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb+");
-
-  res = aes.Decrypt(src, dst, key);
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kSuccess);
-
-  /* Compare with original */
-
-  Read(dec_path_, copy);
-
-  EXPECT_EQ(orig, copy);
-}
-
-/**
- * @brief   Verify a file of exactly one full chunk works correctly
- */
-TEST_F(AesGcmTest, ExactChunkSizeFile) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  Result res;
-  std::vector<uint8_t> orig, copy;
-  const size_t dsize = kChunkSize;
-
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key = MakeKey("password", salt);
-
-  orig.resize(dsize, uint8_t{ 'a' });
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  res = aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kSuccess);
-
-  /* Decrypt */
-
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb+");
-
-  res = aes.Decrypt(src, dst, key);
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kSuccess);
-
-  /* Compare with original */
-
-  Read(dec_path_, copy);
-
-  EXPECT_EQ(orig, copy);
-}
-
-/**
- * @brief   Verify arbitrary sized file works correctly
- */
-TEST_F(AesGcmTest, ArbitrarySizeFile) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  Result res;
-  std::vector<uint8_t> orig, copy;
-  const size_t dsize = 50000;
-
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key = MakeKey("password", salt);
-
-  orig.resize(dsize, uint8_t{ 'a' });
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  res = aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kSuccess);
-
-  /* Decrypt */
-
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb+");
-
-  res = aes.Decrypt(src, dst, key);
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kSuccess);
-
-  /* Compare with original */
-
-  Read(dec_path_, copy);
-
-  EXPECT_EQ(orig, copy);
+  const auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> cipher = EncryptBytes(ToBytes("Hello, world!"), salt, "password");
+  std::vector<uint8_t> copy;
+
+  EXPECT_EQ(DecryptBytes(cipher, copy, salt, "asdf1234"), Result::kFailure);
 }
 
 /* ==================================================
@@ -770,158 +144,48 @@ TEST_F(AesGcmTest, ArbitrarySizeFile) {
  * ================================================== */
 
 /**
- * @brief   Verify progress callback is invoked during encryption
- */
-TEST_F(AesGcmTest, ProgressCallback) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  std::vector<uint8_t> orig;
-  const size_t dsize = kChunkSize * 10;
-  int cnt = 0, last = -1;
-
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key = MakeKey("password", salt);
-
-  orig.resize(dsize, uint8_t{ 'a' });
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt with progress callback */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  aes.SetProgressCallback([&](int perc) {
-    cnt++;
-
-    EXPECT_GE(perc, last);
-
-    last = perc;
-  });
-
-  aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_GT(cnt, 0);
-}
-
-/**
- * @brief   Verify error callback is invoked on decryption failure
- */
-TEST_F(AesGcmTest, ErrorCallback) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  bool b = false;
-  const char* data = "Hello, world!";
-  const size_t dsize = strlen(data);
-  std::vector<uint8_t> orig = ToBytes(data);
-
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key0 = MakeKey("password", salt);
-  const SecureKey& key1 = MakeKey("asdf1234", salt);
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  aes.Encrypt(src, dst, key0, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  /* Decrypt with the wrong key and an error callback */
-
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb+");
-
-  aes.SetErrorCallback([&](const char*) { b = true; });
-
-  aes.Decrypt(src, dst, key1);
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_TRUE(b);
-}
-
-/**
  * @brief   Verify ReportError formats and appends queued OpenSSL errors
  */
 TEST_F(AesGcmTest, ErrorCallbackFormatsQueue) {
-  AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  bool called = false;
-  const char* data = "Hello, world!";
-  const size_t dsize = strlen(data);
-  std::string captured;
-  std::vector<uint8_t> orig = ToBytes(data);
-
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key0 = MakeKey("password", salt);
-  const SecureKey& key1 = MakeKey("asdf1234", salt);
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt with the correct key */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  aes.Encrypt(src, dst, key0, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  /* Seed the OpenSSL error queue, then fail decryption with the wrong key */
-
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb+");
-
-  aes.SetErrorCallback([&](const char* msg) {
-    called = true;
-    captured = msg;
-  });
+  const auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> cipher = EncryptBytes(ToBytes("Hello, world!"), salt, "password");
+  std::vector<uint8_t> copy;
 
   ERR_clear_error();
   ERR_raise(ERR_LIB_USER, ERR_R_INTERNAL_ERROR);
 
-  aes.Decrypt(src, dst, key1);
+  EXPECT_EQ(DecryptBytes(cipher, copy, salt, "asdf1234"), Result::kFailure);
+  EXPECT_NE(last_error_.find(" -> "), std::string::npos);
+}
 
-  if (src) {
-    fclose(src);
+/**
+ * @brief   Verify progress is reported once per whole percent
+ */
+TEST_F(AesGcmTest, ProgressSkipsRepeatedPercent) {
+  constexpr size_t kChunks = 200;
+
+  AesGcm aes;
+
+  const auto salt = MakeSalt(0xA5);
+
+  std::vector<int> res;
+
+  Store(src_path_, MakePlain(kChunks * kChunkSize));
+
+  aes.SetProgressCallback([&](int perc) { res.push_back(perc); });
+
+  {
+    FilePair files(src_path_, enc_path_);
+
+    EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey("password", salt), salt, MinParams()), Result::kSuccess);
   }
 
-  if (dst) {
-    fclose(dst);
-  }
+  EXPECT_LT(res.size(), kChunks);
+  EXPECT_FALSE(res.empty());
 
-  EXPECT_TRUE(called);
-  EXPECT_NE(captured.find(" -> "), std::string::npos);
+  for (size_t i = 1; i < res.size(); i++) {
+    EXPECT_GT(res[i], res[i - 1]);
+  }
 }
 
 /* ==================================================
@@ -929,28 +193,15 @@ TEST_F(AesGcmTest, ErrorCallbackFormatsQueue) {
  * ================================================== */
 
 /**
- * @brief   Verify cancellation works
+ * @brief   Verify cancelling an encryption aborts it promptly and reports failure
  */
-TEST_F(AesGcmTest, Cancellation) {
+TEST_F(AesGcmTest, CancelDuringEncryption) {
   AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  Result res;
   std::atomic<bool> cancel{ false };
-  std::vector<uint8_t> orig;
-  const size_t dsize = kChunkSize * 10;
   int cnt = 0;
+  const auto salt = MakeSalt(0xA5);
 
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key = MakeKey("password", salt);
-
-  orig.resize(dsize, uint8_t{ 'a' });
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt and cancel after the second callback */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
+  Store(src_path_, MakePlain(kChunkSize * 10));
 
   aes.SetCancelFlag(&cancel);
 
@@ -962,59 +213,27 @@ TEST_F(AesGcmTest, Cancellation) {
     }
   });
 
-  res = aes.Encrypt(src, dst, key, salt, MinParams());
+  FilePair files(src_path_, enc_path_);
 
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey("password", salt), salt, MinParams()), Result::kFailure);
   EXPECT_GE(cnt, 2);
   EXPECT_LE(cnt, 3);
 }
 
 /**
- * @brief   Verify cancelling during the decryption write pass waits for the ongoing async write before reporting
- * failure
+ * @brief   Verify cancelling partway through a decryption aborts it and leaves only whole chunks
+ *
+ * A drained cancellation leaves a whole number of chunks, each matching the plaintext; a write still in flight at close
+ * time would leave a short or torn tail instead. These are necessary conditions, not a proof. What catches a missing
+ * drain directly is ThreadSanitizer, which reports the writer thread racing the caller's close.
  */
-TEST_F(AesGcmTest, CancelDuringWritePass) {
+TEST_F(AesGcmTest, CancelDuringDecryption) {
   AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  Result res;
   std::atomic<bool> cancel{ false };
-  std::vector<uint8_t> orig;
-  const size_t dsize = kChunkSize * 10;
+  const auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> plain = MakePlain(kChunkSize * 10);
 
-  auto salt = MakeSalt(0xA5);
-  const SecureKey& key = MakeKey("password", salt);
-
-  orig.resize(dsize, uint8_t{ 'a' });
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt first to produce a valid ciphertext */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  /* Decrypt, cancelling once the write pass is in progress (perc > 50) */
-
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "wb+");
+  Store(enc_path_, EncryptBytes(plain, salt, "password"));
 
   aes.SetCancelFlag(&cancel);
 
@@ -1024,17 +243,21 @@ TEST_F(AesGcmTest, CancelDuringWritePass) {
     }
   });
 
-  res = aes.Decrypt(src, dst, key);
+  /* Scoped so the destination is closed before it is read back */
 
-  if (src) {
-    fclose(src);
+  {
+    FilePair files(enc_path_, dec_path_);
+
+    EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt)), Result::kFailure);
   }
 
-  if (dst) {
-    fclose(dst);
-  }
+  std::vector<uint8_t> written;
 
-  EXPECT_EQ(res, Result::kFailure);
+  Read(dec_path_, written);
+
+  EXPECT_GT(written.size(), 0U);
+  EXPECT_EQ(written.size() % kChunkSize, 0U);
+  EXPECT_EQ(written, std::vector<uint8_t>(plain.data(), plain.data() + written.size()));
 }
 
 /* ==================================================
@@ -1042,59 +265,29 @@ TEST_F(AesGcmTest, CancelDuringWritePass) {
  * ================================================== */
 
 /**
- * @brief   Verify a failed asynchronous write is recorded and reported
+ * @brief   Verify a write failure raised on the writer thread stops the producer at once
  */
-TEST_F(AesGcmTest, WriteFailureIsSticky) {
+TEST_F(AesGcmTest, WriteFailureStopsTheProducer) {
   AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
-  Result res;
-  std::string captured;
-  std::vector<uint8_t> orig;
-  const size_t dsize = kChunkSize * 4;
+  std::string res;
+  constexpr size_t kChunks = 4;
+  const auto salt = MakeSalt(0x00);
+  int cnt = 0;
 
-  auto salt = MakeSalt(0x00);
-  const SecureKey& key = MakeKey("password", salt);
+  Store(enc_path_, EncryptBytes(MakePlain(kChunks * kChunkSize), salt, "password"));
+  Store(dec_path_, MakePlain(1));
 
-  orig.resize(dsize, uint8_t{ 'a' });
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt first to produce a valid ciphertext */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
+  aes.SetErrorCallback([&](const char* msg) { res += msg; });
+  aes.SetProgressCallback([&](int) { cnt++; });
 
   /* Decrypt into a read-only destination so every asynchronous write fails */
 
-  Create(dec_path_, orig, 1);
+  FilePair files(enc_path_, dec_path_, "rb");
 
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "rb");
+  EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt)), Result::kFailure);
+  EXPECT_NE(res.find("Write failed"), std::string::npos);
 
-  aes.SetErrorCallback([&](const char* msg) { captured += msg; });
-
-  res = aes.Decrypt(src, dst, key);
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
-  EXPECT_EQ(res, Result::kFailure);
-  EXPECT_NE(captured.find("Write failed"), std::string::npos);
+  EXPECT_EQ(cnt, 1);
 }
 
 /**
@@ -1102,40 +295,14 @@ TEST_F(AesGcmTest, WriteFailureIsSticky) {
  */
 TEST_F(AesGcmTest, ThrowingErrorCallbackDoesNotTerminate) {
   AesGcm aes;
-  FILE *src = nullptr, *dst = nullptr;
   Result res = Result::kSuccess;
-  std::vector<uint8_t> orig;
-  const size_t dsize = kChunkSize * 4;
   int calls = 0;
+  const auto salt = MakeSalt(0x00);
 
-  auto salt = MakeSalt(0x00);
-  const SecureKey& key = MakeKey("password", salt);
-
-  orig.resize(dsize, uint8_t{ 'a' });
-
-  Create(src_path_, orig, dsize);
-
-  /* Encrypt first to produce a valid ciphertext */
-
-  OpenFile(&src, src_path_, "rb");
-  OpenFile(&dst, enc_path_, "wb+");
-
-  aes.Encrypt(src, dst, key, salt, MinParams());
-
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
+  Store(enc_path_, EncryptBytes(MakePlain(kChunkSize * 4), salt, "password"));
+  Store(dec_path_, MakePlain(1));
 
   /* A write failure drives ReportError, and the callback throws out of the writer thread */
-
-  Create(dec_path_, orig, 1);
-
-  OpenFile(&src, enc_path_, "rb");
-  OpenFile(&dst, dec_path_, "rb");
 
   aes.SetErrorCallback([&](const char*) {
     calls++;
@@ -1143,16 +310,78 @@ TEST_F(AesGcmTest, ThrowingErrorCallbackDoesNotTerminate) {
     throw std::runtime_error("error callback failed");
   });
 
-  EXPECT_NO_THROW(res = aes.Decrypt(src, dst, key));
+  FilePair files(enc_path_, dec_path_, "rb");
 
-  if (src) {
-    fclose(src);
-  }
-
-  if (dst) {
-    fclose(dst);
-  }
-
+  EXPECT_NO_THROW(res = aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt)));
   EXPECT_EQ(res, Result::kFailure);
   EXPECT_GT(calls, 0);
+}
+
+/**
+ * @brief   Verify a single-chunk file reports a write failure raised after the last submission
+ */
+TEST_F(AesGcmTest, DecryptReportsWriteFailureOnFinalFlush) {
+  AesGcm aes;
+  std::string captured;
+  const auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> cipher = EncryptBytes(MakePlain(kChunkSize), salt, "password");
+
+  ASSERT_EQ(cipher.size(), kHeaderSize + kChunkSize + kTagSize);
+
+  Store(enc_path_, cipher);
+  Store(dec_path_, MakePlain(1));
+
+  aes.SetErrorCallback([&](const char* msg) { captured += msg; });
+
+  FilePair files(enc_path_, dec_path_, "rb");
+
+  EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt)), Result::kFailure);
+  EXPECT_NE(captured.find("Write failed"), std::string::npos);
+}
+
+/**
+ * @brief   Verify a destination that cannot be written to fails the encryption
+ */
+TEST_F(AesGcmTest, EncryptReportsWriteFailure) {
+  AesGcm aes;
+  std::string captured;
+  const auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> plain = MakePlain(1);
+
+  Store(src_path_, plain);
+  Store(enc_path_, plain);
+
+  aes.SetErrorCallback([&](const char* msg) { captured += msg; });
+
+  FilePair files(src_path_, enc_path_, "rb");
+
+  EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey("password", salt), salt, MinParams()), Result::kFailure);
+  EXPECT_NE(captured.find("Write failed"), std::string::npos);
+}
+
+/**
+ * @brief   Verify a destination that runs out of space mid-file fails the encryption
+ */
+TEST_F(AesGcmTest, EncryptReportsDiskFull) {
+  const auto salt = MakeSalt(0xA5);
+
+  for (size_t chunks : { size_t{ 1 }, size_t{ 3 } }) {
+    SCOPED_TRACE(testing::Message() << "chunks=" << chunks);
+
+    AesGcm aes;
+    std::string captured;
+
+    Store(src_path_, MakePlain(chunks * kChunkSize));
+
+    aes.SetErrorCallback([&](const char* msg) { captured += msg; });
+
+    FilePair files(src_path_, "/dev/full", "wb");
+
+    if (files.Dst() == nullptr) {
+      GTEST_SKIP() << "/dev/full is not available";
+    }
+
+    EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey("password", salt), salt, MinParams()), Result::kFailure);
+    EXPECT_NE(captured.find("Write failed"), std::string::npos);
+  }
 }
