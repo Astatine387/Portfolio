@@ -1,5 +1,5 @@
 /**
-* @file	crypto_wrapper.cpp
+ * @file	crypto_wrapper.cpp
  * @brief	Implementation of CryptoWrapper class
  * @author	Astatine387
  */
