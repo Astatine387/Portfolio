@@ -53,6 +53,13 @@ class MainGUI : public QWidget {
   void OnProgressUpdated(int perc, const QString& status);
 
   /**
+   * @brief	Show the current phase and offer cancelling only where it would work
+   * @param   status        Message describing what the run is doing now
+   * @param   cancellable   Whether cancelling would end the run early
+   */
+  void OnPhaseChanged(const QString& status, bool cancellable);
+
+  /**
    * @brief	Show result and set deletion flag
    * @param   msg             Result message
    */

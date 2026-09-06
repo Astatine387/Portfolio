@@ -83,3 +83,30 @@ enum class Result : std::uint8_t {
   kSuccess,
   kFailure,
 };
+
+/**
+ * @enum	WorkPhase
+ * @brief	Stage a run has reached
+ *
+ * A run is not one long cancellable stretch. Argon2id cannot be taken back out once it is inside, and
+ * the flush after the last chunk must not be, because the output is complete by then and a cancel would
+ * only throw away finished work. Only the chunk loop between the two polls the flag, so the phase is
+ * what tells an interface whether asking to cancel would mean anything.
+ */
+enum class WorkPhase : std::uint8_t {
+  kDerivingKey,  /// Argon2id is running and cannot be interrupted
+  kProcessing,   /// Chunk loop, where the cancellation flag is polled between chunks
+  kFinishing,    /// Flush and publish, where the output is already complete
+};
+
+/**
+ * @brief	Whether the cancellation flag can still end a run during this phase
+ * @param	phase	Phase to ask about
+ * @return	true if raising the flag now would end the run early
+ *
+ * Kept beside the enum rather than in the interface, so the answer comes from the layer that actually
+ * polls the flag rather than from whatever the window happens to believe.
+ */
+[[nodiscard]] constexpr bool IsCancellablePhase(WorkPhase phase) {
+  return phase == WorkPhase::kProcessing;
+}

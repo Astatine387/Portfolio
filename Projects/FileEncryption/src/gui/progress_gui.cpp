@@ -21,6 +21,12 @@ ProgressGUI::ProgressGUI(QWidget* parent) : QWidget(parent) {
   prg_bar_->setRange(0, 100);
   prg_bar_->setValue(0);
 
+  /* A run opens with a key derivation that cannot be interrupted, so the button starts dead and only
+   * the phase that polls the flag hands it over. A button that does nothing when pressed is worse than
+   * one that is visibly unavailable. */
+
+  cancel_btn_->setEnabled(false);
+
   /* Hide close button during the process */
 
   close_btn_->hide();
@@ -55,6 +61,11 @@ bool ProgressGUI::IsCancelled() {
 void ProgressGUI::Update(int val, const QString& status) {
   prg_bar_->setValue(val);
   prg_label_->setText(status);
+}
+
+void ProgressGUI::SetPhase(const QString& status, bool cancellable) {
+  prg_label_->setText(status);
+  cancel_btn_->setEnabled(cancellable);
 }
 
 void ProgressGUI::ShowResult(const QString& msg) {

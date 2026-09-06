@@ -85,6 +85,7 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
 
     connect(thread_, &QThread::started, wrapper, &CryptoWrapper::Run);
     connect(wrapper, &CryptoWrapper::ProgressUpdate, this, &MainGUI::OnProgressUpdated);
+    connect(wrapper, &CryptoWrapper::PhaseChanged, this, &MainGUI::OnPhaseChanged);
     connect(wrapper, &CryptoWrapper::Finished, this, &MainGUI::OnWorkFinished);
     connect(wrapper, &CryptoWrapper::Finished, thread_, &QThread::quit);
     connect(thread_, &QThread::finished, this, &MainGUI::OnThreadFinished);
@@ -109,6 +110,17 @@ void MainGUI::OnProgressUpdated(int perc, const QString& status) {
   }
 
   prg_gui_->Update(perc, status);
+}
+
+void MainGUI::OnPhaseChanged(const QString& status, bool cancellable) {
+  /* Same reason as above, and one more: closeEvent has already disabled cancelling for good, and a
+   * phase report queued before it would hand the button back to a window that is on its way out */
+
+  if (closing_) {
+    return;
+  }
+
+  prg_gui_->SetPhase(status, cancellable);
 }
 
 void MainGUI::OnWorkFinished(const QString& msg) {

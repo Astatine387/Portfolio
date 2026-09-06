@@ -50,6 +50,17 @@ class CryptoWrapper : public QObject {
    */
   void ProgressUpdate(int perc, const QString& status);
 
+  /**
+   * @brief		Signal when the run enters a new phase
+   * @param		status		Message describing what the run is doing now
+   * @param		cancellable	Whether cancelling would end the run early
+   *
+   * Carries a bool rather than the phase itself. The window has no use for the name of the phase, only
+   * for what it may still offer the user, and a bool crosses a queued connection without asking the
+   * core layer to know what a Qt meta-type is.
+   */
+  void PhaseChanged(const QString& status, bool cancellable);
+
  public slots:
   /**
    * @brief		Perform encryption/decryption

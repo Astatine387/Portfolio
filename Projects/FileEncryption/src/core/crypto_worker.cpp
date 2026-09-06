@@ -29,6 +29,14 @@ void CryptoWorker::RequestCancel() {
   cancel_->store(true, std::memory_order_relaxed);
 }
 
+void CryptoWorker::ReportPhase(WorkPhase phase, const std::string& status) {
+  if (!phcb_) {
+    return;
+  }
+
+  phcb_(phase, status);
+}
+
 void CryptoWorker::Work() {
   auto aes_ptr = std::make_unique<AesGcm>();
   AesGcm& aes = *aes_ptr;
@@ -77,6 +85,12 @@ void CryptoWorker::Work() {
   KdfParams params;
   std::optional<SecureKey> key;
   std::string reason;
+
+  /* Argon2id holds this thread for as long as the parameters ask for and offers no way back out, so the
+   * phase is announced before it starts rather than after it ends. On the decryption path those
+   * parameters came out of the file, which is what makes the wait worth naming. */
+
+  ReportPhase(WorkPhase::kDerivingKey, "Deriving key from password...\n");
 
   if (mode_ == CryptoMode::kEncrypt) {
     if (Random(salt.data(), kSaltSize) == Result::kSuccess) {
@@ -147,6 +161,12 @@ void CryptoWorker::Work() {
 
   const std::string verb = mode_ == CryptoMode::kEncrypt ? "Encryption" : "Decryption";
 
+  /* The one phase the flag can stop, and the one with a percentage to report. It is announced before
+   * the first chunk so that cancelling is offered before there is anything to cancel, and both reports
+   * leave this thread in this order. */
+
+  ReportPhase(WorkPhase::kProcessing, mode_ == CryptoMode::kEncrypt ? "Encrypting...\n" : "Decrypting...\n");
+
   if (mode_ == CryptoMode::kEncrypt) {
     res = aes.Encrypt(src_file, dst_file, *key, salt, params);
   }
@@ -164,12 +184,21 @@ void CryptoWorker::Work() {
 
     msg = IsCancelled() ? verb + " cancelled\n" : err_ + verb + " failed\n";
   }
-  else if (SyncFile(dst_file) == Result::kFailure) {
-    // LCOV_EXCL_START
-    should_delete = true;
+  else {
+    /* Past the point where cancelling could mean anything: the ciphertext is complete and only has to be
+     * made durable. The progress callback has already reported 100%, while fsync on a slow device is
+     * where the run spends its last visible seconds, so the phase is what keeps that pause from reading
+     * as a freeze at the end of the bar. */
 
-    msg = "[File] Sync failed - Cannot flush the destination to disk\n" + verb + " failed\n";
-    // LCOV_EXCL_STOP
+    ReportPhase(WorkPhase::kFinishing, "Flushing to disk, please wait...\n");
+
+    if (SyncFile(dst_file) == Result::kFailure) {
+      // LCOV_EXCL_START
+      should_delete = true;
+
+      msg = "[File] Sync failed - Cannot flush the destination to disk\n" + verb + " failed\n";
+      // LCOV_EXCL_STOP
+    }
   }
 
   fclose(dst_file);

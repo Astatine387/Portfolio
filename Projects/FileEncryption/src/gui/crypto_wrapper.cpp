@@ -1,5 +1,5 @@
 /**
- * @file	crypto_wrapper.cpp
+* @file	crypto_wrapper.cpp
  * @brief	Implementation of CryptoWrapper class
  * @author	Astatine387
  */
@@ -19,6 +19,13 @@ CryptoWrapper::CryptoWrapper(const QString& src_path, const QString& dst_path, P
       [this](int perc, const std::string& s) { emit ProgressUpdate(perc, QString::fromStdString(s)); });
 
   worker_.SetFinishedCallback([this](const std::string& msg) { emit Finished(QString::fromStdString(msg)); });
+
+  /* Whether a phase can be cancelled is decided in the core, beside the code that polls the flag, so
+   * the window is only told the answer and never has to work it out again */
+
+  worker_.SetPhaseCallback([this](WorkPhase phase, const std::string& status) {
+    emit PhaseChanged(QString::fromStdString(status), IsCancellablePhase(phase));
+  });
 }
 
 void CryptoWrapper::Run() {

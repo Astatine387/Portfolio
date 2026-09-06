@@ -66,6 +66,17 @@ class CryptoWorker {
   using FinishedCallback = std::function<void(const std::string& msg)>;
 
   /**
+   * @brief		Callback function for entering a new phase
+   * @param     phase   Phase the run has entered
+   * @param     status  Message describing what the run is doing now
+   *
+   * Separate from the progress callback because a phase says what a percentage cannot: two of the three
+   * phases have no percentage to report and no cancellation to offer, and saying so is what keeps a
+   * long pause from reading as a hang.
+   */
+  using PhaseCallback = std::function<void(WorkPhase phase, const std::string& status)>;
+
+  /**
    * @brief   Cancel the process
    *
    * Safe to call from any thread and at any point in the worker's lifetime.
@@ -92,6 +103,12 @@ class CryptoWorker {
    */
   void SetFinishedCallback(FinishedCallback fcb) { fcb_ = std::move(fcb); }
 
+  /**
+   * @brief		Set phase callback function
+   * @param		phcb	Phase callback function
+   */
+  void SetPhaseCallback(PhaseCallback phcb) { phcb_ = std::move(phcb); }
+
  private:
   CryptoMode mode_;
   std::string src_path_, dst_path_;
@@ -99,6 +116,7 @@ class CryptoWorker {
   CancelFlag cancel_;
   ProgressCallback pcb_;
   FinishedCallback fcb_;
+  PhaseCallback phcb_;
 
   /* Filled by the engine's error callback and read once the pass is over, so the line that explains a
    * failure outlives the call that produced it and can be put in front of the summary */
@@ -110,4 +128,14 @@ class CryptoWorker {
    * @return  true if the user requested cancellation
    */
   [[nodiscard]] bool IsCancelled() const { return cancel_->load(std::memory_order_relaxed); }
+
+  /**
+   * @brief   Report the phase the run has entered
+   * @param   phase   Phase entered
+   * @param   status  Message describing what the run is doing now
+   *
+   * Announced on entry rather than on exit: the point of a phase report is to describe a wait that has
+   * not happened yet.
+   */
+  void ReportPhase(WorkPhase phase, const std::string& status);
 };

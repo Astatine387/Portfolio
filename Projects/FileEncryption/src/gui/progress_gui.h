@@ -43,6 +43,18 @@ class ProgressGUI : public QWidget {
   void Update(int perc, const QString& status);
 
   /**
+   * @brief   Show the current phase and enable cancelling only where it would work
+   * @param   status        Message describing what the run is doing now
+   * @param   cancellable   Whether cancelling would end the run early
+   *
+   * The bar is deliberately left alone. The phases that cannot be cancelled are also the ones with
+   * nothing to add to it, and moving it here would either invent progress before the first chunk or
+   * take some back after the last one. The label carries the phase; the button carries the truth about
+   * cancelling. Unlike ShowBusy this is a state the window comes back from.
+   */
+  void SetPhase(const QString& status, bool cancellable);
+
+  /**
    * @brief   Show result and enable close button
    * @param   msg     result message
    */
