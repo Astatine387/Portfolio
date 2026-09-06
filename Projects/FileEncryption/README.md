@@ -45,9 +45,9 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * The plaintext header is authenticated as associated data of every chunk, so editing it is detected
 * Chunk order, truncation and extension are detected, because the nonce carries the chunk counter and a final-chunk flag
 * Newly and randomly generated salt for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
-* RAII pattern ensures memory wipe for sensitive data, using `sodium_free` and `sodium_memzero`
+* The password and the derived key are held in `sodium_malloc` memory: guard pages, a wipe on release, and a best-effort lock against swap
+* RAII ties every secret to a scope, so releasing it is what wipes it; see 2-3 for the allocations this covers and the ones it does not
 * Range check for the chunk size and the key derivation parameters before anything is allocated or Argon2id runs
-* Sensitive data is held in `sodium_malloc` memory, which provides guard pages and lock against swap
 * Output is written to a temporary file, fsynced, then moved into place, so a partial or unverified file never appears at the destination
 * The destination is never overwritten: the move fails if the path is taken
 
@@ -147,6 +147,17 @@ src
 * No key file support (Password only)
 * No log file (GUI message and progress bar only)
 * No original file removal
+
+### 3-3-1. Memory Protection
+
+| Data                    | Guard pages | Swap lock   | Wipe                                       |
+| ----------------------- | ----------- | ----------- | ------------------------------------------ |
+| Password                | Yes         | Best effort | On release, by `sodium_free`               |
+| Derived key             | Yes         | Best effort | On release, by `sodium_free`               |
+| Argon2id working buffer | No          | No          | At the end of the derivation, by libargon2 |
+| Chunk buffers           | No          | No          | In the destructor, by `sodium_memzero`     |
+
+What the "best effort" means: `sodium_malloc` asks the operating system to keep its pages out of the swap file, and that request is capped: by `RLIMIT_MEMLOCK` on Linux, by the process working-set minimum on Windows. `InitCrypto` raises the soft limit to the hard limit and bumps the working-set minimum, but neither can move a cap an unprivileged process is not permitted to move. Once the cap is reached the lock fails and the allocation still succeeds, so a password can end up in unlocked pages with nothing in the program able to tell. Guard pages and the wipe on release are unaffected and always apply.
 
 # 4. Build and Usage
 ## 4-1. Prerequisites

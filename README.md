@@ -1,6 +1,6 @@
 # 1. Introduction
 
-I'm Astatine387, a C/C++ software engineer building cross-platform desktop applications with a focus on security and memory safety. I value efficient, practical design with minimal but necessary features. I'm open to find opportunities in the United States.
+I'm Astatine387, a C/C++ software engineer building cross-platform desktop applications with a focus on security and memory safety. I value efficient, practical design with minimal but necessary features.
 
 # 2. Tech Stack
 
