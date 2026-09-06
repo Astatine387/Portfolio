@@ -37,7 +37,8 @@ class AesGcmTest : public ::testing::Test {
   std::string last_error_;
 
   /* Fixed names in the working directory, shared by every case built on this fixture. Two cases running
-   * at once would be writing over each other's files, so the suite has to run serially. */
+   * at once would be writing over each other's files, which is why the tests are registered RUN_SERIAL
+   * in CMakeLists.txt. Giving a case a scratch file of its own means naming it here. */
 
   std::string src_path_ = "test_src.tmp";
   std::string enc_path_ = "test_enc.tmp";

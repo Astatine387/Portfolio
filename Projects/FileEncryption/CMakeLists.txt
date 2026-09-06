@@ -262,7 +262,11 @@ if(WIN32)
     )
 endif()
 
-gtest_discover_tests(FileEncryption-tests)
+# Each case is registered as its own CTest test, and all of them run in the same
+# working directory against scratch files the fixtures name by hand, so two
+# running at once write over each other. Without this, ctest -j reports dozens of
+# failures that differ from run to run and are not regressions.
+gtest_discover_tests(FileEncryption-tests PROPERTIES RUN_SERIAL TRUE)
 
 # Linux-only. The benchmark is driven by benchmark-fileencryption.yml, which
 # runs on ubuntu and points FE_BENCH_DIR at a tmpfs; the harness reads that with

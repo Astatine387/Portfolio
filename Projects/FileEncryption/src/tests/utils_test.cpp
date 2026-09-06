@@ -4,8 +4,8 @@
  * @author  Astatine387
  *
  * Several of the fixtures below name the same scratch file, and all of them work in the directory the
- * suite is run from, so two of these cases running at once would be writing over each other. The suite
- * has to run serially.
+ * suite is run from, so two of these cases running at once would be writing over each other. That is
+ * what the RUN_SERIAL property in CMakeLists.txt is there to prevent.
  */
 
 #include <gtest/gtest.h>
