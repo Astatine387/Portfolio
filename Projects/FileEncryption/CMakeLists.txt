@@ -70,6 +70,10 @@ else()
     endif()
 endif()
 
+# Two tiers, because the strict set cannot survive contact with Qt. Its conversion
+# warnings fire inside the Qt headers themselves, so the GUI library and the app
+# that links it stay on the base tier, while core, tests and the benchmark, none
+# of which include a Qt header, are held to the strict one.
 add_library(project_warnings INTERFACE)
 target_compile_options(project_warnings INTERFACE ${BASE_WARNINGS})
 
@@ -77,6 +81,8 @@ add_library(project_warnings_strict INTERFACE)
 target_link_libraries(project_warnings_strict INTERFACE project_warnings)
 target_compile_options(project_warnings_strict INTERFACE ${STRICT_WARNINGS})
 
+# Only the base tier needs the flag. The strict tier links this one as an INTERFACE
+# dependency above, so it inherits it rather than needing a line of its own.
 if(WARNINGS_AS_ERRORS)
     target_compile_options(project_warnings INTERFACE ${WARNINGS_AS_ERRORS_FLAG})
 endif()
@@ -99,6 +105,9 @@ if(SANITIZE AND THREAD_SANITIZE)
     message(FATAL_ERROR "SANITIZE and THREAD_SANITIZE are mutually exclusive; enable only one")
 endif()
 
+# -fno-sanitize-recover makes UBSan abort on the first finding. The default is to
+# print and carry on, which leaves the build exiting zero and a CI job green over
+# a report nobody read.
 if(SANITIZE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     message(STATUS "Sanitizers enabled (address, undefined)")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all")
@@ -167,6 +176,11 @@ add_library(FileEncryption-core STATIC ${CORE_SOURCES} ${CORE_HEADERS})
 target_include_directories(FileEncryption-core PUBLIC
     ${CMAKE_SOURCE_DIR}/src)
 
+# SYSTEM marks these as third-party, so the warning tiers apply to this project's
+# code and not to headers nobody here can change. Argon2 and libsodium are clean
+# under the strict set today, and a distro build resolves both to a directory the
+# compiler already treats as system; the keyword is what keeps the build from
+# depending on either of those staying true.
 target_include_directories(FileEncryption-core SYSTEM PUBLIC
     ${ARGON2_INCLUDE_DIR}
     ${SODIUM_INCLUDE_DIR})
@@ -184,6 +198,7 @@ target_link_libraries(FileEncryption-core PRIVATE project_warnings_strict)
 target_compile_options(FileEncryption-core PRIVATE ${FRAME_BUDGET_FLAG})
 
 if(WIN32)
+    # bcrypt supplies BCryptGenRandom, the entropy source Random() is built on.
     target_link_libraries(FileEncryption-core PUBLIC bcrypt)
 else()
     target_compile_definitions(FileEncryption-core PRIVATE _GNU_SOURCE)
@@ -289,6 +304,10 @@ if(NOT WIN32)
     endif()
 endif()
 
+# Globbed rather than listed because the targets below only format and never build,
+# so a file the glob misses goes unformatted rather than unbuilt. CONFIGURE_DEPENDS
+# is what gets a newly added file into them without a manual cmake re-run; the
+# build targets above keep explicit source lists on purpose.
 file(GLOB_RECURSE ALL_CXX_SOURCE_FILES
      CONFIGURE_DEPENDS
      ${CMAKE_SOURCE_DIR}/src/*.cpp
