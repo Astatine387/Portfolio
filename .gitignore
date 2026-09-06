@@ -5,6 +5,7 @@
 /Projects/FileEncryption/build
 /Projects/FileEncryption/build-asan
 /Projects/FileEncryption/build-cov
+/Projects/FileEncryption/build-rel
 /Projects/FileEncryption/build-tidy
 /Projects/FileEncryption/build-tsan
 /Projects/FileEncryption/cmake-build-debug

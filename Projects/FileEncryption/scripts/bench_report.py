@@ -16,20 +16,22 @@ GIB = 1024.0**3
 
 RAW_16K = "BenchRawEvpEncrypt/16384"
 RAW_64K = "BenchRawEvpEncrypt/65536"
+RAW_CHUNKED = "BenchRawEvpChunked"
 PIPE_ENC = "BenchPipelineEncrypt"
 PIPE_DEC = "BenchPipelineDecrypt"
 ARGON2 = "BenchArgon2id"
 
 THROUGHPUT_ROWS = [
     (RAW_16K, "Raw OpenSSL EVP, 16 KiB chunks", "cross-check against `openssl speed`"),
-    (RAW_64K, "Raw OpenSSL EVP, 64 KiB chunks", "baseline (matches pipeline chunk size)"),
+    (RAW_64K, "Raw OpenSSL EVP, 64 KiB chunks", "streaming, one nonce for the whole run"),
+    (RAW_CHUNKED, "Raw OpenSSL EVP, chunked AEAD", "baseline: per-chunk nonce, AAD and tag"),
     (PIPE_ENC, "AesGcm pipeline, encrypt", "256 MiB, tmpfs"),
-    (PIPE_DEC, "AesGcm pipeline, decrypt", "256 MiB, tmpfs, two passes"),
+    (PIPE_DEC, "AesGcm pipeline, decrypt", "256 MiB, tmpfs, single pass"),
 ]
 
 RATIO_ROWS = [
-    (PIPE_ENC, RAW_64K, "Encrypt pipeline / raw EVP"),
-    (PIPE_DEC, RAW_64K, "Decrypt pipeline / raw EVP"),
+    (PIPE_ENC, RAW_CHUNKED, "Encrypt pipeline / raw EVP"),
+    (PIPE_DEC, RAW_CHUNKED, "Decrypt pipeline / raw EVP"),
 ]
 
 

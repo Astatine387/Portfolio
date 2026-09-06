@@ -20,7 +20,9 @@
 
 #include "common/constants.h"
 #include "core/aes_gcm.h"
+#include "core/file_header.h"
 #include "core/secure_key.h"
+#include "utils/byte_order.h"
 #include "utils/platform.h"
 
 namespace {
@@ -174,7 +176,7 @@ bool CreateScratch() {
 }
 
 /**
- * @brief   Raw OpenSSL AES-256-GCM throughput, no file I/O
+ * @brief   Raw OpenSSL AES-256-GCM streaming throughput, no file I/O
  * @param   state   Benchmark state, range(0) is the chunk size in bytes
  */
 void BenchRawEvpEncrypt(benchmark::State& state) {
@@ -241,6 +243,82 @@ void BenchRawEvpEncrypt(benchmark::State& state) {
 
   state.SetBytesProcessed(state.iterations() * rounds * state.range(0));
   state.SetLabel(std::to_string(state.range(0) / 1024) + " KiB chunks");
+}
+
+/**
+ * @brief   Raw OpenSSL AES-256-GCM throughput in the chunked layout this format uses
+ * @param   state   Benchmark state
+ */
+void BenchRawEvpChunked(benchmark::State& state) {
+  const SecureKey* key = SharedKey();
+
+  if (key == nullptr) {
+    state.SkipWithError("Key derivation failed");
+    return;
+  }
+
+  const int64_t rounds = kBenchSize / static_cast<int64_t>(kChunkSize);
+
+  std::vector<uint8_t> src(kChunkSize);
+  std::vector<uint8_t> dst(kChunkSize + kTagSize);
+
+  if (Random(src.data(), src.size()) == Result::kFailure) {
+    state.SkipWithError("Random failed");
+    return;
+  }
+
+  FileHeader header;
+
+  header.salt = kBenchSalt;
+
+  std::array<uint8_t, kHeaderSize> aad{};
+
+  SerializeHeader(aad, header);
+
+  for (auto _ : state) {
+    (void)_;
+
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+
+    if (ctx == nullptr) {
+      state.SkipWithError("Cannot create OpenSSL context");
+      break;
+    }
+
+    bool res = EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) == 1 &&
+               EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, static_cast<int>(kNonceSize), nullptr) == 1 &&
+               EVP_EncryptInit_ex(ctx, nullptr, nullptr, key->Bytes().data(), nullptr) == 1;
+
+    for (int64_t i = 0; res && i < rounds; i++) {
+      std::array<uint8_t, kNonceSize> nonce{};
+      std::array<uint8_t, kBlockSize> final_block{};
+
+      StoreBE64(nonce.data() + kNonceSize - 1 - sizeof(uint64_t), static_cast<uint64_t>(i));
+
+      nonce[kNonceSize - 1] = i + 1 == rounds ? 1 : 0;
+
+      int dstlen = 0;
+
+      res = EVP_EncryptInit_ex(ctx, nullptr, nullptr, nullptr, nonce.data()) == 1 &&
+            EVP_EncryptUpdate(ctx, nullptr, &dstlen, aad.data(), static_cast<int>(aad.size())) == 1 &&
+            EVP_EncryptUpdate(ctx, dst.data(), &dstlen, src.data(), static_cast<int>(kChunkSize)) == 1 &&
+            EVP_EncryptFinal_ex(ctx, final_block.data(), &dstlen) == 1 &&
+            EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, static_cast<int>(kTagSize), dst.data() + kChunkSize) == 1;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    benchmark::DoNotOptimize(dst.data());
+    benchmark::ClobberMemory();
+
+    if (!res) {
+      state.SkipWithError("OpenSSL AES-256-GCM failed");
+      break;
+    }
+  }
+
+  state.SetBytesProcessed(state.iterations() * rounds * static_cast<int64_t>(kChunkSize));
+  state.SetLabel(std::to_string(kChunkSize / 1024) + " KiB chunks, per-chunk nonce, AAD and tag");
 }
 
 /**
@@ -379,6 +457,7 @@ void BenchArgon2id(benchmark::State& state) {
 }  // namespace
 
 BENCHMARK(BenchRawEvpEncrypt)->Arg(kSpeedChunk)->Arg(kPipeChunk)->Unit(benchmark::kMillisecond);
+BENCHMARK(BenchRawEvpChunked)->Unit(benchmark::kMillisecond);
 BENCHMARK(BenchPipelineEncrypt)->Unit(benchmark::kMillisecond);
 BENCHMARK(BenchPipelineDecrypt)->Unit(benchmark::kMillisecond);
 /* Few iterations per repetition: at 512 MiB of memory cost a single derivation already dominates, and the
