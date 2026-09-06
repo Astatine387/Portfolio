@@ -64,6 +64,9 @@ void ProgressGUI::ShowResult(const QString& msg) {
 }
 
 void ProgressGUI::ShowBusy(const QString& msg) {
+  /* An empty range is Qt's indeterminate bar: the worker only stops between chunks, so there is nothing
+   * left to report a percentage for, and cancelling again would change nothing */
+
   prg_label_->setText(msg);
   prg_bar_->setRange(0, 0);
   cancel_btn_->setEnabled(false);

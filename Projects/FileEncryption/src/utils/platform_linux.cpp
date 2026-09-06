@@ -20,6 +20,8 @@ bool FileExists(const std::string& path) {
 }
 
 int64_t GetFileSize(FILE* file) {
+  /* Measuring moves the position, so it is put back at the start and the caller can read from there */
+
   if (fseeko(file, 0, SEEK_END)) {
     return -1;
   }
@@ -83,6 +85,9 @@ Result RenameFile(const std::string& src, const std::string& dst) {
 }
 
 Result SyncFile(FILE* file) {
+  /* Two layers of buffering: fflush pushes the stdio buffer into the kernel, fsync pushes the kernel's
+   * page cache onto the disk. Either one alone leaves data that a power cut can still take. */
+
   if (fflush(file)) {
     return Result::kFailure;
   }

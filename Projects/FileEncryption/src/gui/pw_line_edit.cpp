@@ -22,7 +22,8 @@ PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
   pw_line_->setPlaceholderText("Password");
   pw_line_->setEchoMode(QLineEdit::Password);
 
-  /* Configure masking toggle button */
+  /* Configure masking toggle button. Both dimensions are scaled by hand so the button keeps lining up
+   * with the field it sits next to at any font scale. */
 
   mask_btn_->setFixedSize(static_cast<int>(45 * kFontScale),
                           static_cast<int>(pw_line_->sizeHint().height() * kFontScale));
@@ -50,7 +51,8 @@ Result PWLineEdit::Extract(Password& pw) {
 
   Result res = pw.SetData(utf8.constData(), static_cast<size_t>(utf8.size()));
 
-  /* Wipe the transient UTF-8 copy */
+  /* Wipe the transient UTF-8 copy. It is the one copy this code owns; the QString inside the widget is
+   * not reachable, so clearing the field is as far as the cleanup can go. */
 
   sodium_memzero(utf8.data(), static_cast<size_t>(utf8.size()));
 

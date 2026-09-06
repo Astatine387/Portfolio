@@ -45,8 +45,6 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<con
 }
 
 Result AesGcm::EncryptInit(std::span<const uint8_t, kSaltSize> salt, const KdfParams& params) {
-  /* Get source file size */
-
   src_size_ = GetFileSize(src_file_);
 
   if (src_size_ == -1) {
@@ -110,11 +108,9 @@ Result AesGcm::EncryptLoop() {
       return Result::kFailure;
     }
 
-    /* Swap buffer */
+    /* The writer still holds the buffer just submitted, so the next chunk goes into the other one */
 
     cur = 1 - cur;
-
-    /* Update progress */
 
     rem -= static_cast<int64_t>(len);
     progress_cur_ += static_cast<int64_t>(len);
@@ -140,7 +136,7 @@ Result AesGcm::EncryptLoop() {
     idx++;
   }
 
-  /* Wait for the last write to finish */
+  /* The loop leaves one chunk still in flight, and a failure on that last write is reported here */
 
   if (FlushWrite() == Result::kFailure) {
     return Result::kFailure;
@@ -152,7 +148,8 @@ Result AesGcm::EncryptLoop() {
 Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_last) {
   BuildNonce(idx, is_last);
 
-  /* Re-initialize the nonce */
+  /* Cipher and key stay as SetupCtx left them and only the nonce moves, so the key schedule is computed
+   * once for the whole file rather than once per chunk */
 
   if (EVP_EncryptInit_ex(ctx_, nullptr, nullptr, nullptr, nonce_.data()) != 1) {
     // LCOV_EXCL_START
@@ -163,7 +160,9 @@ Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
 
   int outlen = 0;
 
-  /* Authenticate the header before any plaintext */
+  /* Passing a null output buffer feeds the header in as associated data. It carries the salt, the
+   * Argon2id parameters and the chunk size, so binding it to every chunk means an edited header cannot
+   * decrypt anywhere in the file rather than only at the front. */
 
   if (EVP_EncryptUpdate(ctx_, nullptr, &outlen, header_.data(), static_cast<int>(header_.size())) != 1) {
     // LCOV_EXCL_START
@@ -173,6 +172,9 @@ Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
   }
 
   if (len > 0) {
+    /* Same buffer in and out: the ciphertext overwrites the plaintext, which leaves no second copy of
+     * the plaintext in memory and no second buffer to allocate */
+
     if (EVP_EncryptUpdate(ctx_, buff, &outlen, buff, static_cast<int>(len)) != 1) {
       // LCOV_EXCL_START
       ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
@@ -188,7 +190,8 @@ Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
     }
   }
 
-  /* GCM emits nothing here */
+  /* GCM is a counter mode, so there is no partial block held back and this call emits no bytes. It runs
+   * only to close the chunk, which is what makes the tag available below. */
 
   std::array<uint8_t, kBlockSize> final_block{};
   int final_len = 0;
@@ -200,7 +203,7 @@ Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
     // LCOV_EXCL_STOP
   }
 
-  /* Append the tag */
+  /* The tag lands at buff + len, in the room AllocBuffers reserved past the chunk */
 
   if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_GET_TAG, static_cast<int>(kTagSize), buff + len) != 1) {
     // LCOV_EXCL_START

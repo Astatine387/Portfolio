@@ -98,14 +98,22 @@ std::optional<SecureKey> DeriveKey(std::span<const char> pw, std::span<const uin
                                    const KdfParams& params) {
   InitCrypto();
 
+  /* Argon2id writes straight into locked, self-wiping memory, so the derived key never exists in a plain
+   * buffer that would have to be wiped afterwards */
+
   auto* key = static_cast<uint8_t*>(sodium_malloc(kKeySize));
 
   if (key == nullptr) {
     return std::nullopt;  // LCOV_EXCL_LINE
   }
 
+  /* The parameters come from the file header on the decryption path, which is why ValidateHeader has to
+   * have bounded them before this call */
+
   if (argon2id_hash_raw(params.time_cost, params.mem_cost, params.parallelism, pw.data(), pw.size(), salt.data(),
                         salt.size(), key, kKeySize) != ARGON2_OK) {
+    /* SecureKey only takes ownership on the success path below, so the allocation is still this call's */
+
     sodium_free(key);
     return std::nullopt;
   }

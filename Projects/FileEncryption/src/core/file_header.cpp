@@ -13,6 +13,9 @@
 
 namespace {
 
+/* Each offset is stated relative to the one before it, so a field can only be inserted by moving every
+ * field after it, and the assert below refuses a layout that no longer fills the header exactly */
+
 constexpr size_t kChunkLog2Offset = kMagicSize;            // 4
 constexpr size_t kTimeCostOffset = kChunkLog2Offset + 1;   // 5
 constexpr size_t kMemCostOffset = kTimeCostOffset + 4;     // 9
@@ -24,6 +27,9 @@ static_assert(kSaltOffset + kSaltSize == kHeaderSize, "Header field offsets do n
 }  // namespace
 
 void SerializeHeader(std::span<uint8_t, kHeaderSize> dst, const FileHeader& header) {
+  /* These bytes are both the header on the disk and the associated data of every chunk, so the layout is
+   * part of the format: moving a field changes what every tag in every existing file covers */
+
   std::ranges::copy(kMagic, dst.begin());
 
   dst[kChunkLog2Offset] = header.chunk_log2;
@@ -76,6 +82,11 @@ HeaderStatus ReadHeader(FILE* file, FileHeader& header) {
 }
 
 HeaderStatus ValidateHeader(const FileHeader& header) {
+  /* A header is whatever the file happened to contain, and it is read before the password is ever tried.
+   * chunk_log2 is used as a shift width and sizes both chunk buffers, so an unchecked value is undefined
+   * behaviour before it is an allocation; mem_cost is an Argon2id allocation in KiB, so an unchecked one
+   * lets a crafted file ask for terabytes. */
+
   if (header.chunk_log2 < kMinChunkSizeLog2 || kMaxChunkSizeLog2 < header.chunk_log2) {
     return HeaderStatus::kBadChunkSize;
   }

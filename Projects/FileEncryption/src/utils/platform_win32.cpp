@@ -31,6 +31,8 @@ bool FileExists(const std::string& path) {
 }
 
 int64_t GetFileSize(FILE* file) {
+  /* Measuring moves the position, so it is put back at the start and the caller can read from there */
+
   if (_fseeki64(file, 0, SEEK_END)) {
     return -1;
   }
@@ -45,6 +47,8 @@ int64_t GetFileSize(FILE* file) {
 }
 
 Result Random(uint8_t* dst, size_t size) {
+  /* Unlike getrandom on the Linux side, this fills the whole buffer or fails, so there is no loop */
+
   if (BCryptGenRandom(nullptr, dst, static_cast<ULONG>(size), BCRYPT_USE_SYSTEM_PREFERRED_RNG)) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
@@ -78,6 +82,9 @@ Result RenameFile(const std::string& src, const std::string& dst) {
 }
 
 Result SyncFile(FILE* file) {
+  /* Two layers of buffering: fflush pushes the stdio buffer down to the operating system, and
+   * FlushFileBuffers below pushes the system's cache onto the disk */
+
   if (fflush(file)) {
     return Result::kFailure;
   }
@@ -127,6 +134,8 @@ Result Seek(FILE* file, int64_t offset, int origin) {
 void OpenFile(FILE** file, const std::string& path, const char* mode) {
   std::filesystem::path fs_path = ToPath(path);
   std::wstring wmode;
+
+  /* Widening one byte at a time is only correct for ASCII, which is all a stdio mode string ever is */
 
   for (const char* p = mode; *p; ++p) {
     wmode += static_cast<wchar_t>(*p);

@@ -54,6 +54,9 @@ void InputGUI::SetErrMsg(const QString& msg) {
 }
 
 void InputGUI::OnStartClicked() {
+  /* The cheap checks come first, so a missing mode or path is reported without the password having been
+   * touched at all */
+
   auto mode = mode_btn_->GetMode();
 
   if (!mode.has_value()) {
@@ -72,6 +75,9 @@ void InputGUI::OnStartClicked() {
   }
 
   Password tmp;
+
+  /* Extract copies the text into locked memory and empties the field, and the local is moved into the
+   * request below, so no widget holds the password once this call returns */
 
   if (pw_line_->Extract(tmp) == Result::kFailure) {
     err_msg_->setText("Cannot allocate secure memory for the password");

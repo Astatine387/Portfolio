@@ -23,6 +23,9 @@ constexpr std::string_view kPartSuffix = ".tmp";
 }  // namespace
 
 void CryptoWorker::RequestCancel() {
+  /* Relaxed is enough: the flag publishes no data, and the engine only reads it between chunks, so the
+   * one thing that matters is that the store eventually becomes visible */
+
   cancel_->store(true, std::memory_order_relaxed);
 }
 
@@ -35,11 +38,15 @@ void CryptoWorker::Work() {
   std::string msg;
   bool should_delete = false;
 
+  /* Everything is written to a sibling of the destination and moved into place at the end, so a run that
+   * dies halfway leaves a .tmp file rather than a half-written destination. A sibling because RenameFile
+   * cannot cross a filesystem. */
+
   std::string tmp_path = dst_path_;
 
   tmp_path += kPartSuffix;
 
-  /* Open files */
+  /* Source first, so a bad source path costs nothing and leaves nothing behind to clean up */
 
   OpenFile(&src_file, src_path_, "rb");
 
@@ -63,7 +70,8 @@ void CryptoWorker::Work() {
     return;
   }
 
-  /* Derive the session key */
+  /* Derive the session key. Encryption picks a fresh salt and keeps the default parameters; decryption
+   * has to take both from the header, since they are what the file was written with. */
 
   std::array<uint8_t, kSaltSize> salt{};
   KdfParams params;

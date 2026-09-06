@@ -25,6 +25,8 @@ size_t Password::GetSize() const {
 }
 
 Result Password::SetData(const Password& pw) {
+  /* Self-assignment would wipe the source in Clean() before there is anything left to copy from */
+
   if (this == &pw) {
     return Result::kSuccess;
   }
@@ -33,10 +35,16 @@ Result Password::SetData(const Password& pw) {
 }
 
 Result Password::SetData(const char* str, size_t len) {
+  /* Wipe first: whatever is held now is gone either way, and a failed allocation below must not leave the
+   * previous password behind */
+
   Clean();
 
   if (str != nullptr) {
     InitCrypto();
+
+    /* sodium_malloc locks the pages against the swap file and wipes them on release. The extra byte is
+     * the terminator, which lets the buffer be handed to a C interface without a copy. */
 
     data_ = static_cast<char*>(sodium_malloc(len + 1));
 

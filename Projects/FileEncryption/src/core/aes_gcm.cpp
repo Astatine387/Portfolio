@@ -99,6 +99,9 @@ Result AesGcm::WriteFile(const void* buff, size_t size) {
 }
 
 void AesGcm::WriterLoop() noexcept {
+  /* One chunk is written while the next one is being read and encrypted. Only ever one job is queued,
+   * so the producer owns whichever of the two buffers the writer is not holding. */
+
   UniqueLock lk(write_mtx_);
 
   for (;;) {
@@ -140,7 +143,8 @@ void AesGcm::WriterLoop() noexcept {
 Result AesGcm::SubmitWrite(const void* buff, size_t size) {
   UniqueLock lk(write_mtx_);
 
-  /* Wait for the previous write to finish */
+  /* Waiting here is what holds the pipeline to a single job: once it returns, the buffer handed over on
+   * the previous call is free again, so the caller can rotate back into it */
 
   write_cv_.Wait(lk, [this]() REQUIRES(write_mtx_) { return !write_pending_; });
 
@@ -148,7 +152,8 @@ Result AesGcm::SubmitWrite(const void* buff, size_t size) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  /* Hand the new buffer to the writer thread */
+  /* The buffer is borrowed, not copied, so the caller has to leave it alone until the next SubmitWrite
+   * or FlushWrite returns */
 
   write_buff_ = buff;
   write_size_ = size;
@@ -161,6 +166,9 @@ Result AesGcm::SubmitWrite(const void* buff, size_t size) {
 }
 
 Result AesGcm::FlushWrite() {
+  /* Where a late failure surfaces: a write that failed after its SubmitWrite had already returned is
+   * reported nowhere else */
+
   UniqueLock lk(write_mtx_);
 
   write_cv_.Wait(lk, [this]() REQUIRES(write_mtx_) { return !write_pending_; });
@@ -175,7 +183,8 @@ void AesGcm::ReportProgress() {
 
   int perc = static_cast<int>(progress_max_ > 0 ? progress_cur_ * 100 / progress_max_ : 100);
 
-  /* Report only when the whole percent changes */
+  /* A chunk is small enough that most of them do not move the percentage at all, and every report
+   * crosses into the GUI thread, so only a whole percent is worth sending */
 
   if (perc == last_perc_) {
     return;
@@ -228,13 +237,17 @@ void AesGcm::BuildNonce(uint64_t idx, bool is_last) {
 }
 
 void AesGcm::AllocBuffers() {
+  /* Each buffer carries room for a tag past the chunk, so encryption can append the tag in place and a
+   * whole chunk still leaves in one write */
+
   for (std::vector<uint8_t>& buff : buff_) {
     buff.assign(chunk_size_ + kTagSize, 0);
   }
 }
 
 Result AesGcm::SetupCtx(CryptoMode mode) {
-  /* Clear existing context */
+  /* One engine can serve more than one operation, so a context left over from the previous one goes
+   * first */
 
   if (ctx_) {
     EVP_CIPHER_CTX_free(ctx_);

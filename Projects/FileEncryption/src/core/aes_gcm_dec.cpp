@@ -43,8 +43,6 @@ Result AesGcm::Decrypt(FILE* src, FILE* dst, const SecureKey& key) {
 }
 
 Result AesGcm::DecryptInit() {
-  /* Get source file size */
-
   src_size_ = GetFileSize(src_file_);
 
   if (src_size_ == -1) {
@@ -61,7 +59,7 @@ Result AesGcm::DecryptInit() {
     return Result::kFailure;
   }
 
-  /* Read the header */
+  /* Everything below comes from the file, so it is only as trustworthy as ReadHeader's validation */
 
   FileHeader header;
 
@@ -75,7 +73,9 @@ Result AesGcm::DecryptInit() {
   salt_ = header.salt;
   chunk_size_ = size_t{ 1 } << header.chunk_log2;
 
-  /* Re-serialize the parsed header */
+  /* The associated data has to be byte for byte what encryption fed in. The layout covers every byte of
+   * the header, so re-emitting the validated struct reproduces exactly what is on the disk, and nothing
+   * has to hold on to the raw read buffer. */
 
   SerializeHeader(header_, header);
 
@@ -91,7 +91,8 @@ Result AesGcm::DecryptInit() {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  /* Move file pointer to the start */
+  /* ReadHeader already stops just past the header, but positioning the first chunk explicitly keeps the
+   * loop independent of how the header was read */
 
   if (Seek(src_file_, static_cast<int64_t>(kHeaderSize), SEEK_SET) == Result::kFailure) {
     // LCOV_EXCL_START
@@ -136,11 +137,9 @@ Result AesGcm::DecryptLoop() {
       return Result::kFailure;
     }
 
-    /* Swap buffer */
+    /* The writer still holds the buffer just submitted, so the next chunk goes into the other one */
 
     cur = 1 - cur;
-
-    /* Update progress */
 
     rem -= static_cast<int64_t>(len + kTagSize);
     progress_cur_ += static_cast<int64_t>(len + kTagSize);
@@ -162,7 +161,7 @@ Result AesGcm::DecryptLoop() {
     idx++;
   }
 
-  /* Wait for the last write to finish */
+  /* The loop leaves one chunk still in flight, and a failure on that last write is reported here */
 
   if (FlushWrite() == Result::kFailure) {
     return Result::kFailure;
@@ -174,7 +173,8 @@ Result AesGcm::DecryptLoop() {
 Result AesGcm::DecryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_last) {
   BuildNonce(idx, is_last);
 
-  /* Re-initialize the nonce only */
+  /* Cipher and key stay as SetupCtx left them and only the nonce moves, so the key schedule is computed
+   * once for the whole file rather than once per chunk */
 
   if (EVP_DecryptInit_ex(ctx_, nullptr, nullptr, nullptr, nonce_.data()) != 1) {
     // LCOV_EXCL_START
@@ -185,7 +185,8 @@ Result AesGcm::DecryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
 
   int outlen = 0;
 
-  /* Authenticate the header before any ciphertext */
+  /* A null output buffer feeds the header in as associated data, the same way encryption did, so a
+   * header edited after the fact fails the tag of every chunk rather than only the first */
 
   if (EVP_DecryptUpdate(ctx_, nullptr, &outlen, header_.data(), static_cast<int>(header_.size())) != 1) {
     // LCOV_EXCL_START
@@ -193,6 +194,9 @@ Result AesGcm::DecryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
+
+  /* The expected tag sits at buff + len, right behind the ciphertext the chunk was read into. It has to
+   * be in the context before EVP_DecryptFinal_ex checks it, and this is where the chunk is configured. */
 
   if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_TAG, static_cast<int>(kTagSize), buff + len) != 1) {
     // LCOV_EXCL_START
@@ -202,6 +206,9 @@ Result AesGcm::DecryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
   }
 
   if (len > 0) {
+    /* Same buffer in and out: the plaintext overwrites the ciphertext it came from, so a chunk needs no
+     * second buffer. It is still unverified at this point. */
+
     if (EVP_DecryptUpdate(ctx_, buff, &outlen, buff, static_cast<int>(len)) != 1) {
       // LCOV_EXCL_START
       ReportError("[Crypto] Decryption failed - Cannot decrypt buffer\n");

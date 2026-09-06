@@ -17,12 +17,13 @@ ModeButton::ModeButton(QWidget* parent) : QWidget(parent) {
   enc_btn_ = new QRadioButton("Encrypt");
   dec_btn_ = new QRadioButton("Decrypt");
 
-  /* Neither is selected by default */
+  /* Neither is selected by default, so GetMode has a third answer and the caller can refuse to start
+   * rather than run a direction the user never picked */
 
   enc_btn_->setChecked(false);
   dec_btn_->setChecked(false);
 
-  /* Group buttons for mutual exclustion */
+  /* Group buttons for mutual exclusion */
 
   btn_group_ = new QButtonGroup(this);
   btn_group_->addButton(enc_btn_, 0);

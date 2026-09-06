@@ -138,6 +138,10 @@ class AesGcm {
 
   const SecureKey* key_ = nullptr;  // Session key for the current operation (non-owning)
 
+  /* The five fields below are one hand-off slot, not a queue: the producer fills it, the writer empties
+   * it, and SubmitWrite blocks until it is free again. That bound is what lets two chunk buffers be
+   * enough, since only one of them can be in the writer's hands at a time. */
+
   std::thread writer_;          // Long-lived asynchronous write worker
   Mutex write_mtx_;             // Serializes the write hand-off state
   ConditionVariable write_cv_;  // Signals job-ready and job-done transitions
