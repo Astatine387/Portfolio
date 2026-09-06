@@ -497,7 +497,7 @@ TEST_F(CryptoWorkerTest, ConcurrentCancelDuringWork) {
     EXPECT_EQ(cipher.size(), kHeaderSize + kChunkSize * kChunks + kTagSize * kChunks);
   }
 
-  EXPECT_FALSE(FileExists(enc_path_ + ".part"));
+  EXPECT_FALSE(FileExists(enc_path_ + ".tmp"));
 }
 
 /* ==================================================
