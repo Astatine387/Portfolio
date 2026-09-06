@@ -67,7 +67,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 
 * **Chunk Size:** 64 KiB default, 4 KiB to 1 MiB accepted
 
-* **Maximum File Size:** 2 ^ 64 chunks
+* **Maximum File Size:** 8 EiB (2 ^ 63 bytes)
 
 ## 3-1. Encrypted File Format
 
@@ -289,13 +289,14 @@ ctest --test-dir build --output-on-failure
 
 # 6. Benchmark
 
-**Source:** https://github.com/Astatine387/Portfolio/actions/runs/34012748951
+**Source:** https://github.com/Astatine387/Portfolio/actions/runs/34042028563
 
-| Metric                                              |     Value |
-| --------------------------------------------------- | --------: |
-| Encryption pipeline / raw OpenSSL EVP               | **40.2%** |
-| Decryption pipeline / raw OpenSSL EVP               | **39.7%** |
-| Argon2id key derivation (m = 512 MiB, t = 4, p = 4) |     473ms |
+|Metric|Value|
+|---|--:|
+|Encrypt pipeline / file-copy floor|**88.9%**|
+|Decrypt pipeline / file-copy floor|**88.5%**|
+|Asynchronous write vs synchronous|**+30.4%**|
+|Argon2id key derivation (m=512 MiB, t=4, p=4)|475 ms|
 
 # 7. License
 
