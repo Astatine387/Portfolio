@@ -241,6 +241,10 @@ void AesGcm::AllocBuffers() {
    * whole chunk still leaves in one write */
 
   for (std::vector<uint8_t>& buff : buff_) {
+    if (!buff.empty()) {
+      sodium_memzero(buff.data(), buff.size());
+    }
+
     buff.assign(chunk_size_ + kTagSize, 0);
   }
 }
