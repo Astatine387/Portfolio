@@ -32,6 +32,10 @@ TEST_F(AesGcmTest, EncryptDecryptBasic) {
 
 /**
  * @brief   Verify encryption is deterministic, since the nonce is derived from the chunk counter
+ *
+ * Determinism at this level is normally the thing to avoid, and it is only safe because the salt is not
+ * chosen here. The engine is handed one, and the worker draws a fresh one for every file, so two files
+ * never share a key and the same nonce is never used twice under one.
  */
 TEST_F(AesGcmTest, EncryptIsDeterministic) {
   const auto salt = MakeSalt(0xA5);
@@ -162,6 +166,9 @@ TEST_F(AesGcmTest, ErrorCallbackFormatsQueue) {
  * @brief   Verify progress is reported once per whole percent
  */
 TEST_F(AesGcmTest, ProgressSkipsRepeatedPercent) {
+  /* More chunks than there are whole percents to report, so the assertion below can only hold if reports
+   * are actually being dropped. Anything up to a hundred would pass whether they were or not. */
+
   constexpr size_t kChunks = 200;
 
   AesGcm aes;
@@ -214,6 +221,10 @@ TEST_F(AesGcmTest, CancelDuringEncryption) {
   });
 
   FilePair files(src_path_, enc_path_);
+
+  /* The flag is polled straight after each report, so the second one is the last a correct run makes.
+   * The upper bound carries a report of slack rather than pinning the count: what it rules out is a run
+   * that reads on to the end of the file, which is what a cancellation noticed only once would do. */
 
   EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey("password", salt), salt, MinParams()), Result::kFailure);
   EXPECT_GE(cnt, 2);
@@ -286,6 +297,10 @@ TEST_F(AesGcmTest, WriteFailureStopsTheProducer) {
 
   EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt)), Result::kFailure);
   EXPECT_NE(res.find("Write failed"), std::string::npos);
+
+  /* Exactly one report, which is the single job in flight made visible. The first chunk is submitted
+   * without waiting and gets its report; the second has to wait on the first write, finds it failed and
+   * stops there. A pipeline that queued instead of blocking would run further before noticing. */
 
   EXPECT_EQ(cnt, 1);
 }
@@ -364,6 +379,10 @@ TEST_F(AesGcmTest, EncryptReportsWriteFailure) {
  */
 TEST_F(AesGcmTest, EncryptReportsDiskFull) {
   const auto salt = MakeSalt(0xA5);
+
+  /* Two counts for two reporting paths: a single chunk has nothing after it, so the failure can only
+   * surface in the final flush, while three chunks let a SubmitWrite in the middle of the loop be the
+   * one that reports it */
 
   for (size_t chunks : { size_t{ 1 }, size_t{ 3 } }) {
     SCOPED_TRACE(testing::Message() << "chunks=" << chunks);

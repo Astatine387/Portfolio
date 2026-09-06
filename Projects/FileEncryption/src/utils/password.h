@@ -13,6 +13,10 @@
 /**
  * @class   Password
  * @brief   RAII class that securely handles password
+ *
+ * The bytes live in sodium_malloc memory, which is locked against the swap file and wiped on release,
+ * so the lifetime of this object is the lifetime of the password in memory. Callers that are finished
+ * with one assign an empty Password over it rather than waiting for the scope to end.
  */
 class Password {
  public:
@@ -26,12 +30,18 @@ class Password {
    */
   ~Password() { Clean(); }
 
+  /* Copying is refused rather than defaulted: it would put a second copy of the password in locked
+   * memory, and SetData below is the one way to ask for that, where the cost is visible at the call
+   * site and the allocation can be reported as having failed */
+
   Password(const Password&) = delete;             // Delete copy constructor
   Password& operator=(const Password&) = delete;  // Delete copy assignment operator
 
   /**
    * @brief     Move constructor
    * @param     other   Source password to move from
+   *
+   * The source is left holding nothing, so exactly one object is ever in a position to wipe the buffer.
    */
   Password(Password&& other) noexcept : size_(other.size_), data_(other.data_) {
     other.data_ = nullptr;
@@ -86,6 +96,9 @@ class Password {
    * @param     str     Source
    * @param     len     Password length
    * @return    kSuccess on success, kFailure when secure allocation fails
+   *
+   * Locked pages come out of a capped pool, so failing to get one is an ordinary outcome here rather
+   * than an exceptional one, and the result is worth checking on every call.
    */
   [[nodiscard]] Result SetData(const char* str, size_t len);
 

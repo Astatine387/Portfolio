@@ -12,6 +12,15 @@
 #include "common/constants.h"
 #include "core/crypto_worker.h"
 
+/**
+ * @class   CryptoWrapper
+ * @brief   Qt wrapper class for CryptoWorker
+ *
+ * The one Qt-aware layer over the worker. CryptoWorker reports through plain callbacks and knows nothing
+ * about Qt, which is what lets the core be built and tested without an event loop; this object turns
+ * those callbacks into signals and is moved to the worker thread, so the connections to the window
+ * become queued ones.
+ */
 class CryptoWrapper : public QObject {
   Q_OBJECT
 
@@ -48,5 +57,5 @@ class CryptoWrapper : public QObject {
   void Run();
 
  private:
-  CryptoWorker worker_;
+  CryptoWorker worker_;  // Held by value, so it is destroyed with the wrapper on the worker thread
 };

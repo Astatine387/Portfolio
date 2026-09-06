@@ -203,6 +203,10 @@ TEST_F(FileHeaderTest, ReadLeavesCursorAtData) {
 
   ASSERT_NE(file, nullptr);
 
+  /* Moved off zero first, and to an offset that is not a field boundary, so a read that took the cursor
+   * as it found it would land mid-header and fail. Both ends are being pinned here: reading starts at
+   * zero whatever the caller left behind, and stops exactly where the first chunk begins. */
+
   EXPECT_EQ(Seek(file, 3, SEEK_SET), Result::kSuccess);
   EXPECT_EQ(ReadHeader(file, header), HeaderStatus::kOk);
   EXPECT_EQ(ftell(file), static_cast<long>(kHeaderSize));

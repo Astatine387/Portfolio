@@ -33,7 +33,9 @@ static_assert(!std::is_constructible_v<SecureKey, uint8_t*>);
 
 namespace {
 
-/* Small Argon2id parameters keep the derivation tests fast */
+/* Small Argon2id parameters keep the derivation tests fast. Well under kMinMemCost, which is allowed
+ * because DeriveKey is called directly here: the accepted range is enforced by ValidateHeader, on the
+ * parameters a file arrives with, and nothing on this path reads a file. */
 
 KdfParams FastParams() {
   return KdfParams{ .time_cost = 1, .mem_cost = 8, .parallelism = 1 };
@@ -52,6 +54,10 @@ std::array<uint8_t, kSaltSize> MakeSalt(uint8_t fill) {
   salt.fill(fill);
   return salt;
 }
+
+/* Self-move goes through here rather than being written out at the call site. Assigning an object to
+ * itself with std::move in plain sight is diagnosed by the compiler, so the two references have to
+ * arrive as parameters for the aliasing to be invisible and the code path to be reachable at all. */
 
 void MoveAssign(SecureKey& dst, SecureKey& src) {
   dst = std::move(src);

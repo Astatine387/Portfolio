@@ -16,6 +16,9 @@
 /**
  * @struct	KdfParams
  * @brief	Argon2id key-derivation parameters
+ *
+ * Written into the file header, so decryption repeats the derivation with the parameters the file was
+ * made with rather than whatever this build would choose today.
  */
 struct KdfParams {
   uint32_t time_cost = kTimeCost;
@@ -40,6 +43,9 @@ class SecureKey;
  * @param	salt	Key-derivation salt
  * @param	params	Argon2id parameters
  * @return	A SecureKey on success, std::nullopt on failure
+ *
+ * The only way to obtain a SecureKey. The constructor is private and this function is its friend, so a
+ * key cannot exist except as the result of a derivation that filled it.
  */
 [[nodiscard]] std::optional<SecureKey> DeriveKey(std::span<const char> pw, std::span<const uint8_t, kSaltSize> salt,
                                                  const KdfParams& params = {});
@@ -51,6 +57,9 @@ class SecureKey;
 class SecureKey {
  public:
   ~SecureKey();
+
+  /* Move-only, and a moved-from key is left holding nothing. Two owners would mean two sodium_free calls
+   * on one buffer, and a copy would be a second copy of the key in memory to keep track of. */
 
   SecureKey(const SecureKey&) = delete;             // Delete copy constructor
   SecureKey& operator=(const SecureKey&) = delete;  // Delete copy assignment operator
@@ -77,5 +86,5 @@ class SecureKey {
  private:
   explicit SecureKey(uint8_t* data) : data_(data) {}
 
-  uint8_t* data_ = nullptr;  // kKeySize bytes in sodium_malloc memory
+  uint8_t* data_ = nullptr;  // kKeySize bytes in sodium_malloc memory, released with sodium_free
 };

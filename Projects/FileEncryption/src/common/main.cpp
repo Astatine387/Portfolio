@@ -17,18 +17,19 @@ int ShowGUI(int argc, char** argv) {
   QApplication app(argc, argv);
   MainGUI gui;
 
-  /* Configure font size */
+  /* Scaling the size Qt already resolved, rather than setting one outright, so the platform's own font
+   * setting still decides what the scale is applied to */
 
   QFont font;
   font.setPointSizeF(font.pointSizeF() * kFontScale);
   QApplication::setFont(font);
 
-  /* Configure window size */
-
   QSize qsize(300, 150);
   gui.resize(qsize);
 
-  /* Configure window position */
+  /* availableGeometry rather than the full screen, so a taskbar or panel is excluded and the window is
+   * centred in the space actually free. The offset lifts it above the true centre, where a window this
+   * short otherwise reads as sitting low. */
 
   QScreen* screen = QGuiApplication::primaryScreen();
   QRect rect = screen->availableGeometry();
@@ -43,6 +44,9 @@ int ShowGUI(int argc, char** argv) {
 }
 
 int main(int argc, char** argv) {
+  /* The limit it raises is process-wide and best effort, so it is settled once here rather than from
+   * whichever secure allocation happens to come first */
+
   InitCrypto();
 
   return ShowGUI(argc, argv);

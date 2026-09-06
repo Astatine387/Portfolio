@@ -28,6 +28,11 @@ class AesGcmTamperTest : public AesGcmTest {
   std::vector<uint8_t> plain_;
   std::vector<uint8_t> cipher_;
 
+  /* Three is the smallest count that gives a first, a middle and a last chunk at once, so the swap case
+   * has two interior chunks to exchange and truncation has a final chunk to remove that is not also the
+   * first. Exactly full matters as much: with a short tail, a cut at a chunk boundary would change the
+   * framing as well as the flag, and the two reasons for the rejection could no longer be told apart. */
+
   static constexpr size_t kChunks = 3;
 
   /**
@@ -188,6 +193,9 @@ TEST_F(AesGcmTamperTest, RejectsShortDataRegion) {
 TEST_F(AesGcmTamperTest, RejectsChunkFromAnotherFile) {
   const auto other_salt = MakeSalt(0x5A);
   const std::vector<uint8_t> other = EncryptBytes(MakePlain(kChunks * kChunkSize), other_salt, "password");
+
+  /* Same length, so the splice below replaces a chunk rather than resizing the file. Without it a
+   * rejection could be down to the framing no longer adding up, which is a different test. */
 
   ASSERT_EQ(other.size(), cipher_.size());
 

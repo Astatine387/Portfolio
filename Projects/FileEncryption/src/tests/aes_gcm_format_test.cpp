@@ -118,6 +118,14 @@ TEST_F(AesGcmFormatTest, GoldenVectorIsStable) {
 
 /**
  * @brief   Verify re-initializing only the nonce matches a context built from scratch
+ *
+ * The format is spelled out again here against raw OpenSSL rather than driven through AesGcm, which is
+ * the whole point: reusing the engine's own nonce derivation would let a mistake in it agree with
+ * itself. What the two halves share is the specification, not the code.
+ *
+ * What it isolates is the one shortcut the engine takes. Setting up the cipher once and moving only the
+ * nonce per chunk has to produce what a context built fresh for each chunk would, or state is leaking
+ * from one chunk into the next.
  */
 TEST_F(AesGcmFormatTest, SharedContextMatchesFreshContext) {
   constexpr size_t kChunks = 3;

@@ -2,6 +2,10 @@
  * @file    utils_test.cpp
  * @brief   Unit tests for utility functions
  * @author  Astatine387
+ *
+ * Several of the fixtures below name the same scratch file, and all of them work in the directory the
+ * suite is run from, so two of these cases running at once would be writing over each other. The suite
+ * has to run serially.
  */
 
 #include <gtest/gtest.h>

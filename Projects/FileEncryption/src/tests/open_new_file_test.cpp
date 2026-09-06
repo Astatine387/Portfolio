@@ -121,6 +121,9 @@ TEST_F(OpenNewFileTest, KeepsExistingFileIntact) {
 TEST_F(OpenNewFileTest, NullsStreamOnFailure) {
   Create(path0_, "x");
 
+  /* Poisoned rather than left null, so the assertion below distinguishes a stream that was cleared from
+   * one the call never touched. Starting from null would pass either way. */
+
   file_ = reinterpret_cast<FILE*>(0x1);  // NOLINT(performance-no-int-to-ptr)
 
   ASSERT_EQ(OpenNewFile(&file_, path0_), Result::kFailure);
@@ -192,6 +195,10 @@ TEST_F(OpenNewFileTest, CreatesOwnerOnlyFile) {
  * @brief   Verify the permission guarantee does not depend on the caller's umask
  */
 TEST_F(OpenNewFileTest, IgnoresPermissiveUmask) {
+  /* A umask of zero masks nothing away, so the mode checked below can only have come from the open call
+   * itself. The case above would still pass if the permissions were being handed out by the process
+   * umask and merely happened to agree. */
+
   const UmaskGuard guard(0);
 
   ASSERT_EQ(OpenNewFile(&file_, path0_), Result::kSuccess);
@@ -216,6 +223,10 @@ TEST_F(OpenNewFileTest, SetsCloseOnExec) {
 
 /**
  * @brief   Verify a dangling symbolic link at the destination is refused
+ *
+ * The case exclusive creation is really for. A create that followed the link would find nothing at the
+ * far end, decide the name was free, and write the file wherever the link points, which is a path
+ * somebody else chose. The check afterwards is that the target is still not there.
  */
 TEST_F(OpenNewFileTest, RefusesDanglingSymlink) {
   ASSERT_EQ(symlink(path1_.c_str(), path0_.c_str()), 0);

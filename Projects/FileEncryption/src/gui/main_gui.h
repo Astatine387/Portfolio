@@ -18,6 +18,10 @@
 /**
  * @class   MainGUI
  * @brief   Main GUI class that orchestrates entire workflow
+ *
+ * Owns the worker thread and is the only place that knows a worker exists. Everything after the start
+ * button arrives as a queued signal, so no slot here ever waits on the work; the one exception is the
+ * forced shutdown in the destructor, where there is no event loop left to defer to.
  */
 class MainGUI : public QWidget {
   Q_OBJECT
@@ -70,6 +74,9 @@ class MainGUI : public QWidget {
   void RequestCancel();
 
  private:
+  /* GUI-thread state throughout. The worker gets its own copies of the paths and the password and its
+   * own share of the cancellation flag, so nothing below is read from the other thread. */
+
   CryptoWorker::CancelFlag cancel_flag_;
   InputGUI* input_gui_ = nullptr;
   ProgressGUI* prg_gui_ = nullptr;
@@ -78,7 +85,7 @@ class MainGUI : public QWidget {
   QString dst_path_;
   QThread* thread_ = nullptr;
   QVBoxLayout* vbox_ = nullptr;
-  bool closing_ = false;
+  bool closing_ = false;  // Whether a close has been deferred until the worker returns
 
   /**
    * @brief   Check the file paths are valid

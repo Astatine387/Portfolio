@@ -95,6 +95,9 @@ class AesGcm {
   /**
    * @brief		Set error callback function
    * @param		ecb		Error callback function
+   *
+   * Guarded, unlike the progress callback below: an error can come from the writer thread as well as
+   * from the thread doing the reading and the crypto, so two of them can arrive at once.
    */
   void SetErrorCallback(ErrorCallback ecb) {
     UniqueLock lk(error_mtx_);
@@ -110,6 +113,9 @@ class AesGcm {
   /**
    * @brief		Set the cancellation flag
    * @param		flag	Cancellation flag
+   *
+   * Borrowed, not owned. The flag belongs to whoever may raise it and has to outlive the engine, which
+   * holds for the worker that owns both.
    */
   void SetCancelFlag(const std::atomic<bool>* flag) { cancel_ = flag; }
 
@@ -194,6 +200,9 @@ class AesGcm {
   /**
    * @class   WriterGuard
    * @brief   Drain any in-flight asynchronous write when the scope exits
+   *
+   * Every exit from Encrypt and Decrypt goes through it, early returns included. That is what lets the
+   * caller close the destination file the moment the call returns: the writer thread is done with it.
    */
   class WriterGuard {
    public:

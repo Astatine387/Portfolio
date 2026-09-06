@@ -28,6 +28,10 @@ constexpr uint32_t RoundTripLE32(uint32_t val) {
   return LoadLE32(buff.data());
 }
 
+/* Evaluated by the compiler, so these cover something the runtime cases below cannot: that the helpers
+ * stay usable in a constant expression. Losing constexpr would fail the build here rather than quietly
+ * moving header field encoding to run time. */
+
 static_assert(RoundTripLE32(0) == 0);
 static_assert(RoundTripLE32(0xDEADBEEFU) == 0xDEADBEEFU);
 static_assert(RoundTripLE32(UINT32_MAX) == UINT32_MAX);

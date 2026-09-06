@@ -2,6 +2,10 @@
  * @file	platform.h
  * @brief	Declaration of utility functions
  * @author	Astatine387
+ *
+ * One set of declarations, two implementations: platform_linux.cpp and platform_win32.cpp, chosen by
+ * CMake. Everything the program does to a file goes through here, so the two builds differ in those two
+ * files and nowhere else.
  */
 
 #pragma once
@@ -14,7 +18,7 @@
 /**
  * @brief   Check a file exists
  * @param   path	File path
- * @return	1 if file exists, 0 if file not exists
+ * @return	true if the file exists, false otherwise
  */
 bool FileExists(const std::string& path);
 
@@ -46,7 +50,9 @@ Result RemoveFile(const std::string& path);
  * @param   dst   Destination file path
  * @return  kSuccess on success, kFailure on failure
  *
- * This doesn't overwrite an existing file
+ * This doesn't overwrite an existing file. Refusing to is what makes the publish step safe: the move
+ * itself decides whether the name was free, so nothing can appear at the destination between a separate
+ * existence test and the move that follows it.
  */
 Result RenameFile(const std::string& src, const std::string& dst);
 
@@ -61,6 +67,9 @@ Result SyncFile(FILE* file);
  * @brief   Flush the parent directory entry of a file to disk
  * @param   path  File path whose parent directory is synced
  * @return  kSuccess on success, kFailure on failure
+ *
+ * SyncFile is only half of it. The entry that names the file is a write of its own, and a file whose
+ * contents reached the disk under a name that did not is still lost.
  */
 Result SyncDir(const std::string& path);
 
@@ -86,5 +95,8 @@ void OpenFile(FILE** file, const std::string& path, const char* mode);
  * @param   file  Opened stream on success, nullptr on failure
  * @param   path  File path
  * @return  kSuccess on success, kFailure on failure
+ *
+ * Creating exclusively rather than testing first, so the file system is the one deciding the name was
+ * free and nothing can take it in between.
  */
 [[nodiscard]] Result OpenNewFile(FILE** file, const std::string& path);

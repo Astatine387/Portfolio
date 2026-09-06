@@ -17,6 +17,10 @@
 /**
  * @enum	HeaderStatus
  * @brief	Outcome of reading or checking an encrypted file header
+ *
+ * The reason is kept rather than collapsed into a bool, because the failures do not mean the same thing
+ * to whoever asked: a bad magic value says the file was never written by this program, while a bad chunk
+ * size or bad parameters says it was, and this build will not read it.
  */
 enum class HeaderStatus : std::uint8_t {
   kOk,
@@ -29,6 +33,10 @@ enum class HeaderStatus : std::uint8_t {
 /**
  * @struct	FileHeader
  * @brief	Contents of the plaintext header
+ *
+ * Readable by anyone and holding no secret: only what is needed to repeat the key derivation. It is not
+ * unprotected for that, since every chunk is authenticated under these bytes, so a header edited after
+ * the fact fails the tag of the whole file.
  */
 struct FileHeader {
   uint8_t chunk_log2 = kChunkSizeLog2;    // Base-2 log of chunk size
@@ -40,6 +48,9 @@ struct FileHeader {
  * @brief   Serialize a header into its on-disk form
  * @param   dst     Destination buffer
  * @param   header  Header to encode
+ *
+ * These bytes are also the associated data of every chunk, which is why decryption re-serializes the
+ * header it parsed instead of holding on to the buffer it read.
  */
 void SerializeHeader(std::span<uint8_t, kHeaderSize> dst, const FileHeader& header);
 

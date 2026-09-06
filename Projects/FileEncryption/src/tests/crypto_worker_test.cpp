@@ -451,6 +451,14 @@ TEST_F(CryptoWorkerTest, UncreatableDestinationReportsError) {
 
 /**
  * @brief   Verify cancelling from another thread while the worker runs is race-free
+ *
+ * Both outcomes are correct, which is why the assertion is a disjunction rather than a fixed result.
+ * The cancel is raised once a report has been seen, but the work may already be past its last poll by
+ * then, and neither ordering is a defect. What is asserted is that whichever way it lands is coherent:
+ * a cancelled run leaves nothing behind, a completed one leaves a whole file.
+ *
+ * The race itself is what this exercises, so it is worth running under ThreadSanitizer, where an
+ * unsynchronised access between the two threads is reported rather than left to chance.
  */
 TEST_F(CryptoWorkerTest, ConcurrentCancelDuringWork) {
   std::atomic<bool> in_progress{ false };
@@ -580,6 +588,10 @@ TEST_F(CryptoWorkerTest, ExistingDestinationIsRefusedAndUntouched) {
 
 /**
  * @brief   Verify a destination file created while the work is running is not overwritten
+ *
+ * The gap the up-front existence check cannot close. By the time the file is published the destination
+ * has been free for the whole run, so only the move itself can still catch this, and it does because it
+ * refuses to replace what it finds.
  */
 TEST_F(CryptoWorkerTest, DestinationAppearingMidRunIsRefused) {
   std::string msg;

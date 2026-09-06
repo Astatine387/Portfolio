@@ -2,6 +2,10 @@
  * @file	thread_annotations.h
  * @brief	Portable wrappers around Clang's thread safety analysis attributes
  * @author	Astatine387
+ *
+ * Every macro below expands to nothing outside Clang, so the annotations are checked in one build and
+ * are documentation in the others. Nothing may depend on them at run time: they constrain the code that
+ * gets written, not the code that executes.
  */
 
 #pragma once

@@ -23,6 +23,9 @@ class CryptoWorker {
  public:
   /**
    * @brief	Cancellation flag shared with whoever may request a cancel
+   *
+   * Shared rather than owned so that the canceller and the worker can be let go of in either order:
+   * the flag outlives both, and neither has to know whether the other is still there.
    */
   using CancelFlag = std::shared_ptr<std::atomic<bool>>;
 
@@ -33,6 +36,9 @@ class CryptoWorker {
    * @param     pw          Password
    * @param     mode        Encryption/decryption mode
    * @param     cancel      Shared cancellation flag, or nullptr to own a private one
+   *
+   * A private flag when the caller supplies none, so polling always has something to read whether or
+   * not anyone is in a position to raise it.
    */
   CryptoWorker(std::string src_path, std::string dst_path, Password pw, CryptoMode mode, CancelFlag cancel = nullptr)
       : mode_(mode),
@@ -68,6 +74,9 @@ class CryptoWorker {
 
   /**
    * @brief   Perform encryption/decryption
+   *
+   * Runs the whole file to completion on the calling thread. Cancellation is only looked at between
+   * chunks, so a call already under way cannot be made to return at once.
    */
   void Work();
 
@@ -90,6 +99,10 @@ class CryptoWorker {
   CancelFlag cancel_;
   ProgressCallback pcb_;
   FinishedCallback fcb_;
+
+  /* Filled by the engine's error callback and read once the pass is over, so the line that explains a
+   * failure outlives the call that produced it and can be put in front of the summary */
+
   std::string err_;
 
   /**

@@ -2,6 +2,10 @@
  * @file	mutex.h
  * @brief	Thread safety annotated wrappers around the standard locking primitives
  * @author	Astatine387
+ *
+ * The analysis can only reason about types that carry a capability, and the standard ones carry none.
+ * These wrappers exist to attach the annotations and add nothing else, so what they wrap is what the
+ * program actually locks on.
  */
 
 #pragma once
@@ -38,6 +42,9 @@ class CAPABILITY("mutex") Mutex {
   /**
    * @brief     Expose the wrapped mutex so a lock can be built on it
    * @return    Reference to the underlying std::mutex
+   *
+   * For UniqueLock's constructor, which has to hand std::unique_lock the one type it accepts. Locking
+   * through it would step around the annotations and is what UniqueLock exists to prevent.
    */
   std::mutex& Native() { return mtx_; }
 
@@ -78,6 +85,9 @@ class SCOPED_CAPABILITY UniqueLock {
   /**
    * @brief     Expose the wrapped lock so a condition variable can wait on it
    * @return    Reference to the underlying std::unique_lock
+   *
+   * A std::condition_variable releases and re-acquires the lock itself and will only take a real
+   * std::unique_lock, which is the reason this class owns one rather than a plain scoped lock.
    */
   std::unique_lock<std::mutex>& Native() { return lk_; }
 
@@ -95,6 +105,9 @@ class ConditionVariable {
    * @brief     Block until the predicate holds, releasing the lock while waiting
    * @param     lk  Lock held by the caller
    * @param     p   Predicate, only ever evaluated with the lock held
+   *
+   * The analysis cannot see that for itself, so a predicate reading guarded state is annotated
+   * REQUIRES at the call site rather than opting out of the checking.
    */
   template <typename Pred>
   void Wait(UniqueLock& lk, Pred p) {

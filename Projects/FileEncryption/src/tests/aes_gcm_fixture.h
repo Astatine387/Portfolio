@@ -36,6 +36,9 @@ class AesGcmTest : public ::testing::Test {
  protected:
   std::string last_error_;
 
+  /* Fixed names in the working directory, shared by every case built on this fixture. Two cases running
+   * at once would be writing over each other's files, so the suite has to run serially. */
+
   std::string src_path_ = "test_src.tmp";
   std::string enc_path_ = "test_enc.tmp";
   std::string dec_path_ = "test_dec.tmp";
@@ -51,6 +54,10 @@ class AesGcmTest : public ::testing::Test {
 
   /**
    * @brief   The cheapest Argon2id parameters this build accepts
+   *
+   * Deriving at the shipped parameters would cost half a gigabyte and four passes for every key, and
+   * none of these tests is about the derivation. They still sit inside the accepted range, so a file
+   * written with them is one the program would read.
    */
   static KdfParams MinParams() {
     return KdfParams{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism };
@@ -76,6 +83,10 @@ class AesGcmTest : public ::testing::Test {
 
   /**
    * @brief   Derive a key from a password and salt, reusing an earlier derivation
+   *
+   * Argon2id is deliberately slow, and the suite asks for the same handful of keys over and over, so
+   * the cache is the difference between a fast run and a slow one. It lives to the end of the process
+   * on purpose: a key is a pure function of the password, the salt and the parameters.
    */
   static const SecureKey& MakeKey(const char* pw, const std::array<uint8_t, kSaltSize>& salt) {
     using CacheKey = std::pair<std::string, std::array<uint8_t, kSaltSize>>;

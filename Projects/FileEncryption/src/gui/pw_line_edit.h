@@ -36,6 +36,10 @@ class PWLineEdit : public QWidget {
    * @brief		Extract data from the input line to Password class
    * @param		pw	Destination
    * @return	kSuccess on success, kFailure when secure allocation fails
+   *
+   * Clears the field as part of extracting, so the widget stops being somewhere the password is kept.
+   * The copies this code can reach are wiped; a buffer Qt has already reallocated behind the QString
+   * cannot be, which is the limit of what the GUI side can promise.
    */
   [[nodiscard]] Result Extract(Password& pw);
 

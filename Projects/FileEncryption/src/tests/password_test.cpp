@@ -215,6 +215,9 @@ TEST(PasswordTest, SelfMoveAssignment) {
 
   ASSERT_EQ(pw.SetData(data, size), Result::kSuccess);
 
+  /* Through an alias, for the same reason the compiler is the obstacle: a literal pw = std::move(pw) is
+   * diagnosed and would not compile under the warnings this build turns on */
+
   Password& alias = pw;
 
   pw = std::move(alias);
@@ -237,6 +240,10 @@ TEST(PasswordTest, SetDataNull) {
  * @brief   Verify destructor is called without crash after move
  */
 TEST(PasswordTest, DestructorAfterMove) {
+  /* Allocated by hand so the moved-from object can be destroyed at a chosen point, with the destination
+   * still alive to check afterwards. A local would only be destroyed at the end of the scope, by which
+   * time there is nothing left to assert against. */
+
   Password* pw0 = new Password();
   const char* data = "password";
   size_t size = strlen(data);

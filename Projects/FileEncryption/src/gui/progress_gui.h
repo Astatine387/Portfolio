@@ -30,6 +30,8 @@ class ProgressGUI : public QWidget {
   /**
    * @brief   Check whether the process is cancelled by user
    * @return  true if cancel button is clicked
+   *
+   * Latched once set, so a cancel cannot be lost between the click and whenever it is asked about.
    */
   bool IsCancelled();
 
@@ -49,6 +51,10 @@ class ProgressGUI : public QWidget {
   /**
    * @brief   Show the shutdown busy state while the worker drains
    * @param   msg     Status message
+   *
+   * The end of the window's life, not a state it comes back from: cancelling is disabled and the bar
+   * stops carrying a percentage, because the worker only stops between chunks and there is nothing left
+   * to ask of it.
    */
   void ShowBusy(const QString& msg);
 
