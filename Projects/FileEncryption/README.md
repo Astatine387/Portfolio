@@ -289,13 +289,13 @@ ctest --test-dir build --output-on-failure
 
 # 6. Benchmark
 
-**Source:** https://github.com/Astatine387/Portfolio/actions/runs/33981343212
+**Source:** https://github.com/Astatine387/Portfolio/actions/runs/34012748951
 
 | Metric                                              |     Value |
 | --------------------------------------------------- | --------: |
-| Encryption pipeline / raw OpenSSL EVP               | **35.0%** |
-| Decryption pipeline / raw OpenSSL EVP               | **34.0%** |
-| Argon2id key derivation (m = 512 MiB, t = 4, p = 4) |    791429 |
+| Encryption pipeline / raw OpenSSL EVP               | **40.2%** |
+| Decryption pipeline / raw OpenSSL EVP               | **39.7%** |
+| Argon2id key derivation (m = 512 MiB, t = 4, p = 4) |     473ms |
 
 # 7. License
 
