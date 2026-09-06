@@ -2,6 +2,9 @@
  * @file	byte_order.h
  * @brief	Explicit byte order helpers for on-disk integer fields
  * @author	Astatine387
+ *
+ * Two orders coexist on purpose: the header stores its integer fields little-endian, while the chunk
+ * counter inside the nonce is big-endian, the order the STREAM construction uses.
  */
 
 #pragma once

@@ -21,6 +21,9 @@
 
 namespace {
 
+/* Nonce layout of the STREAM construction: zero padding, then the big-endian chunk counter, then the
+ * final-chunk flag in the last byte */
+
 constexpr size_t kCounterOffset = kNonceSize - 1 - sizeof(uint64_t);
 
 constexpr uint8_t kNormalChunkFlag = 0x00;
@@ -33,6 +36,9 @@ static_assert(kCounterOffset + sizeof(uint64_t) + 1 == kNonceSize, "Nonce layout
 AesGcm::AesGcm() {
   writer_ = std::thread(&AesGcm::WriterLoop, this);
 }
+
+/* Joining the writer and taking its lock can both throw std::system_error, which a destructor cannot
+ * propagate; there would be nothing left to recover at this point either */
 
 // NOLINTNEXTLINE(bugprone-exception-escape)
 AesGcm::~AesGcm() {
@@ -211,6 +217,9 @@ void AesGcm::ReportError(const char* msg) {
 }
 
 void AesGcm::BuildNonce(uint64_t idx, bool is_last) {
+  /* The counter gives every chunk a nonce of its own, so a reordered or duplicated chunk fails its tag,
+   * and the flag binds where the file ends, so a truncated or extended one fails its tag too */
+
   nonce_.fill(0);
 
   StoreBE64(nonce_.data() + kCounterOffset, idx);
@@ -240,6 +249,9 @@ Result AesGcm::SetupCtx(CryptoMode mode) {
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
+
+  /* Three calls rather than one: OpenSSL takes the cipher first, then the nonce length, then the key.
+   * Stating the length explicitly keeps the format independent of whatever the library defaults to. */
 
   const auto init = mode == CryptoMode::kEncrypt ? &EVP_EncryptInit_ex : &EVP_DecryptInit_ex;
 

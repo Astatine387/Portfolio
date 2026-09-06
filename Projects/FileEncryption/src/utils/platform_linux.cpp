@@ -34,6 +34,8 @@ int64_t GetFileSize(FILE* file) {
 }
 
 Result Random(uint8_t* dst, size_t size) {
+  /* getrandom only promises to fill a buffer of up to 256 bytes in one call, so anything larger loops */
+
   size_t remaining = size;
 
   while (remaining > 0) {
@@ -65,9 +67,15 @@ Result RemoveFile(const std::string& path) {
 }
 
 Result RenameFile(const std::string& src, const std::string& dst) {
+  /* link() rather than rename(): rename() would silently replace an existing destination, while link()
+   * fails with EEXIST. The cost is that it cannot cross a filesystem, so the source has to be a sibling
+   * of the destination. */
+
   if (link(src.c_str(), dst.c_str())) {
     return Result::kFailure;
   }
+
+  /* The destination already holds the data, so failing to drop the source link is not worth reporting */
 
   static_cast<void>(unlink(src.c_str()));
 
@@ -87,6 +95,9 @@ Result SyncFile(FILE* file) {
 }
 
 Result SyncDir(const std::string& path) {
+  /* Syncing the file leaves the new directory entry in the cache, so a power cut could still take the
+   * rename away; only an fsync on the parent directory makes the entry itself durable */
+
   std::filesystem::path dir = std::filesystem::path(path).parent_path();
 
   int fd = open(dir.empty() ? "." : dir.c_str(), O_RDONLY | O_DIRECTORY);
@@ -120,6 +131,10 @@ void OpenFile(FILE** file, const std::string& path, const char* mode) {
 
 Result OpenNewFile(FILE** file, const std::string& path) {
   *file = nullptr;
+
+  /* O_EXCL refuses a path that is already taken and O_NOFOLLOW refuses a symlink at the final component,
+   * so neither an existing file nor a planted link can be written through. The mode leaves the output
+   * readable by its owner alone. */
 
   const int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, S_IRUSR | S_IWUSR);
 

@@ -26,6 +26,10 @@ void DoInit() {
     return;  // LCOV_EXCL_LINE  libsodium unavailable
   }
 
+  /* sodium_malloc locks its pages so that a key cannot reach the swap file, but the lock is capped by
+   * the limits below and fails quietly once the cap is reached. Raising them is best effort: a limit
+   * that will not move is not a reason to refuse to run. */
+
 #ifdef _WIN32
   /* Raise the working-set minimum so locked pages are permitted */
 
@@ -84,6 +88,9 @@ std::span<const uint8_t, kKeySize> SecureKey::Bytes() const {
 }
 
 bool SecureKey::ConstantTimeEquals(const SecureKey& other) const {
+  /* sodium_memcmp rather than memcmp: memcmp stops at the first differing byte, and how long it takes
+   * to do so tells an observer how much of a guessed key was right */
+
   return sodium_memcmp(data_, other.data_, kKeySize) == 0;
 }
 

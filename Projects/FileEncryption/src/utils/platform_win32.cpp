@@ -17,6 +17,9 @@
 namespace {
 
 std::filesystem::path ToPath(const std::string& path) {
+  /* Going through u8string makes std::filesystem read the bytes as UTF-8. A plain char string would be
+   * decoded with the active code page instead, mangling every non-ASCII file name. */
+
   return std::filesystem::path(std::u8string(reinterpret_cast<const char8_t*>(path.data()), path.size()));
 }
 
@@ -62,6 +65,10 @@ Result RemoveFile(const std::string& path) {
 Result RenameFile(const std::string& src, const std::string& dst) {
   std::filesystem::path src_path = ToPath(src);
   std::filesystem::path dst_path = ToPath(dst);
+
+  /* MOVEFILE_REPLACE_EXISTING is deliberately absent, so the move fails instead of overwriting an
+   * existing destination. MOVEFILE_WRITE_THROUGH returns only once the new directory entry is on the
+   * disk, which is what lets SyncDir here be a plain open. */
 
   if (!MoveFileExW(src_path.c_str(), dst_path.c_str(), MOVEFILE_WRITE_THROUGH)) {
     return Result::kFailure;
@@ -132,6 +139,10 @@ Result OpenNewFile(FILE** file, const std::string& path) {
   *file = nullptr;
 
   std::filesystem::path fs_path = ToPath(path);
+
+  /* CREATE_NEW refuses a path that is already taken and FILE_FLAG_OPEN_REPARSE_POINT opens a reparse
+   * point instead of following it, together matching O_EXCL | O_NOFOLLOW on the Linux side. The zero
+   * share mode keeps other processes out of the file while it is being written. */
 
   HANDLE handle = CreateFileW(fs_path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW,
                               FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);

@@ -91,6 +91,9 @@ void CryptoWorker::Work() {
     }
   }
 
+  /* Derivation is over either way, so let the password go here: assigning over it frees the secure
+   * buffer, which wipes it, well before the long crypto pass begins */
+
   pw_ = Password();
 
   if (!key.has_value()) {

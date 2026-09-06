@@ -116,6 +116,9 @@ Result AesGcm::DecryptLoop() {
       return Result::kFailure;
     }
 
+    /* Position alone decides the flag, so a truncated file arrives here with a chunk that was encrypted
+     * as an interior one and is now verified as the final one, and its tag fails */
+
     const bool is_last = std::cmp_less_equal(rem, chunk_size_ + kTagSize);
     const size_t len = is_last ? static_cast<size_t>(rem) - kTagSize : chunk_size_;
 
@@ -213,6 +216,9 @@ Result AesGcm::DecryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
       // LCOV_EXCL_STOP
     }
   }
+
+  /* The tag is only checked here. Everything DecryptUpdate produced above is unauthenticated until this
+   * call returns, which is why the caller writes nothing before DecryptChunk succeeds. */
 
   std::array<uint8_t, kBlockSize> final_block{};
   int final_len = 0;
