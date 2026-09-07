@@ -83,6 +83,26 @@ TEST_F(GetFileSizeTest, ArbitSizeFile) {
   EXPECT_EQ(GetFileSize(file_), 1000);
 }
 
+#ifndef _WIN32
+
+/**
+ * @brief   Verify GetFileSize refuses a stream that is not on a regular file
+ *
+ * A character device answers a seek to the end with whatever its driver reports, so a size taken from
+ * one would turn a source that cannot be measured into a number the caller trusts.
+ */
+TEST_F(GetFileSizeTest, RejectsCharacterDevice) {
+  OpenFile(&file_, "/dev/null", "rb");
+
+  if (file_ == nullptr) {
+    GTEST_SKIP() << "/dev/null is not available";
+  }
+
+  EXPECT_EQ(GetFileSize(file_), -1);
+}
+
+#endif  // !_WIN32
+
 /* ==================================================
  * FileExists Test
  * ================================================== */
@@ -531,6 +551,44 @@ TEST_F(DurabilityTest, SyncFileRejectsFullDevice) {
   EXPECT_EQ(SyncFile(file), Result::kFailure);
 
   fclose(file);
+}
+
+/**
+ * @brief   Verify syncing reports failure when the descriptor cannot be synced at all
+ *
+ * The case above fails in the flush; this one fails in the fsync behind it. A character device takes
+ * the buffered bytes without complaint and then has nothing to sync them to, so the refusal here can
+ * only have come from the second half.
+ */
+TEST_F(DurabilityTest, SyncFileRejectsUnsyncableDescriptor) {
+  FILE* file = nullptr;
+
+  OpenFile(&file, "/dev/null", "wb");
+
+  if (file == nullptr) {
+    GTEST_SKIP() << "/dev/null is not available";
+  }
+
+  EXPECT_EQ(fwrite("Hello, world!", sizeof(char), 13, file), 13U);
+  EXPECT_EQ(SyncFile(file), Result::kFailure);
+
+  fclose(file);
+}
+
+/**
+ * @brief   Verify syncing reports failure when the parent directory opens but refuses the sync
+ *
+ * SyncDirRejectsMissingDirectory stops at the open. A procfs directory gets past it and refuses the
+ * fsync instead, which is the only other way this can fail.
+ */
+TEST_F(DurabilityTest, SyncDirRejectsUnsyncableDirectory) {
+  constexpr const char* kPseudoPath = "/proc/self/status";
+
+  if (!FileExists(kPseudoPath)) {
+    GTEST_SKIP() << "procfs is not mounted";
+  }
+
+  EXPECT_EQ(SyncDir(kPseudoPath), Result::kFailure);
 }
 
 #endif  // !_WIN32

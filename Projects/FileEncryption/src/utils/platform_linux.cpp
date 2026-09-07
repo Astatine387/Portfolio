@@ -111,6 +111,14 @@ Result RenameFile(const std::string& src, const std::string& dst) {
   }
 #endif
 
+  /* Everything below is held off the coverage report. It is not an error path a test could provoke: it
+   * runs only where RENAME_NOREPLACE is missing, and step 1 answers every call definitively on ext4,
+   * XFS, Btrfs and tmpfs, which is all a test or a CI runner has to hand. Reaching it takes a FAT,
+   * exFAT or NFS mount rather than a test case, so counting it as untested code would only be reporting
+   * the file system the suite happened to run on. */
+
+  // LCOV_EXCL_START
+
   /* 2. link(): the same guarantee by another route, since a taken name gives EEXIST. This covers file
    *    systems that have hard links but no flag support in rename, such as NFS and ntfs-3g. */
 
@@ -149,6 +157,7 @@ Result RenameFile(const std::string& src, const std::string& dst) {
   }
 
   return Result::kSuccess;
+  // LCOV_EXCL_STOP
 }
 
 Result SyncFile(FILE* file) {

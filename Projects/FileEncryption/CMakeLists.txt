@@ -247,6 +247,7 @@ set(TEST_SOURCES
     src/tests/file_header_test.cpp
     src/tests/kat_test.cpp
     src/tests/open_new_file_test.cpp
+    src/tests/open_source_file_test.cpp
     src/tests/password_test.cpp
     src/tests/secure_key_test.cpp
     src/tests/utils_test.cpp
