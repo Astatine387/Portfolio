@@ -82,8 +82,6 @@ void CryptoWorker::Work() {
    * from the header, since they are what the file was written with. */
 
   FileHeader header;
-  KdfParams params;
-  std::array<uint8_t, kSaltSize> salt{};
   std::optional<SecureKey> key;
   std::string reason;
 
@@ -94,6 +92,9 @@ void CryptoWorker::Work() {
   ReportPhase(WorkPhase::kDerivingKey, "Deriving key from password...\n");
 
   if (mode_ == CryptoMode::kEncrypt) {
+    const KdfParams params;
+    std::array<uint8_t, kSaltSize> salt{};
+
     if (Random(salt.data(), kSaltSize) == Result::kSuccess) {
       key = DeriveKey(std::span<const char>(pw_.GetData(), pw_.GetSize()), salt, params);
     }
