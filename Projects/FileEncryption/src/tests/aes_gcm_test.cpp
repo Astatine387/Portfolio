@@ -33,9 +33,9 @@ TEST_F(AesGcmTest, EncryptDecryptBasic) {
 /**
  * @brief   Verify encryption is deterministic, since the nonce is derived from the chunk counter
  *
- * Determinism at this level is normally the thing to avoid, and it is only safe because the salt is not
- * chosen here. The engine is handed one, and the worker draws a fresh one for every file, so two files
- * never share a key and the same nonce is never used twice under one.
+ * Determinism at this level is normally the thing to avoid, and it is only safe because the salt is not chosen here.
+ * The engine is handed one, and the worker draws a fresh one for every file, so two files never share a key and the
+ * same nonce is never used twice under one.
  */
 TEST_F(AesGcmTest, EncryptIsDeterministic) {
   const auto salt = MakeSalt(0xA5);
@@ -50,9 +50,8 @@ TEST_F(AesGcmTest, EncryptIsDeterministic) {
 /**
  * @brief   Verify a reused AesGcm can encrypt twice with one object
  *
- * The freeing of the previous context is not observable from here: leaking it would make
- * both calls succeed just the same. What actually catches that is LeakSanitizer in the
- * ASan build, which fails this test at process exit.
+ * The freeing of the previous context is not observable from here: leaking it would make both calls succeed just the
+ * same. What actually catches that is LeakSanitizer in the ASan build, which fails this test at process exit.
  */
 TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
   AesGcm aes;
@@ -64,13 +63,13 @@ TEST_F(AesGcmTest, ReuseFreesPreviousContext) {
   {
     FilePair files(src_path_, enc_path_);
 
-    EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), key, salt, MinParams()), Result::kSuccess);
+    EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), key), Result::kSuccess);
   }
 
   {
     FilePair files(src_path_, dec_path_);
 
-    EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), key, salt, MinParams()), Result::kSuccess);
+    EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), key), Result::kSuccess);
   }
 }
 
@@ -110,9 +109,20 @@ TEST_F(AesGcmTest, EncryptWritesHeader) {
 TEST_F(AesGcmTest, DecryptRejectsUndersizedFile) {
   const auto salt = MakeSalt(0xA5);
 
+  /* A real header with its data region cut away. The image has to parse as a header, because the size check now sits
+   * behind the parse rather than in front of it: the caller reads the header first and a file that fails to parse is
+   * refused there, which is the order CryptoWorker has always used. An unparseable image of the same length is the
+   * DecryptRejectsForeignFile case below. */
+
+  std::vector<uint8_t> bytes = EncryptBytes(MakePlain(0), salt, "password");
+
+  ASSERT_EQ(bytes.size(), kMinSize);
+
+  bytes.resize(kMinSize - 1);
+
   std::vector<uint8_t> copy;
 
-  EXPECT_EQ(DecryptBytes(std::vector<uint8_t>(kMinSize - 1, 0x00), copy, salt, "password"), Result::kFailure);
+  EXPECT_EQ(DecryptBytes(bytes, copy, salt, "password"), Result::kFailure);
   EXPECT_NE(last_error_.find("too small"), std::string::npos);
 }
 
@@ -126,6 +136,43 @@ TEST_F(AesGcmTest, DecryptRejectsForeignFile) {
 
   EXPECT_EQ(DecryptBytes(std::vector<uint8_t>(kMinSize, 0x00), copy, salt, "password"), Result::kFailure);
   EXPECT_NE(last_error_.find("Not a FileEncryption file"), std::string::npos);
+}
+
+/**
+ * @brief   Verify the engine re-checks a header rather than trusting the caller to have checked it
+ *
+ * ReadHeader is the contract every real caller goes through, so this reaches the engine the one way a caller cannot: by
+ * handing it a struct that never came from a file. chunk_log2 is the field worth pinning, because it is a shift width
+ * and sizes both chunk buffers, so trusting an out-of-range one would be undefined behaviour before it was a bad
+ * allocation.
+ */
+TEST_F(AesGcmTest, DecryptRejectsHeaderTheCallerNeverValidated) {
+  AesGcm aes;
+  const auto salt = MakeSalt(0xA5);
+
+  Store(enc_path_, EncryptBytes(MakePlain(kChunkSize), salt, "password"));
+  RemoveFile(dec_path_);
+
+  last_error_.clear();
+
+  aes.SetErrorCallback([this](const char* msg) { last_error_ += msg; });
+
+  FileHeader header;
+
+  header.chunk_log2 = kMaxChunkSizeLog2 + 1;
+  header.params = MinParams();
+  header.salt = salt;
+
+  Result res = Result::kSuccess;
+
+  {
+    FilePair files(enc_path_, dec_path_);
+
+    res = aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt), header);
+  }
+
+  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_NE(last_error_.find("Unsupported chunk size"), std::string::npos);
 }
 
 /* ==================================================
@@ -146,8 +193,8 @@ TEST_F(AesGcmTest, DecryptWrongKey) {
 /**
  * @brief   Verify a wrong password is named as such rather than blamed on the file
  *
- * The header commitment is what makes the distinction possible: the password is rejected before a chunk
- * is read, so nothing here can reach the tag check that reports corruption.
+ * The header commitment is what makes the distinction possible: the password is rejected before a chunk is read, so
+ * nothing here can reach the tag check that reports corruption.
  */
 TEST_F(AesGcmTest, DecryptWrongKeyReportsInvalidPassword) {
   const auto salt = MakeSalt(0xA5);
@@ -183,8 +230,8 @@ TEST_F(AesGcmTest, ErrorCallbackFormatsQueue) {
  * @brief   Verify progress is reported once per whole percent
  */
 TEST_F(AesGcmTest, ProgressSkipsRepeatedPercent) {
-  /* More chunks than there are whole percents to report, so the assertion below can only hold if reports
-   * are actually being dropped. Anything up to a hundred would pass whether they were or not. */
+  /* More chunks than there are whole percents to report, so the assertion below can only hold if reports are actually
+   * being dropped. Anything up to a hundred would pass whether they were or not. */
 
   constexpr size_t kChunks = 200;
 
@@ -201,7 +248,7 @@ TEST_F(AesGcmTest, ProgressSkipsRepeatedPercent) {
   {
     FilePair files(src_path_, enc_path_);
 
-    EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey("password", salt), salt, MinParams()), Result::kSuccess);
+    EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey("password", salt)), Result::kSuccess);
   }
 
   EXPECT_LT(res.size(), kChunks);
@@ -239,11 +286,11 @@ TEST_F(AesGcmTest, CancelDuringEncryption) {
 
   FilePair files(src_path_, enc_path_);
 
-  /* The flag is polled straight after each report, so the second one is the last a correct run makes.
-   * The upper bound carries a report of slack rather than pinning the count: what it rules out is a run
-   * that reads on to the end of the file, which is what a cancellation noticed only once would do. */
+  /* The flag is polled straight after each report, so the second one is the last a correct run makes. The upper bound
+   * carries a report of slack rather than pinning the count: what it rules out is a run that reads on to the end of the
+   * file, which is what a cancellation noticed only once would do. */
 
-  EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey("password", salt), salt, MinParams()), Result::kFailure);
+  EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey("password", salt)), Result::kFailure);
   EXPECT_GE(cnt, 2);
   EXPECT_LE(cnt, 3);
 }
@@ -276,7 +323,8 @@ TEST_F(AesGcmTest, CancelDuringDecryption) {
   {
     FilePair files(enc_path_, dec_path_);
 
-    EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt)), Result::kFailure);
+    EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt), HeaderOf(files.Src())),
+              Result::kFailure);
   }
 
   std::vector<uint8_t> written;
@@ -312,12 +360,12 @@ TEST_F(AesGcmTest, WriteFailureStopsTheProducer) {
 
   FilePair files(enc_path_, dec_path_, "rb");
 
-  EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt)), Result::kFailure);
+  EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt), HeaderOf(files.Src())), Result::kFailure);
   EXPECT_NE(res.find("Write failed"), std::string::npos);
 
-  /* Exactly one report, which is the single job in flight made visible. The first chunk is submitted
-   * without waiting and gets its report; the second has to wait on the first write, finds it failed and
-   * stops there. A pipeline that queued instead of blocking would run further before noticing. */
+  /* Exactly one report, which is the single job in flight made visible. The first chunk is submitted without waiting
+   * and gets its report; the second has to wait on the first write, finds it failed and stops there. A pipeline that
+   * queued instead of blocking would run further before noticing. */
 
   EXPECT_EQ(cnt, 1);
 }
@@ -344,7 +392,7 @@ TEST_F(AesGcmTest, ThrowingErrorCallbackDoesNotTerminate) {
 
   FilePair files(enc_path_, dec_path_, "rb");
 
-  EXPECT_NO_THROW(res = aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt)));
+  EXPECT_NO_THROW(res = aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt), HeaderOf(files.Src())));
   EXPECT_EQ(res, Result::kFailure);
   EXPECT_GT(calls, 0);
 }
@@ -367,7 +415,7 @@ TEST_F(AesGcmTest, DecryptReportsWriteFailureOnFinalFlush) {
 
   FilePair files(enc_path_, dec_path_, "rb");
 
-  EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt)), Result::kFailure);
+  EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt), HeaderOf(files.Src())), Result::kFailure);
   EXPECT_NE(captured.find("Write failed"), std::string::npos);
 }
 
@@ -387,7 +435,7 @@ TEST_F(AesGcmTest, EncryptReportsWriteFailure) {
 
   FilePair files(src_path_, enc_path_, "rb");
 
-  EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey("password", salt), salt, MinParams()), Result::kFailure);
+  EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey("password", salt)), Result::kFailure);
   EXPECT_NE(captured.find("Write failed"), std::string::npos);
 }
 
@@ -397,9 +445,8 @@ TEST_F(AesGcmTest, EncryptReportsWriteFailure) {
 TEST_F(AesGcmTest, EncryptReportsDiskFull) {
   const auto salt = MakeSalt(0xA5);
 
-  /* Two counts for two reporting paths: a single chunk has nothing after it, so the failure can only
-   * surface in the final flush, while three chunks let a SubmitWrite in the middle of the loop be the
-   * one that reports it */
+  /* Two counts for two reporting paths: a single chunk has nothing after it, so the failure can only surface in the
+   * final flush, while three chunks let a SubmitWrite in the middle of the loop be the one that reports it */
 
   for (size_t chunks : { size_t{ 1 }, size_t{ 3 } }) {
     SCOPED_TRACE(testing::Message() << "chunks=" << chunks);
@@ -417,7 +464,7 @@ TEST_F(AesGcmTest, EncryptReportsDiskFull) {
       GTEST_SKIP() << "/dev/full is not available";
     }
 
-    EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey("password", salt), salt, MinParams()), Result::kFailure);
+    EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey("password", salt)), Result::kFailure);
     EXPECT_NE(captured.find("Write failed"), std::string::npos);
   }
 }

@@ -16,7 +16,6 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
-#include <span>
 #include <thread>
 #include <vector>
 
@@ -57,24 +56,31 @@ class AesGcm {
 
   /**
    * @brief		Decrypt a file
-   * @param		src		Source file
-   * @param		dst		Destination file
-   * @param		key		Key derived from the password and the salt
-   * @return    kSuccess on success, kFailure on failure
+   * @param		src     Source file
+   * @param		dst     Destination file
+   * @param		key     Key derived from the password and the salt
+   * @param		header  Header of the file, already read and validated by the caller
+   * @return  kSuccess on success, kFailure on failure
+   *
+   * The header arrives parsed rather than being read here. A caller has to read it anyway, since the key cannot be
+   * derived without the salt and the parameters it carries, and reading it a second time would mean deriving the key
+   * from one image of an untrusted file and authenticating against another. It is re-validated below all the same:
+   * checking a struct already in memory costs a few comparisons and leaves no window for the file to change in.
    */
-  Result Decrypt(FILE* src, FILE* dst, const SecureKey& key);
+  Result Decrypt(FILE* src, FILE* dst, const SecureKey& key, const FileHeader& header);
 
   /**
    * @brief		Encrypt a file
    * @param		src     Source file
    * @param		dst     Destination file
    * @param		key     Key derived from the password and salt
-   * @param		salt    Salt written to the file header
-   * @param		params  Argon2id parameters
    * @return  kSuccess on success, kFailure on failure
+   *
+   * The salt and the parameters written to the header come from the key rather than from arguments of their own. Passed
+   * separately they could describe a derivation other than the one that produced the key, which would write a file that
+   * authenticates under nothing and reports success doing it.
    */
-  Result Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt,
-                 const KdfParams& params = {});
+  Result Encrypt(FILE* src, FILE* dst, const SecureKey& key);
 
   /* ==================================================
    * Callback functions
@@ -96,8 +102,8 @@ class AesGcm {
    * @brief		Set error callback function
    * @param		ecb		Error callback function
    *
-   * Guarded, unlike the progress callback below: an error can come from the writer thread as well as
-   * from the thread doing the reading and the crypto, so two of them can arrive at once.
+   * Guarded, unlike the progress callback below: an error can come from the writer thread as well as from the thread
+   * doing the reading and the crypto, so two of them can arrive at once.
    */
   void SetErrorCallback(ErrorCallback ecb) {
     UniqueLock lk(error_mtx_);
@@ -114,8 +120,8 @@ class AesGcm {
    * @brief		Set the cancellation flag
    * @param		flag	Cancellation flag
    *
-   * Borrowed, not owned. The flag belongs to whoever may raise it and has to outlive the engine, which
-   * holds for the worker that owns both.
+   * Borrowed, not owned. The flag belongs to whoever may raise it and has to outlive the engine, which holds for the
+   * worker that owns both.
    */
   void SetCancelFlag(const std::atomic<bool>* flag) { cancel_ = flag; }
 
@@ -144,9 +150,9 @@ class AesGcm {
 
   const SecureKey* key_ = nullptr;  // Session key for the current operation (non-owning)
 
-  /* The five fields below are one hand-off slot, not a queue: the producer fills it, the writer empties
-   * it, and SubmitWrite blocks until it is free again. That bound is what lets two chunk buffers be
-   * enough, since only one of them can be in the writer's hands at a time. */
+  /* The five fields below are one hand-off slot, not a queue: the producer fills it, the writer empties it, and
+   * SubmitWrite blocks until it is free again. That bound is what lets two chunk buffers be enough, since only one of
+   * them can be in the writer's hands at a time. */
 
   std::thread writer_;          // Long-lived asynchronous write worker
   Mutex write_mtx_;             // Serializes the write hand-off state
@@ -201,8 +207,8 @@ class AesGcm {
    * @class   WriterGuard
    * @brief   Drain any in-flight asynchronous write when the scope exits
    *
-   * Every exit from Encrypt and Decrypt goes through it, early returns included. That is what lets the
-   * caller close the destination file the moment the call returns: the writer thread is done with it.
+   * Every exit from Encrypt and Decrypt goes through it, early returns included. That is what lets the caller close the
+   * destination file the moment the call returns: the writer thread is done with it.
    */
   class WriterGuard {
    public:
@@ -248,10 +254,11 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief   Read and validate the header, then prepare the context and buffers
+   * @brief   Check the header handed in, then prepare the context and buffers
+   * @param   header  Header of the file being decrypted
    * @return  kSuccess on success, kFailure on failure
    */
-  Result DecryptInit();
+  Result DecryptInit(const FileHeader& header);
 
   /**
    * @brief   Verify and write every chunk of the file in a single pass
@@ -275,11 +282,9 @@ class AesGcm {
 
   /**
    * @brief		Write the header, then prepare the context and buffers
-   * @param		salt    Salt written to the file header
-   * @param		params  Argon2id parameters written to the file header
    * @return	kSuccess on success, kFailure on failure
    */
-  Result EncryptInit(std::span<const uint8_t, kSaltSize> salt, const KdfParams& params);
+  Result EncryptInit();
 
   /**
    * @brief		Encrypt and write every chunk of the file in a single pass

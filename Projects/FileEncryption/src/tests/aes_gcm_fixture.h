@@ -36,9 +36,9 @@ class AesGcmTest : public ::testing::Test {
  protected:
   std::string last_error_;
 
-  /* Fixed names in the working directory, shared by every case built on this fixture. Two cases running
-   * at once would be writing over each other's files, which is why the tests are registered RUN_SERIAL
-   * in CMakeLists.txt. Giving a case a scratch file of its own means naming it here. */
+  /* Fixed names in the working directory, shared by every case built on this fixture. Two cases running at once would
+   * be writing over each other's files, which is why the tests are registered RUN_SERIAL in CMakeLists.txt. Giving a
+   * case a scratch file of its own means naming it here. */
 
   std::string src_path_ = "test_src.tmp";
   std::string enc_path_ = "test_enc.tmp";
@@ -56,9 +56,9 @@ class AesGcmTest : public ::testing::Test {
   /**
    * @brief   The cheapest Argon2id parameters this build accepts
    *
-   * Deriving at the shipped parameters would cost half a gigabyte and four passes for every key, and
-   * none of these tests is about the derivation. They still sit inside the accepted range, so a file
-   * written with them is one the program would read.
+   * Deriving at the shipped parameters would cost half a gigabyte and four passes for every key, and none of these
+   * tests is about the derivation. They still sit inside the accepted range, so a file written with them is one the
+   * program would read.
    */
   static KdfParams MinParams() {
     return KdfParams{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism };
@@ -85,9 +85,9 @@ class AesGcmTest : public ::testing::Test {
   /**
    * @brief   Derive a key from a password and salt, reusing an earlier derivation
    *
-   * Argon2id is deliberately slow, and the suite asks for the same handful of keys over and over, so
-   * the cache is the difference between a fast run and a slow one. It lives to the end of the process
-   * on purpose: a key is a pure function of the password, the salt and the parameters.
+   * Argon2id is deliberately slow, and the suite asks for the same handful of keys over and over, so the cache is the
+   * difference between a fast run and a slow one. It lives to the end of the process on purpose: a key is a pure
+   * function of the password, the salt and the parameters.
    */
   static const SecureKey& MakeKey(const char* pw, const std::array<uint8_t, kSaltSize>& salt) {
     using CacheKey = std::pair<std::string, std::array<uint8_t, kSaltSize>>;
@@ -105,6 +105,22 @@ class AesGcmTest : public ::testing::Test {
     }
 
     return it->second;
+  }
+
+  /**
+   * @brief   Read and validate the header of an encrypted stream
+   * @param   file    Stream to read from; ReadHeader rewinds it first
+   * @return  The parsed header
+   *
+   * The engine no longer reads a header of its own, so a test that calls Decrypt directly has to hand it one the way
+   * CryptoWorker does. This is that step, kept in one place.
+   */
+  static FileHeader HeaderOf(FILE* file) {
+    FileHeader header;
+
+    EXPECT_EQ(ReadHeader(file, header), HeaderStatus::kOk);
+
+    return header;
   }
 
   /**
@@ -167,27 +183,23 @@ class AesGcmTest : public ::testing::Test {
     FILE* dst_ = nullptr;  // Destination stream
   };
 
-  /* Deterministic plaintext pattern: byte i is the top byte of the 32-bit product
-   * i * kPatternMixer. Both the shift and the multiplier are load-bearing, and the
-   * assertions below hold a replacement of either to what the tests need.
+  /* Deterministic plaintext pattern: byte i is the top byte of the 32-bit product i * kPatternMixer. Both the shift and
+   * the multiplier are load-bearing, and the assertions below hold a replacement of either to what the tests need.
    *
-   * Why the top byte. Carries in a product only travel upward, so the low m bits of i * k
-   * depend on nothing but the low m bits of i. Slicing a lower byte out therefore repeats on
-   * a short cycle however good the multiplier is: byte 0 repeats every 256 indices and byte 1
-   * every 65536, the latter being exactly one chunk. Only the top byte depends on every bit
-   * of the index, which is what gives the pattern a period no file here can reach.
+   * Why the top byte. Carries in a product only travel upward, so the low m bits of i * k depend on nothing but the low
+   * m bits of i. Slicing a lower byte out therefore repeats on a short cycle however good the multiplier is: byte 0
+   * repeats every 256 indices and byte 1 every 65536, the latter being exactly one chunk. Only the top byte depends on
+   * every bit of the index, which is what gives the pattern a period no file here can reach.
    *
-   * Why this multiplier. 0x9E3779B1 is the nearest prime to 2^32 divided by the golden ratio,
-   * the constant Knuth gives for multiplicative hashing. The golden ratio is the hardest
-   * number to approximate by a fraction, so no bit window of the product resonates with a
-   * stride, and the pattern keeps working for any chunk size in the accepted range rather
-   * than for one. It must also be odd, which makes i -> i * kPatternMixer one-to-one over
-   * 32 bits. Being prime is incidental.
+   * Why this multiplier. 0x9E3779B1 is the nearest prime to 2^32 divided by the golden ratio, the constant Knuth gives
+   * for multiplicative hashing. The golden ratio is the hardest number to approximate by a fraction, so no bit window
+   * of the product resonates with a stride, and the pattern keeps working for any chunk size in the accepted range
+   * rather than for one. It must also be odd, which makes i -> i * kPatternMixer one-to-one over 32 bits. Being prime
+   * is incidental.
    *
-   * What breaks without them. Every chunk would carry byte-identical plaintext, and a round
-   * trip could no longer tell a reordered or misplaced chunk from an intact one. Oddness
-   * alone does not suffice: 2^24 + 1 is odd, yet stepping one chunk with it moves only bits
-   * the shift throws away.
+   * What breaks without them. Every chunk would carry byte-identical plaintext, and a round trip could no longer tell a
+   * reordered or misplaced chunk from an intact one. Oddness alone does not suffice: 2^24 + 1 is odd, yet stepping one
+   * chunk with it moves only bits the shift throws away.
    */
   static constexpr uint32_t kPatternMixer = 2654435761U;
   static constexpr uint32_t kPatternShift = 24;
@@ -274,7 +286,7 @@ class AesGcmTest : public ::testing::Test {
     {
       FilePair files(src_path_, enc_path_);
 
-      EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey(pw, salt), salt, MinParams()), Result::kSuccess);
+      EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey(pw, salt)), Result::kSuccess);
     }
 
     Read(enc_path_, cipher);
@@ -284,11 +296,11 @@ class AesGcmTest : public ::testing::Test {
 
   /**
    * @brief   Decrypt a file
-   * @param   cipher  Bytes of the encrypted file
-   * @param   plain   Recovered plaintext
-   * @param   salt    Salt the key is derived with
-   * @param   pw      Password the key is derived from
-   * @return  Outcome reported by the engine
+   * @param   cipher    Bytes of the encrypted file
+   * @param   plain     Recovered plaintext
+   * @param   salt      Salt the key is derived with
+   * @param   pw        Password the key is derived from
+   * @return  Outcome   reported by the engine
    */
   Result DecryptBytes(const std::vector<uint8_t>& cipher, std::vector<uint8_t>& plain,
                       const std::array<uint8_t, kSaltSize>& salt, const char* pw) {
@@ -306,7 +318,20 @@ class AesGcmTest : public ::testing::Test {
     {
       FilePair files(enc_path_, dec_path_);
 
-      res = aes.Decrypt(files.Src(), files.Dst(), MakeKey(pw, salt));
+      /* Reading and rejecting the header is the caller's job now, so this helper takes it on and reports through the
+       * same sink the engine uses. A header refused here never reaches the engine at all, which is what CryptoWorker
+       * has always done on the real path. */
+
+      FileHeader header;
+
+      const HeaderStatus status = ReadHeader(files.Src(), header);
+
+      if (status != HeaderStatus::kOk) {
+        last_error_ += HeaderErrorMessage(status);
+      }
+      else {
+        res = aes.Decrypt(files.Src(), files.Dst(), MakeKey(pw, salt), header);
+      }
     }
 
     plain.clear();

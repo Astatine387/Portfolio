@@ -23,8 +23,8 @@ constexpr std::string_view kPartSuffix = ".tmp";
 }  // namespace
 
 void CryptoWorker::RequestCancel() {
-  /* Relaxed is enough: the flag publishes no data, and the engine only reads it between chunks, so the
-   * one thing that matters is that the store eventually becomes visible */
+  /* Relaxed is enough: the flag publishes no data, and the engine only reads it between chunks, so the one thing that
+   * matters is that the store eventually becomes visible */
 
   cancel_->store(true, std::memory_order_relaxed);
 }
@@ -46,9 +46,9 @@ void CryptoWorker::Work() {
   std::string msg;
   bool should_delete = false;
 
-  /* Everything is written to a sibling of the destination and moved into place at the end, so a run that
-   * dies halfway leaves a .tmp file rather than a half-written destination. A sibling because RenameFile
-   * cannot cross a filesystem. */
+  /* Everything is written to a sibling of the destination and moved into place at the end, so a run that dies halfway
+   * leaves a .tmp file rather than a half-written destination. A sibling because RenameFile cannot cross a filesystem.
+   */
 
   std::string tmp_path = dst_path_;
 
@@ -78,17 +78,18 @@ void CryptoWorker::Work() {
     return;
   }
 
-  /* Derive the session key. Encryption picks a fresh salt and keeps the default parameters; decryption
-   * has to take both from the header, since they are what the file was written with. */
+  /* Derive the session key. Encryption picks a fresh salt and keeps the default parameters; decryption has to take both
+   * from the header, since they are what the file was written with. */
 
-  std::array<uint8_t, kSaltSize> salt{};
+  FileHeader header;
   KdfParams params;
+  std::array<uint8_t, kSaltSize> salt{};
   std::optional<SecureKey> key;
   std::string reason;
 
-  /* Argon2id holds this thread for as long as the parameters ask for and offers no way back out, so the
-   * phase is announced before it starts rather than after it ends. On the decryption path those
-   * parameters came out of the file, which is what makes the wait worth naming. */
+  /* Argon2id holds this thread for as long as the parameters ask for and offers no way back out, so the phase is
+   * announced before it starts rather than after it ends. On the decryption path those parameters came out of the file,
+   * which is what makes the wait worth naming. */
 
   ReportPhase(WorkPhase::kDerivingKey, "Deriving key from password...\n");
 
@@ -98,23 +99,22 @@ void CryptoWorker::Work() {
     }
   }
   else {
-    FileHeader header;
+    /* The only place the file's header is read. What comes back derives the key and is handed to the engine unchanged,
+     * so the bytes the key came from and the bytes authenticated as associated data are the same bytes rather than two
+     * reads of a file that is free to change in between. */
 
     const HeaderStatus status = ReadHeader(src_file, header);
 
     if (status == HeaderStatus::kOk) {
-      salt = header.salt;
-      params = header.params;
-
-      key = DeriveKey(std::span<const char>(pw_.GetData(), pw_.GetSize()), salt, params);
+      key = DeriveKey(std::span<const char>(pw_.GetData(), pw_.GetSize()), header.salt, header.params);
     }
     else {
       reason = HeaderErrorMessage(status);
     }
   }
 
-  /* Derivation is over either way, so let the password go here: assigning over it frees the secure
-   * buffer, which wipes it, well before the long crypto pass begins */
+  /* Derivation is over either way, so let the password go here: assigning over it frees the secure buffer, which wipes
+   * it, well before the long crypto pass begins */
 
   pw_ = Password();
 
@@ -161,23 +161,22 @@ void CryptoWorker::Work() {
 
   const std::string verb = mode_ == CryptoMode::kEncrypt ? "Encryption" : "Decryption";
 
-  /* The one phase the flag can stop, and the one with a percentage to report. It is announced before
-   * the first chunk so that cancelling is offered before there is anything to cancel, and both reports
-   * leave this thread in this order. */
+  /* The one phase the flag can stop, and the one with a percentage to report. It is announced before the first chunk so
+   * that cancelling is offered before there is anything to cancel, and both reports leave this thread in this order. */
 
   ReportPhase(WorkPhase::kProcessing, mode_ == CryptoMode::kEncrypt ? "Encrypting...\n" : "Decrypting...\n");
 
   if (mode_ == CryptoMode::kEncrypt) {
-    res = aes.Encrypt(src_file, dst_file, *key, salt, params);
+    res = aes.Encrypt(src_file, dst_file, *key);
   }
   else {
-    res = aes.Decrypt(src_file, dst_file, *key);
+    res = aes.Decrypt(src_file, dst_file, *key, header);
   }
 
   fclose(src_file);
 
-  /* The result is examined before the cancellation flag. A cancel that arrives after the
-   * work is already done must not throw away a complete and valid output. */
+  /* The result is examined before the cancellation flag. A cancel that arrives after the work is already done must not
+   * throw away a complete and valid output. */
 
   if (res == Result::kFailure) {
     should_delete = true;
@@ -185,10 +184,9 @@ void CryptoWorker::Work() {
     msg = IsCancelled() ? verb + " cancelled\n" : err_ + verb + " failed\n";
   }
   else {
-    /* Past the point where cancelling could mean anything: the ciphertext is complete and only has to be
-     * made durable. The progress callback has already reported 100%, while fsync on a slow device is
-     * where the run spends its last visible seconds, so the phase is what keeps that pause from reading
-     * as a freeze at the end of the bar. */
+    /* Past the point where cancelling could mean anything: the ciphertext is complete and only has to be made durable.
+     * The progress callback has already reported 100%, while fsync on a slow device is where the run spends its last
+     * visible seconds, so the phase is what keeps that pause from reading as a freeze at the end of the bar. */
 
     ReportPhase(WorkPhase::kFinishing, "Flushing to disk, please wait...\n");
 
@@ -203,8 +201,8 @@ void CryptoWorker::Work() {
 
   fclose(dst_file);
 
-  /* Publish only once the bytes are on the disk, so success is never reported for data that
-   * a power loss could still take away */
+  /* Publish only once the bytes are on the disk, so success is never reported for data that a power loss could still
+   * take away */
 
   if (should_delete) {
     RemoveFile(tmp_path);

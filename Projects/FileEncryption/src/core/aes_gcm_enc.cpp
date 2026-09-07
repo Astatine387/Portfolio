@@ -12,8 +12,7 @@
 #include "core/aes_gcm.h"
 #include "utils/platform.h"
 
-Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt,
-                       const KdfParams& params) {
+Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key) {
   src_file_ = src;
   dst_file_ = dst;
   progress_cur_ = 0;
@@ -33,7 +32,7 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<con
 
   WriterGuard writer_guard(this);
 
-  if (EncryptInit(salt, params) == Result::kFailure) {
+  if (EncryptInit() == Result::kFailure) {
     return Result::kFailure;
   }
 
@@ -44,7 +43,7 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key, std::span<con
   return Result::kSuccess;
 }
 
-Result AesGcm::EncryptInit(std::span<const uint8_t, kSaltSize> salt, const KdfParams& params) {
+Result AesGcm::EncryptInit() {
   src_size_ = GetFileSize(src_file_);
 
   if (src_size_ == -1) {
@@ -74,8 +73,14 @@ Result AesGcm::EncryptInit(std::span<const uint8_t, kSaltSize> salt, const KdfPa
   FileHeader header;
 
   header.chunk_log2 = kChunkSizeLog2;
-  header.params = params;
-  std::ranges::copy(salt, header.salt.begin());
+
+  /* Salt, parameters and commitment all come off the key, so the header cannot end up describing a derivation other
+   * than the one that produced the key the file is encrypted under. A caller has no way to supply a salt of its own
+   * here, which is the point: the file that would result is one no password can ever open, and every step of writing it
+   * would still report success. */
+
+  header.params = key_->Params();
+  std::ranges::copy(key_->Salt(), header.salt.begin());
 
   /* The commitment is what a later decryption compares its own derivation against, so it is recorded
    * here and nowhere else. It is written in the clear and needs no protection of its own: the header is

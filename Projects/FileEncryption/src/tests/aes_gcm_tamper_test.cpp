@@ -28,10 +28,10 @@ class AesGcmTamperTest : public AesGcmTest {
   std::vector<uint8_t> plain_;
   std::vector<uint8_t> cipher_;
 
-  /* Three is the smallest count that gives a first, a middle and a last chunk at once, so the swap case
-   * has two interior chunks to exchange and truncation has a final chunk to remove that is not also the
-   * first. Exactly full matters as much: with a short tail, a cut at a chunk boundary would change the
-   * framing as well as the flag, and the two reasons for the rejection could no longer be told apart. */
+  /* Three is the smallest count that gives a first, a middle and a last chunk at once, so the swap case has two
+   * interior chunks to exchange and truncation has a final chunk to remove that is not also the first. Exactly full
+   * matters as much: with a short tail, a cut at a chunk boundary would change the framing as well as the flag, and the
+   * two reasons for the rejection could no longer be told apart. */
 
   static constexpr size_t kChunks = 3;
 
@@ -196,8 +196,8 @@ TEST_F(AesGcmTamperTest, RejectsChunkFromAnotherFile) {
   const auto other_salt = MakeSalt(0x5A);
   const std::vector<uint8_t> other = EncryptBytes(MakePlain(kChunks * kChunkSize), other_salt, "password");
 
-  /* Same length, so the splice below replaces a chunk rather than resizing the file. Without it a
-   * rejection could be down to the framing no longer adding up, which is a different test. */
+  /* Same length, so the splice below replaces a chunk rather than resizing the file. Without it a rejection could be
+   * down to the framing no longer adding up, which is a different test. */
 
   ASSERT_EQ(other.size(), cipher_.size());
 
@@ -216,9 +216,9 @@ TEST_F(AesGcmTamperTest, RejectsChunkFromAnotherFile) {
 /**
  * @brief   Verify a commitment the key does not match is reported as a wrong password
  *
- * The engine is handed the right key here, so what the flip breaks is the header's claim about which
- * password the file belongs to. From inside DecryptInit that is indistinguishable from being given the
- * wrong password, and it has to be reported as such rather than as damage to the file.
+ * The engine is handed the right key here, so what the flip breaks is the header's claim about which password the file
+ * belongs to. From inside DecryptInit that is indistinguishable from being given the wrong password, and it has to be
+ * reported as such rather than as damage to the file.
  */
 TEST_F(AesGcmTamperTest, ReportsInvalidPasswordForCommitmentFlip) {
   std::vector<uint8_t> bytes = cipher_;
@@ -234,9 +234,8 @@ TEST_F(AesGcmTamperTest, ReportsInvalidPasswordForCommitmentFlip) {
 /**
  * @brief   Verify damage to a chunk is reported as corruption rather than as a wrong password
  *
- * The negative half of each assertion is the point. One message covered both causes before the header
- * carried a commitment, and splitting it in two is only worth anything if neither failure can still be
- * read as the other.
+ * The negative half of each assertion is the point. One message covered both causes before the header carried a
+ * commitment, and splitting it in two is only worth anything if neither failure can still be read as the other.
  */
 TEST_F(AesGcmTamperTest, ReportsCorruptionForCiphertextAndTagFlips) {
   const std::array<size_t, 2> offsets{ ChunkAt(0), ChunkAt(0) + kChunkSize };
@@ -286,7 +285,8 @@ TEST_F(AesGcmWriteOrderTest, StopsWritingAtTheFirstBadChunk) {
   {
     FilePair files(enc_path_, dec_path_);
 
-    EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt)), Result::kFailure);
+    EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt), HeaderOf(files.Src())),
+              Result::kFailure);
   }
 
   /* Chunks 0 to 2 were authenticated before they were written, and nothing beyond them was */

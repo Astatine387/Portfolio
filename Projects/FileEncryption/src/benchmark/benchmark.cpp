@@ -3,22 +3,23 @@
  * @brief   AES-256-GCM pipeline throughput, its floor and ceiling controls, and Argon2id key derivation
  * @author  Astatine387
  *
- * A pipeline that moves 256 MiB through the file system cannot be compared against a loop that reuses
- * one 64 KiB buffer: the second one keeps its whole working set in the cache and never reaches main
- * memory, so the difference between them is mostly the cost of the data being somewhere else. The
- * controls here bracket the pipeline instead of racing it against work it does not do.
+ * A pipeline that moves 256 MiB through the file system cannot be compared against a loop that reuses one 64 KiB
+ * buffer: the second one keeps its whole working set in the cache and never reaches main memory, so the difference
+ * between them is mostly the cost of the data being somewhere else. The controls here bracket the pipeline instead of
+ * racing it against work it does not do.
  *
- *  - BenchFileCopy         The same reads and writes with no crypto. Nothing can beat this.
- *  - BenchRawEvpStreaming  The same crypto over a buffer too large for the cache.
- *  - BenchRawEvpChunked    The same crypto over a cache-resident buffer. Its gap to the line above is
- *                          the cache, not the pipeline.
- *  - BenchPipelineEncryptSync  The pipeline with the write done on the calling thread, so the report
- *                          can state what the writer thread is actually worth.
+ *  - BenchFileCopy             The same reads and writes with no crypto. Nothing can beat this.
+ *  - BenchRawEvpStreaming      The same crypto over a buffer too large for the cache.
+ *  - BenchRawEvpChunked        The same crypto over a cache-resident buffer. Its gap to the line above is the cache,
+ *                              not the pipeline.
+ *  - BenchPipelineEncryptSync  The pipeline with the write done on the calling thread, so the report can state what the
+ *                              writer thread is actually worth.
  */
 
 #include <benchmark/benchmark.h>
 #include <openssl/evp.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -123,7 +124,7 @@ bool BuildCipherFile(const SecureKey& key) {
   bool res = src != nullptr && dst != nullptr;
 
   if (res) {
-    res = aes->Encrypt(src, dst, key, kBenchSalt) == Result::kSuccess;
+    res = aes->Encrypt(src, dst, key) == Result::kSuccess;
   }
 
   if (src != nullptr) {
@@ -367,7 +368,7 @@ void BenchPipelineEncrypt(benchmark::State& state) {
     bool res = src != nullptr && dst != nullptr;
 
     if (res) {
-      res = aes->Encrypt(src, dst, *key, kBenchSalt) == Result::kSuccess;
+      res = aes->Encrypt(src, dst, *key) == Result::kSuccess;
     }
 
     if (src != nullptr) {
@@ -418,10 +419,15 @@ void BenchPipelineDecrypt(benchmark::State& state) {
     OpenFile(&src, src_path, "rb");
     OpenFile(&dst, dst_path, "wb+");
 
-    bool res = src != nullptr && dst != nullptr;
+    /* The header is read here rather than inside the engine, the same way CryptoWorker reads it. It is 65 bytes once
+     * per iteration against 256 MiB of payload, so it does not move the number. */
+
+    FileHeader header;
+
+    bool res = src != nullptr && dst != nullptr && ReadHeader(src, header) == HeaderStatus::kOk;
 
     if (res) {
-      res = aes->Decrypt(src, dst, *key) == Result::kSuccess;
+      res = aes->Decrypt(src, dst, *key, header) == Result::kSuccess;
     }
 
     if (src != nullptr) {
@@ -445,11 +451,10 @@ void BenchPipelineDecrypt(benchmark::State& state) {
  * @brief   File I/O floor: the bytes an encryption pass moves, with no crypto at all
  * @param   state   Benchmark state
  *
- * The control the headline ratio is taken against. It reads the same file in the same chunk size
- * through the same stdio calls and writes the result back, so it measures the part of the work that
- * exists because this is a file tool rather than because of anything in AesGcm. A pipeline can only
- * approach this line, never pass it, which is what makes "pipeline / floor" an efficiency and
- * "pipeline / in-memory crypto" merely a description of the workload.
+ * The control the headline ratio is taken against. It reads the same file in the same chunk size through the same stdio
+ * calls and writes the result back, so it measures the part of the work that exists because this is a file tool rather
+ * than because of anything in AesGcm. A pipeline can only approach this line, never pass it, which is what makes
+ * "pipeline / floor" an efficiency and "pipeline / in-memory crypto" merely a description of the workload.
  *
  * It moves one tag per chunk less than a real pass does, 64 KiB over the whole 256 MiB, or 0.02%.
  */
@@ -503,12 +508,12 @@ void BenchFileCopy(benchmark::State& state) {
  * @brief   Raw OpenSSL AES-256-GCM over a working set too large for the cache
  * @param   state   Benchmark state
  *
- * Identical per-chunk work to BenchRawEvpChunked, spread over a 256 MiB buffer encrypted in place
- * rather than one 64 KiB pair of buffers reused 4096 times. Every chunk is fetched from main memory
- * and written back, which is what happens to a chunk that came from a file.
+ * Identical per-chunk work to BenchRawEvpChunked, spread over a 256 MiB buffer encrypted in place rather than one 64
+ * KiB pair of buffers reused 4096 times. Every chunk is fetched from main memory and written back, which is what
+ * happens to a chunk that came from a file.
  *
- * Comparing the two says how much of the pipeline's apparent shortfall was never about the pipeline:
- * whatever BenchRawEvpChunked gains over this line, it gains by not touching memory.
+ * Comparing the two says how much of the pipeline's apparent shortfall was never about the pipeline: whatever
+ * BenchRawEvpChunked gains over this line, it gains by not touching memory.
  */
 void BenchRawEvpStreaming(benchmark::State& state) {
   const SecureKey* key = SharedKey();
@@ -520,8 +525,8 @@ void BenchRawEvpStreaming(benchmark::State& state) {
 
   const int64_t rounds = kBenchSize / static_cast<int64_t>(kChunkSize);
 
-  /* Value-initialized, so every page is touched here and no page fault lands inside the measurement.
-   * The contents do not matter: AES-NI takes the same time whatever the bytes are. */
+  /* Value-initialized, so every page is touched here and no page fault lands inside the measurement. The contents do
+   * not matter: AES-NI takes the same time whatever the bytes are. */
 
   std::vector<uint8_t> buff(static_cast<size_t>(kBenchSize));
 
@@ -589,15 +594,21 @@ void BenchRawEvpStreaming(benchmark::State& state) {
  * @param   key   Session key
  * @return  true on success
  *
- * A deliberate duplicate of AesGcm::EncryptLoop with SubmitWrite replaced by a plain fwrite, and the
- * only reason to keep a duplicate around: everything else is the same work in the same order, so the
- * difference between this and the real pipeline is the whole of the asynchronous write and nothing
- * else. The output is byte for byte what AesGcm would have produced.
+ * A deliberate duplicate of AesGcm::EncryptLoop with SubmitWrite replaced by a plain fwrite, and the only reason to
+ * keep a duplicate around: everything else is the same work in the same order, so the difference between this and the
+ * real pipeline is the whole of the asynchronous write and nothing else. The output is byte for byte what AesGcm would
+ * have produced.
  */
 bool EncryptSync(FILE* src, FILE* dst, const SecureKey& key) {
+  /* Built off the key for the same reason EncryptInit is: the control only measures the write strategy if everything
+   * else, the associated data included, is identical to what the pipeline would emit. The commitment is part of that
+   * header and so part of every tag, which the fixed salt alone never covered. */
+
   FileHeader header;
 
-  header.salt = kBenchSalt;
+  header.params = key.Params();
+  std::ranges::copy(key.Salt(), header.salt.begin());
+  std::ranges::copy(key.Commitment(), header.commitment.begin());
 
   std::array<uint8_t, kHeaderSize> aad{};
 

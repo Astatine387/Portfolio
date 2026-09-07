@@ -11,7 +11,7 @@
 #include "core/aes_gcm.h"
 #include "utils/platform.h"
 
-Result AesGcm::Decrypt(FILE* src, FILE* dst, const SecureKey& key) {
+Result AesGcm::Decrypt(FILE* src, FILE* dst, const SecureKey& key, const FileHeader& header) {
   src_file_ = src;
   dst_file_ = dst;
   progress_cur_ = 0;
@@ -31,7 +31,7 @@ Result AesGcm::Decrypt(FILE* src, FILE* dst, const SecureKey& key) {
 
   WriterGuard writer_guard(this);
 
-  if (DecryptInit() == Result::kFailure) {
+  if (DecryptInit(header) == Result::kFailure) {
     return Result::kFailure;
   }
 
@@ -42,7 +42,7 @@ Result AesGcm::Decrypt(FILE* src, FILE* dst, const SecureKey& key) {
   return Result::kSuccess;
 }
 
-Result AesGcm::DecryptInit() {
+Result AesGcm::DecryptInit(const FileHeader& header) {
   src_size_ = GetFileSize(src_file_);
 
   if (src_size_ == -1) {
@@ -59,11 +59,17 @@ Result AesGcm::DecryptInit() {
     return Result::kFailure;
   }
 
-  /* Everything below comes from the file, so it is only as trustworthy as ReadHeader's validation */
+  /* The header is not read here. The caller had to read it to derive the key at all, so reading it again would mean the
+   * key came from one image of an untrusted file while the associated data, the chunk size and the commitment came from
+   * another; nothing in the format ties two separate reads together. It arrives parsed instead, from the one read that
+   * already happened.
+   *
+   * Re-validating it is not the same thing. ReadHeader is the caller's contract, this is defence in depth against a
+   * caller that skipped it, and it costs a handful of comparisons on a struct that is already in memory rather than a
+   * second trip to the disk. chunk_log2 is a shift width and sizes both buffers, and mem_cost has already been handed
+   * to Argon2id by whoever derived the key. */
 
-  FileHeader header;
-
-  const HeaderStatus status = ReadHeader(src_file_, header);
+  const HeaderStatus status = ValidateHeader(header);
 
   if (status != HeaderStatus::kOk) {
     ReportError(HeaderErrorMessage(status));
@@ -88,9 +94,9 @@ Result AesGcm::DecryptInit() {
   salt_ = header.salt;
   chunk_size_ = size_t{ 1 } << header.chunk_log2;
 
-  /* The associated data has to be byte for byte what encryption fed in. The layout covers every byte of
-   * the header, so re-emitting the validated struct reproduces exactly what is on the disk, and nothing
-   * has to hold on to the raw read buffer. */
+  /* The associated data has to be byte for byte what encryption fed in. The layout covers every byte of the header, so
+   * re-emitting the validated struct reproduces exactly what the caller read, and nothing has to hold on to the raw
+   * read buffer. */
 
   SerializeHeader(header_, header);
 
@@ -106,8 +112,8 @@ Result AesGcm::DecryptInit() {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  /* ReadHeader already stops just past the header, but positioning the first chunk explicitly keeps the
-   * loop independent of how the header was read */
+  /* The caller's read left the position wherever it left it, and this call never moved it. Positioning the first chunk
+   * explicitly is what keeps the loop independent of how the header was read. */
 
   if (Seek(src_file_, static_cast<int64_t>(kHeaderSize), SEEK_SET) == Result::kFailure) {
     // LCOV_EXCL_START
