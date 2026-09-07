@@ -47,7 +47,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * AES-GCM is not key-committing, so a crafted file can be made to authenticate under multiple chosen passwords; the header carries a commitment derived beside the key, and comparing it is what ties a file to one password
 * Newly and randomly generated salt for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * The password and the derived key are held in `sodium_malloc` memory: guard pages, a wipe on release, and a best-effort lock against swap
-* RAII ties every secret to a scope, so releasing it is what wipes it; see 2-3 for the allocations this covers and the ones it does not
+* RAII ties every secret to a scope, so releasing it is what wipes it; see 3-3-1 for the allocations this covers and the ones it does not
 * Range check for the chunk size and the key derivation parameters before anything is allocated or Argon2id runs
 * Output is written to a temporary file, fsynced, then moved into place, so a partial or unverified file never appears at the destination
 * The destination is never overwritten: the move fails if the path is taken
