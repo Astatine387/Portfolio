@@ -54,13 +54,13 @@ void CryptoWorker::Work() {
 
   tmp_path += kPartSuffix;
 
-  /* Source first, so a bad source path costs nothing and leaves nothing behind to clean up */
+  /* Source first, so a bad source path costs nothing and leaves nothing behind to clean up. It goes through
+   * OpenSourceFile rather than a plain open, so a directory, a symbolic link or a pseudo fileis refused here instead of
+   * being read as an empty source further down. */
 
-  OpenFile(&src_file, src_path_, "rb");
-
-  if (src_file == nullptr) {
+  if (OpenSourceFile(&src_file, src_path_) == Result::kFailure) {
     if (fcb_) {
-      fcb_("[File] Open failed - Cannot open source file\n");
+      fcb_("[File] Open failed - Cannot open source file, or it is not an ordinary file\n");
     }
 
     return;

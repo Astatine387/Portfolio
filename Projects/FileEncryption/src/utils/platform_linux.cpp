@@ -7,23 +7,45 @@
 #include <fcntl.h>
 #include <sys/random.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #include <cerrno>
+#include <cstdio>
 #include <filesystem>
 #include <thread>
 
 #include "utils/platform.h"
+
+namespace {
+
+/* RENAME_NOREPLACE, spelled out rather than taken from <linux/fs.h>, because that header conflicts with
+ * the C library's own definitions on some distributions. The value is kernel ABI and cannot change. */
+
+constexpr unsigned int kRenameNoReplace = 1U;
+
+}  // namespace
 
 bool FileExists(const std::string& path) {
   return std::filesystem::exists(path);
 }
 
 int64_t GetFileSize(FILE* file) {
+  /* A size is only meaningful for a regular file. A procfs entry seeks to an end of zero and a character
+   * device answers with whatever its driver reports, and either one would be taken as an empty source,
+   * encrypted into an empty file and reported as a success. The type comes from the descriptor, so this
+   * holds for a stream that reached here without going through OpenSourceFile. */
+
+  struct stat st = {};
+
+  if (fstat(fileno(file), &st) != 0 || !S_ISREG(st.st_mode)) {
+    return -1;
+  }
+
   /* Measuring moves the position, so it is put back at the start and the caller can read from there */
 
   if (fseeko(file, 0, SEEK_END)) {
-    return -1;
+    return -1;  // LCOV_EXCL_LINE  a regular file is always seekable
   }
 
   int64_t size = ftello(file);
@@ -69,17 +91,62 @@ Result RemoveFile(const std::string& path) {
 }
 
 Result RenameFile(const std::string& src, const std::string& dst) {
-  /* link() rather than rename(): rename() would silently replace an existing destination, while link()
-   * fails with EEXIST. The cost is that it cannot cross a filesystem, so the source has to be a sibling
-   * of the destination. */
+  /* Three ways to take the destination name, tried in order of how much the file system does on its own.
+   * Each one falls through only on the errors that mean the file system cannot do it, never on a real
+   * failure, so a refusal is still reported as a refusal. None of them can cross a file system, which is
+   * why the source has to be a sibling of the destination. */
 
-  if (link(src.c_str(), dst.c_str())) {
+  /* 1. renameat2 with RENAME_NOREPLACE: one atomic step that fails with EEXIST if the name is taken.
+   *    Available on ext4, XFS, Btrfs, F2FS and tmpfs. */
+
+#ifdef SYS_renameat2
+  if (syscall(SYS_renameat2, AT_FDCWD, src.c_str(), AT_FDCWD, dst.c_str(), kRenameNoReplace) == 0) {
+    return Result::kSuccess;
+  }
+
+  /* EINVAL is what a file system without flag support answers, ENOSYS a kernel older than 3.15 */
+
+  if (errno != EINVAL && errno != ENOSYS && errno != EOPNOTSUPP) {
+    return Result::kFailure;
+  }
+#endif
+
+  /* 2. link(): the same guarantee by another route, since a taken name gives EEXIST. This covers file
+   *    systems that have hard links but no flag support in rename, such as NFS and ntfs-3g. */
+
+  if (link(src.c_str(), dst.c_str()) == 0) {
+    /* The destination already holds the data, so failing to drop the source link is not worth reporting */
+
+    static_cast<void>(unlink(src.c_str()));
+
+    return Result::kSuccess;
+  }
+
+  if (errno != EPERM && errno != EOPNOTSUPP) {
     return Result::kFailure;
   }
 
-  /* The destination already holds the data, so failing to drop the source link is not worth reporting */
+  /* 3. A file system with no hard links at all answers EPERM above, and FAT32 and exFAT are exactly
+   *    where a portable encrypted file tends to be written. There is no atomic no-replace rename to fall
+   *    back on there, so the name is taken by an exclusive create instead, which is atomic on FAT as
+   *    well. The rename that follows replaces a placeholder this program made a moment earlier, never a
+   *    file that belonged to anyone else. */
 
-  static_cast<void>(unlink(src.c_str()));
+  const int fd = open(dst.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, S_IRUSR | S_IWUSR);
+
+  if (fd == -1) {
+    return Result::kFailure;
+  }
+
+  close(fd);
+
+  if (rename(src.c_str(), dst.c_str()) != 0) {
+    /* The name was taken and then not used, so it is given back rather than left as an empty file */
+
+    static_cast<void>(unlink(dst.c_str()));
+
+    return Result::kFailure;
+  }
 
   return Result::kSuccess;
 }
@@ -132,6 +199,73 @@ Result Seek(FILE* file, int64_t offset, int origin) {
 
 void OpenFile(FILE** file, const std::string& path, const char* mode) {
   *file = fopen(path.c_str(), mode);
+}
+
+Result OpenSourceFile(FILE** file, const std::string& path) {
+  *file = nullptr;
+
+  /* O_NOFOLLOW refuses a symbolic link at the final component, the same as on the writing side, so a
+   * planted link cannot redirect what is read. O_CLOEXEC keeps the descriptor out of a child process.
+   *
+   * O_NONBLOCK is what makes the check below reachable at all: opening a FIFO for reading otherwise
+   * blocks until a writer turns up, so a named pipe given as the source would hang the worker thread
+   * before anything had a chance to reject it. On a regular file the flag does nothing. */
+
+  const int fd = open(path.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK);
+
+  if (fd == -1) {
+    return Result::kFailure;
+  }
+
+  /* Asking the descriptor rather than the path, so what was opened is what is judged and the answer
+   * cannot change between the two. A directory opens for reading here, and a procfs entry opens and then
+   * reports a size of zero, so both are refused before either can be read as an empty source. */
+
+  struct stat st = {};
+
+  if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode)) {
+    close(fd);
+    return Result::kFailure;
+  }
+
+  /* A procfs entry passes every check above: it is a regular file by st_mode and reports a size of zero
+   * while having contents to read. No attribute separates it from an ordinary empty file, so the only
+   * honest test is to read one. A byte at offset zero, through pread so the position is left alone, and
+   * anything that answers with data while calling itself empty is refused here rather than encrypted
+   * into an empty file and reported as a success. */
+
+  if (st.st_size == 0) {
+    uint8_t probe = 0;
+
+    if (pread(fd, &probe, 1, 0) != 0) {
+      close(fd);
+      return Result::kFailure;
+    }
+  }
+
+  /* The type is settled, so the flag that was only there to survive the open comes back off before stdio
+   * ever sees the descriptor. A regular file would ignore it, and a short read that stdio reads as an
+   * error is not a risk worth carrying for nothing. */
+
+  const int flags = fcntl(fd, F_GETFL);
+
+  if (flags == -1 || fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) == -1) {
+    // LCOV_EXCL_START
+    close(fd);
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  *file = fdopen(fd, "rb");
+
+  if (*file == nullptr) {
+    // LCOV_EXCL_START
+    close(fd);
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  return Result::kSuccess;
 }
 
 Result OpenNewFile(FILE** file, const std::string& path) {

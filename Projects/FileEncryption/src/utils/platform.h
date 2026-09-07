@@ -26,6 +26,11 @@ bool FileExists(const std::string& path);
  * @brief   Get the size of a file in bytes
  * @param   file	File pointer in read binary mode
  * @return	file size in bytes on success, -1 on failure
+ *
+ * A stream on anything other than a regular file is a failure rather than a size. A procfs entry
+ * reports zero and a character device reports whatever its driver feels like, and either one read as a
+ * size would turn a source with contents into an empty one. OpenSourceFile refuses those at the open,
+ * and this is the second place that refuses them, for a stream that arrived some other way.
  */
 int64_t GetFileSize(FILE* file);
 
@@ -53,6 +58,10 @@ Result RemoveFile(const std::string& path);
  * This doesn't overwrite an existing file. Refusing to is what makes the publish step safe: the move
  * itself decides whether the name was free, so nothing can appear at the destination between a separate
  * existence test and the move that follows it.
+ *
+ * How that refusal is obtained differs by file system, so the Linux side tries three ways in turn and
+ * only falls through on the errors that mean "this file system cannot do it". Whichever way is taken,
+ * the name is still won or lost in one atomic step.
  */
 Result RenameFile(const std::string& src, const std::string& dst);
 
@@ -89,6 +98,20 @@ Result Seek(FILE* file, int64_t dist, int ref);
  * @param   mode  Mode
  */
 void OpenFile(FILE** file, const std::string& path, const char* mode);
+
+/**
+ * @brief   Open an existing regular file for reading
+ * @param   file  Opened stream on success, nullptr on failure
+ * @param   path  File path
+ * @return  kSuccess on success, kFailure on failure
+ *
+ * The read end of what OpenNewFile does for the write end, and held to the same standard. A plain fopen
+ * accepts a directory, a symbolic link and a procfs entry alike, and the last of those reports a size of
+ * zero, which would be encrypted into an empty file and reported as a success. The type is therefore
+ * decided from the descriptor that was opened, not from the path, so the answer cannot change between
+ * the check and the read.
+ */
+[[nodiscard]] Result OpenSourceFile(FILE** file, const std::string& path);
 
 /**
  * @brief   Create and open a new file for writing, fail if it already exists

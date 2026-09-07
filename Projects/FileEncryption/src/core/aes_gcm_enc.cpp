@@ -136,6 +136,19 @@ Result AesGcm::EncryptLoop() {
     idx++;
   }
 
+  /* The size was taken once, before the first chunk, and the loop stopped at it. A source that grew in
+   * between, or one that reported a size it does not have, leaves bytes past that point that no chunk
+   * covers, and every step so far would still have reported success. Reading one more byte is what turns
+   * that into a failure instead of a silently truncated copy. A source that shrank needs nothing here,
+   * since the short read fails on its own. */
+
+  uint8_t extra = 0;
+
+  if (fread(&extra, sizeof(extra), 1, src_file_) != 0) {
+    ReportError("[File] Encryption failed - Source file size changed\n");
+    return Result::kFailure;
+  }
+
   /* The loop leaves one chunk still in flight, and a failure on that last write is reported here */
 
   if (FlushWrite() == Result::kFailure) {
