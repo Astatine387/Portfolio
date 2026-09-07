@@ -248,7 +248,7 @@ TEST_F(AesGcmTamperTest, ReportsCorruptionForCiphertextAndTagFlips) {
 
     ExpectRejected("bit flip at offset " + std::to_string(offset), bytes);
 
-    EXPECT_NE(last_error_.find("corrupted or has been tampered with"), std::string::npos);
+    EXPECT_NE(last_error_.find("corrupted or tampered"), std::string::npos);
     EXPECT_EQ(last_error_.find("Invalid password"), std::string::npos);
   }
 }

@@ -91,7 +91,7 @@ void InputGUI::OnStartClicked() {
 
   pw_line_->Clear();
 
-  CryptoRequest req{ .mode = mode.value(), .src = src_line_->text(), .dst = dst_line_->text(), .pw = std::move(tmp) };
+  CryptoRequest req{ .mode = mode, .src = src_line_->text(), .dst = dst_line_->text(), .pw = std::move(tmp) };
 
   emit StartRequested(req);
 }

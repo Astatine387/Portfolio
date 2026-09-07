@@ -10,6 +10,7 @@
 #include <QFileInfo>
 #include <atomic>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include "gui/crypto_wrapper.h"
@@ -48,6 +49,15 @@ MainGUI::~MainGUI() {
 }
 
 void MainGUI::OnStartRequested(const CryptoRequest& input) {
+  /* An unset mode reaches here only from a sender that skipped the check InputGUI makes. There is no
+   * direction to fall back on, since guessing would run the opposite operation on the user's file, so
+   * it is refused the same way the input window refuses it. */
+
+  if (!input.mode.has_value()) {
+    input_gui_->SetErrMsg("Mode is not selected");
+    return;
+  }
+
   /* ValidatePaths and the worker both read the members rather than the request, which does not outlive
    * this call */
 
@@ -76,7 +86,7 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
 
     thread_ = new QThread(this);
 
-    CryptoWrapper* wrapper = new CryptoWrapper(src_path_, dst_path_, std::move(pw), input.mode, cancel_flag_);
+    CryptoWrapper* wrapper = new CryptoWrapper(src_path_, dst_path_, std::move(pw), input.mode.value(), cancel_flag_);
 
     wrapper->moveToThread(thread_);
 
