@@ -54,6 +54,17 @@ Result AesGcm::EncryptInit(std::span<const uint8_t, kSaltSize> salt, const KdfPa
     // LCOV_EXCL_STOP
   }
 
+  /* Refused before a context, a buffer or a header exists, so a source that cannot be encrypted within
+   * the bound costs the user nothing beyond the size lookup. See kMaxPlaintextSize for where the bound
+   * comes from and why decryption does not carry it. */
+
+  if (src_size_ > kMaxPlaintextSize) {
+    // LCOV_EXCL_START
+    ReportError("[File] Size check failed - Source file exceeds the supported maximum\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
   /* Progress is reported over plaintext bytes; the file is read exactly once */
 
   progress_max_ = src_size_;

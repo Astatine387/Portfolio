@@ -58,19 +58,19 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 	* **Nonce Size:** 96 bits (recommended for AES-256-GCM)
 	* **Key Size:** 256 bits (using AES-256)
 	* **Block Size:** 128 bits (using AES)
-	* **Authentication Tag Size:** 128 bits (one per chunk)
+	* **Authentication Tag Size:** 128 bits per chunk
 
 * **Argon2id**
-	* **Memory Cost:** 512 MiB
-	* **Time Cost:** 4 iterations
-	* **Parallelism:** 4
+	* **Memory Cost:** 512 MiB (64 MiB to 4 GiB accepted)
+	* **Time Cost:** 4 iterations (1 to 16 accepted)
+	* **Parallelism:** 4 (1 to 16 accepted)
 	* **Salt Size:** 128 bits
 	* **Key Commitment Size:** 256 bits
-	* **Derivation Output:** 512 bits, one call split into the key and the commitment
+	* **Derivation Output:** 512 bits
 
 * **Chunk Size:** 64 KiB default, 4 KiB to 1 MiB accepted
 
-* **Maximum File Size:** 2 ^ 32 chunks
+* **Maximum File Size:** 4 PiB (2 ^ 52 bytes)
 
 ## 3-1. Encrypted File Format
 
@@ -113,7 +113,8 @@ Chunk_i = Ciphertext_i (L_i bytes) ‖ Tag_i (16 Bytes)
 12 bytes, not stored in the file, instead derived from the chunk counter and file size
 
 ```
-nonce[0..10] = chunk counter, big-endian, starts at 0, +1 per chunk
+nonce[0..2]  = 0x00 padding
+nonce[3..10] = chunk counter, big-endian, starts at 0, +1 per chunk
 nonce[11]    = 0x00 for a normal chunk, 0x01 for the final chunk
 ```
 

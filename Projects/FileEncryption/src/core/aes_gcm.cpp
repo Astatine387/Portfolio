@@ -12,8 +12,10 @@
 #include <openssl/err.h>
 #include <sodium.h>
 
+#include <algorithm>
 #include <array>
 #include <atomic>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -181,7 +183,21 @@ void AesGcm::ReportProgress() {
     return;
   }
 
-  int perc = static_cast<int>(progress_max_ > 0 ? progress_cur_ * 100 / progress_max_ : 100);
+  /* Encryption refuses a source above kMaxPlaintextSize, but decryption takes whatever size the file on
+   * disk has, so the multiplication is not bounded by that check and would overflow past 92 PB.
+   * Multiplying first is exact and is the form that runs for every size this build produces. The second
+   * form only runs past that point, where dropping the remainder of the divisor moves the result by less
+   * than a part in 10^13. Clamping is what makes that divisor non-zero, since a numerator large enough
+   * to reach the second form forces an equally large denominator. */
+
+  int perc = 100;
+
+  if (progress_max_ > 0) {
+    const int64_t cur = std::min(progress_cur_, progress_max_);
+
+    perc = static_cast<int>(cur <= std::numeric_limits<int64_t>::max() / 100 ? cur * 100 / progress_max_
+                                                                            : cur / (progress_max_ / 100));
+  }
 
   /* A chunk is small enough that most of them do not move the percentage at all, and every report
    * crosses into the GUI thread, so only a whole percent is worth sending */

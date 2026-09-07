@@ -69,6 +69,22 @@ inline constexpr size_t kBlockSize = 16;   /// AES block size in bytes
 
 inline constexpr size_t kMinSize = kHeaderSize + kTagSize;  /// Minimum encrypted file size
 
+/* GCM's proof treats the block cipher as a function while AES is a permutation, and closing that gap
+ * costs sigma^2 / 2^128 over the 128-bit blocks processed under one key. Holding that at 2^-32, the
+ * probability SP 800-38D 8 already treats as negligible, allows 2^48 blocks, and this is the nearest
+ * power of two below it. A chunk adds six GHASH blocks of its own for the header and the length block,
+ * which is 0.15% at the default chunk size, so the bound is about bytes rather than about chunks.
+ *
+ * Every file draws a fresh salt and derives its own key from it, so this is spent per file and nothing
+ * accumulates across a session.
+ *
+ * It bounds what to produce, not what to accept. Encryption refuses a source above it; decryption does
+ * not test it, because the blocks of a file that already exists have already been processed and turning
+ * it away recovers nothing while costing the file. A ciphertext also carries a tag per chunk, so this
+ * same value on a decryption would reject a file this build had just written at its own ceiling. */
+
+inline constexpr int64_t kMaxPlaintextSize = int64_t{ 1 } << 52;  /// Largest plaintext this build encrypts (4 PiB)
+
 /* Two, because the pipeline keeps exactly one chunk in flight: one buffer is being written while the
  * next is being filled */
 
