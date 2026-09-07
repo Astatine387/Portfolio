@@ -67,7 +67,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 
 * **Chunk Size:** 64 KiB default, 4 KiB to 1 MiB accepted
 
-* **Maximum File Size:** 8 EiB (2 ^ 63 bytes)
+* **Maximum File Size:** 2 ^ 32 chunks
 
 ## 3-1. Encrypted File Format
 
