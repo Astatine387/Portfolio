@@ -94,7 +94,9 @@ TEST_F(AesGcmTamperTest, RejectsHeaderBitFlips) {
   ExpectFlipRejected("memory cost", 9);
   ExpectFlipRejected("parallelism", 13);
   ExpectFlipRejected("salt", 17);
-  ExpectFlipRejected("salt", kHeaderSize - 1);
+  ExpectFlipRejected("salt", kHeaderSize - kCommitSize - 1);
+  ExpectFlipRejected("commitment", kHeaderSize - kCommitSize);
+  ExpectFlipRejected("commitment", kHeaderSize - 1);
 }
 
 /**
@@ -205,6 +207,50 @@ TEST_F(AesGcmTamperTest, RejectsChunkFromAnotherFile) {
               bytes.begin() + static_cast<ptrdiff_t>(ChunkAt(0)));
 
   ExpectRejected("chunk spliced from another file", bytes);
+}
+
+/* ==================================================
+ * Failure Message Tests
+ * ================================================== */
+
+/**
+ * @brief   Verify a commitment the key does not match is reported as a wrong password
+ *
+ * The engine is handed the right key here, so what the flip breaks is the header's claim about which
+ * password the file belongs to. From inside DecryptInit that is indistinguishable from being given the
+ * wrong password, and it has to be reported as such rather than as damage to the file.
+ */
+TEST_F(AesGcmTamperTest, ReportsInvalidPasswordForCommitmentFlip) {
+  std::vector<uint8_t> bytes = cipher_;
+
+  bytes[kHeaderSize - 1] ^= 0x01;
+
+  ExpectRejected("commitment bit flip", bytes);
+
+  EXPECT_NE(last_error_.find("Invalid password"), std::string::npos);
+  EXPECT_EQ(last_error_.find("corrupted"), std::string::npos);
+}
+
+/**
+ * @brief   Verify damage to a chunk is reported as corruption rather than as a wrong password
+ *
+ * The negative half of each assertion is the point. One message covered both causes before the header
+ * carried a commitment, and splitting it in two is only worth anything if neither failure can still be
+ * read as the other.
+ */
+TEST_F(AesGcmTamperTest, ReportsCorruptionForCiphertextAndTagFlips) {
+  const std::array<size_t, 2> offsets{ ChunkAt(0), ChunkAt(0) + kChunkSize };
+
+  for (size_t offset : offsets) {
+    std::vector<uint8_t> bytes = cipher_;
+
+    bytes[offset] ^= 0x01;
+
+    ExpectRejected("bit flip at offset " + std::to_string(offset), bytes);
+
+    EXPECT_NE(last_error_.find("corrupted or has been tampered with"), std::string::npos);
+    EXPECT_EQ(last_error_.find("Invalid password"), std::string::npos);
+  }
 }
 
 /* ==================================================

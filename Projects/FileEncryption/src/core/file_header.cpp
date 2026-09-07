@@ -21,8 +21,9 @@ constexpr size_t kTimeCostOffset = kChunkLog2Offset + 1;   // 5
 constexpr size_t kMemCostOffset = kTimeCostOffset + 4;     // 9
 constexpr size_t kParallelismOffset = kMemCostOffset + 4;  // 13
 constexpr size_t kSaltOffset = kParallelismOffset + 4;     // 17
+constexpr size_t kCommitOffset = kSaltOffset + kSaltSize;  // 33
 
-static_assert(kSaltOffset + kSaltSize == kHeaderSize, "Header field offsets do not fill the header");
+static_assert(kCommitOffset + kCommitSize == kHeaderSize, "Header field offsets do not fill the header");
 
 }  // namespace
 
@@ -39,6 +40,7 @@ void SerializeHeader(std::span<uint8_t, kHeaderSize> dst, const FileHeader& head
   StoreLE32(dst.data() + kParallelismOffset, header.params.parallelism);
 
   std::ranges::copy(header.salt, dst.begin() + kSaltOffset);
+  std::ranges::copy(header.commitment, dst.begin() + kCommitOffset);
 }
 
 HeaderStatus ReadHeader(FILE* file, FileHeader& header) {
@@ -67,6 +69,7 @@ HeaderStatus ReadHeader(FILE* file, FileHeader& header) {
   parsed.params.parallelism = LoadLE32(buff.data() + kParallelismOffset);
 
   std::ranges::copy(std::span(buff).subspan(kSaltOffset, kSaltSize), parsed.salt.begin());
+  std::ranges::copy(std::span(buff).subspan(kCommitOffset, kCommitSize), parsed.commitment.begin());
 
   /* Hand back nothing the caller would still have to range-check */
 
@@ -85,7 +88,10 @@ HeaderStatus ValidateHeader(const FileHeader& header) {
   /* A header is whatever the file happened to contain, and it is read before the password is ever tried.
    * chunk_log2 is used as a shift width and sizes both chunk buffers, so an unchecked value is undefined
    * behaviour before it is an allocation; mem_cost is an Argon2id allocation in KiB, so an unchecked one
-   * lets a crafted file ask for terabytes. */
+   * lets a crafted file ask for terabytes.
+   *
+   * The commitment is absent from this for a reason: every value of it is structurally valid, and which
+   * one is right is settled by comparing it against a derivation rather than by any range. */
 
   if (header.chunk_log2 < kMinChunkSizeLog2 || kMaxChunkSizeLog2 < header.chunk_log2) {
     return HeaderStatus::kBadChunkSize;

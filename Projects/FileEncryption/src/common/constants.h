@@ -13,10 +13,18 @@
 inline constexpr double kFontScale = 1.2;  /// GUI font scale
 
 inline constexpr size_t kKeySize = 32;            /// AES-GCM key size in bytes
+inline constexpr size_t kCommitSize = 32;         /// Key commitment size in bytes
 inline constexpr size_t kSaltSize = 16;           /// Argon2id salt size in bytes
 inline constexpr uint32_t kMemCost = 512 * 1024;  /// Argon2id memory cost in KiB
 inline constexpr uint32_t kTimeCost = 4;          /// Argon2id time cost
 inline constexpr uint32_t kParallelism = 4;       /// Argon2id parallelism
+
+/* AES-GCM authenticates a chunk without committing to the key it was verified under, so a crafted file
+ * can be made to authenticate under two passwords at once. The commitment is what settles which password
+ * a file belongs to, and it comes out of the same derivation as the key rather than out of a second
+ * Argon2id call, so anchoring the password costs nothing on top of a derivation that already runs. */
+
+inline constexpr size_t kDerivedSize = kKeySize + kCommitSize;  /// Bytes one Argon2id derivation produces
 
 /* Accepted range for the parameters stored in a file header. Wider than the defaults above on purpose:
  * the defaults are only what this build writes, while the range is what it agrees to read, so a file
@@ -51,7 +59,7 @@ static_assert(kChunkSizeLog2 >= kMinChunkSizeLog2 && kChunkSizeLog2 <= kMaxChunk
 inline constexpr std::array<uint8_t, 4> kMagic = { 0xE0, 0x7B, 0xCA, 0x75 };  /// Magic number of the format
 
 inline constexpr size_t kMagicSize = 4;    /// Magic number size in bytes
-inline constexpr size_t kHeaderSize = 33;  /// Plaintext header size in bytes
+inline constexpr size_t kHeaderSize = 65;  /// Plaintext header size in bytes
 inline constexpr size_t kNonceSize = 12;   /// AES-GCM nonce size in bytes
 inline constexpr size_t kTagSize = 16;     /// Authentication tag size in bytes
 inline constexpr size_t kBlockSize = 16;   /// AES block size in bytes

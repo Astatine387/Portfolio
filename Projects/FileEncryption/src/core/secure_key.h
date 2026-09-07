@@ -52,7 +52,7 @@ class SecureKey;
 
 /**
  * @class	SecureKey
- * @brief	32-byte AES key held in libsodium-locked memory
+ * @brief	32-byte AES key and its key commitment, held in libsodium-locked memory
  */
 class SecureKey {
  public:
@@ -69,9 +69,26 @@ class SecureKey {
 
   /**
    * @brief	Expose the key bytes to the crypto layer
-   * @return	View over the key bytes
+   * @return	View over the first kKeySize bytes of the kDerivedSize-byte derivation
    */
   [[nodiscard]] std::span<const uint8_t, kKeySize> Bytes() const;
+
+  /**
+   * @brief	Expose the key commitment to the header layer
+   * @return	View over the last kCommitSize bytes of the kDerivedSize-byte derivation
+   *
+   * Public, and meant to be: it is written to the plaintext header, where the AEAD already covers it
+   * because the whole header is the associated data of every chunk. It is not key material, and it
+   * reveals nothing about the half of the derivation that is.
+   */
+  [[nodiscard]] std::span<const uint8_t, kCommitSize> Commitment() const;
+
+  /**
+   * @brief	Constant-time comparison against a stored key commitment
+   * @param	expected	Commitment read from a file header
+   * @return	true if the commitment is the one this derivation produced
+   */
+  [[nodiscard]] bool CommitmentMatches(std::span<const uint8_t, kCommitSize> expected) const;
 
   /**
    * @brief	Constant-time comparison with another key
@@ -86,5 +103,5 @@ class SecureKey {
  private:
   explicit SecureKey(uint8_t* data) : data_(data) {}
 
-  uint8_t* data_ = nullptr;  // kKeySize bytes in sodium_malloc memory, released with sodium_free
+  uint8_t* data_ = nullptr;  // kDerivedSize bytes in sodium_malloc memory, released with sodium_free
 };

@@ -66,6 +66,12 @@ Result AesGcm::EncryptInit(std::span<const uint8_t, kSaltSize> salt, const KdfPa
   header.params = params;
   std::ranges::copy(salt, header.salt.begin());
 
+  /* The commitment is what a later decryption compares its own derivation against, so it is recorded
+   * here and nowhere else. It is written in the clear and needs no protection of its own: the header is
+   * the associated data of every chunk, so an attacker who edits it invalidates the whole file. */
+
+  std::ranges::copy(key_->Commitment(), header.commitment.begin());
+
   chunk_size_ = size_t{ 1 } << header.chunk_log2;
 
   SerializeHeader(header_, header);

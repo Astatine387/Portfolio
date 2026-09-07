@@ -143,6 +143,23 @@ TEST_F(AesGcmTest, DecryptWrongKey) {
   EXPECT_EQ(DecryptBytes(cipher, copy, salt, "asdf1234"), Result::kFailure);
 }
 
+/**
+ * @brief   Verify a wrong password is named as such rather than blamed on the file
+ *
+ * The header commitment is what makes the distinction possible: the password is rejected before a chunk
+ * is read, so nothing here can reach the tag check that reports corruption.
+ */
+TEST_F(AesGcmTest, DecryptWrongKeyReportsInvalidPassword) {
+  const auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> cipher = EncryptBytes(ToBytes("Hello, world!"), salt, "password");
+  std::vector<uint8_t> copy;
+
+  EXPECT_EQ(DecryptBytes(cipher, copy, salt, "asdf1234"), Result::kFailure);
+
+  EXPECT_NE(last_error_.find("Invalid password"), std::string::npos);
+  EXPECT_EQ(last_error_.find("corrupted"), std::string::npos);
+}
+
 /* ==================================================
  * Callback Tests
  * ================================================== */

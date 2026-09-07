@@ -34,7 +34,7 @@ class FileHeaderTest : public ::testing::Test {
    * @brief   Build a header whose every field is distinguishable
    * @param   params      Argon2id parameters to store
    * @param   chunk_log2  Base-2 logarithm of the chunk size to store
-   * @return  Header filled with recognizable salt bytes
+   * @return  Header filled with recognizable salt and commitment bytes
    */
   static FileHeader MakeHeader(const KdfParams& params = {}, uint8_t chunk_log2 = kChunkSizeLog2) {
     FileHeader header;
@@ -42,6 +42,7 @@ class FileHeaderTest : public ::testing::Test {
     header.chunk_log2 = chunk_log2;
     header.params = params;
     header.salt.fill(0xA5);
+    header.commitment.fill(0x5A);
 
     return header;
   }
@@ -160,6 +161,7 @@ TEST_F(FileHeaderTest, RoundTrip) {
     EXPECT_EQ(dst.params.mem_cost, src.params.mem_cost);
     EXPECT_EQ(dst.params.parallelism, src.params.parallelism);
     EXPECT_EQ(dst.salt, src.salt);
+    EXPECT_EQ(dst.commitment, src.commitment);
     EXPECT_EQ(dst.chunk_log2, src.chunk_log2);
   }
 }
@@ -176,6 +178,13 @@ TEST_F(FileHeaderTest, WritesDocumentedLayout) {
     header.salt[i] = static_cast<uint8_t>(0xB0 + i);
   }
 
+  /* Distinct from the salt bytes above, so a field written at the wrong offset shows up as a mismatch
+   * rather than as two runs of the same value that happen to line up */
+
+  for (size_t i = 0; i < kCommitSize; i++) {
+    header.commitment[i] = static_cast<uint8_t>(0xC0 + i);
+  }
+
   Store(header);
 
   const std::vector<uint8_t> buff = Load();
@@ -189,6 +198,55 @@ TEST_F(FileHeaderTest, WritesDocumentedLayout) {
   EXPECT_EQ(LoadLE32(buff.data() + 13), 3U);
 
   EXPECT_EQ(memcmp(buff.data() + 17, header.salt.data(), kSaltSize), 0);
+  EXPECT_EQ(memcmp(buff.data() + 33, header.commitment.data(), kCommitSize), 0);
+}
+
+/**
+ * @brief   Verify the commitment survives a write and a read at the offset the format gives it
+ */
+TEST_F(FileHeaderTest, CommitmentRoundTripsAtItsOffset) {
+  constexpr size_t kCommitOffset = 33;
+
+  FileHeader src = MakeHeader();
+  FileHeader dst;
+
+  for (size_t i = 0; i < kCommitSize; i++) {
+    src.commitment[i] = static_cast<uint8_t>(0xC0 + i);
+  }
+
+  Store(src);
+
+  const std::vector<uint8_t> buff = Load();
+
+  ASSERT_EQ(buff.size(), kHeaderSize);
+  EXPECT_EQ(memcmp(buff.data() + kCommitOffset, src.commitment.data(), kCommitSize), 0);
+
+  EXPECT_EQ(Reload(dst), HeaderStatus::kOk);
+  EXPECT_EQ(dst.commitment, src.commitment);
+}
+
+/**
+ * @brief   Verify a header differing only in its commitment still parses
+ *
+ * Which commitment is the right one is settled by comparing it against a derivation, which happens in
+ * the engine and not here. Every value of the field is structurally valid, and a validation that
+ * pretended otherwise would refuse files before the password had been tried.
+ */
+TEST_F(FileHeaderTest, AcceptsAnyCommitmentValue) {
+  FileHeader src = MakeHeader();
+  FileHeader dst;
+
+  Store(src);
+
+  ASSERT_EQ(Reload(dst), HeaderStatus::kOk);
+
+  src.commitment[0] ^= 0x01;
+
+  Store(src);
+
+  EXPECT_EQ(Reload(dst), HeaderStatus::kOk);
+  EXPECT_EQ(dst.commitment, src.commitment);
+  EXPECT_EQ(ValidateHeader(src), HeaderStatus::kOk);
 }
 
 /**

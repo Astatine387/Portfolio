@@ -70,6 +70,21 @@ Result AesGcm::DecryptInit() {
     return Result::kFailure;
   }
 
+  /* AES-GCM authenticates a chunk without committing to the key, so a tag that verifies says the chunk
+   * was made under this key and not that no other key would have done. A crafted file can carry a tag
+   * that solves under two passwords at once, and per-chunk tags do not narrow that: a chunk is thousands
+   * of blocks, so each equation is solved on its own with blocks to spare. Feeding the header in as
+   * associated data does not narrow it either, since the header is a constant the attacker knows.
+   *
+   * The commitment settles it outside the AEAD. It is checked here, before SerializeHeader, AllocBuffers
+   * or SetupCtx, so a wrong password costs nothing beyond the derivation that had to happen anyway, and
+   * every caller of this engine is covered rather than only the ones that remember to ask. */
+
+  if (!key_->CommitmentMatches(header.commitment)) {
+    ReportError("[Auth] Verification failed - Invalid password\n");
+    return Result::kFailure;
+  }
+
   salt_ = header.salt;
   chunk_size_ = size_t{ 1 } << header.chunk_log2;
 
@@ -231,7 +246,11 @@ Result AesGcm::DecryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
   int final_len = 0;
 
   if (EVP_DecryptFinal_ex(ctx_, final_block.data(), &final_len) != 1) {
-    ReportError("[Auth] Verification failed - Invalid password or corrupted file\n");
+    /* A wrong password no longer reaches this point: DecryptInit rejected it against the commitment
+     * before a chunk was read. What is left is a file that does not match its own header, so the two
+     * causes are genuinely distinguishable now and the message no longer conflates them. */
+
+    ReportError("[Auth] Verification failed - File is corrupted or tampered\n");
     return Result::kFailure;
   }
 

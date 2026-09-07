@@ -8,7 +8,9 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -135,6 +137,59 @@ TEST(SecureKeyTest, DeriveFailsInvalidParams) {
   auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt, params);
 
   EXPECT_FALSE(key.has_value());
+}
+
+/* ==================================================
+ * Commitment Tests
+ * ================================================== */
+
+/**
+ * @brief   Verify a derivation accepts the commitment it produced
+ */
+TEST(SecureKeyTest, CommitmentMatchesOwnDerivation) {
+  SecureKey key = Derive("password", MakeSalt(0x01));
+
+  EXPECT_EQ(key.Commitment().size(), kCommitSize);
+  EXPECT_TRUE(key.CommitmentMatches(key.Commitment()));
+}
+
+/**
+ * @brief   Verify one flipped bit anywhere in a commitment is enough to reject it
+ */
+TEST(SecureKeyTest, CommitmentRejectsOneBitChange) {
+  SecureKey key = Derive("password", MakeSalt(0x01));
+
+  /* Both ends of the field, because a comparison that stopped short would still accept a change past
+   * wherever it stopped */
+
+  const std::array<size_t, 2> positions{ 0, kCommitSize - 1 };
+
+  for (size_t pos : positions) {
+    SCOPED_TRACE(testing::Message() << "byte=" << pos);
+
+    std::array<uint8_t, kCommitSize> altered{};
+
+    std::ranges::copy(key.Commitment(), altered.begin());
+
+    altered[pos] ^= 0x01;
+
+    EXPECT_FALSE(key.CommitmentMatches(altered));
+  }
+}
+
+/**
+ * @brief   Verify two passwords over one salt commit to different values
+ *
+ * This is the property the header commitment rests on: it is what stops a single file from opening
+ * under a second password its author chose.
+ */
+TEST(SecureKeyTest, DifferentPasswordDiffersCommitment) {
+  auto salt = MakeSalt(0x01);
+  SecureKey k0 = Derive("password", salt);
+  SecureKey k1 = Derive("asdf1234", salt);
+
+  EXPECT_FALSE(k0.CommitmentMatches(k1.Commitment()));
+  EXPECT_FALSE(k1.CommitmentMatches(k0.Commitment()));
 }
 
 /* ==================================================

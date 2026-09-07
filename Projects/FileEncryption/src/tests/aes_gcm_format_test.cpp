@@ -80,9 +80,11 @@ TEST_F(AesGcmFormatTest, FramingRoundTripsAcrossChunkBoundaries) {
  * RFC 9106 vectors in kat_test.cpp, and on the framing and associated data tests beside this one.
  *
  * When regenerating the value is legitimate: only alongside a deliberate change to the format or
- * to the inputs below. A deliberate format change also means a new magic number, because this
- * format carries no version field. A failure nobody intended is a regression, and re-pinning the
- * digest to make it pass would throw away the only thing this test does.
+ * to the inputs below. A released format change also means a new magic number, because this format
+ * carries no version field; the commitment field went in while the magic value was still unreleased,
+ * which is the one circumstance under which the two move apart. A failure nobody intended is a
+ * regression, and re-pinning the digest to make it pass would throw away the only thing this test
+ * does.
  *
  * How to check the value without trusting this test: encrypt MakePlain(2 * kChunkSize + 1000)
  * under the password "golden-password", a salt of sixteen 0x42 bytes and MinParams(), then run
@@ -90,7 +92,7 @@ TEST_F(AesGcmFormatTest, FramingRoundTripsAcrossChunkBoundaries) {
  * broken and merely agrees with a digest that was recorded from the same broken helper.
  */
 TEST_F(AesGcmFormatTest, GoldenVectorIsStable) {
-  constexpr std::string_view kGoldenDigest = "428dccccae22d0b6aaa6ccb45df1292e2487ccce754382d79b900e8b9572e107";
+  constexpr std::string_view kGoldenDigest = "c6d73241dd83e8f81485236fe497d059c4a7b677977091295aa17287050dcfad";
   constexpr size_t kGoldenPlainSize = 2 * kChunkSize + 1000;
 
   const auto salt = MakeSalt(0x42);
@@ -99,13 +101,14 @@ TEST_F(AesGcmFormatTest, GoldenVectorIsStable) {
   ASSERT_EQ(cipher.size(), kHeaderSize + kGoldenPlainSize + 3 * kTagSize);
 
   const std::array<uint8_t, kHeaderSize> expected_header{
-    0xE0, 0x7B, 0xCA, 0x75,                          // Magic
-    0x10,                                            // ChunkSizeLog2 = 16
-    0x01, 0x00, 0x00, 0x00,                          // TimeCost = 1, little-endian
-    0x00, 0x00, 0x01, 0x00,                          // MemCost = 65536, little-endian
-    0x01, 0x00, 0x00, 0x00,                          // Parallelism = 1, little-endian
-    0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,  // Salt
-    0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
+    0xE0, 0x7B, 0xCA, 0x75,  // Magic
+    0x10,                    // ChunkSizeLog2 = 16
+    0x01, 0x00, 0x00, 0x00,  // TimeCost = 1, little-endian
+    0x00, 0x00, 0x01, 0x00,  // MemCost = 65536, little-endian
+    0x01, 0x00, 0x00, 0x00,  // Parallelism = 1, little-endian
+    0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,  // Salt
+    0x38, 0x70, 0x09, 0xA7, 0xC4, 0x83, 0x0E, 0xA1, 0xEA, 0xA2, 0x89, 0x0B, 0xC2, 0xC0, 0x86, 0x55,  // Commitment
+    0x8B, 0xC1, 0x76, 0xB4, 0x08, 0x43, 0x12, 0xC4, 0x31, 0x20, 0x9A, 0x59, 0x9E, 0xCF, 0xD1, 0x8F,
   };
 
   EXPECT_EQ(memcmp(cipher.data(), expected_header.data(), kHeaderSize), 0);

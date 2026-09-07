@@ -87,6 +87,19 @@ std::span<const uint8_t, kKeySize> SecureKey::Bytes() const {
   return std::span<const uint8_t, kKeySize>(data_, kKeySize);
 }
 
+std::span<const uint8_t, kCommitSize> SecureKey::Commitment() const {
+  return std::span<const uint8_t, kCommitSize>(data_ + kKeySize, kCommitSize);
+}
+
+bool SecureKey::CommitmentMatches(std::span<const uint8_t, kCommitSize> expected) const {
+  /* sodium_memcmp rather than memcmp, for the same reason ConstantTimeEquals uses it: memcmp stops at
+   * the first differing byte, and how long it takes to do so tells an observer how much of a guessed
+   * password was right. The commitment is public, but the time taken to reject one is not, and this
+   * comparison runs once per password attempt, which is exactly where a guess would be timed. */
+
+  return sodium_memcmp(data_ + kKeySize, expected.data(), kCommitSize) == 0;
+}
+
 bool SecureKey::ConstantTimeEquals(const SecureKey& other) const {
   /* sodium_memcmp rather than memcmp: memcmp stops at the first differing byte, and how long it takes
    * to do so tells an observer how much of a guessed key was right */
@@ -101,17 +114,21 @@ std::optional<SecureKey> DeriveKey(std::span<const char> pw, std::span<const uin
   /* Argon2id writes straight into locked, self-wiping memory, so the derived key never exists in a plain
    * buffer that would have to be wiped afterwards */
 
-  auto* key = static_cast<uint8_t*>(sodium_malloc(kKeySize));
+  auto* key = static_cast<uint8_t*>(sodium_malloc(kDerivedSize));
 
   if (key == nullptr) {
     return std::nullopt;  // LCOV_EXCL_LINE
   }
 
   /* The parameters come from the file header on the decryption path, which is why ValidateHeader has to
-   * have bounded them before this call */
+   * have bounded them before this call.
+   *
+   * One derivation of kDerivedSize bytes rather than two of kKeySize: Argon2id is the expensive step
+   * here, and a longer output costs nothing next to running it twice. The output length is part of what
+   * Argon2id hashes, so the key half is not what a kKeySize derivation would have produced. */
 
   if (argon2id_hash_raw(params.time_cost, params.mem_cost, params.parallelism, pw.data(), pw.size(), salt.data(),
-                        salt.size(), key, kKeySize) != ARGON2_OK) {
+                        salt.size(), key, kDerivedSize) != ARGON2_OK) {
     /* SecureKey only takes ownership on the success path below, so the allocation is still this call's */
 
     sodium_free(key);

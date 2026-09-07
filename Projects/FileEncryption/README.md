@@ -44,6 +44,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * Every byte written to disk has been authenticated first, and the source is read exactly once
 * The plaintext header is authenticated as associated data of every chunk, so editing it is detected
 * Chunk order, truncation and extension are detected, because the nonce carries the chunk counter and a final-chunk flag
+* AES-GCM is not key-committing, so a crafted file can be made to authenticate under multiple chosen passwords; the header carries a commitment derived beside the key, and comparing it is what ties a file to one password
 * Newly and randomly generated salt for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * The password and the derived key are held in `sodium_malloc` memory: guard pages, a wipe on release, and a best-effort lock against swap
 * RAII ties every secret to a scope, so releasing it is what wipes it; see 2-3 for the allocations this covers and the ones it does not
@@ -64,6 +65,8 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 	* **Time Cost:** 4 iterations
 	* **Parallelism:** 4
 	* **Salt Size:** 128 bits
+	* **Key Commitment Size:** 256 bits
+	* **Derivation Output:** 512 bits, one call split into the key and the commitment
 
 * **Chunk Size:** 64 KiB default, 4 KiB to 1 MiB accepted
 
@@ -74,12 +77,12 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 A file is a plaintext header followed by a sequence of independently authenticated chunks. The construction is STREAM (Hoang-Reyhanitabar-Rogaway-Vizar, 2015), the same framing `age` and Google Tink use.
 
 ```
-Header (33 Bytes) │ Chunk 0 │ Chunk 1 │ ... │ Chunk N-1
+Header (65 Bytes) │ Chunk 0 │ Chunk 1 │ ... │ Chunk N-1
 ```
 
 ### 3-1-1. Header
 
-33 bytes, plaintext, and fed to every chunk as associated data.
+65 bytes, plaintext, and fed to every chunk as associated data.
 
 | Offset | Size | Field         | Encoding                                 |
 |-------:|-----:|---------------|------------------------------------------|
@@ -89,6 +92,9 @@ Header (33 Bytes) │ Chunk 0 │ Chunk 1 │ ... │ Chunk N-1
 | 9      | 4    | MemCost       | uint32 little-endian (KiB)               |
 | 13     | 4    | Parallelism   | uint32 little-endian                     |
 | 17     | 16   | Salt          | raw bytes                                |
+| 33     | 32   | Commitment    | raw bytes, second half of the derivation |
+
+The commitment is compared before any chunk is read, so a wrong password is refused without a single tag being checked. It is public and needs no protection of its own, since the header it sits in is the associated data of every chunk.
 
 ### 3-1-2. Chunk
 
@@ -253,19 +259,19 @@ cmake --build build
 
 **Codecov Report:** https://app.codecov.io/gh/Astatine387/Portfolio/tree/main/Projects%2FFileEncryption%2Fsrc
 
-| Module        | Test File                 | Test Cases                                                                                                          |
-| ------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Known Answer  | `kat_test.cpp`            | NIST CAVP AES-256-GCM vectors, RFC 9106 Argon2id vector, Tag Rejection                                              |
-| AesGcm        | `aes_gcm_test.cpp`        | Encryption, Decryption, Header, Authentication, Edge Cases, Callbacks, Cancellation, Write Failures                 |
-| AesGcm Format | `aes_gcm_format_test.cpp` | Chunk Framing, Golden Vector with byte-exact header, Associated Data, Context Reuse                                 |
-| AesGcm Tamper | `aes_gcm_tamper_test.cpp` | Header and Chunk Bit Flips, Reordering, Truncation, Appending, Splicing, Write Ordering                             |
-| CryptoWorker  | `crypto_worker_test.cpp`  | Encryption, Decryption, Header Parameters, Atomic Publication, Callbacks, Cancellation, Error Handling, Concurrency |
-| FileHeader    | `file_header_test.cpp`    | Field Layout and Endianness, Magic Number, Chunk Size and Parameter Validation, Error Messages                      |
-| Byte Order    | `byte_order_test.cpp`     | Little-Endian and Big-Endian Encoding, Round Trips, Field Bounds                                                    |
-| OpenNewFile   | `open_new_file_test.cpp`  | Exclusive Creation, Permissions, Symlink and FIFO Refusal, Close-on-Exec                                            |
-| Password      | `password_test.cpp`       | Initialization, Setting Data, Copy and Move Semantics, Memory Safety, RAII                                          |
-| SecureKey     | `secure_key_test.cpp`     | Argon2id Key Derivation, Salt and Password Sensitivity, Parameter Rejection, Move Semantics                         |
-| Utils         | `utils_test.cpp`          | File Handling, Durability Helpers, Random Number Generation                                                         |
+| Module        | Test File                 | Test Cases                                                                                                                    |
+| ------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Known Answer  | `kat_test.cpp`            | NIST CAVP AES-256-GCM vectors, RFC 9106 Argon2id vector, Tag Rejection                                                        |
+| AesGcm        | `aes_gcm_test.cpp`        | Encryption, Decryption, Header, Authentication, Wrong Password Reporting, Edge Cases, Callbacks, Cancellation, Write Failures |
+| AesGcm Format | `aes_gcm_format_test.cpp` | Chunk Framing, Golden Vector with byte-exact header, Associated Data, Context Reuse                                           |
+| AesGcm Tamper | `aes_gcm_tamper_test.cpp` | Header, Commitment and Chunk Bit Flips, Reordering, Truncation, Appending, Splicing, Failure Messages, Write Ordering         |
+| CryptoWorker  | `crypto_worker_test.cpp`  | Encryption, Decryption, Header Parameters, Atomic Publication, Callbacks, Cancellation, Error Handling, Concurrency           |
+| FileHeader    | `file_header_test.cpp`    | Field Layout and Endianness, Magic Number, Commitment Round Trip, Chunk Size and Parameter Validation, Error Messages         |
+| Byte Order    | `byte_order_test.cpp`     | Little-Endian and Big-Endian Encoding, Round Trips, Field Bounds                                                              |
+| OpenNewFile   | `open_new_file_test.cpp`  | Exclusive Creation, Permissions, Symlink and FIFO Refusal, Close-on-Exec                                                      |
+| Password      | `password_test.cpp`       | Initialization, Setting Data, Copy and Move Semantics, Memory Safety, RAII                                                    |
+| SecureKey     | `secure_key_test.cpp`     | Argon2id Key Derivation, Key Commitment, Salt and Password Sensitivity, Parameter Rejection, Move Semantics                   |
+| Utils         | `utils_test.cpp`          | File Handling, Durability Helpers, Random Number Generation                                                                   |
 
 The known-answer tests are the correctness anchor: their values come from the NIST CAVP response files and the RFC 9106 text, never from this implementation. The golden vector in `aes_gcm_format_test.cpp` is the opposite kind of test, a regression pin generated by this code to catch accidental format drift.
 

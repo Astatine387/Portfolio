@@ -34,14 +34,16 @@ enum class HeaderStatus : std::uint8_t {
  * @struct	FileHeader
  * @brief	Contents of the plaintext header
  *
- * Readable by anyone and holding no secret: only what is needed to repeat the key derivation. It is not
- * unprotected for that, since every chunk is authenticated under these bytes, so a header edited after
- * the fact fails the tag of the whole file.
+ * Readable by anyone and holding no secret: only what is needed to repeat the key derivation, and the
+ * commitment that says which derivation was the right one. It is not unprotected for that, since every
+ * chunk is authenticated under these bytes, so a header edited after the fact fails the tag of the whole
+ * file.
  */
 struct FileHeader {
-  uint8_t chunk_log2 = kChunkSizeLog2;    // Base-2 log of chunk size
-  KdfParams params;                       // Argon2id parameters
-  std::array<uint8_t, kSaltSize> salt{};  // Argon2id salt
+  uint8_t chunk_log2 = kChunkSizeLog2;            // Base-2 log of chunk size
+  KdfParams params;                               // Argon2id parameters
+  std::array<uint8_t, kSaltSize> salt{};          // Argon2id salt
+  std::array<uint8_t, kCommitSize> commitment{};  // Key commitment of the password the file was written with
 };
 
 /**
