@@ -146,7 +146,6 @@ class AesGcm {
   std::array<std::vector<uint8_t>, kBuffNum> buff_{};  // Chunk buffers
   std::array<uint8_t, kHeaderSize> header_{};          // Serialized header, associated data of every chunk
   std::array<uint8_t, kNonceSize> nonce_{};            // Nonce of the chunk being processed
-  std::array<uint8_t, kSaltSize> salt_{};              // Salt read from the header
 
   const SecureKey* key_ = nullptr;  // Session key for the current operation (non-owning)
 

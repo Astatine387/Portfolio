@@ -94,7 +94,6 @@ Result AesGcm::DecryptInit(const FileHeader& header) {
     return Result::kFailure;
   }
 
-  salt_ = header.salt;
   chunk_size_ = size_t{ 1 } << header.chunk_log2;
 
   /* The associated data has to be byte for byte what encryption fed in. The layout covers every byte of the header, so

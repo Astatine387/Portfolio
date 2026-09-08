@@ -64,7 +64,6 @@ AesGcm::~AesGcm() {
   }
 
   sodium_memzero(nonce_.data(), nonce_.size());
-  sodium_memzero(salt_.data(), salt_.size());
 
   if (ctx_) {
     EVP_CIPHER_CTX_free(ctx_);

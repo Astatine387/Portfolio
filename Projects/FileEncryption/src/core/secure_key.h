@@ -111,6 +111,13 @@ class SecureKey {
    * @brief	Constant-time comparison with another key
    * @param	other	Key to compare against
    * @return	true if the keys are equal
+   *
+   * Test-only: no production path compares two keys, since a file is opened by checking a derivation against
+   * the commitment stored in its header rather than against another derivation. It stays on the public surface
+   * because the derived bytes are otherwise unobservable from outside the class, and the tests covering
+   * derivation determinism and move semantics have to assert on them. A raw accessor would answer the same
+   * question by handing out the key itself, which is what this class exists to prevent, so the comparison is
+   * exposed and the bytes are not.
    */
   [[nodiscard]] bool ConstantTimeEquals(const SecureKey& other) const;
 
