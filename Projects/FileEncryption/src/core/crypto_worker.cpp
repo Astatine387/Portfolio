@@ -70,7 +70,7 @@ void CryptoWorker::Work() {
   /* Refuse a destination that is already taken */
 
   if (FileExists(dst_path_) || OpenNewFile(&dst_file, tmp_path) == Result::kFailure) {
-    fclose(src_file);
+    static_cast<void>(fclose(src_file));
 
     if (fcb_) {
       fcb_("[File] Open failed - Cannot create destination file, or it already exists\n");
@@ -156,8 +156,8 @@ void CryptoWorker::Work() {
   pw_ = Password();
 
   if (!key.has_value()) {
-    fclose(src_file);
-    fclose(dst_file);
+    static_cast<void>(fclose(src_file));
+    static_cast<void>(fclose(dst_file));
     RemoveFile(tmp_path);
 
     if (reason.empty()) {
@@ -210,7 +210,7 @@ void CryptoWorker::Work() {
     res = aes.Decrypt(src_file, dst_file, *key, header);
   }
 
-  fclose(src_file);
+  static_cast<void>(fclose(src_file));
 
   /* The result is examined before the cancellation flag. A cancel that arrives after the work is already done must not
    * throw away a complete and valid output. */
@@ -236,7 +236,21 @@ void CryptoWorker::Work() {
     }
   }
 
-  fclose(dst_file);
+  /* Checked even after SyncFile, because a write error the file system deferred is allowed to surface at the last
+   * operation on the stream rather than at the one that caused it, and on NFS or a driver that reports late that is
+   * this close. Ignoring it would let the rename below publish a destination the disk never took.
+   *
+   * A message already set is left alone: should_delete is true here only because a cancel, the crypto pass or the sync
+   * got there first, and that is the failure worth reading. A close error on top of it is the same lost output
+   * reported twice, in the less useful of the two ways. */
+
+  if (fclose(dst_file) != 0 && !should_delete) {
+    // LCOV_EXCL_START
+    should_delete = true;
+
+    msg = "[File] Close failed - Cannot complete the write to the destination\n" + verb + " failed\n";
+    // LCOV_EXCL_STOP
+  }
 
   /* Publish only once the bytes are on the disk, so success is never reported for data that a power loss could still
    * take away */

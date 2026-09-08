@@ -1,0 +1,7 @@
+---
+# Off for the same reason as src/tests: the benchmark's file handling is scaffolding, not a durability guarantee.
+
+InheritParentConfig: true
+
+Checks: >
+  -cert-err33-c
