@@ -84,10 +84,13 @@ Result AesGcm::DecryptInit(const FileHeader& header) {
    *
    * The commitment settles it outside the AEAD. It is checked here, before SerializeHeader, AllocBuffers
    * or SetupCtx, so a wrong password costs nothing beyond the derivation that had to happen anyway, and
-   * every caller of this engine is covered rather than only the ones that remember to ask. */
+   * every caller of this engine is covered rather than only the ones that remember to ask.
+   *
+   * What it cannot settle is which of the two sides moved, since a wrong password and an edited commitment
+   * both end with the derived key disagreeing with the header, so the message below has to name both. */
 
   if (!key_->CommitmentMatches(header.commitment)) {
-    ReportError("[Auth] Verification failed - Invalid password\n");
+    ReportError("[Auth] Verification failed - Wrong password, or the file header has been modified\n");
     return Result::kFailure;
   }
 
@@ -253,8 +256,11 @@ Result AesGcm::DecryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
 
   if (EVP_DecryptFinal_ex(ctx_, final_block.data(), &final_len) != 1) {
     /* A wrong password no longer reaches this point: DecryptInit rejected it against the commitment
-     * before a chunk was read. What is left is a file that does not match its own header, so the two
-     * causes are genuinely distinguishable now and the message no longer conflates them. */
+     * before a chunk was read. That check cannot tell a wrong password from a commitment an attacker
+     * rewrote, and nothing could: both leave the derived key disagreeing with the 32 bytes in the header,
+     * which is one observation and not two. What it does separate is a header that does not name this key
+     * from a chunk that does not match the header it was authenticated under, and those two are distinct,
+     * which is why the message here blames the file rather than the password. */
 
     ReportError("[Auth] Verification failed - File is corrupted or tampered\n");
     return Result::kFailure;

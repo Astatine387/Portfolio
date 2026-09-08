@@ -203,7 +203,7 @@ TEST_F(AesGcmTest, DecryptWrongKeyReportsInvalidPassword) {
 
   EXPECT_EQ(DecryptBytes(cipher, copy, salt, "asdf1234"), Result::kFailure);
 
-  EXPECT_NE(last_error_.find("Invalid password"), std::string::npos);
+  EXPECT_NE(last_error_.find("Wrong password"), std::string::npos);
   EXPECT_EQ(last_error_.find("corrupted"), std::string::npos);
 }
 

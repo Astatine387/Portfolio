@@ -214,20 +214,22 @@ TEST_F(AesGcmTamperTest, RejectsChunkFromAnotherFile) {
  * ================================================== */
 
 /**
- * @brief   Verify a commitment the key does not match is reported as a wrong password
+ * @brief   Verify a commitment the key does not match names both of the causes it cannot tell apart
  *
  * The engine is handed the right key here, so what the flip breaks is the header's claim about which password the file
- * belongs to. From inside DecryptInit that is indistinguishable from being given the wrong password, and it has to be
- * reported as such rather than as damage to the file.
+ * belongs to. From inside DecryptInit that is indistinguishable from being given the wrong password, which is why the
+ * message has to offer both causes: naming only the password would send the owner of a recoverable file away believing
+ * they had forgotten it. What it must still not say is that the file is damaged, since no chunk has been read yet.
  */
-TEST_F(AesGcmTamperTest, ReportsInvalidPasswordForCommitmentFlip) {
+TEST_F(AesGcmTamperTest, ReportsWrongPasswordOrModifiedHeaderForCommitmentFlip) {
   std::vector<uint8_t> bytes = cipher_;
 
   bytes[kHeaderSize - 1] ^= 0x01;
 
   ExpectRejected("commitment bit flip", bytes);
 
-  EXPECT_NE(last_error_.find("Invalid password"), std::string::npos);
+  EXPECT_NE(last_error_.find("Wrong password"), std::string::npos);
+  EXPECT_NE(last_error_.find("header has been modified"), std::string::npos);
   EXPECT_EQ(last_error_.find("corrupted"), std::string::npos);
 }
 
@@ -248,7 +250,7 @@ TEST_F(AesGcmTamperTest, ReportsCorruptionForCiphertextAndTagFlips) {
     ExpectRejected("bit flip at offset " + std::to_string(offset), bytes);
 
     EXPECT_NE(last_error_.find("corrupted or tampered"), std::string::npos);
-    EXPECT_EQ(last_error_.find("Invalid password"), std::string::npos);
+    EXPECT_EQ(last_error_.find("Wrong password"), std::string::npos);
   }
 }
 

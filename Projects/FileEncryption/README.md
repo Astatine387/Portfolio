@@ -44,7 +44,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * Every byte written to disk has been authenticated first, and the source is read exactly once
 * The plaintext header is authenticated as associated data of every chunk, so editing it is detected
 * Chunk order, truncation and extension are detected, because the nonce carries the chunk counter and a final-chunk flag
-* AES-GCM is not key-committing, so a crafted file can be made to authenticate under multiple chosen passwords; the header carries a commitment derived beside the key, and comparing it is what ties a file to one password
+* AES-GCM is not key-committing, so a crafted file can be made to authenticate under multiple chosen passwords; the header carries a commitment derived beside the key, and comparing it is what ties a file to one password. A mismatch does not say which side is at fault: a wrong password and a commitment edited by an attacker are the same observation, so the failure is reported as either one
 * Newly and randomly generated salt for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * The password and the derived key are held in `sodium_malloc` memory: guard pages, a wipe on release, and a best-effort lock against swap
 * Core dumps are refused process-wide, because Argon2id's working buffer is a key equivalent that libargon2 allocates outside the locked memory: `RLIMIT_CORE = 0` on POSIX, `PR_SET_DUMPABLE = 0` on Linux release builds, `SEM_NOGPFAULTERRORBOX` on Windows
