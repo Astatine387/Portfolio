@@ -44,11 +44,11 @@ static_assert(kDerivedSize <= 64,
  * written with other parameters still opens. */
 
 inline constexpr uint32_t kMinMemCost = 64 * 1024;    /// Minimum accepted Argon2id memory cost in KiB
-inline constexpr uint32_t kMaxMemCost = 4096 * 1024;  /// Maximum accepted Argon2id memory cost in KiB
+inline constexpr uint32_t kMaxMemCost = 2048 * 1024;  /// Maximum accepted Argon2id memory cost in KiB
 inline constexpr uint32_t kMinTimeCost = 1;           /// Minimum accepted Argon2id time cost
-inline constexpr uint32_t kMaxTimeCost = 16;          /// Maximum accepted Argon2id time cost
+inline constexpr uint32_t kMaxTimeCost = 8;          /// Maximum accepted Argon2id time cost
 inline constexpr uint32_t kMinParallelism = 1;        /// Minimum accepted Argon2id parallelism
-inline constexpr uint32_t kMaxParallelism = 16;       /// Maximum accepted Argon2id parallelism
+inline constexpr uint32_t kMaxParallelism = 8;       /// Maximum accepted Argon2id parallelism
 
 static_assert(kMemCost >= kMinMemCost && kMemCost <= kMaxMemCost, "Default memory cost is out of range");
 static_assert(kTimeCost >= kMinTimeCost && kTimeCost <= kMaxTimeCost, "Default time cost is out of range");

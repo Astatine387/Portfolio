@@ -62,9 +62,9 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 	* **Authentication Tag Size:** 128 bits per chunk
 
 * **Argon2id**
-	* **Memory Cost:** 512 MiB (64 MiB to 4 GiB accepted)
-	* **Time Cost:** 4 iterations (1 to 16 accepted)
-	* **Parallelism:** 4 (1 to 16 accepted)
+	* **Memory Cost:** 512 MiB (64 MiB to 2 GiB accepted)
+	* **Time Cost:** 4 iterations (1 to 8 accepted)
+	* **Parallelism:** 4 (1 to 8 accepted)
 	* **Salt Size:** 128 bits
 	* **Key Commitment Size:** 256 bits
 	* **Derivation Output:** 512 bits
