@@ -20,6 +20,10 @@
 
 #include "common/constants.h"
 
+#ifndef _WIN32
+#include <sys/resource.h>
+#endif
+
 /* ==================================================
  * Type Property Tests
  * ================================================== */
@@ -248,3 +252,28 @@ TEST(SecureKeyTest, SelfMoveAssignKeepsKey) {
 
   EXPECT_TRUE(key.ConstantTimeEquals(ref));
 }
+
+/* ==================================================
+ * Process Hardening Test
+ * ================================================== */
+
+#ifndef _WIN32
+/**
+ * @brief   Verify InitCrypto leaves the process unable to write a core dump
+ *
+ * The Argon2id working buffer is libargon2's own malloc, so it carries none of the per-allocation
+ * exclusion sodium_malloc memory gets and would be written out whole. Refusing the dump is the only
+ * thing covering it, so the limit that does the refusing is worth asserting on.
+ *
+ * Written as a check on the state afterwards rather than on a change, so it holds on a runner whose
+ * core limit was already zero before the process started.
+ */
+TEST(SecureKeyTest, InitCryptoDisablesCoreDumps) {
+  InitCrypto();
+
+  rlimit rl = {};
+
+  ASSERT_EQ(getrlimit(RLIMIT_CORE, &rl), 0);
+  EXPECT_EQ(rl.rlim_cur, 0U);
+}
+#endif

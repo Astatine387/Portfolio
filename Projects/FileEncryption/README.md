@@ -47,6 +47,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * AES-GCM is not key-committing, so a crafted file can be made to authenticate under multiple chosen passwords; the header carries a commitment derived beside the key, and comparing it is what ties a file to one password
 * Newly and randomly generated salt for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * The password and the derived key are held in `sodium_malloc` memory: guard pages, a wipe on release, and a best-effort lock against swap
+* Core dumps are refused process-wide, because Argon2id's working buffer is a key equivalent that libargon2 allocates outside the locked memory: `RLIMIT_CORE = 0` on POSIX, `PR_SET_DUMPABLE = 0` on Linux release builds, `SEM_NOGPFAULTERRORBOX` on Windows
 * RAII ties every secret to a scope, so releasing it is what wipes it; see 3-3-1 for the allocations this covers and the ones it does not
 * Range check for the chunk size and the key derivation parameters before anything is allocated or Argon2id runs
 * Output is written to a temporary file, fsynced, then moved into place, so a partial or unverified file never appears at the destination
@@ -157,14 +158,18 @@ src
 
 ### 3-3-1. Memory Protection
 
-| Data                    | Guard pages | Swap lock   | Wipe                                       |
-| ----------------------- | ----------- | ----------- | ------------------------------------------ |
-| Password                | Yes         | Best effort | On release, by `sodium_free`               |
-| Derived key             | Yes         | Best effort | On release, by `sodium_free`               |
-| Argon2id working buffer | No          | No          | At the end of the derivation, by libargon2 |
-| Chunk buffers           | No          | No          | In the destructor, by `sodium_memzero`     |
+| Data                    | Guard pages | Swap lock   | Core dump                     | Wipe                                       |
+| ----------------------- | ----------- | ----------- | ----------------------------- | ------------------------------------------ |
+| Password                | Yes         | Best effort | Excluded, and none is written | On release, by `sodium_free`               |
+| Derived key             | Yes         | Best effort | Excluded, and none is written | On release, by `sodium_free`               |
+| Argon2id working buffer | No          | No          | Not excluded, none is written | At the end of the derivation, by libargon2 |
+| Chunk buffers           | No          | No          | Not excluded, none is written | In the destructor, by `sodium_memzero`     |
 
 What the "best effort" means: `sodium_malloc` asks the operating system to keep its pages out of the swap file, and that request is capped: by `RLIMIT_MEMLOCK` on Linux, by the process working-set minimum on Windows. `InitCrypto` raises the soft limit to the hard limit and bumps the working-set minimum, but neither can move a cap an unprivileged process is not permitted to move. Once the cap is reached the lock fails and the allocation still succeeds, so a password can end up in unlocked pages with nothing in the program able to tell. Guard pages and the wipe on release are unaffected and always apply.
+
+The core dump column has two halves. "None is written" is process-wide: `InitCrypto` puts `RLIMIT_CORE` at zero, soft and hard, so no crash of this program writes a core file at all; Linux release builds also clear the dumpable flag with `PR_SET_DUMPABLE`, which takes the process out of reach of same-uid `ptrace` on top of that, and Windows suppresses the crash handler with `SEM_NOGPFAULTERRORBOX`. "Excluded" is the separate, per-allocation guarantee, and only `sodium_malloc` memory has it: `sodium_mlock` marks its pages `MADV_DONTDUMP` on Linux, so the password and the derived key stay out of a dump even if one is taken anyway.
+
+That gap is the remaining limitation, and it matters most for the Argon2id working buffer. libargon2 takes it from plain `malloc`, so nothing marks it, and it is not a discardable intermediate: every block in a lane follows deterministically from the two the lane starts with, and the tag is the XOR of each lane's last block, so the buffer alone is enough to recompute the key without the password. Refusing the dump is all that covers it, which means any route that produces one regardless, such as WER LocalDumps configured by an administrator, captures 512 MiB of key-equivalent memory whole.
 
 # 4. Build and Usage
 ## 4-1. Prerequisites
