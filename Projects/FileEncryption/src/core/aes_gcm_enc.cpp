@@ -53,9 +53,11 @@ Result AesGcm::EncryptInit() {
     // LCOV_EXCL_STOP
   }
 
-  /* Refused before a context, a buffer or a header exists, so a source that cannot be encrypted within
-   * the bound costs the user nothing beyond the size lookup. See kMaxPlaintextSize for where the bound
-   * comes from and why decryption does not carry it. */
+  /* Refused before a context, a buffer or a header exists, and the caller refuses it earlier still:
+   * CryptoWorker::Work looks the size up before it derives a key, so a source that cannot be encrypted
+   * within the bound really does cost nothing beyond that lookup, rather than costing a full Argon2id
+   * pass first. Kept here as well, for a caller that drives the engine without going through the
+   * worker. See kMaxPlaintextSize for where the bound comes from and why decryption does not carry it. */
 
   if (src_size_ > kMaxPlaintextSize) {
     // LCOV_EXCL_START

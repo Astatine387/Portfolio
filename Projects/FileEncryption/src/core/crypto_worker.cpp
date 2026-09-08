@@ -11,6 +11,7 @@
 #include <optional>
 #include <span>
 #include <string_view>
+#include <utility>
 
 #include "core/file_header.h"
 #include "core/secure_key.h"
@@ -85,32 +86,67 @@ void CryptoWorker::Work() {
   std::optional<SecureKey> key;
   std::string reason;
 
-  /* Argon2id holds this thread for as long as the parameters ask for and offers no way back out, so the phase is
-   * announced before it starts rather than after it ends. On the decryption path those parameters came out of the file,
-   * which is what makes the wait worth naming. */
+  /* The refusals that cost nothing come first, ahead of the one that cannot be taken back. A size lookup is two seeks,
+   * and on the decryption path the header read is a page the derivation needed anyway; Argon2id behind them is minutes
+   * of memory-hard work in a phase that offers no way out, and on that same path it is the attacker's own header that
+   * says how many. A source that was never going to be processed must not be able to buy any of it. */
 
-  ReportPhase(WorkPhase::kDerivingKey, "Deriving key from password...\n");
+  const int64_t src_size = GetFileSize(src_file);
 
-  if (mode_ == CryptoMode::kEncrypt) {
-    const KdfParams params;
-    std::array<uint8_t, kSaltSize> salt{};
-
-    if (Random(salt.data(), kSaltSize) == Result::kSuccess) {
-      key = DeriveKey(std::span<const char>(pw_.GetData(), pw_.GetSize()), salt, params);
-    }
+  if (src_size == -1) {
+    // LCOV_EXCL_START  unreachable: OpenSourceFile has already refused everything that is not a regular file
+    reason = "[File] Size check failed - Cannot read source file size\n";
+    // LCOV_EXCL_STOP
   }
-  else {
+  else if (mode_ == CryptoMode::kEncrypt && src_size > kMaxPlaintextSize) {
+    // LCOV_EXCL_START  unreachable: no test writes a source of 4 PiB
+    reason = "[File] Size check failed - Source file exceeds the supported maximum\n";
+    // LCOV_EXCL_STOP
+  }
+  else if (mode_ == CryptoMode::kDecrypt) {
     /* The only place the file's header is read. What comes back derives the key and is handed to the engine unchanged,
      * so the bytes the key came from and the bytes authenticated as associated data are the same bytes rather than two
      * reads of a file that is free to change in between. */
 
     const HeaderStatus status = ReadHeader(src_file, header);
 
-    if (status == HeaderStatus::kOk) {
-      key = DeriveKey(std::span<const char>(pw_.GetData(), pw_.GetSize()), header.salt, header.params);
+    if (status != HeaderStatus::kOk) {
+      reason = HeaderErrorMessage(status);
+    }
+    else if (std::cmp_less(src_size, kMinSize)) {
+      /* Behind the parse rather than in front of it. A file too short to hold a header fails to parse, and what it is
+       * refused for should be that rather than its length, which is the order the messages have always come in. */
+
+      reason = "[File] Validation failed - File is too small to be an encrypted file\n";
+    }
+  }
+
+  if (reason.empty()) {
+    /* Argon2id holds this thread for as long as the parameters ask for and offers no way back out, so the phase is
+     * announced before it starts rather than after it ends. On the decryption path those parameters came out of the
+     * file, which is what makes the wait worth naming. */
+
+    ReportPhase(WorkPhase::kDerivingKey, "Deriving key from password...\n");
+
+    if (mode_ == CryptoMode::kEncrypt) {
+      const KdfParams params;
+      std::array<uint8_t, kSaltSize> salt{};
+
+      /* Its own message rather than the generic one below: Argon2id has not run yet, so a file that could not be
+       * given a salt is not a file whose derivation failed. Falling through would be worse than either, since the
+       * array is value-initialized, so the file would be encrypted under an all-zero salt and reported a success. */
+
+      if (Random(salt.data(), kSaltSize) == Result::kFailure) {
+        // LCOV_EXCL_START  unreachable: the platform RNG fails only where the system cannot supply entropy at all
+        reason = "[Crypto] Salt generation failed - Cannot obtain random bytes\n";
+        // LCOV_EXCL_STOP
+      }
+      else {
+        key = DeriveKey(std::span<const char>(pw_.GetData(), pw_.GetSize()), salt, params);
+      }
     }
     else {
-      reason = HeaderErrorMessage(status);
+      key = DeriveKey(std::span<const char>(pw_.GetData(), pw_.GetSize()), header.salt, header.params);
     }
   }
 

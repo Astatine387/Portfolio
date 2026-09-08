@@ -10,6 +10,7 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <functional>
 #include <optional>
@@ -212,6 +213,31 @@ class CryptoWorkerTest : public ::testing::Test {
       fclose(dst);
     }
   }
+
+  /**
+   * @brief   Write a header and not one byte behind it
+   * @param   params  Argon2id parameters to record in the header
+   *
+   * kHeaderSize bytes exactly, which parses as a header and is still below kMinSize, so it is the shortest file that
+   * reaches the size check rather than being turned away by the parse. Assembled by hand rather than by truncating a
+   * real encryption, so the fixture costs no derivation of its own and is free to record parameters nobody would want
+   * to run.
+   */
+  void MakeHeaderOnlyFile(const KdfParams& params) {
+    FILE* file = nullptr;
+    FileHeader header;
+
+    header.params = params;
+    header.salt.fill(0x33);
+
+    OpenFile(&file, enc_path_, "wb");
+
+    ASSERT_NE(file, nullptr);
+
+    EXPECT_EQ(WriteHeader(file, header), Result::kSuccess);
+
+    fclose(file);
+  }
 };
 
 /* ==================================================
@@ -404,6 +430,44 @@ TEST_F(CryptoWorkerTest, OutOfRangeHeaderParamsAreRejected) {
     EXPECT_NE(msg.find("Unsupported key derivation parameters"), std::string::npos);
     EXPECT_FALSE(FileExists(dec_path_));
   }
+}
+
+/**
+ * @brief   Verify a file holding only a header is refused for its size, not for its contents
+ */
+TEST_F(CryptoWorkerTest, HeaderOnlySourceIsRejectedAsTooSmall) {
+  MakeHeaderOnlyFile(MinParams());
+
+  const std::string msg = RunWorker(enc_path_, dec_path_, "password", CryptoMode::kDecrypt);
+
+  EXPECT_NE(msg.find("too small"), std::string::npos);
+  EXPECT_FALSE(FileExists(dec_path_));
+}
+
+/**
+ * @brief   Verify the costliest parameters a header may name buy no derivation for a file that cannot be decrypted
+ *
+ * The header is written by whoever supplied the file, so these are the parameters an attacker gets to choose: 4 GiB
+ * held for sixteen passes, inside a phase that offers no way back out. A file this short can never decrypt, and
+ * establishing that costs a size lookup, so the lookup has to happen first.
+ *
+ * A regression would not show up in the message alone, since the file is still refused in the end, only minutes and
+ * gigabytes later. The elapsed time is what separates the two. Two seconds is far more than a refusal that does no
+ * work at all needs, so a loaded machine cannot trip it, and far less than a derivation at these parameters could
+ * finish in even if the allocation succeeded.
+ */
+TEST_F(CryptoWorkerTest, MaximumHeaderParamsBuyNoDerivation) {
+  MakeHeaderOnlyFile(KdfParams{ .time_cost = kMaxTimeCost, .mem_cost = kMaxMemCost, .parallelism = kMaxParallelism });
+
+  const auto start = std::chrono::steady_clock::now();
+
+  const std::string msg = RunWorker(enc_path_, dec_path_, "password", CryptoMode::kDecrypt);
+
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+
+  EXPECT_NE(msg.find("too small"), std::string::npos);
+  EXPECT_FALSE(FileExists(dec_path_));
+  EXPECT_LT(elapsed, std::chrono::seconds(2));
 }
 
 /**
