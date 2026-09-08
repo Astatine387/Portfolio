@@ -190,7 +190,9 @@ std::optional<SecureKey> DeriveKey(std::span<const char> pw, std::span<const uin
    *
    * One derivation of kDerivedSize bytes rather than two of kKeySize: Argon2id is the expensive step here, and a longer
    * output costs nothing next to running it twice. The output length is part of what Argon2id hashes, so the key half
-   * is not what a kKeySize derivation would have produced. */
+   * is not what a kKeySize derivation would have produced. The length is a ceiling and not a preference: past 64
+   * bytes Argon2's H' stops being one BLAKE2b call and the two halves stop being safe to split, which is why
+   * constants.h asserts the bound. */
 
   if (argon2id_hash_raw(params.time_cost, params.mem_cost, params.parallelism, pw.data(), pw.size(), salt.data(),
                         salt.size(), key, kDerivedSize) != ARGON2_OK) {

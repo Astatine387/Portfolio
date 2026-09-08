@@ -22,9 +22,22 @@ inline constexpr uint32_t kParallelism = 4;       /// Argon2id parallelism
 /* AES-GCM authenticates a chunk without committing to the key it was verified under, so a crafted file
  * can be made to authenticate under two passwords at once. The commitment is what settles which password
  * a file belongs to, and it comes out of the same derivation as the key rather than out of a second
- * Argon2id call, so anchoring the password costs nothing on top of a derivation that already runs. */
+ * Argon2id call, so anchoring the password costs nothing on top of a derivation that already runs.
+ *
+ * Splitting one derivation this way holds only while the whole of it is a single BLAKE2b call. Argon2's
+ * variable-length hash H' is exactly that for an output of 64 bytes or less, so the two halves are two
+ * halves of one PRF output, and the commitment can sit in a plaintext header without saying anything
+ * about the key beside it. Past 64 bytes H' becomes a chain of 64-byte blocks, each hashed from the one
+ * before it, so the published half would be computed from the block the key was cut out of and the two
+ * would no longer be independent. Nothing about crossing that line is visible: the build succeeds, the
+ * tests pass, and only the argument is gone, which is why the size is asserted rather than left to this
+ * comment. More derived material than this takes a second derivation, not a longer output. */
 
 inline constexpr size_t kDerivedSize = kKeySize + kCommitSize;  /// Bytes one Argon2id derivation produces
+
+static_assert(kDerivedSize <= 64,
+              "Derived output is longer than one BLAKE2b call, so Argon2's H' chains and the commitment no longer "
+              "splits cleanly from the key");
 
 /* Accepted range for the parameters stored in a file header. Wider than the defaults above on purpose:
  * the defaults are only what this build writes, while the range is what it agrees to read, so a file
