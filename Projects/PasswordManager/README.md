@@ -206,9 +206,9 @@ cmake --build build
 | `COVERAGE` | `OFF`   | Coverage instrumentation (GCC/Clang)          |
 | `SANITIZE` | `OFF`   | AddressSanitizer + UndefinedBehaviorSanitizer |
 
-Sanitizer and coverage builds require `-DCMAKE_BUILD_TYPE=Debug`:
+Either option works with any build type. CI builds coverage as `Debug` and the sanitizers as `RelWithDebInfo`:
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Debug -DTHREAD_SANITIZE=ON
+cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSANITIZE=ON
 cmake --build build
 ```
 
