@@ -38,6 +38,13 @@ SecureKey MakeKey(const char* pw, const std::array<uint8_t, kSaltSize>& salt) {
   return std::move(key.value());  // NOLINT(bugprone-unchecked-optional-access)
 }
 
+/* Stand-in for a vault header. The engine attaches no meaning to these bytes; all it promises is that decryption
+ * fails unless it is handed the same ones encryption was. */
+
+std::vector<uint8_t> MakeAad(uint8_t fill) {
+  return std::vector<uint8_t>(kHeaderSize, fill);
+}
+
 }  // namespace
 
 /* ==================================================
@@ -52,7 +59,7 @@ TEST(AesGcmTest, EncryptDecryptBasic) {
 
   const char* data = "Hello, world!";
   size_t dsize = strlen(data);
-  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
   std::vector<uint8_t> enc(enc_size);
@@ -61,10 +68,11 @@ TEST(AesGcmTest, EncryptDecryptBasic) {
   memcpy(src.data(), data, dsize);
 
   auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
   SecureKey key = MakeKey("password", salt);
 
-  EXPECT_EQ(aes.Encrypt(src.data(), enc.data(), dsize, key, salt), Result::kSuccess);
-  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key), Result::kSuccess);
+  EXPECT_EQ(aes.Encrypt(src.data(), enc.data(), dsize, key, aad), Result::kSuccess);
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key, aad), Result::kSuccess);
   EXPECT_EQ(memcmp(src.data(), dec.data(), dsize), 0);
 }
 
@@ -76,7 +84,7 @@ TEST(AesGcmTest, EncryptProducesDifferentOutput) {
 
   const char* data = "Hello, world!";
   size_t dsize = strlen(data);
-  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
   std::vector<uint8_t> enc0(enc_size);
@@ -85,10 +93,11 @@ TEST(AesGcmTest, EncryptProducesDifferentOutput) {
   memcpy(src.data(), data, dsize);
 
   auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
   SecureKey key = MakeKey("password", salt);
 
-  aes.Encrypt(src.data(), enc0.data(), dsize, key, salt);
-  aes.Encrypt(src.data(), enc1.data(), dsize, key, salt);
+  aes.Encrypt(src.data(), enc0.data(), dsize, key, aad);
+  aes.Encrypt(src.data(), enc1.data(), dsize, key, aad);
 
   EXPECT_NE(memcmp(enc0.data(), enc1.data(), enc_size), 0);
 }
@@ -102,7 +111,7 @@ TEST(AesGcmTest, FreshIvPerEncrypt) {
 
   const char* data = "Hello, world!";
   size_t dsize = strlen(data);
-  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
   std::vector<uint8_t> enc0(enc_size);
@@ -113,19 +122,20 @@ TEST(AesGcmTest, FreshIvPerEncrypt) {
   memcpy(src.data(), data, dsize);
 
   auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
   SecureKey key = MakeKey("password", salt);
 
-  aes.Encrypt(src.data(), enc0.data(), dsize, key, salt);
-  aes.Encrypt(src.data(), enc1.data(), dsize, key, salt);
+  aes.Encrypt(src.data(), enc0.data(), dsize, key, aad);
+  aes.Encrypt(src.data(), enc1.data(), dsize, key, aad);
 
-  /* The IV (written after the salt) must differ between the two writes */
+  /* The IV, now the first thing the buffer holds, must differ between the two writes */
 
-  EXPECT_NE(memcmp(enc0.data() + kSaltSize, enc1.data() + kSaltSize, kIVSize), 0);
+  EXPECT_NE(memcmp(enc0.data(), enc1.data(), kIVSize), 0);
 
   /* Both ciphertexts must still decrypt back to the plaintext */
 
-  EXPECT_EQ(aes.Decrypt(enc0.data(), dec0.data(), enc_size, key), Result::kSuccess);
-  EXPECT_EQ(aes.Decrypt(enc1.data(), dec1.data(), enc_size, key), Result::kSuccess);
+  EXPECT_EQ(aes.Decrypt(enc0.data(), dec0.data(), enc_size, key, aad), Result::kSuccess);
+  EXPECT_EQ(aes.Decrypt(enc1.data(), dec1.data(), enc_size, key, aad), Result::kSuccess);
   EXPECT_EQ(memcmp(src.data(), dec0.data(), dsize), 0);
   EXPECT_EQ(memcmp(src.data(), dec1.data(), dsize), 0);
 }
@@ -138,7 +148,7 @@ TEST(AesGcmTest, DecryptWrongKey) {
 
   const char* data = "Hello, world!";
   size_t dsize = strlen(data);
-  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
   std::vector<uint8_t> enc(enc_size);
@@ -147,12 +157,13 @@ TEST(AesGcmTest, DecryptWrongKey) {
   memcpy(src.data(), data, dsize);
 
   auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
   SecureKey key0 = MakeKey("password", salt);
   SecureKey key1 = MakeKey("asdf1234", salt);
 
-  aes.Encrypt(src.data(), enc.data(), dsize, key0, salt);
+  aes.Encrypt(src.data(), enc.data(), dsize, key0, aad);
 
-  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key1), Result::kFailure);
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key1, aad), Result::kFailure);
 }
 
 /**
@@ -163,7 +174,7 @@ TEST(AesGcmTest, TamperedCiphertext) {
 
   const char* data = "Hello, world!";
   size_t dsize = strlen(data);
-  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
   std::vector<uint8_t> enc(enc_size);
@@ -172,13 +183,14 @@ TEST(AesGcmTest, TamperedCiphertext) {
   memcpy(src.data(), data, dsize);
 
   auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
   SecureKey key = MakeKey("password", salt);
 
-  aes.Encrypt(src.data(), enc.data(), dsize, key, salt);
+  aes.Encrypt(src.data(), enc.data(), dsize, key, aad);
 
-  enc[kSaltSize + kIVSize] ^= 0x01;
+  enc[kIVSize] ^= 0x01;
 
-  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key), Result::kFailure);
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key, aad), Result::kFailure);
 }
 
 /**
@@ -189,7 +201,7 @@ TEST(AesGcmTest, TamperedTag) {
 
   const char* data = "Hello, world!";
   size_t dsize = strlen(data);
-  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
   std::vector<uint8_t> enc(enc_size);
@@ -198,13 +210,14 @@ TEST(AesGcmTest, TamperedTag) {
   memcpy(src.data(), data, dsize);
 
   auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
   SecureKey key = MakeKey("password", salt);
 
-  aes.Encrypt(src.data(), enc.data(), dsize, key, salt);
+  aes.Encrypt(src.data(), enc.data(), dsize, key, aad);
 
   enc[enc_size - 1] ^= 0x01;
 
-  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key), Result::kFailure);
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key, aad), Result::kFailure);
 }
 
 /* ==================================================
@@ -218,17 +231,18 @@ TEST(AesGcmTest, EmptyData) {
   AesGcm aes;
 
   size_t dsize = 0;
-  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
   std::vector<uint8_t> enc(enc_size);
   std::vector<uint8_t> dec(dsize);
 
   auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
   SecureKey key = MakeKey("password", salt);
 
-  EXPECT_EQ(aes.Encrypt(src.data(), enc.data(), dsize, key, salt), Result::kSuccess);
-  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key), Result::kSuccess);
+  EXPECT_EQ(aes.Encrypt(src.data(), enc.data(), dsize, key, aad), Result::kSuccess);
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key, aad), Result::kSuccess);
 }
 
 /**
@@ -238,17 +252,18 @@ TEST(AesGcmTest, SingleByte) {
   AesGcm aes;
 
   size_t dsize = 1;
-  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kIVSize + dsize + kTagSize;
 
   uint8_t src = 0x00;
   std::vector<uint8_t> enc(enc_size);
   uint8_t dec = 0xFF;
 
   auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
   SecureKey key = MakeKey("password", salt);
 
-  EXPECT_EQ(aes.Encrypt(&src, enc.data(), dsize, key, salt), Result::kSuccess);
-  EXPECT_EQ(aes.Decrypt(enc.data(), &dec, enc_size, key), Result::kSuccess);
+  EXPECT_EQ(aes.Encrypt(&src, enc.data(), dsize, key, aad), Result::kSuccess);
+  EXPECT_EQ(aes.Decrypt(enc.data(), &dec, enc_size, key, aad), Result::kSuccess);
   EXPECT_EQ(dec, src);
 }
 
@@ -259,17 +274,18 @@ TEST(AesGcmTest, LargeData) {
   AesGcm aes;
 
   size_t dsize = 1024ULL * 1024;  // 1 MiB
-  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize, 0x00);
   std::vector<uint8_t> enc(enc_size);
   std::vector<uint8_t> dec(dsize);
 
   auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
   SecureKey key = MakeKey("password", salt);
 
-  EXPECT_EQ(aes.Encrypt(src.data(), enc.data(), dsize, key, salt), Result::kSuccess);
-  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key), Result::kSuccess);
+  EXPECT_EQ(aes.Encrypt(src.data(), enc.data(), dsize, key, aad), Result::kSuccess);
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key, aad), Result::kSuccess);
   EXPECT_EQ(memcmp(src.data(), dec.data(), dsize), 0);
 }
 
@@ -286,7 +302,7 @@ TEST(AesGcmTest, ErrorCallback) {
 
   const char* data = "Hello, world!";
   size_t dsize = strlen(data);
-  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
   std::vector<uint8_t> enc(enc_size);
@@ -295,14 +311,15 @@ TEST(AesGcmTest, ErrorCallback) {
   memcpy(src.data(), data, dsize);
 
   auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
   SecureKey key0 = MakeKey("password", salt);
   SecureKey key1 = MakeKey("asdf1234", salt);
 
-  aes.Encrypt(src.data(), enc.data(), dsize, key0, salt);
+  aes.Encrypt(src.data(), enc.data(), dsize, key0, aad);
 
   aes.SetErrorCallback([&](const char*) { cb_called = true; });
 
-  aes.Decrypt(enc.data(), dec.data(), enc_size, key1);
+  aes.Decrypt(enc.data(), dec.data(), enc_size, key1, aad);
 
   EXPECT_TRUE(cb_called);
 }
@@ -317,7 +334,7 @@ TEST(AesGcmTest, ErrorCallbackFormatsQueue) {
 
   const char* data = "Hello, world!";
   size_t dsize = strlen(data);
-  size_t enc_size = kSaltSize + kIVSize + dsize + kTagSize;
+  size_t enc_size = kIVSize + dsize + kTagSize;
 
   std::vector<uint8_t> src(dsize);
   std::vector<uint8_t> enc(enc_size);
@@ -326,10 +343,11 @@ TEST(AesGcmTest, ErrorCallbackFormatsQueue) {
   memcpy(src.data(), data, dsize);
 
   auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
   SecureKey key0 = MakeKey("password", salt);
   SecureKey key1 = MakeKey("asdf1234", salt);
 
-  aes.Encrypt(src.data(), enc.data(), dsize, key0, salt);
+  aes.Encrypt(src.data(), enc.data(), dsize, key0, aad);
 
   aes.SetErrorCallback([&](const char* msg) {
     called = true;
@@ -341,7 +359,7 @@ TEST(AesGcmTest, ErrorCallbackFormatsQueue) {
   ERR_clear_error();
   ERR_raise(ERR_LIB_USER, ERR_R_INTERNAL_ERROR);
 
-  aes.Decrypt(enc.data(), dec.data(), enc_size, key1);
+  aes.Decrypt(enc.data(), dec.data(), enc_size, key1, aad);
 
   EXPECT_TRUE(called);
   EXPECT_NE(captured.find(" -> "), std::string::npos);

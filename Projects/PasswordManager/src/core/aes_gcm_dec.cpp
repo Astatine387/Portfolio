@@ -9,7 +9,7 @@
 
 #include "core/aes_gcm.h"
 
-Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key) {
+Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad) {
   src_buff_ = src;
   dst_buff_ = dst;
   size_ = size;
@@ -18,14 +18,14 @@ Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey&
 
   DecryptInit();
 
-  if (SetupDecryptCtx() == Result::kFailure) {
+  if (SetupDecryptCtx(aad) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
   /* Decrypt the ciphertext in chunks */
 
-  int64_t rem = static_cast<int64_t>(size_ - kSaltSize - kIVSize - kTagSize);
-  size_t src_crs = kSaltSize + kIVSize;
+  int64_t rem = static_cast<int64_t>(size_ - kIVSize - kTagSize);
+  size_t src_crs = kIVSize;
   size_t dst_crs = 0;
 
   while (rem > 0) {
@@ -46,13 +46,13 @@ Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey&
 }
 
 void AesGcm::DecryptInit() {
-  /* Read the IV from the header */
+  /* Read the IV, which the caller left at the front of the buffer it handed over */
 
-  memcpy(iv_.data(), src_buff_ + kSaltSize, kIVSize);
+  memcpy(iv_.data(), src_buff_, kIVSize);
   memcpy(tag_.data(), src_buff_ + size_ - kTagSize, kTagSize);
 }
 
-Result AesGcm::SetupDecryptCtx() {
+Result AesGcm::SetupDecryptCtx(std::span<const uint8_t> aad) {
   /* Clear existing context */
 
   if (ctx_) {
@@ -93,6 +93,18 @@ Result AesGcm::SetupDecryptCtx() {
   if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_TAG, kTagSize, tag_.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Tag failed - Cannot set authentication tag\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  /* Feed the associated data in the same position encryption did, ahead of any ciphertext, so the tag being verified
+   * covers the same bytes in the same order */
+
+  int out_len = 0;
+
+  if (!aad.empty() && EVP_DecryptUpdate(ctx_, nullptr, &out_len, aad.data(), static_cast<int>(aad.size())) != 1) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Decryption failed - Cannot authenticate the header\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }

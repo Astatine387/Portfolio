@@ -43,28 +43,35 @@ class AesGcm {
 
   /**
    * @brief		Decrypt a buffer
-   * @param		src		Source buffer
+   * @param		src		Source buffer, laid out as [iv][ciphertext][tag]
    * @param		dst		Destination buffer
    * @param		size	Source buffer size
    * @param		key		Session key
+   * @param		aad		Associated data, authenticated but neither read from nor written to @p src
    * @return		kSuccess on success, kFailure on failure
    *
    * AES-GCM cannot authenticate the ciphertext until the whole message has been processed. On kFailure @p dst holds
    * unverified plaintext. The caller owns that buffer and must wipe it before doing anything else with it.
+   *
+   * @p aad has to be byte-for-byte what encryption was given or the tag fails. The caller is expected to hand over a
+   * view into the very buffer the header was read into, rather than a header it rebuilt from parsed fields, so that
+   * the bytes on the disk and the bytes under the tag cannot drift apart.
    */
-  Result Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key);
+  Result Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad);
 
   /**
    * @brief		Encrypt a buffer
    * @param		src			Source buffer
-   * @param		dst			Destination buffer
+   * @param		dst			Destination buffer, laid out as [iv][ciphertext][tag]
    * @param		size		Source buffer size
    * @param		key			Session key
-   * @param		salt		Session salt written to the header
+   * @param		aad			Associated data, authenticated but not copied into @p dst
    * @return		kSuccess on success, kFailure on failure
+   *
+   * The header is no longer this class's business: it neither writes the salt nor knows what the bytes it
+   * authenticates mean, and @p dst begins at the IV. Whoever owns the header writes it and passes the same bytes here.
    */
-  Result Encrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key,
-                 std::span<const uint8_t, kSaltSize> salt);
+  Result Encrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad);
 
   /* ==================================================
    * Callback functions
@@ -105,15 +112,17 @@ class AesGcm {
   /**
    * @brief	Read the IV and authentication tag from the buffer
    *
-   * The salt was already consumed by the caller to derive the session key.
+   * The header, salt included, was already consumed by the caller to derive the session key, so the buffer starts at
+   * the IV.
    */
   void DecryptInit();
 
   /**
-   * @brief	Create the decryption context and set key, IV, and tag
+   * @brief	Create the decryption context and set key, IV, tag and associated data
+   * @param	aad		Associated data to authenticate
    * @return	kSuccess on success, kFailure on failure
    */
-  Result SetupDecryptCtx();
+  Result SetupDecryptCtx(std::span<const uint8_t> aad);
 
   /**
    * @brief	Decrypt a buffer
@@ -135,11 +144,11 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief	Initialize the encryption context and write the header
-   * @param	salt	Session salt written to the header
+   * @brief	Initialize the encryption context, write the IV and authenticate the associated data
+   * @param	aad		Associated data to authenticate
    * @return	kSuccess on success, kFailure on failure
    */
-  Result EncryptInit(std::span<const uint8_t, kSaltSize> salt);
+  Result EncryptInit(std::span<const uint8_t> aad);
 
   /**
    * @brief	Encrypt buffer

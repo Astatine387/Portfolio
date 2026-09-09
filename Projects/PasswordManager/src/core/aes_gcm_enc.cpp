@@ -10,15 +10,14 @@
 #include "core/aes_gcm.h"
 #include "utils/platform.h"
 
-Result AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key,
-                       std::span<const uint8_t, kSaltSize> salt) {
+Result AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad) {
   src_buff_ = src;
   dst_buff_ = dst;
   size_ = size;
   dst_crs_ = 0;
   key_ = &key;
 
-  if (EncryptInit(salt) == Result::kFailure) {
+  if (EncryptInit(aad) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
@@ -37,7 +36,7 @@ Result AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey&
   return Result::kSuccess;
 }
 
-Result AesGcm::EncryptInit(std::span<const uint8_t, kSaltSize> salt) {
+Result AesGcm::EncryptInit(std::span<const uint8_t> aad) {
   /* Clear existing context */
 
   if (ctx_) {
@@ -86,10 +85,21 @@ Result AesGcm::EncryptInit(std::span<const uint8_t, kSaltSize> salt) {
     // LCOV_EXCL_STOP
   }
 
-  /* Write the session salt and the fresh IV to the header */
+  /* Authenticate the associated data before any plaintext reaches the context. A null output buffer is what makes
+   * EVP_EncryptUpdate feed bytes in as associated data rather than encrypt them, and GCM requires all of it ahead of
+   * the first ciphertext byte: fed later it would silently produce a different tag instead of an error. */
 
-  memcpy(dst_buff_ + dst_crs_, salt.data(), kSaltSize);
-  dst_crs_ += kSaltSize;
+  int out_len = 0;
+
+  if (!aad.empty() && EVP_EncryptUpdate(ctx_, nullptr, &out_len, aad.data(), static_cast<int>(aad.size())) != 1) {
+    // LCOV_EXCL_START
+    ReportError("[Crypto] Encryption failed - Cannot authenticate the header\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  /* Write the fresh IV. The header ahead of it belongs to the caller, which has already written it and passed those
+   * same bytes in as the associated data above. */
 
   memcpy(dst_buff_ + dst_crs_, iv_.data(), kIVSize);
   dst_crs_ += kIVSize;
