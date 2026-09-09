@@ -223,6 +223,7 @@ set(TEST_SOURCES
     src/tests/aes_gcm_test.cpp
     src/tests/byte_order_test.cpp
     src/tests/entry_test.cpp
+    src/tests/kat_test.cpp
     src/tests/password_test.cpp
     src/tests/secure_buffer_test.cpp
     src/tests/secure_key_test.cpp
