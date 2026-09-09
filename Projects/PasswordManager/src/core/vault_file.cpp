@@ -4,64 +4,14 @@
  * @author	Astatine387
  */
 
+#include <algorithm>
 #include <array>
-#include <cstring>
 #include <span>
 
 #include "core/vault.h"
+#include "core/vault_header.h"
 #include "utils/byte_order.h"
 #include "utils/platform.h"
-
-namespace {
-
-/**
- * @brief	Read the Argon2id parameter block from a vault header
- * @param	src		Vault file buffer holding at least kKdfParamSize bytes
- * @return	Parameters stored in the header
- */
-KdfParams ReadKdfParams(const uint8_t* src) {
-  KdfParams params{};
-
-  params.time_cost = LoadLE32(src + kMagicSize);
-  params.mem_cost = LoadLE32(src + kMagicSize + sizeof(uint32_t));
-  params.parallelism = LoadLE32(src + kMagicSize + 2 * sizeof(uint32_t));
-
-  return params;
-}
-
-/**
- * @brief	Write the Argon2id parameter block into a vault header
- * @param	dst			Vault file buffer holding at least kKdfParamSize bytes
- * @param	params		Parameters to store
- */
-void WriteKdfParams(uint8_t* dst, const KdfParams& params) {
-  StoreLE32(dst + kMagicSize, params.time_cost);
-  StoreLE32(dst + kMagicSize + sizeof(uint32_t), params.mem_cost);
-  StoreLE32(dst + kMagicSize + 2 * sizeof(uint32_t), params.parallelism);
-}
-
-/**
- * @brief	Check whether KDF parameters are within the accepted range
- * @param	params	Parameters read from header
- * @return	kSuccess when every field is in range, kFailure otherwise
- */
-Result ValidateKdfParams(const KdfParams& params) {
-  if (params.time_cost < kMinTimeCost || params.time_cost > kMaxTimeCost) {
-    return Result::kFailure;
-  }
-
-  if (params.mem_cost < kMinMemCost || params.mem_cost > kMaxMemCost) {
-    return Result::kFailure;
-  }
-
-  if (params.parallelism < kMinParallelism || params.parallelism > kMaxParallelism) {
-    return Result::kFailure;
-  }
-
-  return Result::kSuccess;
-}
-
-}  // namespace
 
 Result Vault::NewVault(const std::string& path, const Password& pw) {
   last_error_.clear();
@@ -107,7 +57,7 @@ Result Vault::NewVault(const std::string& path, const Password& pw) {
 
   /* Encrypt and write the vault file atomically */
 
-  if (SaveVaultWith(path, *key_, salt_, kdf_) == Result::kFailure) {
+  if (SaveVaultWith(path, *key_) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
@@ -166,27 +116,22 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
     // LCOV_EXCL_STOP
   }
 
-  /* Check magic number */
+  /* Check and adopt the header. Magic, version and parameter ranges are settled in one place, so nothing here
+   * re-checks what kOk already promises. */
 
-  if (LoadLE32(src_buff_.data()) != kMagicNum) {
-    ReportError("[File] Validation failed - Not a vault file\n");
+  VaultHeader header;
+
+  const HeaderStatus status = ParseHeader(src_buff_, header);
+
+  if (status != HeaderStatus::kOk) {
+    ReportError(HeaderErrorMessage(status));
     return Result::kFailure;
   }
 
-  /* Adopt the key-derivation parameters recorded in the header */
+  salt_ = header.salt;
+  kdf_ = header.params;
 
-  const KdfParams params = ReadKdfParams(src_buff_.data());
-
-  if (ValidateKdfParams(params) == Result::kFailure) {
-    ReportError("[File] Validation failed - Unsupported key derivation parameters\n");
-    return Result::kFailure;
-  }
-
-  kdf_ = params;
-
-  /* Read the salt from the header and derive the session key */
-
-  memcpy(salt_.data(), src_buff_.data() + kKdfParamSize, kSaltSize);
+  /* Derive the session key under the derivation the header describes */
 
   key_ = DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()), salt_, kdf_);
 
@@ -198,9 +143,20 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
     // LCOV_EXCL_STOP
   }
 
+  /* Settle which of the two failures this is before decrypting anything. AES-GCM does not commit to the key a tag
+   * was verified under, so a failing tag on its own cannot say whether the password was wrong or the file was
+   * damaged, and both used to be reported as one sentence. The commitment derived beside the key answers the first
+   * question by itself, and it is compared here so that every failure past this point means the file. */
+
+  if (!key_->CommitmentMatches(header.commitment)) {
+    Reset();
+    ReportError("[Auth] Open failed - Incorrect master password\n");
+    return Result::kFailure;
+  }
+
   /* Decrypt into the session image */
 
-  int64_t img_size = src_size_ - static_cast<int64_t>(kKdfParamSize + kSaltSize + kIVSize + kTagSize);
+  int64_t img_size = src_size_ - static_cast<int64_t>(kHeaderSize + kIVSize + kTagSize);
 
   img_ = SecureBuffer(static_cast<size_t>(img_size));
 
@@ -212,10 +168,18 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
     // LCOV_EXCL_STOP
   }
 
-  if (aes_.Decrypt(src_buff_.data() + kKdfParamSize, img_.Data(), src_bytes - kKdfParamSize, *key_) ==
-      Result::kFailure) {
+  /* The associated data is a view into the buffer the file was read into, not a header re-serialized from the
+   * fields just parsed out of it, so the bytes on the disk and the bytes under the tag are physically the same and
+   * have nowhere to disagree. FileEncryption has to rebuild its header for this because it drops the buffer it read
+   * from; a vault is read whole and kept, so there is nothing to rebuild.
+   *
+   * The password was settled by the commitment above, which leaves damage as the only thing a failing tag can mean
+   * here. */
+
+  if (aes_.Decrypt(src_buff_.data() + kHeaderSize, img_.Data(), src_bytes - kHeaderSize, *key_,
+                   std::span(src_buff_.data(), kHeaderSize)) == Result::kFailure) {
     Reset();
-    ReportError("[Auth] Decryption failed - Invalid password or corrupted vault\n");
+    ReportError("[Auth] Open failed - Vault file is corrupted\n");
     return Result::kFailure;
   }
 
@@ -268,11 +232,10 @@ Result Vault::SaveVault(const std::string& path) {
     return Result::kFailure;
   }
 
-  return SaveVaultWith(path, *key_, salt_, kdf_);
+  return SaveVaultWith(path, *key_);
 }
 
-Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt,
-                            const KdfParams& params) {
+Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key) {
   /* Verify the image redzone and offset invariant before encrypting */
 
   if (VerifyImage() == Result::kFailure) {
@@ -281,7 +244,7 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::
 
   /* Calculate file size */
 
-  dst_size_ = static_cast<int64_t>(kKdfParamSize + kSaltSize + kIVSize + img_.Size() + kTagSize);
+  dst_size_ = static_cast<int64_t>(kHeaderSize + kIVSize + img_.Size() + kTagSize);
 
   if (dst_size_ > kMaxSize) {
     // LCOV_EXCL_START
@@ -294,15 +257,24 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::
 
   dst_buff_.assign(dst_bytes, 0);
 
-  /* Write the magic number and the parameters the key was derived with */
+  /* Describe the derivation from the key itself. Salt, parameters and commitment come from the one object that was
+   * produced by the derivation being described, so the header cannot end up describing a different one. */
 
-  StoreLE32(dst_buff_.data(), kMagicNum);
+  VaultHeader header;
 
-  WriteKdfParams(dst_buff_.data(), params);
+  header.params = key.Params();
 
-  /* Encrypt the image; the session salt is written and a fresh IV is generated */
+  std::ranges::copy(key.Salt(), header.salt.begin());
+  std::ranges::copy(key.Commitment(), header.commitment.begin());
 
-  if (aes_.Encrypt(img_.Data(), dst_buff_.data() + kKdfParamSize, img_.Size(), key, salt) == Result::kFailure) {
+  SerializeHeader(std::span<uint8_t, kHeaderSize>(dst_buff_.data(), kHeaderSize), header);
+
+  /* Encrypt the image behind the header with a fresh IV, authenticating the header bytes just written. The span
+   * passed as associated data is the buffer that goes to the disk rather than a second copy assembled from the same
+   * fields, so what is written and what is authenticated are the same bytes. */
+
+  if (aes_.Encrypt(img_.Data(), dst_buff_.data() + kHeaderSize, img_.Size(), key,
+                   std::span(dst_buff_.data(), kHeaderSize)) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt vault data\n");
     return Result::kFailure;
@@ -384,7 +356,14 @@ bool Vault::VerifyPW(const Password& pw) const {
     return false;  // LCOV_EXCL_LINE
   }
 
-  return key_->ConstantTimeEquals(*cand);
+  /* Compared through the commitment rather than key against key, which is the same question the open path asks of a
+   * header and keeps the derived key itself out of every comparison.
+   *
+   * This does not make verification cheaper: a full Argon2id derivation still runs here, and the change-password path
+   * in MainGUI::OnChangePWRequested runs a second one inside ChangePW, so that flow pays for two. Collapsing them
+   * belongs with the threading work rather than here. */
+
+  return cand->CommitmentMatches(key_->Commitment());
 }
 
 Result Vault::ChangePW(const Password& pw, const std::string& path) {
@@ -421,7 +400,7 @@ Result Vault::ChangePW(const Password& pw, const std::string& path) {
 
   /* Persist with the new key before changing session state */
 
-  if (SaveVaultWith(path, *new_key, new_salt, new_kdf) == Result::kFailure) {
+  if (SaveVaultWith(path, *new_key) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 

@@ -211,15 +211,16 @@ class Vault {
   void Reset();
 
   /**
-   * @brief     Encrypt the current image with a given key and salt, then write atomically
+   * @brief     Encrypt the current image with a given key, then write atomically
    * @param     path	Vault file path
    * @param     key		Key to encrypt with
-   * @param     salt	Salt to write to the header
-   * @param     params	Argon2id parameters
    * @return	kSuccess on success, kFailure on failure
+   *
+   * The header is built from @p key alone. Salt and parameters used to arrive beside the key as separate arguments,
+   * which left it possible to record a derivation the key had not come from; there is no longer an argument to get
+   * wrong.
    */
-  Result SaveVaultWith(const std::string& path, const SecureKey& key, std::span<const uint8_t, kSaltSize> salt,
-                       const KdfParams& params);
+  Result SaveVaultWith(const std::string& path, const SecureKey& key);
 
   /**
    * @brief     Serialize every entry except one into a new image and refresh offsets

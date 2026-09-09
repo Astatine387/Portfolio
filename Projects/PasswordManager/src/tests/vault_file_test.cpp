@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstring>
@@ -16,7 +17,31 @@
 
 #include "core/secure_key.h"
 #include "core/vault.h"
+#include "core/vault_header.h"
+#include "utils/byte_order.h"
 #include "utils/platform.h"
+
+namespace {
+
+/* Header field offsets, restated here rather than imported from the module under test, so that moving a field in the
+ * format has to be done twice before these tests agree that it moved */
+
+constexpr size_t kVersionOff = 4;
+constexpr size_t kTimeCostOff = 5;
+constexpr size_t kMemCostOff = 9;
+constexpr size_t kParallelismOff = 13;
+constexpr size_t kSaltOff = 17;
+constexpr size_t kCommitOff = 33;
+
+static_assert(kVersionOff == kMagicSize, "Version does not follow the magic number");
+static_assert(kTimeCostOff == kVersionOff + kVersionSize, "Time cost does not follow the version");
+static_assert(kMemCostOff == kTimeCostOff + sizeof(uint32_t), "Memory cost does not follow the time cost");
+static_assert(kParallelismOff == kMemCostOff + sizeof(uint32_t), "Parallelism does not follow the memory cost");
+static_assert(kSaltOff == kParallelismOff + sizeof(uint32_t), "Salt does not follow the parameters");
+static_assert(kCommitOff == kSaltOff + kSaltSize, "Commitment does not follow the salt");
+static_assert(kCommitOff + kCommitSize == kHeaderSize, "Header field offsets do not fill the header");
+
+}  // namespace
 
 /**
  * @class   VaultFileTest
@@ -131,19 +156,34 @@ class VaultFileTest : public ::testing::Test {
   }
 
   /**
-   * @brief   Write a vault file from a header parameter block and an encrypted body
+   * @brief   Write a vault file holding the given image, derived under the given salt and parameters
    * @param   path    File path
-   * @param   enc     Encrypted body (salt, IV, ciphertext and tag)
-   * @param   params  Argon2id parameters to record in the header
+   * @param   img     Plaintext vault image
+   * @param   salt    Salt to derive with and record in the header
+   * @param   params  Argon2id parameters to derive with and record in the header
+   *
+   * Assembled the way SaveVaultWith assembles one, commitment and associated data included, so a crafted vault
+   * differs from a real one only in what its image says.
    */
-  static void WriteVault(const std::string& path, const std::vector<uint8_t>& enc, const KdfParams& params = {}) {
-    std::vector<uint8_t> buff(kKdfParamSize + enc.size());
+  static void WriteVault(const std::string& path, std::vector<uint8_t>& img, const std::array<uint8_t, kSaltSize>& salt,
+                         const KdfParams& params = {}) {
+    SecureKey key = KeyForFile(salt, params);
 
-    memcpy(buff.data(), &kMagicNum, kMagicSize);
-    memcpy(buff.data() + kMagicSize, &params.time_cost, sizeof(uint32_t));
-    memcpy(buff.data() + kMagicSize + sizeof(uint32_t), &params.mem_cost, sizeof(uint32_t));
-    memcpy(buff.data() + kMagicSize + 2 * sizeof(uint32_t), &params.parallelism, sizeof(uint32_t));
-    memcpy(buff.data() + kKdfParamSize, enc.data(), enc.size());
+    VaultHeader header;
+
+    header.params = key.Params();
+
+    std::ranges::copy(key.Salt(), header.salt.begin());
+    std::ranges::copy(key.Commitment(), header.commitment.begin());
+
+    std::vector<uint8_t> buff(kHeaderSize + kIVSize + img.size() + kTagSize);
+
+    SerializeHeader(std::span<uint8_t, kHeaderSize>(buff.data(), kHeaderSize), header);
+
+    AesGcm aes;
+
+    EXPECT_EQ(aes.Encrypt(img.data(), buff.data() + kHeaderSize, img.size(), key, std::span(buff.data(), kHeaderSize)),
+              Result::kSuccess);
 
     WriteFile(path, buff);
   }
@@ -156,11 +196,11 @@ class VaultFileTest : public ::testing::Test {
   static KdfParams ReadHeaderParams(const std::vector<uint8_t>& buff) {
     KdfParams params{};
 
-    EXPECT_GE(buff.size(), kKdfParamSize);
+    EXPECT_GE(buff.size(), kHeaderSize);
 
-    memcpy(&params.time_cost, buff.data() + kMagicSize, sizeof(uint32_t));
-    memcpy(&params.mem_cost, buff.data() + kMagicSize + sizeof(uint32_t), sizeof(uint32_t));
-    memcpy(&params.parallelism, buff.data() + kMagicSize + 2 * sizeof(uint32_t), sizeof(uint32_t));
+    params.time_cost = LoadLE32(buff.data() + kTimeCostOff);
+    params.mem_cost = LoadLE32(buff.data() + kMemCostOff);
+    params.parallelism = LoadLE32(buff.data() + kParallelismOff);
 
     return params;
   }
@@ -172,11 +212,11 @@ class VaultFileTest : public ::testing::Test {
   void PatchHeaderParams(const KdfParams& params) {
     std::vector<uint8_t> buff = ReadFile(path_);
 
-    ASSERT_GE(buff.size(), kKdfParamSize);
+    ASSERT_GE(buff.size(), kHeaderSize);
 
-    memcpy(buff.data() + kMagicSize, &params.time_cost, sizeof(uint32_t));
-    memcpy(buff.data() + kMagicSize + sizeof(uint32_t), &params.mem_cost, sizeof(uint32_t));
-    memcpy(buff.data() + kMagicSize + 2 * sizeof(uint32_t), &params.parallelism, sizeof(uint32_t));
+    StoreLE32(buff.data() + kTimeCostOff, params.time_cost);
+    StoreLE32(buff.data() + kMemCostOff, params.mem_cost);
+    StoreLE32(buff.data() + kParallelismOff, params.parallelism);
 
     WriteFile(path_, buff);
   }
@@ -186,22 +226,14 @@ class VaultFileTest : public ::testing::Test {
    * @param   params  Argon2id parameters to derive with and record
    */
   void MakeVaultWith(const KdfParams& params) {
-    uint32_t entry_cnt = 0;
-    std::vector<uint8_t> src(kCountSize);
+    std::vector<uint8_t> img(kCountSize);
 
-    memcpy(src.data(), &entry_cnt, kCountSize);
+    StoreLE32(img.data(), 0);
 
     std::array<uint8_t, kSaltSize> salt{};
     salt.fill(0x33);
 
-    SecureKey key = KeyForFile(salt, params);
-    std::vector<uint8_t> enc(kSaltSize + kIVSize + src.size() + kTagSize);
-
-    AesGcm aes;
-
-    ASSERT_EQ(aes.Encrypt(src.data(), enc.data(), src.size(), key, salt), Result::kSuccess);
-
-    WriteVault(path_, enc, params);
+    WriteVault(path_, img, salt, params);
   }
 };
 
@@ -321,27 +353,16 @@ TEST_F(VaultFileTest, OpenOversizedFile) {
 TEST_F(VaultFileTest, OpenInflatedEntryCount) {
   /* Entry count is 10, but there are no actual entries */
 
-  uint32_t entry_cnt = 10;
-  size_t src_size = sizeof(uint32_t);
+  std::vector<uint8_t> src(kCountSize);
 
-  std::vector<uint8_t> src(src_size);
-  memcpy(src.data(), &entry_cnt, sizeof(uint32_t));
+  StoreLE32(src.data(), 10);
 
-  /* Encrypt with a key the vault will re-derive from "password" */
+  /* Write a vault the fixture password opens, so the entry count is what fails and not the password */
 
   std::array<uint8_t, kSaltSize> salt{};
   salt.fill(0x11);
-  SecureKey key = KeyForFile(salt);
 
-  size_t enc_size = kSaltSize + kIVSize + src_size + kTagSize;
-  std::vector<uint8_t> enc(enc_size);
-
-  AesGcm aes;
-  aes.Encrypt(src.data(), enc.data(), src_size, key, salt);
-
-  /* Write vault file */
-
-  WriteVault(path_, enc);
+  WriteVault(path_, src, salt);
 
   EXPECT_EQ(Reload(), Result::kFailure);
 }
@@ -374,21 +395,12 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
 
   entry.Serialize(std::span(src).subspan(cur), epw_span);
 
-  /* Encrypt with a key the vault will re-derive from "password" */
+  /* Write a vault the fixture password opens, so the entry data is what fails and not the password */
 
   std::array<uint8_t, kSaltSize> salt{};
   salt.fill(0x22);
-  SecureKey key = KeyForFile(salt);
 
-  size_t enc_size = kSaltSize + kIVSize + src_size + kTagSize;
-  std::vector<uint8_t> enc(enc_size);
-
-  AesGcm aes;
-  aes.Encrypt(src.data(), enc.data(), src_size, key, salt);
-
-  /* Write vault file */
-
-  WriteVault(path_, enc);
+  WriteVault(path_, src, salt);
 
   EXPECT_EQ(Reload(), Result::kFailure);
 }
@@ -417,15 +429,15 @@ TEST_F(VaultFileTest, OpenTamperedCiphertext) {
 
   fclose(file);
 
-  /* Flip the first ciphertext byte, leaving the header, salt and IV intact */
+  /* Flip the first ciphertext byte, leaving the header and the IV intact */
 
-  const size_t offset = kKdfParamSize + kSaltSize + kIVSize;
+  const size_t offset = kHeaderSize + kIVSize;
 
   ASSERT_LT(offset, fsize);
 
   buff[offset] ^= 0xFF;
 
-  EXPECT_EQ(memcmp(buff.data(), &kMagicNum, kMagicSize), 0);
+  EXPECT_EQ(LoadLE32(buff.data()), kMagicNum);
 
   /* Write the tampered vault back */
 
@@ -493,27 +505,20 @@ TEST_F(VaultFileTest, OpenRejectsOutOfRangeKdfParams) {
 }
 
 /**
- * @brief   Verify a file written before the parameter block existed is rejected as malformed
+ * @brief   Verify a vault written before the key commitment existed is refused, and said to be old rather than
+ *          foreign
  */
 TEST_F(VaultFileTest, OpenLegacyFormatFails) {
-  vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
-
-  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
-
-  /* Rebuild the file without the parameter block, the way older builds wrote it */
-
   std::vector<uint8_t> buff = ReadFile(path_);
-
-  buff.erase(buff.begin() + kMagicSize, buff.begin() + static_cast<std::ptrdiff_t>(kKdfParamSize));
 
   ASSERT_GE(buff.size(), static_cast<size_t>(kMinSize));
 
+  StoreLE32(buff.data(), kLegacyMagicNum);
+
   WriteFile(path_, buff);
 
-  /* The leading salt bytes now sit where the parameters belong and fall outside the accepted range */
-
   EXPECT_EQ(Reload(), Result::kFailure);
-  EXPECT_NE(vault_.GetLastError().find("Unsupported key derivation parameters"), std::string::npos);
+  EXPECT_NE(vault_.GetLastError().find("predates the current format"), std::string::npos);
 }
 
 /**
@@ -609,11 +614,11 @@ TEST_F(VaultFileTest, SaveWritesFreshIV) {
   std::vector<uint8_t> second = ReadFile(path_);
 
   ASSERT_EQ(first.size(), second.size());
-  ASSERT_GT(first.size(), kKdfParamSize + kSaltSize + kIVSize + kTagSize);
+  ASSERT_GT(first.size(), kHeaderSize + kIVSize + kTagSize);
 
-  const size_t salt_off = kKdfParamSize;
-  const size_t iv_off = kKdfParamSize + kSaltSize;
-  const size_t ct_off = kKdfParamSize + kSaltSize + kIVSize;
+  const size_t salt_off = kSaltOff;
+  const size_t iv_off = kHeaderSize;
+  const size_t ct_off = kHeaderSize + kIVSize;
 
   /* Salt is reused so the key stays stable */
 
