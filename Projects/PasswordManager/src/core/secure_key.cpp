@@ -9,6 +9,7 @@
 #include <argon2.h>
 #include <sodium.h>
 
+#include <algorithm>
 #include <mutex>
 
 #ifdef _WIN32
@@ -113,7 +114,12 @@ SecureKey::~SecureKey() {
   }
 }
 
-SecureKey::SecureKey(SecureKey&& other) noexcept : data_(other.data_) {
+SecureKey::SecureKey(uint8_t* data, std::span<const uint8_t, kSaltSize> salt, const KdfParams& params)
+    : data_(data), params_(params) {
+  std::ranges::copy(salt, salt_.begin());
+}
+
+SecureKey::SecureKey(SecureKey&& other) noexcept : data_(other.data_), salt_(other.salt_), params_(other.params_) {
   other.data_ = nullptr;
 }
 
@@ -123,7 +129,13 @@ SecureKey& SecureKey::operator=(SecureKey&& other) noexcept {
       sodium_free(data_);
     }
 
+    /* The salt and the parameters move with the bytes they produced. A key that arrived with one derivation's
+     * material and another's description of it would be written into a header that does not open it. */
+
     data_ = other.data_;
+    salt_ = other.salt_;
+    params_ = other.params_;
+
     other.data_ = nullptr;
   }
 
@@ -134,6 +146,27 @@ std::span<const uint8_t, kKeySize> SecureKey::Bytes() const {
   return std::span<const uint8_t, kKeySize>(data_, kKeySize);
 }
 
+std::span<const uint8_t, kCommitSize> SecureKey::Commitment() const {
+  return std::span<const uint8_t, kCommitSize>(data_ + kKeySize, kCommitSize);
+}
+
+std::span<const uint8_t, kSaltSize> SecureKey::Salt() const {
+  return salt_;
+}
+
+const KdfParams& SecureKey::Params() const {
+  return params_;
+}
+
+bool SecureKey::CommitmentMatches(std::span<const uint8_t, kCommitSize> expected) const {
+  /* sodium_memcmp rather than memcmp, for the same reason ConstantTimeEquals uses it: memcmp stops at the first
+   * differing byte, and how long it takes to do so tells an observer how much of a guessed password was right. The
+   * commitment is public, but the time taken to reject one is not, and this comparison runs once per password
+   * attempt, which is exactly where a guess would be timed. */
+
+  return sodium_memcmp(data_ + kKeySize, expected.data(), kCommitSize) == 0;
+}
+
 bool SecureKey::ConstantTimeEquals(const SecureKey& other) const {
   return sodium_memcmp(data_, other.data_, kKeySize) == 0;
 }
@@ -142,17 +175,24 @@ std::optional<SecureKey> DeriveKey(std::span<const char> pw, std::span<const uin
                                    const KdfParams& params) {
   InitCrypto();
 
-  auto* key = static_cast<uint8_t*>(sodium_malloc(kKeySize));
+  auto* key = static_cast<uint8_t*>(sodium_malloc(kDerivedSize));
 
   if (key == nullptr) {
     return std::nullopt;  // LCOV_EXCL_LINE
   }
 
+  /* One derivation of kDerivedSize bytes rather than two of kKeySize. What Argon2id charges is set by the time,
+   * memory and parallelism parameters, none of which changed here, so asking for the commitment alongside the key
+   * costs the extra bytes of output and nothing else: the memory-hard work that dominates a derivation runs exactly
+   * as it did before. The output length is part of what Argon2id hashes, so the key half is not the value a
+   * kKeySize derivation would have produced, and vaults written by the earlier format are unreadable for that reason
+   * among others. The length is a ceiling rather than a preference, which is why constants.h asserts the bound. */
+
   if (argon2id_hash_raw(params.time_cost, params.mem_cost, params.parallelism, pw.data(), pw.size(), salt.data(),
-                        salt.size(), key, kKeySize) != ARGON2_OK) {
+                        salt.size(), key, kDerivedSize) != ARGON2_OK) {
     sodium_free(key);
     return std::nullopt;
   }
 
-  return SecureKey(key);
+  return SecureKey(key, salt, params);
 }
