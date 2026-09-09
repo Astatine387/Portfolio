@@ -89,10 +89,12 @@ void DoInit() {
    * attached with PTRACE_ATTACH by the same uid, and its /proc entry becomes root's, so the buffer cannot be read out
    * of the live process either.
    *
-   * That last property is exactly why this is held to NDEBUG. With the flag cleared, gdb and CLion cannot attach and
-   * the sanitizer runtimes cannot read the process they are instrumenting. Sanitizer and coverage builds here require
-   * CMAKE_BUILD_TYPE=Debug, so NDEBUG already separates the builds that have to stay inspectable from the ones that
-   * ship, and no second switch has to be kept in sync with it.
+   * That last property is why this is held to NDEBUG: with the flag cleared, gdb and CLion cannot attach to a running
+   * process. NDEBUG is the whole condition, so this is active in Release and in RelWithDebInfo, which is what the
+   * address sanitizer job builds, and inactive in Debug, which is what a local debugging session, the coverage job
+   * and the thread sanitizer job build. It was measured on GCC 13 / Linux before being relied on: ASan and
+   * LeakSanitizer, including their multi-threaded paths, behave the same with the flag cleared, and /proc/self/exe
+   * and /proc/self/maps stay readable by the process itself.
    *
    * Dropped for the same reason as the limit above: best effort, and a kernel that refuses is not a reason to refuse
    * to run. */
