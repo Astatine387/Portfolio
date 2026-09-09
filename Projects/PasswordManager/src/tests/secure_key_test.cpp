@@ -8,6 +8,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -127,6 +128,79 @@ TEST(SecureKeyTest, DeriveFailsInvalidParams) {
 }
 
 /* ==================================================
+ * Commitment Tests
+ * ================================================== */
+
+/**
+ * @brief   Verify a key carries the salt and parameters its derivation consumed
+ *
+ * What the header is written from, so a key that reported anything else here would describe a derivation other than
+ * the one that produced it.
+ */
+TEST(SecureKeyTest, CarriesSaltAndParams) {
+  auto salt = MakeSalt(0x0A);
+  SecureKey key = Derive("password", salt);
+
+  EXPECT_TRUE(std::ranges::equal(key.Salt(), salt));
+  EXPECT_EQ(key.Params().time_cost, FastParams().time_cost);
+  EXPECT_EQ(key.Params().mem_cost, FastParams().mem_cost);
+  EXPECT_EQ(key.Params().parallelism, FastParams().parallelism);
+}
+
+/**
+ * @brief   Verify the same password, salt and parameters commit to the same value
+ */
+TEST(SecureKeyTest, CommitmentIsDeterministic) {
+  SecureKey k0 = Derive("password", MakeSalt(0x01));
+  SecureKey k1 = Derive("password", MakeSalt(0x01));
+
+  EXPECT_TRUE(k0.CommitmentMatches(k1.Commitment()));
+}
+
+/**
+ * @brief   Verify a single character of password changes the commitment
+ */
+TEST(SecureKeyTest, CommitmentFollowsPassword) {
+  auto salt = MakeSalt(0x01);
+  SecureKey k0 = Derive("password", salt);
+  SecureKey k1 = Derive("passwore", salt);
+
+  EXPECT_FALSE(k0.CommitmentMatches(k1.Commitment()));
+}
+
+/**
+ * @brief   Verify a different salt changes the commitment
+ */
+TEST(SecureKeyTest, CommitmentFollowsSalt) {
+  SecureKey k0 = Derive("password", MakeSalt(0x01));
+  SecureKey k1 = Derive("password", MakeSalt(0x02));
+
+  EXPECT_FALSE(k0.CommitmentMatches(k1.Commitment()));
+}
+
+/**
+ * @brief   Verify CommitmentMatches accepts the stored value and refuses it one bit later
+ */
+TEST(SecureKeyTest, CommitmentMatchesOneBitApart) {
+  SecureKey key = Derive("password", MakeSalt(0x01));
+
+  std::array<uint8_t, kCommitSize> expected{};
+
+  std::ranges::copy(key.Commitment(), expected.begin());
+
+  EXPECT_TRUE(key.CommitmentMatches(expected));
+
+  expected[0] ^= 0x01;
+
+  EXPECT_FALSE(key.CommitmentMatches(expected));
+
+  expected[0] ^= 0x01;
+  expected[kCommitSize - 1] ^= 0x80;
+
+  EXPECT_FALSE(key.CommitmentMatches(expected));
+}
+
+/* ==================================================
  * Move Semantics Test
  * ================================================== */
 
@@ -141,4 +215,39 @@ TEST(SecureKeyTest, MoveTransfersKey) {
   SecureKey moved = std::move(src);
 
   EXPECT_TRUE(moved.ConstantTimeEquals(ref));
+}
+
+/**
+ * @brief   Verify move construction carries the commitment, salt and parameters along with the key
+ */
+TEST(SecureKeyTest, MoveTransfersSaltAndParams) {
+  auto salt = MakeSalt(0x07);
+  SecureKey src = Derive("password", salt);
+  SecureKey ref = Derive("password", salt);
+
+  SecureKey moved = std::move(src);
+
+  EXPECT_TRUE(moved.CommitmentMatches(ref.Commitment()));
+  EXPECT_TRUE(std::ranges::equal(moved.Salt(), salt));
+  EXPECT_EQ(moved.Params().time_cost, FastParams().time_cost);
+  EXPECT_EQ(moved.Params().mem_cost, FastParams().mem_cost);
+  EXPECT_EQ(moved.Params().parallelism, FastParams().parallelism);
+}
+
+/**
+ * @brief   Verify move assignment carries them too
+ *
+ * The form ChangePW uses to install a new session key, where a key arriving with the previous derivation's salt
+ * would be written into the next header.
+ */
+TEST(SecureKeyTest, MoveAssignmentTransfersSaltAndParams) {
+  auto salt = MakeSalt(0x07);
+  SecureKey src = Derive("password", salt);
+  SecureKey ref = Derive("password", salt);
+  SecureKey dst = Derive("asdf1234", MakeSalt(0x08));
+
+  dst = std::move(src);
+
+  EXPECT_TRUE(dst.CommitmentMatches(ref.Commitment()));
+  EXPECT_TRUE(std::ranges::equal(dst.Salt(), salt));
 }

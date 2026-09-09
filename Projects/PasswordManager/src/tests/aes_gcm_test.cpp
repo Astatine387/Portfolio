@@ -220,6 +220,78 @@ TEST(AesGcmTest, TamperedTag) {
   EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key, aad), Result::kFailure);
 }
 
+/**
+ * @brief   Verify decryption fails under associated data other than what encryption was given
+ *
+ * The one test that shows the associated data is actually wired into the tag. Everything the vault layer builds on
+ * it rests on this: the same key and the same ciphertext, and a single flipped byte outside both of them is enough
+ * to refuse the message.
+ */
+TEST(AesGcmTest, MismatchedAad) {
+  AesGcm aes;
+
+  const char* data = "Hello, world!";
+  size_t dsize = strlen(data);
+  size_t enc_size = kIVSize + dsize + kTagSize;
+
+  std::vector<uint8_t> src(dsize);
+  std::vector<uint8_t> enc(enc_size);
+  std::vector<uint8_t> dec(dsize);
+
+  memcpy(src.data(), data, dsize);
+
+  auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
+  SecureKey key = MakeKey("password", salt);
+
+  ASSERT_EQ(aes.Encrypt(src.data(), enc.data(), dsize, key, aad), Result::kSuccess);
+
+  std::vector<uint8_t> other = aad;
+
+  other[0] ^= 0x01;
+
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key, other), Result::kFailure);
+
+  other = aad;
+  other[other.size() - 1] ^= 0x80;
+
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key, other), Result::kFailure);
+
+  /* The same ciphertext still opens under the associated data it was written with */
+
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key, aad), Result::kSuccess);
+  EXPECT_EQ(memcmp(src.data(), dec.data(), dsize), 0);
+}
+
+/**
+ * @brief   Verify an empty associated data round-trips, and does not interchange with a non-empty one
+ */
+TEST(AesGcmTest, EmptyAad) {
+  AesGcm aes;
+
+  const char* data = "Hello, world!";
+  size_t dsize = strlen(data);
+  size_t enc_size = kIVSize + dsize + kTagSize;
+
+  std::vector<uint8_t> src(dsize);
+  std::vector<uint8_t> enc(enc_size);
+  std::vector<uint8_t> dec(dsize);
+
+  memcpy(src.data(), data, dsize);
+
+  auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
+  SecureKey key = MakeKey("password", salt);
+
+  EXPECT_EQ(aes.Encrypt(src.data(), enc.data(), dsize, key, std::span<const uint8_t>{}), Result::kSuccess);
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key, std::span<const uint8_t>{}), Result::kSuccess);
+  EXPECT_EQ(memcmp(src.data(), dec.data(), dsize), 0);
+
+  /* Nothing authenticated is not the same as something authenticated */
+
+  EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key, aad), Result::kFailure);
+}
+
 /* ==================================================
  * Edge Case Tests
  * ================================================== */

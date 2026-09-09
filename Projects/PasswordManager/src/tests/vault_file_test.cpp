@@ -41,6 +41,47 @@ static_assert(kSaltOff == kParallelismOff + sizeof(uint32_t), "Salt does not fol
 static_assert(kCommitOff == kSaltOff + kSaltSize, "Commitment does not follow the salt");
 static_assert(kCommitOff + kCommitSize == kHeaderSize, "Header field offsets do not fill the header");
 
+/**
+ * @brief   Which check refuses a vault whose header has had one byte flipped
+ * @param   off     Byte offset within the header
+ * @return  Substring the reported error is expected to contain
+ *
+ * The mapping is the point of the sweep. That every offset fails says little on its own; which mechanism catches
+ * each one is a property of this exact layout and of the parameters the swept vault is written with, and writing it
+ * down is what makes the sweep documentation rather than a smoke test.
+ *
+ *  0..3    magic        kMagicNum differs from kLegacyMagicNum in all four bytes, so one flipped byte can reach
+ *                       neither value -> kBadMagic
+ *  4       version      Anything but kFormatVersion -> kBadVersion
+ *  5..8    time_cost    kMinTimeCost flips to 254 or higher, all far outside the range -> kBadParams
+ *  9..10   mem_cost     The two low bytes of kMinMemCost flip to values still inside the range, so these two are the
+ *                       only header bytes that get past validation while changing the derivation -> commitment
+ *  11..12  mem_cost     The two high bytes flip to gigabytes -> kBadParams
+ *  13..16  parallelism  kMinParallelism flips as time_cost does -> kBadParams
+ *  17..32  salt         A different salt derives a different key, and with it a different commitment -> commitment
+ *  33..64  commitment   Compared against the derivation directly -> commitment
+ *
+ * No offset reaches the authentication tag. Whatever survives the range checks changes either the key or the stored
+ * commitment, and the commitment is compared before anything is decrypted, so a header edit is refused without a
+ * ciphertext byte being read. The associated data covers these bytes too, and it is AesGcmTest.MismatchedAad that
+ * shows that wiring works: here the commitment always answers first.
+ */
+const char* ExpectedMessage(size_t off) {
+  if (off < kVersionOff) {
+    return "Not a vault file";
+  }
+
+  if (off < kTimeCostOff) {
+    return "Unsupported vault format version";
+  }
+
+  if (off < kSaltOff && off != kMemCostOff && off != kMemCostOff + 1) {
+    return "Unsupported key derivation parameters";
+  }
+
+  return "Incorrect master password";
+}
+
 }  // namespace
 
 /**
@@ -235,6 +276,21 @@ class VaultFileTest : public ::testing::Test {
 
     WriteVault(path_, img, salt, params);
   }
+};
+
+/**
+ * @class   VaultHeaderTamperTest
+ * @brief   Fixture flipping one header byte per case, over the whole header
+ */
+class VaultHeaderTamperTest : public VaultFileTest, public testing::WithParamInterface<size_t> {
+ protected:
+  /**
+   * @brief   Replace the base fixture's vault with one written at the cheapest legal parameters
+   *
+   * The base fixture derives at the build defaults, which is 512 MiB of Argon2id per case and more than a sweep of
+   * this length needs. Those parameters are also what the offset-to-mechanism mapping above is stated against.
+   */
+  void SetUp() override { MakeVaultWith(MinParams()); }
 };
 
 /* ==================================================
@@ -692,6 +748,24 @@ TEST_F(VaultFileTest, ChangePW) {
 }
 
 /**
+ * @brief   Verify entry contents survive a master password change and the reopen that follows
+ */
+TEST_F(VaultFileTest, ChangePWPreservesEntries) {
+  Password pw = MakePW("entrypassword");
+
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", pw), Result::kSuccess);
+  ASSERT_EQ(vault_.ChangePW(MakePW("asdf1234"), path_), Result::kSuccess);
+  ASSERT_EQ(Reload("asdf1234"), Result::kSuccess);
+
+  EXPECT_EQ(vault_.GetEntryCount(), 1);
+
+  Password got;
+
+  EXPECT_TRUE(vault_.GetEntryPW("Google", "user@google.com", got));
+  EXPECT_TRUE(got.Equal(pw));
+}
+
+/**
  * @brief   Verify old password fails after password change
  */
 TEST_F(VaultFileTest, ChangePWOldFails) {
@@ -718,6 +792,112 @@ TEST_F(VaultFileTest, ChangePWSaveFailurePreservesSession) {
 
   EXPECT_TRUE(vault_.VerifyPW(MakePW("password")));
   EXPECT_FALSE(vault_.VerifyPW(MakePW("asdf1234")));
+}
+
+/* ==================================================
+ * Header Authentication Test
+ * ================================================== */
+
+/**
+ * @brief   Verify a vault whose header has one byte flipped never opens, and fails for the documented reason
+ */
+TEST_P(VaultHeaderTamperTest, FlippedHeaderByteIsRefused) {
+  const size_t off = GetParam();
+
+  std::vector<uint8_t> buff = ReadFile(path_);
+
+  ASSERT_GE(buff.size(), kHeaderSize);
+
+  buff[off] ^= 0xFF;
+
+  WriteFile(path_, buff);
+
+  /* The correct password, so what is on trial is the header and not the password */
+
+  EXPECT_EQ(Reload(), Result::kFailure);
+  EXPECT_NE(vault_.GetLastError().find(ExpectedMessage(off)), std::string::npos);
+}
+
+INSTANTIATE_TEST_SUITE_P(EveryHeaderByte, VaultHeaderTamperTest, testing::Range(size_t{ 0 }, kHeaderSize));
+
+/**
+ * @brief   Verify parameters edited to another accepted value are refused as well
+ *
+ * Out-of-range parameters are caught by the range check, which says nothing about the ones inside it. An edit from
+ * one legal value to another survives validation and derives a different key, so what refuses it is the commitment,
+ * and the vault reports it the way it reports any other derivation that does not match: as a wrong password.
+ */
+TEST_F(VaultFileTest, OpenRejectsInRangeKdfParamTamper) {
+  const std::array<KdfParams, 3> cases{
+    KdfParams{ .time_cost = kMinTimeCost + 1, .mem_cost = kMinMemCost, .parallelism = kMinParallelism },
+    KdfParams{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost + 1024, .parallelism = kMinParallelism },
+    KdfParams{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism + 1 },
+  };
+
+  for (const KdfParams& params : cases) {
+    SCOPED_TRACE(testing::Message() << "t=" << params.time_cost << " m=" << params.mem_cost
+                                    << " p=" << params.parallelism);
+
+    MakeVaultWith(MinParams());
+
+    ASSERT_EQ(Reload(), Result::kSuccess);
+
+    PatchHeaderParams(params);
+
+    EXPECT_EQ(Reload(), Result::kFailure);
+    EXPECT_NE(vault_.GetLastError().find("Incorrect master password"), std::string::npos);
+  }
+}
+
+/**
+ * @brief   Verify a wrong password and a damaged vault are reported as different things
+ *
+ * The distinction the commitment exists to draw. Both used to arrive as one sentence, since a failing tag cannot say
+ * which of the two it saw.
+ */
+TEST_F(VaultFileTest, WrongPasswordAndCorruptionDiffer) {
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+
+  /* Wrong password, intact file: settled by the commitment before anything is decrypted */
+
+  EXPECT_EQ(Reload("asdf1234"), Result::kFailure);
+
+  const std::string wrong_pw = vault_.GetLastError();
+
+  /* Right password, one ciphertext byte flipped: the commitment matches and the tag does not */
+
+  std::vector<uint8_t> buff = ReadFile(path_);
+
+  ASSERT_GT(buff.size(), kHeaderSize + kIVSize);
+
+  buff[kHeaderSize + kIVSize] ^= 0xFF;
+
+  WriteFile(path_, buff);
+
+  EXPECT_EQ(Reload(), Result::kFailure);
+
+  const std::string corrupted = vault_.GetLastError();
+
+  EXPECT_NE(wrong_pw.find("Incorrect master password"), std::string::npos);
+  EXPECT_NE(corrupted.find("Vault file is corrupted"), std::string::npos);
+  EXPECT_NE(wrong_pw, corrupted);
+}
+
+/**
+ * @brief   Verify ParseHeader refuses a buffer shorter than a header
+ *
+ * Unreachable through Vault, which rejects anything below kMinSize before it reads, and checked here because the
+ * module promises it to any other caller.
+ */
+TEST(VaultHeaderTest, ParseRejectsShortInput) {
+  const std::vector<uint8_t> buff(kHeaderSize - 1, 0x00);
+
+  VaultHeader header;
+
+  EXPECT_EQ(ParseHeader(buff, header), HeaderStatus::kTooSmall);
+  EXPECT_STRNE(HeaderErrorMessage(HeaderStatus::kTooSmall), "");
+  EXPECT_STREQ(HeaderErrorMessage(HeaderStatus::kOk), "");
 }
 
 /* ==================================================
