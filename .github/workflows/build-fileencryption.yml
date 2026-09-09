@@ -237,7 +237,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y g++-13 qt6-base-dev libssl-dev libargon2-dev libsodium-dev libgtest-dev
 
-      - name: Build with AddressSanitizer (Debug)
+      - name: Build with AddressSanitizer (RelWithDebInfo)
         run: |
           cd Projects/FileEncryption
           cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSANITIZE=ON -DWARNINGS_AS_ERRORS=ON \
