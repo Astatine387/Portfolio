@@ -130,6 +130,7 @@ set(CORE_SOURCES
     src/core/vault.cpp
     src/core/vault_file.cpp
     src/core/vault_entry.cpp
+    src/core/vault_header.cpp
     src/utils/password.cpp
     src/utils/platform.cpp
 )
@@ -147,6 +148,7 @@ set(CORE_HEADERS
     src/core/secure_buffer.h
     src/core/secure_key.h
     src/core/vault.h
+    src/core/vault_header.h
     src/utils/byte_order.h
     src/utils/password.h
     src/utils/platform.h
