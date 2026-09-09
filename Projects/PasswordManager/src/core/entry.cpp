@@ -8,6 +8,8 @@
 
 #include <cstring>
 
+#include "utils/byte_order.h"
+
 size_t Entry::Size() const {
   return sizeof(uint32_t) + site.size() + sizeof(uint32_t) + acc.size() + sizeof(uint32_t) + pw_len;
 }
@@ -40,7 +42,7 @@ size_t Entry::Serialize(std::span<uint8_t> dst, std::span<const uint8_t> pw_src)
 
   dlen = static_cast<uint32_t>(site.size());
 
-  memcpy(dst.data() + cur, &dlen, sizeof(uint32_t));
+  StoreLE32(dst.data() + cur, dlen);
   cur += sizeof(uint32_t);
 
   memcpy(dst.data() + cur, site.data(), dlen);
@@ -50,7 +52,7 @@ size_t Entry::Serialize(std::span<uint8_t> dst, std::span<const uint8_t> pw_src)
 
   dlen = static_cast<uint32_t>(acc.size());
 
-  memcpy(dst.data() + cur, &dlen, sizeof(uint32_t));
+  StoreLE32(dst.data() + cur, dlen);
   cur += sizeof(uint32_t);
 
   memcpy(dst.data() + cur, acc.data(), dlen);
@@ -58,7 +60,7 @@ size_t Entry::Serialize(std::span<uint8_t> dst, std::span<const uint8_t> pw_src)
 
   /* Write password from its source buffer */
 
-  memcpy(dst.data() + cur, &pw_len, sizeof(uint32_t));
+  StoreLE32(dst.data() + cur, pw_len);
   cur += sizeof(uint32_t);
 
   if (pw_len > 0) {
@@ -79,7 +81,7 @@ size_t Entry::Deserialize(const uint8_t* src, size_t srclen, size_t base_off) {
     return 0;
   }
 
-  memcpy(&dlen, src + cur, sizeof(uint32_t));
+  dlen = LoadLE32(src + cur);
   cur += sizeof(uint32_t);
 
   if (cur + dlen > srclen || dlen > kMaxSiteLen) {
@@ -95,7 +97,7 @@ size_t Entry::Deserialize(const uint8_t* src, size_t srclen, size_t base_off) {
     return 0;
   }
 
-  memcpy(&dlen, src + cur, sizeof(uint32_t));
+  dlen = LoadLE32(src + cur);
   cur += sizeof(uint32_t);
 
   if (cur + dlen > srclen || dlen > kMaxAccLen) {
@@ -111,7 +113,7 @@ size_t Entry::Deserialize(const uint8_t* src, size_t srclen, size_t base_off) {
     return 0;
   }
 
-  memcpy(&dlen, src + cur, sizeof(uint32_t));
+  dlen = LoadLE32(src + cur);
   cur += sizeof(uint32_t);
 
   if (cur + dlen > srclen || dlen > kMaxMasterPwLen) {

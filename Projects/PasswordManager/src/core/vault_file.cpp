@@ -9,6 +9,7 @@
 #include <span>
 
 #include "core/vault.h"
+#include "utils/byte_order.h"
 #include "utils/platform.h"
 
 namespace {
@@ -21,9 +22,9 @@ namespace {
 KdfParams ReadKdfParams(const uint8_t* src) {
   KdfParams params{};
 
-  memcpy(&params.time_cost, src + kMagicSize, sizeof(uint32_t));
-  memcpy(&params.mem_cost, src + kMagicSize + sizeof(uint32_t), sizeof(uint32_t));
-  memcpy(&params.parallelism, src + kMagicSize + 2 * sizeof(uint32_t), sizeof(uint32_t));
+  params.time_cost = LoadLE32(src + kMagicSize);
+  params.mem_cost = LoadLE32(src + kMagicSize + sizeof(uint32_t));
+  params.parallelism = LoadLE32(src + kMagicSize + 2 * sizeof(uint32_t));
 
   return params;
 }
@@ -34,9 +35,9 @@ KdfParams ReadKdfParams(const uint8_t* src) {
  * @param	params		Parameters to store
  */
 void WriteKdfParams(uint8_t* dst, const KdfParams& params) {
-  memcpy(dst + kMagicSize, &params.time_cost, sizeof(uint32_t));
-  memcpy(dst + kMagicSize + sizeof(uint32_t), &params.mem_cost, sizeof(uint32_t));
-  memcpy(dst + kMagicSize + 2 * sizeof(uint32_t), &params.parallelism, sizeof(uint32_t));
+  StoreLE32(dst + kMagicSize, params.time_cost);
+  StoreLE32(dst + kMagicSize + sizeof(uint32_t), params.mem_cost);
+  StoreLE32(dst + kMagicSize + 2 * sizeof(uint32_t), params.parallelism);
 }
 
 /**
@@ -102,7 +103,7 @@ Result Vault::NewVault(const std::string& path, const Password& pw) {
 
   uint32_t entry_cnt = 0;
 
-  memcpy(img_.Data(), &entry_cnt, kCountSize);
+  StoreLE32(img_.Data(), entry_cnt);
 
   /* Encrypt and write the vault file atomically */
 
@@ -167,7 +168,7 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
 
   /* Check magic number */
 
-  if (memcmp(src_buff_.data(), &magic_num_, kMagicSize) != 0) {
+  if (LoadLE32(src_buff_.data()) != kMagicNum) {
     ReportError("[File] Validation failed - Not a vault file\n");
     return Result::kFailure;
   }
@@ -223,7 +224,7 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
   const uint8_t* base = img_.Data();
   size_t img_len = img_.Size();
 
-  memcpy(&entry_cnt, base, kCountSize);
+  entry_cnt = LoadLE32(base);
   cur += kCountSize;
 
   if (static_cast<size_t>(entry_cnt) * kMinEntrySize > img_len - kCountSize) {
@@ -295,7 +296,7 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::
 
   /* Write the magic number and the parameters the key was derived with */
 
-  memcpy(dst_buff_.data(), &magic_num_, kMagicSize);
+  StoreLE32(dst_buff_.data(), kMagicNum);
 
   WriteKdfParams(dst_buff_.data(), params);
 

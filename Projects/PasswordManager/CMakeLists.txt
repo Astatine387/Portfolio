@@ -147,6 +147,7 @@ set(CORE_HEADERS
     src/core/secure_buffer.h
     src/core/secure_key.h
     src/core/vault.h
+    src/utils/byte_order.h
     src/utils/password.h
     src/utils/platform.h
 )
@@ -220,6 +221,7 @@ enable_testing()
 
 set(TEST_SOURCES
     src/tests/aes_gcm_test.cpp
+    src/tests/byte_order_test.cpp
     src/tests/entry_test.cpp
     src/tests/password_test.cpp
     src/tests/secure_buffer_test.cpp

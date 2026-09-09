@@ -195,7 +195,6 @@ class Vault {
   FILE* file_ = nullptr;
   int64_t src_size_ = 0;
   int64_t dst_size_ = 0;
-  uint32_t magic_num_ = kMagicNum;
 
   /* ==================================================
    * Helper functions

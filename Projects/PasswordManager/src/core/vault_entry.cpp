@@ -4,11 +4,11 @@
  * @author	Astatine387
  */
 
-#include <cstring>
 #include <optional>
 #include <span>
 
 #include "core/vault.h"
+#include "utils/byte_order.h"
 
 std::optional<size_t> Vault::SerializeVault(SecureBuffer& dst, size_t cur,
                                             const std::set<Entry, EntryCmp>::const_iterator& skip) {
@@ -79,7 +79,7 @@ Result Vault::CreateEntry(const std::string& site, const std::string& acc, const
 
   uint32_t entry_cnt = static_cast<uint32_t>(entry_set_.size()) + 1;
 
-  memcpy(buff.Data(), &entry_cnt, kCountSize);
+  StoreLE32(buff.Data(), entry_cnt);
 
   auto cur = SerializeVault(buff, kCountSize, entry_set_.end());
 
@@ -163,7 +163,7 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site, const std::string& 
 
   uint32_t entry_cnt = static_cast<uint32_t>(entry_set_.size());
 
-  memcpy(buff.Data(), &entry_cnt, kCountSize);
+  StoreLE32(buff.Data(), entry_cnt);
 
   auto cur = SerializeVault(buff, kCountSize, old_it);
 
@@ -234,7 +234,7 @@ Result Vault::DeleteEntry(const std::string& site, const std::string& acc) {
 
   uint32_t entry_cnt = static_cast<uint32_t>(entry_set_.size()) - 1;
 
-  memcpy(nimg.Data(), &entry_cnt, kCountSize);
+  StoreLE32(nimg.Data(), entry_cnt);
 
   if (!SerializeVault(nimg, kCountSize, it).has_value()) {
     return Result::kFailure;  // LCOV_EXCL_LINE; SerializeVault reported the error
@@ -262,9 +262,7 @@ Result Vault::VerifyImage() {
     // LCOV_EXCL_STOP
   }
 
-  uint32_t entry_cnt = 0;
-
-  memcpy(&entry_cnt, img.data(), kCountSize);
+  uint32_t entry_cnt = LoadLE32(img.data());
 
   if (entry_cnt != entry_set_.size()) {
     // LCOV_EXCL_START
