@@ -13,10 +13,32 @@ inline constexpr double kFontScale = 1.2;  /// GUI font scale
 
 inline constexpr int kMaxMasterPwLen = 256;       /// Maximum length of master password
 inline constexpr size_t kKeySize = 32;            /// AES-GCM key size in bytes
+inline constexpr size_t kCommitSize = 32;         /// Key commitment size in bytes
 inline constexpr size_t kSaltSize = 16;           /// Argon2id salt size in bytes
 inline constexpr uint32_t kMemCost = 512 * 1024;  /// Argon2id memory cost in KiB
 inline constexpr uint32_t kTimeCost = 4;          /// Argon2id time cost
 inline constexpr uint32_t kParallelism = 4;       /// Argon2id parallelism
+
+/* AES-GCM authenticates a vault without committing to the key it was verified under, so a failing tag says only that
+ * this key did not open this file and never which of the two was at fault. That is the whole of what a user is told
+ * today when a vault refuses to open. The commitment settles it: it is derived beside the key, stored in the header
+ * and compared before a single ciphertext byte is touched, so a mismatch names the password and a tag failure after
+ * it names the file. It falls out of the derivation that already runs, so the distinction costs no second Argon2id
+ * pass.
+ *
+ * Splitting one derivation this way holds only while the whole of it is a single BLAKE2b call. Argon2's
+ * variable-length hash H' is exactly that for an output of 64 bytes or less, so the key and the commitment are two
+ * halves of one PRF output and the published half says nothing about the half beside it. Past 64 bytes H' becomes a
+ * chain of 64-byte blocks, each hashed from the one before it, and the commitment in the plaintext header would then
+ * follow from the block the session key was cut out of. Crossing that line shows up in nothing a build or a test run
+ * would report, which is why the bound is asserted rather than left to this comment. More derived material than this
+ * takes a second derivation, not a longer output. */
+
+inline constexpr size_t kDerivedSize = kKeySize + kCommitSize;  /// Bytes one Argon2id derivation produces
+
+static_assert(kDerivedSize <= 64,
+              "One derivation past 64 bytes puts Argon2's H' into chained blocks, and the commitment written to the "
+              "vault header would then follow from the block the session key was taken from");
 
 /* Accepted range for the parameters stored in a vault header */
 
@@ -39,15 +61,23 @@ inline constexpr size_t kBuffSize = 4096;  /// Decryption chunk size in blocks
 inline constexpr size_t kIVSize = 12;      /// Initial vector size in bytes
 inline constexpr size_t kTagSize = 16;     /// Authentication tag size in bytes
 
-inline constexpr int kMagicSize = 4;                            /// Magic number size
-inline constexpr uint32_t kMagicNum = 0x63a5baf3;               /// Magic number to distinguish vault file
-inline constexpr size_t kKdfSize = 3 * sizeof(uint32_t);        /// Argon2id parameter block size in bytes
-inline constexpr size_t kKdfParamSize = kMagicSize + kKdfSize;  /// Header bytes preceding the salt
-inline constexpr size_t kCountSize = sizeof(uint32_t);          /// Entry count field size
+inline constexpr int kMagicSize = 4;                      /// Magic number size
+inline constexpr uint32_t kMagicNum = 0x9e2c74d1;         /// Magic number to distinguish vault file
+inline constexpr uint32_t kLegacyMagicNum = 0x63a5baf3;   /// Magic number of the pre-commitment format
+inline constexpr uint8_t kFormatVersion = 1;              /// On-disk vault format version
+inline constexpr size_t kVersionSize = 1;                 /// Format version field size in bytes
+inline constexpr size_t kKdfSize = 3 * sizeof(uint32_t);  /// Argon2id parameter block size in bytes
+inline constexpr size_t kCountSize = sizeof(uint32_t);    /// Entry count field size
 
-inline constexpr int64_t kMaxSize = 2ULL * 1024 * 1024 * 1024;  /// Maximum vault file size
-inline constexpr int64_t kMinSize =
-    (kMagicSize + kKdfSize + kSaltSize + kIVSize + kCountSize + kTagSize);  /// Mininum vault file size
+/* Everything a vault file states in the clear, and every byte of it the associated data of the one GCM pass that
+ * follows. The salt and the parameters were already bound to the ciphertext by the derivation they feed, but the
+ * commitment is not, and a header field added later would not be either unless it were named here. */
+
+inline constexpr size_t kHeaderSize =
+    kMagicSize + kVersionSize + kKdfSize + kSaltSize + kCommitSize;  /// Authenticated header bytes
+
+inline constexpr int64_t kMaxSize = 2ULL * 1024 * 1024 * 1024;                        /// Maximum vault file size
+inline constexpr int64_t kMinSize = (kHeaderSize + kIVSize + kCountSize + kTagSize);  /// Mininum vault file size
 
 inline constexpr int kMaxSiteLen = 256;   /// Maximum length of site name
 inline constexpr int kMaxAccLen = 256;    /// Maximum length of account
