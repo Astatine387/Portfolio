@@ -239,7 +239,7 @@ cmake --build build
 | `SANITIZE`        | `OFF`   | AddressSanitizer + UndefinedBehaviorSanitizer |
 | `THREAD_SANITIZE` | `OFF`   | ThreadSanitizer                               |
 
-Sanitizer and coverage builds require `-DCMAKE_BUILD_TYPE=Debug`:
+None of these require a particular build type. CI builds coverage and the thread sanitizer as `Debug`, and the address sanitizer as `RelWithDebInfo`:
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Debug -DTHREAD_SANITIZE=ON
 cmake --build build
