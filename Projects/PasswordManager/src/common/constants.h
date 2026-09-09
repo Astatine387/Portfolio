@@ -40,14 +40,23 @@ static_assert(kDerivedSize <= 64,
               "One derivation past 64 bytes puts Argon2's H' into chained blocks, and the commitment written to the "
               "vault header would then follow from the block the session key was taken from");
 
-/* Accepted range for the parameters stored in a vault header */
+/* Accepted range for the parameters stored in a vault header. Wider than the defaults above on purpose: the defaults
+ * are only what this build writes, while the range is what it agrees to read, so a vault written under other
+ * parameters still opens.
+ *
+ * The ceilings are not a matter of taste. A header is read and its parameters are spent before the tag is checked,
+ * which is the one part of opening a vault that an attacker who hands over a file gets to choose the cost of. The
+ * key commitment does not help here and neither does authenticating the header, since both are things that happen
+ * after the derivation they would have to precede. Only these bounds do, so they are set at what this build could
+ * plausibly have written rather than at what Argon2id will accept: 4 GiB by 16 iterations by 16 lanes was a machine
+ * taken out of service by a file, and no vault has ever been written above 512 MiB by 4 by 4. */
 
 inline constexpr uint32_t kMinMemCost = 64 * 1024;    /// Minimum accepted Argon2id memory cost in KiB
-inline constexpr uint32_t kMaxMemCost = 4096 * 1024;  /// Maximum accepted Argon2id memory cost in KiB
+inline constexpr uint32_t kMaxMemCost = 2048 * 1024;  /// Maximum accepted Argon2id memory cost in KiB
 inline constexpr uint32_t kMinTimeCost = 1;           /// Minimum accepted Argon2id time cost
-inline constexpr uint32_t kMaxTimeCost = 16;          /// Maximum accepted Argon2id time cost
+inline constexpr uint32_t kMaxTimeCost = 8;           /// Maximum accepted Argon2id time cost
 inline constexpr uint32_t kMinParallelism = 1;        /// Minimum accepted Argon2id parallelism
-inline constexpr uint32_t kMaxParallelism = 16;       /// Maximum accepted Argon2id parallelism
+inline constexpr uint32_t kMaxParallelism = 8;        /// Maximum accepted Argon2id parallelism
 
 /* A default outside the accepted range would produce vaults this build cannot reopen */
 
