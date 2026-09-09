@@ -1,0 +1,13 @@
+---
+# cert-err33-c lives here rather than in the repository root because this project publishes its output by a rename:
+# Vault::SaveVaultWith writes a temporary file, syncs it, renames it over the vault and syncs the directory, so a write
+# error the file system held back has to be noticed before that rename runs. The root config is shared with projects
+# that make no such promise and would only inherit the suppressions.
+
+InheritParentConfig: true
+
+Checks: >
+  cert-err33-c
+
+WarningsAsErrors: >
+  cert-err33-c

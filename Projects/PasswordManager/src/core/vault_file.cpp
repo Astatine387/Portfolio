@@ -336,7 +336,12 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, std::
     // LCOV_EXCL_STOP
   }
 
-  fclose(file_);
+  /* SyncFile above already flushed the stream and fsynced the descriptor, so every byte of the temporary file is on
+   * disk before this runs and there is no deferred write left for fclose to report. What it can still return is a
+   * close failure, which on Linux releases the descriptor either way and cannot take the data back; the rename below
+   * is what publishes the file, and it is checked. */
+
+  static_cast<void>(fclose(file_));
   file_ = nullptr;
 
   /* Rename temporary file to vault file */

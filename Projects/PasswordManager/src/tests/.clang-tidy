@@ -1,0 +1,8 @@
+---
+# Off for the suite: a test that closes a file it just wrote publishes nothing, so the check has nothing to protect
+# here and would add roughly thirty suppressions that bury the two in src/core it exists to keep visible.
+
+InheritParentConfig: true
+
+Checks: >
+  -cert-err33-c

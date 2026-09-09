@@ -51,7 +51,12 @@ bool Vault::GetEntryPW(const std::string& site, const std::string& acc, Password
 
 void Vault::Clear() {
   if (file_) {
-    fclose(file_);
+    /* Nothing durable rides on this close. The stream is either the vault opened for reading, or a temporary file on
+     * a save path that has already failed, and each of those paths removes the temporary right after this returns.
+     * A save that gets as far as publishing anything has closed its own stream and cleared file_ in SaveVaultWith,
+     * after the sync that put the bytes on disk, so it never reaches here holding one. */
+
+    static_cast<void>(fclose(file_));
     file_ = nullptr;
   }
 
