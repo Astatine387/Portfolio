@@ -104,8 +104,10 @@ inline constexpr size_t kHeaderSize =
  * the header, IV, entry count and tag are paid for. Entries of the length a person actually types run nearer 60
  * bytes, which is some seventy thousand of them.
  *
- * The same number bounds something else. A file's length is read and the whole of it pulled into memory before the
- * tag has been checked, so this is also the most an unauthenticated file gets to make this build allocate and read. */
+ * The same number bounds something else. The whole of a file is still pulled into memory before its tag has been
+ * checked, so this is the most a single open can be made to allocate and read. It is no longer what a stranger gets
+ * to spend, though: OpenVault reads the header alone until the commitment says the password was the right one, so a
+ * file that is not this build's, or not this password's, costs kHeaderSize and the derivation its header asked for. */
 
 inline constexpr int64_t kMaxSize = 4 * 1024 * 1024;                                  /// Maximum vault file size
 inline constexpr int64_t kMinSize = (kHeaderSize + kIVSize + kCountSize + kTagSize);  /// Mininum vault file size

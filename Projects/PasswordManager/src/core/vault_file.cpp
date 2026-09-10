@@ -103,13 +103,16 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
     return Result::kFailure;
   }
 
-  /* Read vault */
+  /* Read the header, and nothing else yet. Everything that decides whether this is a vault at all and whether this
+   * password opens it lives in these bytes; the body is needed only once both have been answered. Reading the file
+   * whole first put an allocation and a read of up to 4 MiB ahead of that, which a wrong magic number was enough to
+   * spend, and which sat in front of the Argon2id pass Limitations names as the cost a crafted file gets to choose
+   * while being cheaper than it. What a stranger can spend here now is these kHeaderSize bytes and that one
+   * derivation, bounded by the range check ParseHeader applies. */
 
-  const size_t src_bytes = static_cast<size_t>(src_size_);
+  std::array<uint8_t, kHeaderSize> head_buff{};
 
-  src_buff_.assign(src_bytes, 0);
-
-  if (fread(src_buff_.data(), sizeof(uint8_t), src_bytes, file_) != src_bytes) {
+  if (fread(head_buff.data(), sizeof(uint8_t), head_buff.size(), file_) != head_buff.size()) {
     // LCOV_EXCL_START
     ReportError("[File] Read failed - Cannot read vault file data\n");
     return Result::kFailure;
@@ -121,7 +124,7 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
 
   VaultHeader header;
 
-  const HeaderStatus status = ParseHeader(src_buff_, header);
+  const HeaderStatus status = ParseHeader(head_buff, header);
 
   if (status != HeaderStatus::kOk) {
     ReportError(HeaderErrorMessage(status));
@@ -154,6 +157,25 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
     return Result::kFailure;
   }
 
+  /* Read the rest of the vault, now that the header has been checked and the password answered for. The header bytes
+   * are in hand already, so they are copied to the front of the buffer and the read picks up where it stopped, at
+   * kHeaderSize. */
+
+  const size_t src_bytes = static_cast<size_t>(src_size_);
+  const size_t body_bytes = src_bytes - kHeaderSize;
+
+  src_buff_.assign(src_bytes, 0);
+
+  std::ranges::copy(head_buff, src_buff_.begin());
+
+  if (fread(src_buff_.data() + kHeaderSize, sizeof(uint8_t), body_bytes, file_) != body_bytes) {
+    // LCOV_EXCL_START
+    Reset();
+    ReportError("[File] Read failed - Cannot read vault file data\n");
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
   /* Decrypt into the session image */
 
   int64_t img_size = src_size_ - static_cast<int64_t>(kHeaderSize + kIVSize + kTagSize);
@@ -170,13 +192,15 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
 
   /* The associated data is a view into the buffer the file was read into, not a header re-serialized from the
    * fields just parsed out of it, so the bytes on the disk and the bytes under the tag are physically the same and
-   * have nowhere to disagree. FileEncryption has to rebuild its header for this because it drops the buffer it read
-   * from; a vault is read whole and kept, so there is nothing to rebuild.
+   * have nowhere to disagree. The header no longer arrives in the same read as the body, but it is copied to the
+   * front of this buffer byte for byte rather than rebuilt from what was parsed out of it, so what the tag covers is
+   * still what the disk holds. FileEncryption has to rebuild its header for this because it drops the buffer it read
+   * from; a vault keeps the buffer it decrypts out of, so there is nothing to rebuild.
    *
    * The password was settled by the commitment above, which leaves damage as the only thing a failing tag can mean
    * here. */
 
-  if (aes_.Decrypt(src_buff_.data() + kHeaderSize, img_.Data(), src_bytes - kHeaderSize, *key_,
+  if (aes_.Decrypt(src_buff_.data() + kHeaderSize, img_.Data(), body_bytes, *key_,
                    std::span(src_buff_.data(), kHeaderSize)) == Result::kFailure) {
     Reset();
     ReportError("[Auth] Open failed - Vault file is corrupted\n");
