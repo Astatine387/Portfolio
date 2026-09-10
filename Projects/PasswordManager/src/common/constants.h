@@ -113,10 +113,13 @@ inline constexpr int64_t kMaxSize = 4LL * 1024 * 1024;                          
 inline constexpr int64_t kMinSize = (kHeaderSize + kIVSize + kCountSize + kTagSize);  /// Mininum vault file size
 
 /* What is left of kMaxSize once the framing is paid for is the largest image that is ever encrypted, and it is
- * encrypted whole rather than in chunks the way decryption reads it back */
+ * encrypted whole rather than in chunks the way decryption reads it back.
+ *
+ * max is written parenthesized because a translation unit that reached windows.h before this header has a
+ * function-like max macro in scope, and the bare call would be taken for an invocation of it with no arguments. */
 
 static_assert(kMaxSize - static_cast<int64_t>(kHeaderSize + kIVSize + kTagSize) <=
-                  static_cast<int64_t>(std::numeric_limits<int>::max()),
+                  static_cast<int64_t>((std::numeric_limits<int>::max)()),
               "The largest image kMaxSize leaves room for goes through a single EVP_EncryptUpdate call, which takes "
               "its length as an int, so a ceiling past that reaches it as a negative length rather than an error");
 

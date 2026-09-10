@@ -7,6 +7,11 @@ set(CMAKE_AUTOMOC ON)
 
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
+# windows.h leaves a function-like max macro in scope for every header included after it, which constants.h calls
+if(WIN32)
+    add_compile_definitions(NOMINMAX)
+endif()
+
 if(MSVC)
     set(BASE_WARNINGS
         /W4 /utf-8
