@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 inline constexpr double kFontScale = 1.2;  /// GUI font scale
 
@@ -108,6 +109,14 @@ inline constexpr size_t kHeaderSize =
 
 inline constexpr int64_t kMaxSize = 4 * 1024 * 1024;                                  /// Maximum vault file size
 inline constexpr int64_t kMinSize = (kHeaderSize + kIVSize + kCountSize + kTagSize);  /// Mininum vault file size
+
+/* What is left of kMaxSize once the framing is paid for is the largest image that is ever encrypted, and it is
+ * encrypted whole rather than in chunks the way decryption reads it back */
+
+static_assert(kMaxSize - static_cast<int64_t>(kHeaderSize + kIVSize + kTagSize) <=
+                  static_cast<int64_t>(std::numeric_limits<int>::max()),
+              "The largest image kMaxSize leaves room for goes through a single EVP_EncryptUpdate call, which takes "
+              "its length as an int, so a ceiling past that reaches it as a negative length rather than an error");
 
 inline constexpr int kMaxSiteLen = 256;   /// Maximum length of site name
 inline constexpr int kMaxAccLen = 256;    /// Maximum length of account

@@ -110,6 +110,8 @@ Result AesGcm::EncryptInit(std::span<const uint8_t> aad) {
 Result AesGcm::EncryptBuff() {
   int out_len;
 
+  /* constants.h asserts that kMaxSize leaves no image longer than the int length this call takes */
+
   if (EVP_EncryptUpdate(ctx_, dst_buff_ + dst_crs_, &out_len, src_buff_, static_cast<int>(size_)) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
