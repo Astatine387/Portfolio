@@ -85,7 +85,28 @@ inline constexpr size_t kCountSize = sizeof(uint32_t);    /// Entry count field 
 inline constexpr size_t kHeaderSize =
     kMagicSize + kVersionSize + kKdfSize + kSaltSize + kCommitSize;  /// Authenticated header bytes
 
-inline constexpr int64_t kMaxSize = 2ULL * 1024 * 1024 * 1024;                        /// Maximum vault file size
+/* A vault is never streamed. The whole of it is decrypted into sodium_malloc memory and held there for as long as it
+ * stays open, beside an ordinary heap copy of the ciphertext of the same size, so this ceiling is in the end a claim
+ * about how much memory one process can lock. Nothing enforces it while running: sodium_malloc does not report a
+ * refused mlock, it hands back a perfectly good pointer and leaves the pages swappable, so a vault over the limit
+ * does not fail to open. It opens with its plaintext no longer pinned and says nothing about it. There is no error to
+ * catch, which is why this is a constant chosen to sit under the limit rather than a check written against it.
+ *
+ * A systemd default grants 8 MiB, soft and hard alike, so raising the soft limit to the hard one at startup gains
+ * nothing on such a machine, and libsodium locks a page of its own beyond what was asked for, which leaves a single
+ * allocation under 8 MiB less a page if it is to be locked at all. Four MiB clears that with the master password and
+ * the session key locked beside it. Two GiB cleared nothing, being 256 times the whole limit, and any vault written
+ * near that old ceiling would have opened unpinned.
+ *
+ * Little is given up for the smaller figure. The largest entry the parser will accept is 780 bytes, 256 of site and
+ * 256 of account and 256 of password beside the three 4-byte length fields, and 5,377 of those fit under 4 MiB once
+ * the header, IV, entry count and tag are paid for. Entries of the length a person actually types run nearer 60
+ * bytes, which is some seventy thousand of them.
+ *
+ * The same number bounds something else. A file's length is read and the whole of it pulled into memory before the
+ * tag has been checked, so this is also the most an unauthenticated file gets to make this build allocate and read. */
+
+inline constexpr int64_t kMaxSize = 4 * 1024 * 1024;                                  /// Maximum vault file size
 inline constexpr int64_t kMinSize = (kHeaderSize + kIVSize + kCountSize + kTagSize);  /// Mininum vault file size
 
 inline constexpr int kMaxSiteLen = 256;   /// Maximum length of site name

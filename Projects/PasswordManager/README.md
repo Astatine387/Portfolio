@@ -75,7 +75,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 	* **Maximum Password Length:** 256 bytes
 
 * **Vault**
-	* **Maximum Vault File Size:** 2 GiB
+	* **Maximum Vault File Size:** 4 MiB
 	* **Maximum Master Password Length:** 256 bytes
 
 ## 3-1. Vault File Format

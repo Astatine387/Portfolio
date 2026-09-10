@@ -11,4 +11,5 @@
 /Projects/FileEncryption/cmake-build-debug
 /Projects/PasswordManager/.idea
 /Projects/PasswordManager/build
+/Projects/PasswordManager/build-asan
 /Projects/PasswordManager/cmake-build-debug

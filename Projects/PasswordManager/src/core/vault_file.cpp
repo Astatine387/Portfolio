@@ -99,7 +99,7 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
   }
 
   if (src_size_ > kMaxSize) {
-    ReportError("[File] Validation failed - File exceeds maximum size (2 GiB)\n");
+    ReportError("[File] Validation failed - File exceeds maximum size (4 MiB)\n");
     return Result::kFailure;
   }
 
@@ -248,7 +248,7 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key) {
 
   if (dst_size_ > kMaxSize) {
     // LCOV_EXCL_START
-    ReportError("[Data] Validation failed - Vault exceeds maximum size (2 GiB)\n");
+    ReportError("[Data] Validation failed - Vault exceeds maximum size (4 MiB)\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
