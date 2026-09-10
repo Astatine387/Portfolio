@@ -109,7 +109,7 @@ inline constexpr size_t kHeaderSize =
  * to spend, though: OpenVault reads the header alone until the commitment says the password was the right one, so a
  * file that is not this build's, or not this password's, costs kHeaderSize and the derivation its header asked for. */
 
-inline constexpr int64_t kMaxSize = 4 * 1024 * 1024;                                  /// Maximum vault file size
+inline constexpr int64_t kMaxSize = 4LL * 1024 * 1024;                                /// Maximum vault file size
 inline constexpr int64_t kMinSize = (kHeaderSize + kIVSize + kCountSize + kTagSize);  /// Mininum vault file size
 
 /* What is left of kMaxSize once the framing is paid for is the largest image that is ever encrypted, and it is
