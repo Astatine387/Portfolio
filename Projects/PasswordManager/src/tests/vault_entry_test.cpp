@@ -50,7 +50,11 @@ class VaultEntryTest : public ::testing::Test {
    * @brief   Build a field of a given byte length
    * @param   len     Length in bytes
    * @return  String of len repeated characters
+   *
+   * The parenthesized constructor is deliberate: a braced list selects basic_string(initializer_list<char>), which
+   * narrows len to a char and builds a two character string instead of a field of len bytes.
    */
+  // NOLINTNEXTLINE(modernize-return-braced-init-list)
   static std::string Field(int len) { return std::string(static_cast<size_t>(len), 'a'); }
 };
 
@@ -191,7 +195,7 @@ TEST_F(VaultEntryTest, CreateEntryAcceptsMaxFieldLengths) {
 
   ASSERT_EQ(pw.SetData(Field(kMaxEntryPwLen).c_str(), static_cast<size_t>(kMaxEntryPwLen)), Result::kSuccess);
 
-  Result res = vault_.CreateEntry(Field(kMaxSiteLen), Field(kMaxAccLen), std::move(pw));
+  Result res = vault_.CreateEntry(Field(kMaxSiteLen), Field(kMaxAccLen), pw);
 
   EXPECT_EQ(res, Result::kSuccess);
   EXPECT_EQ(vault_.GetEntryCount(), 1);
