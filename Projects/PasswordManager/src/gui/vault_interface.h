@@ -130,11 +130,14 @@ class VaultInterface {
   /**
    * @brief     Get the last error message
    * @return	Last error message
+   *
+   * Read straight out of the vault rather than cached here off the error callback. A cache is only as current as the
+   * last callback that fired, and a failure the core records without reporting would leave it holding the reason for
+   * some earlier one.
    */
   [[nodiscard]] QString GetLastError() const;
 
  private:
   std::unique_ptr<Vault> vault_;
   QString vault_path_;
-  QString last_error_;
 };

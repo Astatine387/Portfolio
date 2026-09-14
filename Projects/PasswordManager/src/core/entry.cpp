@@ -116,7 +116,7 @@ size_t Entry::Deserialize(const uint8_t* src, size_t srclen, size_t base_off) {
   dlen = LoadLE32(src + cur);
   cur += sizeof(uint32_t);
 
-  if (cur + dlen > srclen || dlen > kMaxMasterPwLen) {
+  if (cur + dlen > srclen || dlen > kMaxEntryPwLen) {
     return 0;
   }
 

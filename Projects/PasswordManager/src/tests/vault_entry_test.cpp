@@ -6,9 +6,13 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <cstring>
+#include <string>
 
+#include "common/constants.h"
 #include "core/vault.h"
+#include "utils/platform.h"
 
 /**
  * @class   VaultEntryTest
@@ -20,6 +24,14 @@
 class VaultEntryTest : public ::testing::Test {
  protected:
   Vault vault_;
+  std::string path_ = "vault_entry_test.vault";
+
+  /**
+   * @brief   Remove the vault file, for the tests that write one
+   *
+   * Named apart from the file suite's own temporary so that the two cannot collide.
+   */
+  void TearDown() override { RemoveFile(path_); }
 
   /**
    * @brief   Create a Password object from C-string
@@ -33,6 +45,13 @@ class VaultEntryTest : public ::testing::Test {
 
     return pw;
   }
+
+  /**
+   * @brief   Build a field of a given byte length
+   * @param   len     Length in bytes
+   * @return  String of len repeated characters
+   */
+  static std::string Field(int len) { return std::string(static_cast<size_t>(len), 'a'); }
 };
 
 /* ==================================================
@@ -77,6 +96,132 @@ TEST_F(VaultEntryTest, CreateDuplicate) {
  */
 TEST_F(VaultEntryTest, CreateStoresPassword) {
   vault_.CreateEntry("Google", "user@google.com", MakePW("s3cr3t!!"));
+
+  Password got;
+
+  EXPECT_TRUE(vault_.GetEntryPW("Google", "user@google.com", got));
+  EXPECT_TRUE(got.Equal(MakePW("s3cr3t!!")));
+}
+
+/* ==================================================
+ * Field Validation Test
+ * ================================================== */
+
+/* Entry::Deserialize refuses a site, account or password past its ceiling, so an entry built out of longer fields
+ * would go into an image the same parser cannot read back. These check that the core refuses such fields itself,
+ * rather than leaving the format's invariant to the dialog that used to be the only thing enforcing it.
+ *
+ * Each case reads the reported reason as well as the return value, since a Result alone cannot tell an empty site
+ * apart from an oversized one and it is the distinct reasons that make the rejection worth anything to a caller. */
+
+/**
+ * @brief   Verify creating an entry with an oversized site name fails
+ */
+TEST_F(VaultEntryTest, CreateEntryRejectsOversizedSite) {
+  Result res = vault_.CreateEntry(Field(kMaxSiteLen + 1), "user@google.com", MakePW("password"));
+
+  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_EQ(vault_.GetEntryCount(), 0);
+  EXPECT_NE(vault_.GetLastError().find("Site name exceeds maximum size"), std::string::npos);
+}
+
+/**
+ * @brief   Verify creating an entry with an oversized account fails
+ */
+TEST_F(VaultEntryTest, CreateEntryRejectsOversizedAccount) {
+  Result res = vault_.CreateEntry("Google", Field(kMaxAccLen + 1), MakePW("password"));
+
+  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_EQ(vault_.GetEntryCount(), 0);
+  EXPECT_NE(vault_.GetLastError().find("Account exceeds maximum size"), std::string::npos);
+}
+
+/**
+ * @brief   Verify creating an entry with an empty site name fails
+ */
+TEST_F(VaultEntryTest, CreateEntryRejectsEmptySite) {
+  Result res = vault_.CreateEntry("", "user@google.com", MakePW("password"));
+
+  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_EQ(vault_.GetEntryCount(), 0);
+  EXPECT_NE(vault_.GetLastError().find("Site name is empty"), std::string::npos);
+}
+
+/**
+ * @brief   Verify creating an entry with an empty account fails
+ */
+TEST_F(VaultEntryTest, CreateEntryRejectsEmptyAccount) {
+  Result res = vault_.CreateEntry("Google", "", MakePW("password"));
+
+  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_EQ(vault_.GetEntryCount(), 0);
+  EXPECT_NE(vault_.GetLastError().find("Account is empty"), std::string::npos);
+}
+
+/**
+ * @brief   Verify updating an entry to an oversized site name fails
+ */
+TEST_F(VaultEntryTest, UpdateEntryRejectsOversizedSite) {
+  vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
+
+  UpdateResult res =
+      vault_.UpdateEntry("Google", "user@google.com", Field(kMaxSiteLen + 1), "user@google.com", MakePW("asdf1234"));
+
+  EXPECT_EQ(res, UpdateResult::kError);
+  EXPECT_NE(vault_.GetLastError().find("Site name exceeds maximum size"), std::string::npos);
+
+  /* The original entry is untouched, since the fields are checked before anything is built */
+
+  EXPECT_EQ(vault_.GetEntryCount(), 1);
+
+  Password got;
+
+  EXPECT_TRUE(vault_.GetEntryPW("Google", "user@google.com", got));
+  EXPECT_TRUE(got.Equal(MakePW("password")));
+}
+
+/**
+ * @brief   Verify fields of exactly the maximum length are accepted
+ *
+ * The ceilings are inclusive on the way out, as Entry::Deserialize reads them on the way back in, so a validator one
+ * byte too strict would refuse entries the format holds perfectly well.
+ */
+TEST_F(VaultEntryTest, CreateEntryAcceptsMaxFieldLengths) {
+  Password pw;
+
+  ASSERT_EQ(pw.SetData(Field(kMaxEntryPwLen).c_str(), static_cast<size_t>(kMaxEntryPwLen)), Result::kSuccess);
+
+  Result res = vault_.CreateEntry(Field(kMaxSiteLen), Field(kMaxAccLen), std::move(pw));
+
+  EXPECT_EQ(res, Result::kSuccess);
+  EXPECT_EQ(vault_.GetEntryCount(), 1);
+}
+
+/**
+ * @brief   Verify a rejected create leaves the vault whole and saveable
+ *
+ * A refusal is only worth as much as the state it leaves behind. The image and the entry set are rebuilt together on
+ * every create, so a check placed after either had been touched would leave the two disagreeing: the count would
+ * still read right, and the damage would surface later as a vault that no longer saves or no longer reopens. Reading
+ * the entries back off disk after the refusal is what says the rejection cost the vault nothing.
+ */
+TEST_F(VaultEntryTest, VaultRemainsUsableAfterRejectedCreate) {
+  ASSERT_EQ(vault_.NewVault(path_, MakePW("master")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("s3cr3t!!")), Result::kSuccess);
+
+  const int before = vault_.GetEntryCount();
+
+  EXPECT_EQ(vault_.CreateEntry(Field(kMaxSiteLen + 1), "user@google.com", MakePW("password")), Result::kFailure);
+  EXPECT_EQ(vault_.GetEntryCount(), before);
+
+  /* The image still matches the entry set, so it still encrypts and writes */
+
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+
+  vault_.CloseVault();
+
+  ASSERT_EQ(vault_.OpenVault(path_, MakePW("master")), Result::kSuccess);
+  EXPECT_EQ(vault_.GetEntryCount(), before);
 
   Password got;
 

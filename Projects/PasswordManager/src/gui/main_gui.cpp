@@ -106,7 +106,7 @@ void MainGUI::OnAddRequested() {
     EntryInput input = entry_gui_->GetInput();
 
     if (vault_.CreateEntry(input.site, input.acc, input.pw) == Result::kFailure) {
-      list_gui_->SetErrMsg("Entry already exists");
+      list_gui_->SetErrMsg(vault_.GetLastError());
       return;
     }
 
@@ -145,7 +145,7 @@ void MainGUI::OnEditRequested(const QString& site, const QString& acc) {
     }
 
     if (res == UpdateResult::kError) {
-      list_gui_->SetErrMsg("Failed to update entry");
+      list_gui_->SetErrMsg(vault_.GetLastError());
       return;
     }
 

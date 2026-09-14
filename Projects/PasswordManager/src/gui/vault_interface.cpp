@@ -7,7 +7,7 @@
 #include "gui/vault_interface.h"
 
 VaultInterface::VaultInterface() : vault_(std::make_unique<Vault>()) {
-  vault_->SetErrorCallback([this](const char* msg) { last_error_ = QString::fromUtf8(msg); });
+  ;
 }
 
 Result VaultInterface::NewVault(const QString& path, const Password& pw) {
@@ -67,5 +67,5 @@ bool VaultInterface::GetPW(const QString& site, const QString& acc, Password& pw
 }
 
 QString VaultInterface::GetLastError() const {
-  return last_error_;
+  return QString::fromStdString(vault_->GetLastError());
 }

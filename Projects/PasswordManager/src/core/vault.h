@@ -29,7 +29,7 @@ enum class UpdateResult : std::uint8_t {
   kSuccess,    // Success
   kNotFound,   // Original entry is missing
   kDuplicate,  // Site or account collides with another entry
-  kError,      // Secure memory could not be allocated
+  kError,      // New fields are out of range, or the new image could not be built
 };
 
 /**
@@ -113,6 +113,9 @@ class Vault {
    * @param		acc		Account of the new entry
    * @param		pw		Password of the new entry
    * @return	kSuccess on success, kFailure on failure
+   *
+   * The fields are checked against what the on-disk format accepts before anything is built, so a vault never holds
+   * an entry it could not read back. GetLastError names the field that was refused.
    */
   Result CreateEntry(const std::string& site, const std::string& acc, const Password& pw);
 
@@ -124,6 +127,9 @@ class Vault {
    * @param     new_acc		New account
    * @param     new_pw		New password
    * @return	See UpdateResult
+   *
+   * The new fields are checked as CreateEntry's are, and a field out of range gives kError with the reason in
+   * GetLastError.
    */
   UpdateResult UpdateEntry(const std::string& old_site, const std::string& old_acc, const std::string& new_site,
                            const std::string& new_acc, const Password& new_pw);

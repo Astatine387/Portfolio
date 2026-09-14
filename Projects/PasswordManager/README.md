@@ -272,7 +272,7 @@ cmake --build build
 | Entry    | `entry_test.cpp`       | Size Calculation, Comparison, Serialization, Deserialization, Boundary Check, Field Length Validation                            |
 | Password | `password_test.cpp`    | Initialization, Setting Data, Copy and Move Semantics, Memory Safety, RAII, Comparison, Data, Cleanup, Maximum Size, Memory Lock |
 | Utils    | `utils_test.cpp`       | File Handling, Argon2id Key Derivation, Random Number Generation, Memory Wipe                                                    |
-| Vault    | `vault_entry_test.cpp` | Entry CRUD Operation, Duplication Check, Existence Check, Conflict Check, Accessor, Master Password Verification                 |
+| Vault    | `vault_entry_test.cpp` | Entry CRUD Operation, Duplication Check, Existence Check, Conflict Check, Field Validation, Accessor, Master Password Verification                 |
 | Vault    | `vault_file_test.cpp`  | Vault Creation, Opening, Validation, Header Parameters, Header Tampering, Save, Password Change, Error Handling                  |
 
 **Note:** GUI files, error messages for external libraries and system calls are excluded from tests.

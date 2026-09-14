@@ -4,11 +4,61 @@
  * @author	Astatine387
  */
 
+#include <cstddef>
 #include <optional>
 #include <span>
+#include <string>
 
+#include "common/constants.h"
 #include "core/vault.h"
 #include "utils/byte_order.h"
+#include "utils/password.h"
+
+namespace {
+
+/* The messages state their ceiling outright, the way the dialog's already do. A constant moved without the figure
+ * beside it moving too would leave the text quietly wrong, so the figure is asserted rather than trusted. */
+
+static_assert(kMaxSiteLen == 256 && kMaxAccLen == 256 && kMaxEntryPwLen == 256,
+              "A field ceiling moved away from the 256 bytes these messages state");
+
+/**
+ * @brief   Check entry fields against what the on-disk format accepts
+ * @param   site    Site name of the entry
+ * @param   acc     Account of the entry
+ * @param   pw      Password of the entry
+ * @return  Reason the fields were refused, or nullptr when every one of them fits
+ *
+ * Entry::Deserialize refuses a site or account past its ceiling and a password past kMaxEntryPwLen, so an image
+ * built out of longer fields is one the parser that wrote it cannot read back. The only check on the way in used to
+ * stand in EntryGUI::OnOKClicked, a layer the tests do not reach and one that a second entry point would not go
+ * through, which left the format's own invariant resting on the dialog. It rests here now.
+ */
+const char* ValidateEntryFields(const std::string& site, const std::string& acc, const Password& pw) {
+  if (site.empty()) {
+    return "[Entry] Validation failed - Site name is empty\n";
+  }
+
+  if (site.size() > static_cast<size_t>(kMaxSiteLen)) {
+    return "[Entry] Validation failed - Site name exceeds maximum size (256 bytes)\n";
+  }
+
+  if (acc.empty()) {
+    return "[Entry] Validation failed - Account is empty\n";
+  }
+
+  if (acc.size() > static_cast<size_t>(kMaxAccLen)) {
+    return "[Entry] Validation failed - Account exceeds maximum size (256 bytes)\n";
+  }
+
+  if (pw.GetSize() > static_cast<size_t>(kMaxEntryPwLen)) {
+    return "[Entry] Validation failed - Password exceeds maximum size (256 bytes)\n";
+  }
+
+  return nullptr;
+}
+
+}  // namespace
 
 std::optional<size_t> Vault::SerializeVault(SecureBuffer& dst, size_t cur,
                                             const std::set<Entry, EntryCmp>::const_iterator& skip) {
@@ -53,8 +103,15 @@ std::optional<size_t> Vault::SerializeVault(SecureBuffer& dst, size_t cur,
 }
 
 Result Vault::CreateEntry(const std::string& site, const std::string& acc, const Password& pw) {
+  const char* invalid = ValidateEntryFields(site, acc, pw);
+
+  if (invalid != nullptr) {
+    ReportError(invalid);
+    return Result::kFailure;
+  }
+
   if (entry_set_.contains(Entry{ .site = site, .acc = acc })) {
-    last_error_ = "[Entry] Insert failed - Entry already exists\n";
+    ReportError("[Entry] Insert failed - Entry already exists\n");
     return Result::kFailure;
   }
 
@@ -122,12 +179,19 @@ Result Vault::CreateEntry(const std::string& site, const std::string& acc, const
 
 UpdateResult Vault::UpdateEntry(const std::string& old_site, const std::string& old_acc, const std::string& new_site,
                                 const std::string& new_acc, const Password& new_pw) {
+  const char* invalid = ValidateEntryFields(new_site, new_acc, new_pw);
+
+  if (invalid != nullptr) {
+    ReportError(invalid);
+    return UpdateResult::kError;
+  }
+
   /* Check whether the target entry exists */
 
   auto old_it = entry_set_.find(Entry{ .site = old_site, .acc = old_acc });
 
   if (old_it == entry_set_.end()) {
-    last_error_ = "[Entry] Update failed - Original entry not found\n";
+    ReportError("[Entry] Update failed - Original entry not found\n");
     return UpdateResult::kNotFound;
   }
 
@@ -136,7 +200,7 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site, const std::string& 
   auto new_it = entry_set_.find(Entry{ .site = new_site, .acc = new_acc });
 
   if (new_it != entry_set_.end() && new_it != old_it) {
-    last_error_ = "[Entry] Update failed - Entry already exists\n";
+    ReportError("[Entry] Update failed - Entry already exists\n");
     return UpdateResult::kDuplicate;
   }
 
@@ -209,7 +273,7 @@ Result Vault::DeleteEntry(const std::string& site, const std::string& acc) {
   auto it = entry_set_.find(Entry{ .site = site, .acc = acc });
 
   if (it == entry_set_.end()) {
-    last_error_ = "[Entry] Delete failed - Entry not found\n";
+    ReportError("[Entry] Delete failed - Entry not found\n");
     return Result::kFailure;
   }
 

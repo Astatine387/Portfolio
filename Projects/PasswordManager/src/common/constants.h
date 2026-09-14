@@ -123,11 +123,25 @@ static_assert(kMaxSize - static_cast<int64_t>(kHeaderSize + kIVSize + kTagSize) 
               "The largest image kMaxSize leaves room for goes through a single EVP_EncryptUpdate call, which takes "
               "its length as an int, so a ceiling past that reaches it as a negative length rather than an error");
 
-inline constexpr int kMaxSiteLen = 256;   /// Maximum length of site name
-inline constexpr int kMaxAccLen = 256;    /// Maximum length of account
-inline constexpr int kMaxPwLen = 32;      /// Maximum length of entry password
-inline constexpr int kMinPwLen = 8;       /// Minimum length of entry password
-inline constexpr int kDefaultPwLen = 16;  /// Default length of entry password
+inline constexpr int kMaxSiteLen = 256;     /// Maximum length of site name
+inline constexpr int kMaxAccLen = 256;      /// Maximum length of account
+inline constexpr int kMaxEntryPwLen = 256;  /// Maximum stored length of entry password
+
+/* An entry password is read back out of the image into a Password, which holds kMaxMasterPwLen bytes and refuses
+ * anything longer. A ceiling above that would let the parser accept an entry whose password GetEntryPW could never
+ * hand back, so the two are free to differ only in the one direction. */
+
+static_assert(kMaxEntryPwLen <= kMaxMasterPwLen,
+              "An entry password the parser accepts has to fit the Password buffer it is later copied into");
+
+/* The generator produces a password of a length the user picks on a slider. These bound that slider and nothing
+ * else: what the format stores is kMaxEntryPwLen, and a typed password is not generated at all. */
+
+inline constexpr int kMaxGenPwLen = 32;      /// Maximum value of the generator slider
+inline constexpr int kMinGenPwLen = 8;       /// Minimum value of the generator slider
+inline constexpr int kDefaultGenPwLen = 16;  /// Default value of the generator slider
+
+static_assert(kMaxGenPwLen <= kMaxEntryPwLen, "The generator can produce a password the vault cannot store");
 
 inline constexpr size_t kMinEntrySize = (sizeof(uint32_t) + 1) * 3;  // Minimum serialized entry size
 

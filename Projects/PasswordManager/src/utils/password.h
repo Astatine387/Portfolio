@@ -102,6 +102,6 @@ class Password {
   void Clean();
 
  private:
-  char* data_ = nullptr;  // kMaxPWLen + 1 bytes in sodium_malloc memory, or nullptr when empty
+  char* data_ = nullptr;  // kMaxMasterPwLen + 1 bytes in sodium_malloc memory, or nullptr when empty
   size_t size_ = 0;
 };
