@@ -21,8 +21,8 @@
 struct Entry {
   std::string site;
   std::string acc;
-  mutable size_t pw_off = 0;  // Offset of the password bytes
-  uint32_t pw_len = 0;        // Password length in bytes
+  size_t pw_off = 0;    // Offset of the password bytes
+  uint32_t pw_len = 0;  // Password length in bytes
 
   /**
    * @brief   Calculate serialized size in bytes
@@ -49,7 +49,7 @@ struct Entry {
    * @param   pw_src  Source of the password bytes, empty when the password is empty
    * @return  Number of bytes written, 0 when the destination is too small
    */
-  size_t Serialize(std::span<uint8_t> dst, std::span<const uint8_t> pw_src) const;
+  [[nodiscard]] size_t Serialize(std::span<uint8_t> dst, std::span<const uint8_t> pw_src) const;
 
   /**
    * @brief   Deserialize an entry, recording the password as a view into the image

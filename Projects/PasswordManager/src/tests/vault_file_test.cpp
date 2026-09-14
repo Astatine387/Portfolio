@@ -449,7 +449,7 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
 
   std::span<const uint8_t> epw_span(reinterpret_cast<const uint8_t*>(epw), entry.pw_len);
 
-  entry.Serialize(std::span(src).subspan(cur), epw_span);
+  ASSERT_EQ(entry.Serialize(std::span(src).subspan(cur), epw_span), entry_size);
 
   /* Write a vault the fixture password opens, so the entry data is what fails and not the password */
 
@@ -645,6 +645,109 @@ TEST_F(VaultFileTest, SavePreservesPasswords) {
 
   EXPECT_TRUE(vault_.GetEntryPW("Google", "user@google.com", got));
   EXPECT_TRUE(got.Equal(pw));
+}
+
+/**
+ * @brief   Verify a vault edited many times over saves and reopens with every password intact
+ *
+ * Every create, update and delete rewrites the whole image and recomputes every offset in it, so an offset written
+ * against the wrong buffer, or onto the wrong entry, does not announce itself: the site and the account still read
+ * correctly and the password comes back as whichever bytes that offset now lands on. A single edit moves too little
+ * to show it. This one runs enough edits, over fields of deliberately unequal length, that the surviving entries end
+ * up at different offsets and in a different order than they were created at, then reads every field back off the
+ * disk.
+ */
+TEST_F(VaultFileTest, SaveAfterManyEdits) {
+  /**
+   * @struct  Record
+   * @brief   What one entry is expected to hold, kept in step with the edits below
+   */
+  struct Record {
+    std::string site;
+    std::string acc;
+    std::string pw;
+  };
+
+  std::vector<Record> records;
+
+  /* Lengths that vary in opposite directions, so no two entries are interchangeable in size */
+
+  for (int i = 0; i < 10; i++) {
+    const size_t n = static_cast<size_t>(i);
+
+    records.push_back({ .site = "site" + std::to_string(i) + std::string(n, 's'),
+                        .acc = "acc" + std::to_string(i) + std::string(9 - n, 'a') + "@example.com",
+                        .pw = "pw" + std::to_string(i) + std::string(n * 4, 'p') });
+  }
+
+  for (const auto& rec : records) {
+    ASSERT_EQ(vault_.CreateEntry(rec.site, rec.acc, MakePW(rec.pw.c_str())), Result::kSuccess);
+  }
+
+  ASSERT_EQ(vault_.GetEntryCount(), 10);
+
+  /* Three updates: one moves the entry in the ordering, one only rewrites the password, one does both. Each reads
+   * the target out of the record before overwriting it, so the edit and the expectation cannot drift apart. */
+
+  const Record moved_last = records[1];
+
+  records[1].site = "zzz-moved-last";
+
+  ASSERT_EQ(vault_.UpdateEntry(moved_last.site, moved_last.acc, records[1].site, records[1].acc,
+                               MakePW(records[1].pw.c_str())),
+            UpdateResult::kSuccess);
+
+  const Record repassworded = records[4];
+
+  records[4].pw = "rewritten-" + std::string(37, 'r');
+
+  ASSERT_EQ(vault_.UpdateEntry(repassworded.site, repassworded.acc, records[4].site, records[4].acc,
+                               MakePW(records[4].pw.c_str())),
+            UpdateResult::kSuccess);
+
+  const Record moved_first = records[7];
+
+  records[7].site = "aaa-moved-first";
+  records[7].pw = "short";
+
+  ASSERT_EQ(vault_.UpdateEntry(moved_first.site, moved_first.acc, records[7].site, records[7].acc,
+                               MakePW(records[7].pw.c_str())),
+            UpdateResult::kSuccess);
+
+  /* Two deletes, one from either end of the ordering */
+
+  ASSERT_EQ(vault_.DeleteEntry(records[0].site, records[0].acc), Result::kSuccess);
+  ASSERT_EQ(vault_.DeleteEntry(records[8].site, records[8].acc), Result::kSuccess);
+
+  records.erase(records.begin() + 8);
+  records.erase(records.begin());
+
+  ASSERT_EQ(vault_.GetEntryCount(), 8);
+
+  /* Correct in memory before the save, so a failure below tells the two apart */
+
+  for (const auto& rec : records) {
+    Password got;
+
+    ASSERT_TRUE(vault_.GetEntryPW(rec.site, rec.acc, got)) << rec.site;
+    EXPECT_TRUE(got.Equal(MakePW(rec.pw.c_str()))) << rec.site;
+  }
+
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+  ASSERT_EQ(Reload(), Result::kSuccess);
+
+  EXPECT_EQ(vault_.GetEntryCount(), 8);
+
+  const auto& entries = vault_.GetEntries();
+
+  for (const auto& rec : records) {
+    EXPECT_NE(entries.find({ .site = rec.site, .acc = rec.acc }), entries.end()) << rec.site;
+
+    Password got;
+
+    ASSERT_TRUE(vault_.GetEntryPW(rec.site, rec.acc, got)) << rec.site;
+    EXPECT_TRUE(got.Equal(MakePW(rec.pw.c_str()))) << rec.site;
+  }
 }
 
 /**

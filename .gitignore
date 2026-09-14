@@ -12,4 +12,5 @@
 /Projects/PasswordManager/.idea
 /Projects/PasswordManager/build
 /Projects/PasswordManager/build-asan
+/Projects/PasswordManager/build-cov
 /Projects/PasswordManager/cmake-build-debug

@@ -241,7 +241,7 @@ TEST(EntryTest, SerializeSpecialCharacters) {
 
   std::vector<uint8_t> vec(orig.Size());
 
-  orig.Serialize(vec, PwBytes(pw));
+  ASSERT_EQ(orig.Serialize(vec, PwBytes(pw)), orig.Size());
   copy.Deserialize(vec.data(), vec.size(), 0);
 
   EXPECT_EQ(copy.site, orig.site);
@@ -296,7 +296,7 @@ TEST(EntryTest, DeserializationBoundaryCheck) {
 
   std::vector<uint8_t> vec(src.Size());
 
-  src.Serialize(vec, PwBytes(pw));
+  ASSERT_EQ(src.Serialize(vec, PwBytes(pw)), src.Size());
 
   /* Buffer truncated before site length */
 

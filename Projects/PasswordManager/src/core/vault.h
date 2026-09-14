@@ -22,8 +22,8 @@
 #include "utils/password.h"
 
 /**
- * @enum	UpdateResult
- * @brief	Outcome of an entry update operation
+ * @enum    UpdateResult
+ * @brief   Outcome of an entry update operation
  */
 enum class UpdateResult : std::uint8_t {
   kSuccess,    // Success
@@ -33,8 +33,8 @@ enum class UpdateResult : std::uint8_t {
 };
 
 /**
- * @class	Vault
- * @brief	Manages password vaults
+ * @class   Vault
+ * @brief   Manages password vaults
  */
 class Vault {
  public:
@@ -57,25 +57,25 @@ class Vault {
    * ================================================== */
 
   /**
-   * @brief     Create an empty new vault
-   * @param     path    Vault file path
-   * @param     pw      Master password (used to derive the session key)
-   * @return    kSuccess on success, kFailure on failure
+   * @brief   Create an empty new vault
+   * @param   path  Vault file path
+   * @param   pw  Master password (used to derive the session key)
+   * @return  kSuccess on success, kFailure on failure
    */
   Result NewVault(const std::string& path, const Password& pw);
 
   /**
-   * @brief     Open a vault and read its data
-   * @param     path    Vault file path
-   * @param     pw      Master password (used to derive the session key)
-   * @return    kSuccess on success, kFailure on failure
+   * @brief   Open a vault and read its data
+   * @param   path  Vault file path
+   * @param   pw  Master password (used to derive the session key)
+   * @return  kSuccess on success, kFailure on failure
    */
   Result OpenVault(const std::string& path, const Password& pw);
 
   /**
-   * @brief     Save the current vault, reusing the session key with a fresh IV
-   * @param     path    Vault file path
-   * @return    kSuccess on success, kFailure on failure
+   * @brief   Save the current vault, reusing the session key with a fresh IV
+   * @param   path  Vault file path
+   * @return  kSuccess on success, kFailure on failure
    */
   Result SaveVault(const std::string& path);
 
@@ -97,8 +97,8 @@ class Vault {
 
   /**
    * @brief		Change the master password and re-encrypt the vault
-   * @param		pw      New password
-   * @param		path	Vault file path
+   * @param		pw    New password
+   * @param		path  Vault file path
    * @return	kSuccess on success, kFailure on save failure
    */
   Result ChangePW(const Password& pw, const std::string& path);
@@ -120,13 +120,13 @@ class Vault {
   Result CreateEntry(const std::string& site, const std::string& acc, const Password& pw);
 
   /**
-   * @brief     Update an entry
-   * @param     old_site    Site name of the target entry
-   * @param     old_acc		Account of the target entry
-   * @param     new_site    New site name
-   * @param     new_acc		New account
-   * @param     new_pw		New password
-   * @return	See UpdateResult
+   * @brief   Update an entry
+   * @param   old_site  Site name of the target entry
+   * @param   old_acc   Account of the target entry
+   * @param   new_site  New site name
+   * @param   new_acc   New account
+   * @param   new_pw    New password
+   * @return  See UpdateResult
    *
    * The new fields are checked as CreateEntry's are, and a field out of range gives kError with the reason in
    * GetLastError.
@@ -135,31 +135,31 @@ class Vault {
                            const std::string& new_acc, const Password& new_pw);
 
   /**
-   * @brief     Delete an entry
-   * @param     site	Site name of the target entry
-   * @param     acc		Account of the target entry
-   * @return    kSuccess on success, kFailure on failure
+   * @brief   Delete an entry
+   * @param   site  Site name of the target entry
+   * @param   acc   Account of the target entry
+   * @return  kSuccess on success, kFailure on failure
    */
   Result DeleteEntry(const std::string& site, const std::string& acc);
 
   /**
-   * @brief	Get a reference to the entry set
-   * @return	Reference to the entry set
+   * @brief   Get a reference to the entry set
+   * @return  Reference to the entry set
    */
   [[nodiscard]] const std::set<Entry, EntryCmp>& GetEntries() const;
 
   /**
-   * @brief     Copy an entry's password out of the locked image
-   * @param     site    Site name
-   * @param     acc     Account
-   * @param     dst     Destination password
-   * @return    true if the entry was found and copied
+   * @brief   Copy an entry's password out of the locked image
+   * @param   site  Site name
+   * @param   acc   Account
+   * @param   dst   Destination password
+   * @return  true if the entry was found and copied
    */
   [[nodiscard]] bool GetEntryPW(const std::string& site, const std::string& acc, Password& dst);
 
   /**
-   * @brief     Get the number of entries
-   * @return	Number of entries
+   * @brief   Get the number of entries
+   * @return  Number of entries
    */
   [[nodiscard]] int GetEntryCount() const;
 
@@ -168,20 +168,20 @@ class Vault {
    * ================================================== */
 
   /**
-   * @brief     Callback function for error reporting
-   * @param     msg	Error message string
+   * @brief   Callback function for error reporting
+   * @param   msg   Error message string
    */
   using ErrorCallback = std::function<void(const char* msg)>;
 
   /**
-   * @brief     Set error callback function
-   * @param     ecb		Error callback function
+   * @brief   Set error callback function
+   * @param   ecb   Error callback function
    */
   void SetErrorCallback(ErrorCallback ecb) { ecb_ = std::move(ecb); }
 
   /**
-   * @brief     Get the last error message
-   * @return	Last error message
+   * @brief   Get the last error message
+   * @return  Last error message
    */
   [[nodiscard]] const std::string& GetLastError() const;
 
@@ -217,10 +217,10 @@ class Vault {
   void Reset();
 
   /**
-   * @brief     Encrypt the current image with a given key, then write atomically
-   * @param     path	Vault file path
-   * @param     key		Key to encrypt with
-   * @return	kSuccess on success, kFailure on failure
+   * @brief   Encrypt the current image with a given key, then write atomically
+   * @param   path  Vault file path
+   * @param   key   Key to encrypt with
+   * @return  kSuccess on success, kFailure on failure
    *
    * The header is built from @p key alone. Salt and parameters used to arrive beside the key as separate arguments,
    * which left it possible to record a derivation the key had not come from; there is no longer an argument to get
@@ -229,28 +229,49 @@ class Vault {
   Result SaveVaultWith(const std::string& path, const SecureKey& key);
 
   /**
-   * @brief     Serialize every entry except one into a new image and refresh offsets
-   * @param     dst		Destination image buffer
-   * @param     cur		Current write cursor
-   * @param     skip	Entry to skip (entry_set_.end() to skip none)
-   * @return	New write cursor, or std::nullopt when a span check fails
+   * @brief   Serialize every entry except one into a candidate image and record their offsets in it
+   * @param   dst           Destination image buffer
+   * @param   cur           Current write cursor
+   * @param   out_entries   Candidate entry set the rewritten entries are inserted into
+   * @param   skip          Entry to skip (entry_set_.end() to skip none)
+   * @return  New write cursor, or std::nullopt when a span check fails
+   *
+   * Reads from @p entry_set_ and the current image, and writes only to @p dst and @p out_entries. The offsets it
+   * computes describe @p dst, which is not the installed image yet, so writing them onto the live entries would
+   * leave them pointing into a buffer that does not exist until CommitImage accepts this one.
    */
-  std::optional<size_t> SerializeVault(SecureBuffer& dst, size_t cur,
+  std::optional<size_t> SerializeVault(SecureBuffer& dst, size_t cur, std::set<Entry, EntryCmp>& out_entries,
                                        const std::set<Entry, EntryCmp>::const_iterator& skip);
 
   /**
-   * @brief     Verify the image redzone and the per-entry offset invariant
-   * @return	kSuccess when intact, kFailure on any mismatch
+   * @brief   Verify an image against the entry set that describes it
+   * @param   img       Image to check
+   * @param   entries   Entry set the image is expected to match
+   * @return  kSuccess when intact, kFailure on any mismatch
+   *
+   * Takes the pair as arguments rather than reading the members, so a candidate can be checked before it is
+   * installed. Not const because ReportError is not.
    */
-  Result VerifyImage();
+  Result VerifyImage(const SecureBuffer& img, const std::set<Entry, EntryCmp>& entries);
+
+  /**
+   * @brief   Install a verified image and entry set as the session state
+   * @param   img       Candidate image
+   * @param   entries   Candidate entry set
+   * @return  kSuccess when the pair was verified and installed, kFailure when nothing was touched
+   *
+   * The one place img_ and entry_set_ are ever written after a vault is open. A caller builds both aside, hands them
+   * over together, and on failure both die with the call while the session keeps the image it already had.
+   */
+  Result CommitImage(SecureBuffer&& img, std::set<Entry, EntryCmp>&& entries);
 
   /* ==================================================
    * Callback helper functions
    * ================================================== */
 
   /**
-   * @brief     Report error via callback
-   * @param     msg		Error message string
+   * @brief   Report error via callback
+   * @param   msg   Error message string
    */
   void ReportError(const char* msg);
 };

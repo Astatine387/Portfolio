@@ -9,10 +9,31 @@
 #include <cstddef>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include "common/constants.h"
 #include "core/vault.h"
 #include "utils/platform.h"
+
+namespace {
+
+/**
+ * @struct  EntryView
+ * @brief   Everything a caller can observe about one entry
+ *
+ * The password is carried beside the two key fields on purpose. A rebuild that loses track of an offset leaves the
+ * site and the account perfectly intact and hands back a neighbour's bytes for the password, so a comparison that
+ * stops at the keys is the one comparison that cannot see the failure this is written for.
+ */
+struct EntryView {
+  std::string site;
+  std::string acc;
+  std::string pw;
+
+  bool operator==(const EntryView& other) const = default;
+};
+
+}  // namespace
 
 /**
  * @class   VaultEntryTest
@@ -56,6 +77,29 @@ class VaultEntryTest : public ::testing::Test {
    */
   // NOLINTNEXTLINE(modernize-return-braced-init-list)
   static std::string Field(int len) { return std::string(static_cast<size_t>(len), 'a'); }
+
+  /**
+   * @brief   Read every entry back through the public accessors
+   * @return  Site, account and password of each entry, in entry set order
+   *
+   * Goes through GetEntryPW rather than reading the image, so the offsets are followed exactly as a caller would
+   * follow them and a stale one shows up as the wrong password rather than being stepped over.
+   */
+  std::vector<EntryView> Snapshot() {
+    std::vector<EntryView> res;
+
+    for (const auto& entry : vault_.GetEntries()) {
+      Password pw;
+
+      EXPECT_TRUE(vault_.GetEntryPW(entry.site, entry.acc, pw));
+
+      res.push_back({ .site = entry.site,
+                      .acc = entry.acc,
+                      .pw = (pw.GetSize() > 0) ? std::string(pw.GetData(), pw.GetSize()) : std::string() });
+    }
+
+    return res;
+  }
 };
 
 /* ==================================================
@@ -233,6 +277,106 @@ TEST_F(VaultEntryTest, VaultRemainsUsableAfterRejectedCreate) {
   EXPECT_TRUE(got.Equal(MakePW("s3cr3t!!")));
 }
 
+/**
+ * @brief   Verify a failed create leaves every observable part of the session unchanged
+ *
+ * CreateEntry used to install the rebuilt image and entry set and only then check them, so a refusal reached after
+ * that point returned kFailure over a session that had already been changed and had no way back. The image and the
+ * set are now built aside and installed together in one step, which makes the claim a refusal makes - that nothing
+ * happened - something a test can hold it to by reading everything back.
+ *
+ * Each of the three refusals leaves by a different exit, and the save at the end is what says the image and the set
+ * still describe each other rather than merely looking unchanged from the outside.
+ */
+TEST_F(VaultEntryTest, CreateEntryFailureLeavesSessionIntact) {
+  ASSERT_EQ(vault_.NewVault(path_, MakePW("master")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user1@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Microsoft", "user2@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Amazon", "user3@microsoft.com", MakePW("qwerty")), Result::kSuccess);
+
+  const std::vector<EntryView> before = Snapshot();
+
+  ASSERT_EQ(before.size(), 3U);
+
+  /* Field out of range */
+
+  EXPECT_EQ(vault_.CreateEntry(Field(kMaxSiteLen + 1), "user4@google.com", MakePW("password")), Result::kFailure);
+  EXPECT_EQ(vault_.GetEntryCount(), 3);
+  EXPECT_EQ(Snapshot(), before);
+
+  /* Collides with an entry already held */
+
+  EXPECT_EQ(vault_.CreateEntry("Google", "user1@google.com", MakePW("password")), Result::kFailure);
+  EXPECT_EQ(vault_.GetEntryCount(), 3);
+  EXPECT_EQ(Snapshot(), before);
+
+  /* Field empty */
+
+  EXPECT_EQ(vault_.CreateEntry("Apple", "", MakePW("password")), Result::kFailure);
+  EXPECT_EQ(vault_.GetEntryCount(), 3);
+  EXPECT_EQ(Snapshot(), before);
+
+  /* The session is still saveable, and what comes back off the disk is what was there before the refusals */
+
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+
+  vault_.CloseVault();
+
+  ASSERT_EQ(vault_.OpenVault(path_, MakePW("master")), Result::kSuccess);
+  EXPECT_EQ(vault_.GetEntryCount(), 3);
+  EXPECT_EQ(Snapshot(), before);
+}
+
+/**
+ * @brief   Verify a failed update leaves every observable part of the session unchanged
+ *
+ * The same property as CreateEntryFailureLeavesSessionIntact, over the path that had the most to lose: UpdateEntry
+ * erased the old entry and inserted the new one into the live set before anything was checked, so a refusal after
+ * that point left the vault holding neither the old entry nor a usable new one.
+ */
+TEST_F(VaultEntryTest, UpdateEntryFailureLeavesSessionIntact) {
+  ASSERT_EQ(vault_.NewVault(path_, MakePW("master")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user1@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Microsoft", "user2@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Amazon", "user3@microsoft.com", MakePW("qwerty")), Result::kSuccess);
+
+  const std::vector<EntryView> before = Snapshot();
+
+  ASSERT_EQ(before.size(), 3U);
+
+  /* Field out of range */
+
+  EXPECT_EQ(
+      vault_.UpdateEntry("Google", "user1@google.com", Field(kMaxSiteLen + 1), "user1@google.com", MakePW("newpass")),
+      UpdateResult::kError);
+  EXPECT_EQ(vault_.GetEntryCount(), 3);
+  EXPECT_EQ(Snapshot(), before);
+
+  /* Collides with a different entry */
+
+  EXPECT_EQ(vault_.UpdateEntry("Google", "user1@google.com", "Amazon", "user3@microsoft.com", MakePW("newpass")),
+            UpdateResult::kDuplicate);
+  EXPECT_EQ(vault_.GetEntryCount(), 3);
+  EXPECT_EQ(Snapshot(), before);
+
+  /* Original is not there */
+
+  EXPECT_EQ(vault_.UpdateEntry("Apple", "user4@apple.com", "Apple", "user5@apple.com", MakePW("newpass")),
+            UpdateResult::kNotFound);
+  EXPECT_EQ(vault_.GetEntryCount(), 3);
+  EXPECT_EQ(Snapshot(), before);
+
+  /* The session is still saveable, and what comes back off the disk is what was there before the refusals */
+
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+
+  vault_.CloseVault();
+
+  ASSERT_EQ(vault_.OpenVault(path_, MakePW("master")), Result::kSuccess);
+  EXPECT_EQ(vault_.GetEntryCount(), 3);
+  EXPECT_EQ(Snapshot(), before);
+}
+
 /* ==================================================
  * Update Entry Test
  * ================================================== */
@@ -322,11 +466,11 @@ TEST_F(VaultEntryTest, DeleteNonExistent) {
  * @brief   Verify deleting one entry preserves the passwords of the others
  */
 TEST_F(VaultEntryTest, DeletePreservesOthers) {
-  vault_.CreateEntry("Google", "user1@google.com", MakePW("gpass"));
-  vault_.CreateEntry("Amazon", "user2@amazon.com", MakePW("apass"));
-  vault_.CreateEntry("Microsoft", "user3@microsoft.com", MakePW("mpass"));
+  vault_.CreateEntry("Google", "user1@google.com", MakePW("password"));
+  vault_.CreateEntry("Microsoft", "user2@microsoft.com", MakePW("asdf1234"));
+  vault_.CreateEntry("Amazon", "user3@microsoft.com", MakePW("qwerty"));
 
-  vault_.DeleteEntry("Amazon", "user2@amazon.com");
+  vault_.DeleteEntry("Amazon", "user3@microsoft.com");
 
   EXPECT_EQ(vault_.GetEntryCount(), 2);
 
@@ -334,9 +478,9 @@ TEST_F(VaultEntryTest, DeletePreservesOthers) {
   Password microsoft;
 
   EXPECT_TRUE(vault_.GetEntryPW("Google", "user1@google.com", google));
-  EXPECT_TRUE(google.Equal(MakePW("gpass")));
-  EXPECT_TRUE(vault_.GetEntryPW("Microsoft", "user3@microsoft.com", microsoft));
-  EXPECT_TRUE(microsoft.Equal(MakePW("mpass")));
+  EXPECT_TRUE(google.Equal(MakePW("password")));
+  EXPECT_TRUE(vault_.GetEntryPW("Microsoft", "user2@microsoft.com", microsoft));
+  EXPECT_TRUE(microsoft.Equal(MakePW("asdf1234")));
 }
 
 /* ==================================================
