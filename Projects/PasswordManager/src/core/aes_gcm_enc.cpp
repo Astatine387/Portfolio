@@ -11,6 +11,20 @@
 #include "utils/platform.h"
 
 Result AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad) {
+  /* The destination is written at every size, an empty plaintext included, since the IV and the tag go into it
+   * regardless. The source is read only when there is a plaintext to read, so a caller holding the .data() of an
+   * empty container may hand that over null rather than having to invent a pointer for zero bytes. */
+
+  if (dst == nullptr) {
+    ReportError("[Crypto] Encryption failed - No destination buffer to write the ciphertext to\n");
+    return Result::kFailure;
+  }
+
+  if (size > 0 && src == nullptr) {
+    ReportError("[Crypto] Encryption failed - No source buffer for a non-empty plaintext\n");
+    return Result::kFailure;
+  }
+
   src_buff_ = src;
   dst_buff_ = dst;
   size_ = size;

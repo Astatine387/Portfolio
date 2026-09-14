@@ -10,6 +10,29 @@
 #include "core/aes_gcm.h"
 
 Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad) {
+  /* Everything below reads the buffer at offsets it takes on trust. DecryptInit lifts the tag from src + size -
+   * kTagSize, and that subtraction is size_t arithmetic, so a size under kTagSize wraps instead of going negative and
+   * the read lands nowhere near the allocation. Vault::OpenVault refuses a file below kMinSize long before one
+   * reaches here, but that is a check in another class on another path, and this one is public and called directly. */
+
+  if (src == nullptr) {
+    ReportError("[Crypto] Decryption failed - No source buffer to read the ciphertext from\n");
+    return Result::kFailure;
+  }
+
+  if (size < kIVSize + kTagSize) {
+    ReportError("[Crypto] Decryption failed - Buffer is smaller than an initial vector and authentication tag\n");
+    return Result::kFailure;
+  }
+
+  /* A buffer of exactly the framing carries no plaintext, and that is the shape an empty vault decrypts through, so
+   * a null destination is refused only when there would be something to write to it */
+
+  if (dst == nullptr && size > kIVSize + kTagSize) {
+    ReportError("[Crypto] Decryption failed - No destination buffer for a non-empty plaintext\n");
+    return Result::kFailure;
+  }
+
   src_buff_ = src;
   dst_buff_ = dst;
   size_ = size;

@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 #include <openssl/err.h>
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <optional>
@@ -359,6 +360,106 @@ TEST(AesGcmTest, LargeData) {
   EXPECT_EQ(aes.Encrypt(src.data(), enc.data(), dsize, key, aad), Result::kSuccess);
   EXPECT_EQ(aes.Decrypt(enc.data(), dec.data(), enc_size, key, aad), Result::kSuccess);
   EXPECT_EQ(memcmp(src.data(), dec.data(), dsize), 0);
+}
+
+/* ==================================================
+ * Input Validation Tests
+ * ================================================== */
+
+/**
+ * @brief   Verify decryption refuses a buffer too short to hold an initial vector and tag
+ *
+ * The tag is read from src + size - kTagSize before anything has looked at the size, and that subtraction is over
+ * size_t, so it wraps instead of going negative and the read lands nowhere near the allocation. Every buffer below
+ * is allocated at the length it claims, leaving ASan something to report should the check ever go away.
+ */
+TEST(AesGcmTest, DecryptRejectsBufferSmallerThanIvAndTag) {
+  AesGcm aes;
+
+  auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
+  SecureKey key = MakeKey("password", salt);
+
+  /* Nothing at all, one byte short of the tag, and one byte short of the tag and the initial vector together */
+
+  for (const size_t dsize : { size_t{ 0 }, size_t{ 15 }, size_t{ 27 } }) {
+    /* A zero-length allocation may hand back a null pointer, which would trip the null check and leave the size
+     * check untested, so the buffers are never shorter than a byte */
+
+    std::vector<uint8_t> src(std::max<size_t>(dsize, 1));
+    std::vector<uint8_t> dec(std::max<size_t>(dsize, 1));
+
+    EXPECT_EQ(aes.Decrypt(src.data(), dec.data(), dsize, key, aad), Result::kFailure) << "size = " << dsize;
+  }
+}
+
+/**
+ * @brief   Verify decryption refuses a null source buffer
+ */
+TEST(AesGcmTest, DecryptRejectsNullSource) {
+  AesGcm aes;
+
+  size_t dsize = 13;
+  size_t enc_size = kIVSize + dsize + kTagSize;
+
+  std::vector<uint8_t> dec(dsize);
+
+  auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
+  SecureKey key = MakeKey("password", salt);
+
+  /* The size clears the framing with room to spare, so it is the missing source and nothing else being refused */
+
+  EXPECT_EQ(aes.Decrypt(nullptr, dec.data(), enc_size, key, aad), Result::kFailure);
+}
+
+/**
+ * @brief   Verify encryption refuses a null destination buffer
+ */
+TEST(AesGcmTest, EncryptRejectsNullDestination) {
+  AesGcm aes;
+
+  const char* data = "Hello, world!";
+  size_t dsize = strlen(data);
+  size_t empty = 0;
+
+  std::vector<uint8_t> src(dsize);
+
+  memcpy(src.data(), data, dsize);
+
+  auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
+  SecureKey key = MakeKey("password", salt);
+
+  EXPECT_EQ(aes.Encrypt(src.data(), nullptr, dsize, key, aad), Result::kFailure);
+
+  /* Refused at a size of zero as well, since the initial vector and the tag are written whatever the plaintext is */
+
+  EXPECT_EQ(aes.Encrypt(src.data(), nullptr, empty, key, aad), Result::kFailure);
+}
+
+/**
+ * @brief   Verify an empty plaintext is accepted with no source to read and no destination to write
+ *
+ * EmptyData passes the .data() of empty vectors, which is a null pointer on this implementation and need not be on
+ * another, so what that test covers is left to chance. This states it outright, in both directions: a plaintext of
+ * length zero is accepted with a null source, and the framing it decrypts back through is accepted with a null
+ * destination.
+ */
+TEST(AesGcmTest, EncryptAcceptsNullSourceWhenSizeIsZero) {
+  AesGcm aes;
+
+  size_t dsize = 0;
+  size_t enc_size = kIVSize + dsize + kTagSize;
+
+  std::vector<uint8_t> enc(enc_size);
+
+  auto salt = MakeSalt(0xA5);
+  const std::vector<uint8_t> aad = MakeAad(0x5A);
+  SecureKey key = MakeKey("password", salt);
+
+  EXPECT_EQ(aes.Encrypt(nullptr, enc.data(), dsize, key, aad), Result::kSuccess);
+  EXPECT_EQ(aes.Decrypt(enc.data(), nullptr, enc_size, key, aad), Result::kSuccess);
 }
 
 /* ==================================================
