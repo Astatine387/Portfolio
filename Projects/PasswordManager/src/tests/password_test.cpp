@@ -338,7 +338,10 @@ TEST(PasswordTest, CompareSelf) {
  * ================================================== */
 
 /**
- * @brief   Verify clean wipes password data
+ * @brief   Verify Clean releases the buffer and leaves the password empty
+ *
+ * The wipe itself belongs to sodium_free and lands on memory this process has handed back, so nothing here can
+ * assert on those bytes. What is asserted is the state Clean leaves behind.
  */
 TEST(PasswordTest, Clean) {
   Password pw;

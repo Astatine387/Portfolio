@@ -260,9 +260,10 @@ Result Vault::SaveVault(const std::string& path) {
 }
 
 Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key) {
-  /* Verify the image redzone and offset invariant before encrypting. The pair checked here is the installed one,
-   * which CommitImage has already verified; it is checked again because what is about to be written to disk is these
-   * bytes, and a save is the last point at which a disagreement can still be caught instead of stored. */
+  /* Confirm the image and the entry set still describe each other before encrypting. The pair checked here is the
+   * installed one, which CommitImage has already verified; it is checked again because what is about to be written to
+   * disk is these bytes, and a save is the last point at which a disagreement can still be caught instead of
+   * stored. */
 
   if (VerifyImage(img_, entry_set_) == Result::kFailure) {
     return Result::kFailure;  // VerifyImage reported the error

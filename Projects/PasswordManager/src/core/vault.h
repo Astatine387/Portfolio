@@ -249,6 +249,12 @@ class Vault {
    * @param   entries   Entry set the image is expected to match
    * @return  kSuccess when intact, kFailure on any mismatch
    *
+   * Four things are checked, all of them about the image and the entry set still describing each other: the entry
+   * count at the front of the image equals the size of @p entries, every entry re-parses out of the image, each
+   * re-parsed entry is present in @p entries with the same password offset and length, and the last entry ends
+   * exactly at the end of the image. An image too short to hold the count field fails the first of these. Nothing
+   * about the allocation the image lives in is inspected here.
+   *
    * Takes the pair as arguments rather than reading the members, so a candidate can be checked before it is
    * installed. Not const because ReportError is not.
    */
