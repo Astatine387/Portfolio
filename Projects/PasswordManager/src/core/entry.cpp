@@ -10,6 +10,29 @@
 
 #include "utils/byte_order.h"
 
+namespace {
+
+/**
+ * @brief   Report whether the source buffer still holds a given number of bytes
+ * @param   cur     Current read position, never past @p srclen
+ * @param   srclen  Bytes available in the source buffer
+ * @param   need    Bytes the next read wants
+ * @return  true when the read fits
+ *
+ * A subtraction rather than cur + need > srclen. The addition was not wrong: @p need carries a length field taken
+ * from the buffer being parsed and so can be as large as UINT32_MAX, but each of the three reads that supply one
+ * also compares it against its field ceiling in the same condition, and a dlen past 256 is refused by that clause
+ * whatever the addition did. What the subtraction changes is where that safety lives. It is a property of this
+ * check rather than of the clause standing beside it, so raising a ceiling, or dropping one during a refactor,
+ * cannot quietly put a wrapped sum back in front of a read. SecureBuffer::Subspan and Entry::PwSpan already bound
+ * themselves this way, and this is the one place in the parser that did not.
+ */
+constexpr bool HasBytes(size_t cur, size_t srclen, size_t need) {
+  return cur <= srclen && need <= srclen - cur;
+}
+
+}  // namespace
+
 size_t Entry::Size() const {
   return sizeof(uint32_t) + site.size() + sizeof(uint32_t) + acc.size() + sizeof(uint32_t) + pw_len;
 }
@@ -77,14 +100,14 @@ size_t Entry::Deserialize(const uint8_t* src, size_t srclen, size_t base_off) {
 
   /* Read site */
 
-  if (cur + sizeof(uint32_t) > srclen) {
+  if (!HasBytes(cur, srclen, sizeof(uint32_t))) {
     return 0;
   }
 
   dlen = LoadLE32(src + cur);
   cur += sizeof(uint32_t);
 
-  if (cur + dlen > srclen || dlen > kMaxSiteLen) {
+  if (dlen > kMaxSiteLen || !HasBytes(cur, srclen, dlen)) {
     return 0;
   }
 
@@ -93,14 +116,14 @@ size_t Entry::Deserialize(const uint8_t* src, size_t srclen, size_t base_off) {
 
   /* Read account */
 
-  if (cur + sizeof(uint32_t) > srclen) {
+  if (!HasBytes(cur, srclen, sizeof(uint32_t))) {
     return 0;
   }
 
   dlen = LoadLE32(src + cur);
   cur += sizeof(uint32_t);
 
-  if (cur + dlen > srclen || dlen > kMaxAccLen) {
+  if (dlen > kMaxAccLen || !HasBytes(cur, srclen, dlen)) {
     return 0;
   }
 
@@ -109,14 +132,14 @@ size_t Entry::Deserialize(const uint8_t* src, size_t srclen, size_t base_off) {
 
   /* Read password length and record the view; the bytes stay in the image */
 
-  if (cur + sizeof(uint32_t) > srclen) {
+  if (!HasBytes(cur, srclen, sizeof(uint32_t))) {
     return 0;
   }
 
   dlen = LoadLE32(src + cur);
   cur += sizeof(uint32_t);
 
-  if (cur + dlen > srclen || dlen > kMaxEntryPwLen) {
+  if (dlen > kMaxEntryPwLen || !HasBytes(cur, srclen, dlen)) {
     return 0;
   }
 

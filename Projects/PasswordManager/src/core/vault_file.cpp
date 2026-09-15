@@ -215,7 +215,14 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
   entry_cnt = LoadLE32(base);
   cur += kCountSize;
 
-  if (static_cast<size_t>(entry_cnt) * kMinEntrySize > img_len - kCountSize) {
+  /* Divided rather than multiplied. entry_cnt is a uint32_t taken from the image, and kMinEntrySize times its
+   * largest value is past what a 32-bit size_t holds, so the product would wrap to something small and let the
+   * count through. Nothing unsafe follows from that, since the loop below refuses the first entry that does not
+   * parse, but the check is here to refuse an impossible count before iterating on it and a wrapped product does
+   * not do that. img_len is at least kCountSize, because kMinSize accounts for the count field and a shorter file
+   * was refused above. */
+
+  if (entry_cnt > (img_len - kCountSize) / kMinEntrySize) {
     Reset();
     ReportError("[Data] Validation failed - Entry count exceeds available data\n");
     return Result::kFailure;
