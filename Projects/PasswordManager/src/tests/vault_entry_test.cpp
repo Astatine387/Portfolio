@@ -207,6 +207,23 @@ TEST_F(VaultEntryTest, CreateEntryRejectsEmptyAccount) {
 }
 
 /**
+ * @brief   Verify creating an entry with an empty password fails
+ *
+ * The one of the three the validator used to let through. kMinEntrySize counts a byte for every field, and OpenVault
+ * sizes its entry-count check on it, so an entry serialized a byte short of that figure is one this build writes and
+ * then refuses to read back.
+ */
+TEST_F(VaultEntryTest, CreateEntryRejectsEmptyPassword) {
+  Password empty;
+
+  Result res = vault_.CreateEntry("Google", "user@google.com", empty);
+
+  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_EQ(vault_.GetEntryCount(), 0);
+  EXPECT_NE(vault_.GetLastError().find("Password is empty"), std::string::npos);
+}
+
+/**
  * @brief   Verify updating an entry to an oversized site name fails
  */
 TEST_F(VaultEntryTest, UpdateEntryRejectsOversizedSite) {
@@ -226,6 +243,36 @@ TEST_F(VaultEntryTest, UpdateEntryRejectsOversizedSite) {
 
   EXPECT_TRUE(vault_.GetEntryPW("Google", "user@google.com", got));
   EXPECT_TRUE(got.Equal(MakePW("password")));
+}
+
+/**
+ * @brief   Verify updating an entry to an empty password fails and leaves the original intact
+ *
+ * The password is read back as well as the two key fields, since an update that got as far as rebuilding the image
+ * before refusing would leave the site and the account reading correctly over whatever the offsets now land on.
+ */
+TEST_F(VaultEntryTest, UpdateEntryRejectsEmptyPassword) {
+  vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
+
+  Password empty;
+
+  UpdateResult res = vault_.UpdateEntry("Google", "user@google.com", "Google", "user@google.com", empty);
+
+  EXPECT_EQ(res, UpdateResult::kError);
+  EXPECT_NE(vault_.GetLastError().find("Password is empty"), std::string::npos);
+
+  /* The original entry is untouched, since the fields are checked before anything is built */
+
+  EXPECT_EQ(vault_.GetEntryCount(), 1);
+
+  Password got;
+
+  EXPECT_TRUE(vault_.GetEntryPW("Google", "user@google.com", got));
+  EXPECT_TRUE(got.Equal(MakePW("password")));
+
+  const auto& entries = vault_.GetEntries();
+
+  EXPECT_NE(entries.find({ .site = "Google", .acc = "user@google.com" }), entries.end());
 }
 
 /**

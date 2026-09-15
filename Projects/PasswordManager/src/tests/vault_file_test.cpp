@@ -751,6 +751,122 @@ TEST_F(VaultFileTest, SaveAfterManyEdits) {
 }
 
 /**
+ * @brief   Verify every vault this build writes is one it can reopen with every field intact
+ *
+ * The property whose absence let the entry-size invariant break. The suite covers each class thoroughly on its own,
+ * but nothing asserted that what the CRUD layer accepts is what the file layer takes back, and the two halves drifted
+ * apart in exactly that gap: an entry a byte under kMinEntrySize was accepted, serialized, encrypted and written
+ * perfectly well, then refused on the way back in. Nothing was wrong with any one class.
+ *
+ * The cases are the edges of what the format accepts, since an off-by-one between the write path and the read path
+ * shows up there and nowhere else. Multi-byte UTF-8 is carried because the ceilings are byte counts while the dialog
+ * counts characters, so 128 two-byte or 64 four-byte characters is what lands on exactly 256 bytes without looking
+ * like it.
+ */
+TEST_F(VaultFileTest, EveryVaultCanBeReopened) {
+  /**
+   * @struct  Record
+   * @brief   One entry, as it goes in and as it has to come back
+   */
+  struct Record {
+    std::string site;
+    std::string acc;
+    std::string pw;
+  };
+
+  const std::string one_site = "s";
+  const std::string one_acc = "a";
+  const std::string one_pw = "p";
+
+  const std::string max_site(static_cast<size_t>(kMaxSiteLen), 's');
+  const std::string max_acc(static_cast<size_t>(kMaxAccLen), 'a');
+  const std::string max_pw(static_cast<size_t>(kMaxEntryPwLen), 'p');
+
+  /* Written as bytes rather than as characters, so that these are 256 bytes whatever the compiler's execution
+   * character set is, and so the count is checkable by reading it */
+
+  std::string utf8_site;
+  std::string utf8_acc;
+
+  for (int i = 0; i < kMaxSiteLen / 2; i++) {
+    utf8_site += "\xc3\xa9";  // U+00E9, two bytes
+  }
+
+  for (int i = 0; i < kMaxAccLen / 4; i++) {
+    utf8_acc += "\xf0\x9f\x94\x90";  // U+1F510, four bytes
+  }
+
+  ASSERT_EQ(utf8_site.size(), static_cast<size_t>(kMaxSiteLen));
+  ASSERT_EQ(utf8_acc.size(), static_cast<size_t>(kMaxAccLen));
+
+  const std::vector<std::vector<Record>> cases = {
+    /* Zero entries */
+
+    {},
+
+    /* One entry, every field exactly one byte: the smallest vault that holds anything, and the one the entry-count
+       check refused while the validator still accepted an empty password */
+
+    { { .site = one_site, .acc = one_acc, .pw = one_pw } },
+
+    /* One entry, every field exactly at its ceiling */
+
+    { { .site = max_site, .acc = max_acc, .pw = max_pw } },
+
+    /* Several entries mixing both extremes, so no two are interchangeable in size and a misplaced offset lands on a
+       neighbour of a different length */
+
+    { { .site = one_site, .acc = one_acc, .pw = max_pw },
+      { .site = "b", .acc = max_acc, .pw = one_pw },
+      { .site = max_site, .acc = "c", .pw = one_pw },
+      { .site = "d", .acc = "e", .pw = max_pw } },
+
+    /* A site and an account of multi-byte UTF-8 landing on exactly the ceiling */
+
+    { { .site = utf8_site, .acc = utf8_acc, .pw = one_pw } },
+
+    /* A password at either end of its range */
+
+    { { .site = "one-byte-pw", .acc = one_acc, .pw = one_pw },
+      { .site = "max-byte-pw", .acc = one_acc, .pw = max_pw } },
+  };
+
+  for (size_t i = 0; i < cases.size(); i++) {
+    const std::vector<Record>& records = cases[i];
+
+    SCOPED_TRACE(testing::Message() << "case=" << i << " entries=" << records.size());
+
+    /* A fresh vault per case, so each one is written and read on its own rather than on what the last case left */
+
+    ASSERT_EQ(vault_.NewVault(path_, MakePW("password")), Result::kSuccess);
+
+    for (const auto& rec : records) {
+      ASSERT_EQ(vault_.CreateEntry(rec.site, rec.acc, MakePW(rec.pw.c_str())), Result::kSuccess)
+          << vault_.GetLastError();
+    }
+
+    ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess) << vault_.GetLastError();
+    ASSERT_EQ(Reload(), Result::kSuccess) << vault_.GetLastError();
+
+    EXPECT_EQ(vault_.GetEntryCount(), static_cast<int>(records.size()));
+
+    const auto& entries = vault_.GetEntries();
+
+    for (const auto& rec : records) {
+      EXPECT_NE(entries.find({ .site = rec.site, .acc = rec.acc }), entries.end());
+
+      /* Read back through GetEntryPW, as a caller would, so a stale offset comes back as the wrong bytes rather than
+         being stepped over */
+
+      Password got;
+
+      ASSERT_TRUE(vault_.GetEntryPW(rec.site, rec.acc, got));
+      EXPECT_TRUE(got.Equal(MakePW(rec.pw.c_str())));
+    }
+  }
+}
+
+/**
  * @brief   Verify saving an empty vault and reopening it succeeds
  */
 TEST_F(VaultFileTest, SaveEmptyVault) {

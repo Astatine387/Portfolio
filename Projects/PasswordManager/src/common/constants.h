@@ -143,7 +143,15 @@ inline constexpr int kDefaultGenPwLen = 16;  /// Default value of the generator 
 
 static_assert(kMaxGenPwLen <= kMaxEntryPwLen, "The generator can produce a password the vault cannot store");
 
-inline constexpr size_t kMinEntrySize = (sizeof(uint32_t) + 1) * 3;  // Minimum serialized entry size
+/* The + 1 on each field is an assumption, not padding: every one of the three fields carries at least one byte, so
+ * the smallest entry the format holds is three length prefixes and three single bytes. ValidateEntryFields is what
+ * makes that true, refusing an empty site, account or password on the way in, and OpenVault is what spends it,
+ * sizing its entry-count check on this figure before a single entry is parsed. Neither half is any use alone. Drop
+ * a field's check and entries of 14 bytes reach the disk while the check still reads 15 apiece, so it refuses every
+ * vault holding one; raise the figure without raising the ceilings and it refuses vaults that are perfectly well
+ * formed. Either way the file was already written by the time anything notices. */
+
+inline constexpr size_t kMinEntrySize = (sizeof(uint32_t) + 1) * 3;  /// Minimum serialized entry size
 
 enum class VaultAction : std::uint8_t {
   kCreate,

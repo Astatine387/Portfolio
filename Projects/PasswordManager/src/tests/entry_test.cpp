@@ -456,3 +456,20 @@ TEST(EntryTest, PwViewOffsetPastEnd) {
 
   EXPECT_FALSE(entry.PwSpan(img).has_value());
 }
+
+/* ==================================================
+ * Format Invariant Test
+ * ================================================== */
+
+/**
+ * @brief   Verify the smallest entry the validator accepts is exactly kMinEntrySize
+ *
+ * The smallest entry ValidateEntryFields will accept is one byte in each field. kMinEntrySize is that size, and
+ * OpenVault sizes its entry-count check on it. If either side moves without the other, this fails rather than a
+ * user's vault.
+ */
+TEST(EntryFormat, SmallestAcceptedEntryMatchesKMinEntrySize) {
+  Entry entry{ .site = "a", .acc = "b", .pw_len = 1 };
+
+  EXPECT_EQ(entry.Size(), kMinEntrySize);
+}

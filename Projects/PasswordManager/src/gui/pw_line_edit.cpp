@@ -59,6 +59,14 @@ void PWLineEdit::Clear() {
 }
 
 void PWLineEdit::SetPassword(const Password& pw) {
+  /* Cleared first, whatever is being set. Setting an empty password used to leave the field exactly as it was found,
+   * and SetEditMode hands this whatever the dialog was last showing, so editing one entry and then another whose
+   * password is empty left the first entry's password sitting in the field for OK to write onto the second. Clearing
+   * here rather than at the call sites is what makes the function correct for every caller instead of for the ones
+   * that remembered to clear. */
+
+  pw_line_->clear();
+
   if (!pw.IsEmpty()) {
     pw_line_->setText(QString::fromUtf8(pw.GetData(), static_cast<int>(pw.GetSize())));
   }

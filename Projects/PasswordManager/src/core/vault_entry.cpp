@@ -51,6 +51,14 @@ const char* ValidateEntryFields(const std::string& site, const std::string& acc,
     return "[Entry] Validation failed - Account exceeds maximum size (256 bytes)\n";
   }
 
+  /* kMinEntrySize assumes each of the three fields carries at least one byte, and OpenVault sizes its entry-count
+   * check on that figure. This is where the assumption is made true: without it a vault this build writes is one
+   * this build refuses to open. */
+
+  if (pw.IsEmpty()) {
+    return "[Entry] Validation failed - Password is empty\n";
+  }
+
   /* Password refuses more than kMaxMasterPwLen, so it cannot carry more than kMaxEntryPwLen while the static_assert
    * in constants.h holds; kept because that assert binds the two ceilings in one direction only, and a kMaxEntryPwLen
    * set below kMaxMasterPwLen would make this the one check standing between a long password and a vault that cannot
