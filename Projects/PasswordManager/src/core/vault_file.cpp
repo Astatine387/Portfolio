@@ -178,7 +178,7 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
 
   /* Decrypt into the session image */
 
-  int64_t img_size = src_size_ - static_cast<int64_t>(kHeaderSize + kIVSize + kTagSize);
+  int64_t img_size = src_size_ - static_cast<int64_t>(kFrameSize);
 
   img_ = SecureBuffer(static_cast<size_t>(img_size));
 
@@ -269,9 +269,13 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key) {
     return Result::kFailure;  // VerifyImage reported the error
   }
 
-  /* Calculate file size */
+  /* Calculate file size. Every image that reaches this point is bounded already: NewVault builds a fixed four bytes,
+   * OpenVault's came out of a file the kMaxSize check above let through, and CommitImage turns away anything past
+   * kMaxImageSize. The exclusion below says unreachable and now means it. The check stays because this is the last
+   * point at which an oversized image can be stopped rather than written, and a file past kMaxSize is one OpenVault
+   * refuses, which would leave a vault this build wrote and cannot open. */
 
-  dst_size_ = static_cast<int64_t>(kHeaderSize + kIVSize + img_.Size() + kTagSize);
+  dst_size_ = static_cast<int64_t>(kFrameSize + img_.Size());
 
   if (dst_size_ > kMaxSize) {
     // LCOV_EXCL_START

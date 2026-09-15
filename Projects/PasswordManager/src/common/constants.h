@@ -111,15 +111,18 @@ inline constexpr size_t kHeaderSize =
 
 inline constexpr int64_t kMaxSize = 4LL * 1024 * 1024;                                /// Maximum vault file size
 inline constexpr int64_t kMinSize = (kHeaderSize + kIVSize + kCountSize + kTagSize);  /// Mininum vault file size
+inline constexpr size_t kFrameSize = kHeaderSize + kIVSize + kTagSize;  /// Vault file bytes outside the image
 
 /* What is left of kMaxSize once the framing is paid for is the largest image that is ever encrypted, and it is
- * encrypted whole rather than in chunks the way decryption reads it back.
+ * encrypted whole rather than in chunks the way decryption reads it back. CommitImage refuses an image above it, so a
+ * session never holds one that SaveVaultWith would have to turn away at the point of writing it.
  *
  * max is written parenthesized because a translation unit that reached windows.h before this header has a
  * function-like max macro in scope, and the bare call would be taken for an invocation of it with no arguments. */
 
-static_assert(kMaxSize - static_cast<int64_t>(kHeaderSize + kIVSize + kTagSize) <=
-                  static_cast<int64_t>((std::numeric_limits<int>::max)()),
+inline constexpr int64_t kMaxImageSize = kMaxSize - static_cast<int64_t>(kFrameSize);  /// Largest image that fits
+
+static_assert(kMaxImageSize <= static_cast<int64_t>((std::numeric_limits<int>::max)()),
               "The largest image kMaxSize leaves room for goes through a single EVP_EncryptUpdate call, which takes "
               "its length as an int, so a ceiling past that reaches it as a negative length rather than an error");
 

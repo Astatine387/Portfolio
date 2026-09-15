@@ -22,6 +22,10 @@ namespace {
 static_assert(kMaxSiteLen == 256 && kMaxAccLen == 256 && kMaxEntryPwLen == 256,
               "A field ceiling moved away from the 256 bytes these messages state");
 
+/* Same for the vault ceiling, which CommitImage below and SaveVaultWith both state in figures */
+
+static_assert(kMaxSize == 4LL * 1024 * 1024, "The vault ceiling moved away from the 4 MiB these messages state");
+
 /**
  * @brief   Check entry fields against what the on-disk format accepts
  * @param   site    Site name of the entry
@@ -123,6 +127,19 @@ std::optional<size_t> Vault::SerializeVault(SecureBuffer& dst, size_t cur, std::
 }
 
 Result Vault::CommitImage(SecureBuffer&& img, std::set<Entry, EntryCmp>&& entries) {
+  /* The ceiling is read here rather than in each operation that rebuilds an image. This is the only place img_ is
+   * written while a vault is open, so an operation added later cannot walk around the check by forgetting it, which is
+   * what a copy of it standing in CreateEntry and UpdateEntry would have invited.
+   *
+   * Refusing at the entry that does not fit, rather than at the save that will not go through, is the point. The check
+   * SaveVaultWith makes stays where it is and is now a backstop; before this, it was the only guard, and it left a user
+   * holding a session whose only route out was deleting entries it would not name. */
+
+  if (img.Size() > static_cast<size_t>(kMaxImageSize)) {
+    ReportError("[Data] Commit failed - Vault would exceed maximum size (4 MiB)\n");
+    return Result::kFailure;
+  }
+
   if (VerifyImage(img, entries) == Result::kFailure) {
     /* Unreachable from the CRUD paths as they stand, and the reason to keep it is that it is what makes them safe to
      * get wrong: a rebuild that does not describe itself correctly is dropped here rather than installed */
@@ -301,10 +318,12 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site, const std::string& 
 
   candidate.insert(std::move(entry));
 
-  /* The old entry was never inserted into the candidate set, so installing it is the whole of the replacement */
+  /* The old entry was never inserted into the candidate set, so installing it is the whole of the replacement. The
+   * failure below is reachable: an update that grows an entry can be the one that carries the image past kMaxImageSize,
+   * which is why it no longer claims otherwise. */
 
   if (CommitImage(std::move(buff), std::move(candidate)) == Result::kFailure) {
-    return UpdateResult::kError;  // LCOV_EXCL_LINE; CommitImage reported the error and installed nothing
+    return UpdateResult::kError;  // CommitImage reported the error and installed nothing
   }
 
   return UpdateResult::kSuccess;
