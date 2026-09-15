@@ -10,6 +10,11 @@
 #include <array>
 #include <string>
 
+#ifndef _WIN32
+#include <fcntl.h>
+#include <sys/stat.h>
+#endif
+
 #include "utils/platform.h"
 
 /* ==================================================
@@ -521,6 +526,129 @@ TEST(SyncDirTest, CurrentDirectory) {
  */
 TEST(SyncDirTest, OpenFailure) {
   EXPECT_EQ(SyncDir("no_such_dir/test.tmp"), Result::kFailure);
+}
+
+#endif /* !_WIN32 */
+
+/* ==================================================
+ * OpenTempFile Test
+ * ================================================== */
+
+/**
+ * @class   OpenTempFileTest
+ * @brief   Test class for OpenTempFile function
+ */
+class OpenTempFileTest : public ::testing::Test {
+ protected:
+  FILE* file_ = nullptr;
+  std::string path_ = "test_temp.XXXXXX";
+  std::string dst_ = "test_temp";
+
+  /**
+   * @brief   Clean up temporary files after each test
+   *
+   * A call that succeeded rewrote path_ to the name it created, so removing path_ removes the file wherever the
+   * placeholder happened to land. A call that failed left path_ on its template, which names nothing.
+   */
+  void TearDown() override {
+    if (file_) {
+      fclose(file_);
+      file_ = nullptr;
+    }
+
+    RemoveFile(path_);
+    RemoveFile(dst_);
+  }
+};
+
+/**
+ * @brief   Verify a valid template is replaced by the name of the file that was created
+ */
+TEST_F(OpenTempFileTest, ValidTemplate) {
+  const std::string tmp = path_;
+
+  ASSERT_EQ(OpenTempFile(&file_, path_), Result::kSuccess);
+  ASSERT_NE(file_, nullptr);
+
+  /* The six placeholder characters are replaced where they stand, so the name that comes back is as long as the
+   * template and shares its prefix, but is no longer the template itself */
+
+  EXPECT_EQ(path_.size(), tmp.size());
+  EXPECT_TRUE(path_.starts_with("test_temp."));
+  EXPECT_NE(path_, tmp);
+  EXPECT_TRUE(FileExists(path_));
+}
+
+/**
+ * @brief   Verify a template too short to hold the placeholder fails
+ */
+TEST_F(OpenTempFileTest, ShortTemplate) {
+  path_ = "abc";
+
+  EXPECT_EQ(OpenTempFile(&file_, path_), Result::kFailure);
+  EXPECT_EQ(file_, nullptr);
+  EXPECT_FALSE(FileExists(path_));
+}
+
+#ifndef _WIN32
+
+/**
+ * @brief   Verify a template that does not end in the placeholder fails
+ *
+ * mkstemp refuses such a template outright. The Windows implementation makes no such demand, since it overwrites
+ * the last six characters whatever they are, so only the POSIX side can be held to this.
+ */
+TEST_F(OpenTempFileTest, TemplateWithoutPlaceholder) {
+  path_ = "test_temp.suffix";
+
+  EXPECT_EQ(OpenTempFile(&file_, path_), Result::kFailure);
+  EXPECT_EQ(file_, nullptr);
+  EXPECT_FALSE(FileExists(path_));
+}
+
+/**
+ * @brief   Verify the descriptor behind the returned stream is closed on exec
+ *
+ * The vault is written through this stream, so a descriptor that outlived an exec would hand the half-written file
+ * to whatever the program spawned.
+ */
+TEST_F(OpenTempFileTest, SetsCloseOnExec) {
+  ASSERT_EQ(OpenTempFile(&file_, path_), Result::kSuccess);
+  ASSERT_NE(file_, nullptr);
+
+  const int flags = fcntl(fileno(file_), F_GETFD);
+
+  ASSERT_NE(flags, -1);
+  EXPECT_NE(flags & FD_CLOEXEC, 0);
+}
+
+/**
+ * @brief   Verify a permissive file already sitting at the destination does not widen the temporary
+ *
+ * The temporary used to be chmodded to match the file the caller was about to replace, so a vault that had once
+ * been left readable by everybody stayed that way through every save that followed. Nothing widens the temporary
+ * now, whatever mode the destination carries. Only the bits that must never appear are asserted, because the umask
+ * in force is free to clear owner bits as well and an exact 0600 would fail on a developer who sets one.
+ */
+TEST_F(OpenTempFileTest, IgnoresPermissiveDestination) {
+  FILE* dst = nullptr;
+
+  OpenFile(&dst, dst_, "wb");
+  ASSERT_NE(dst, nullptr);
+  fclose(dst);
+
+  ASSERT_EQ(chmod(dst_.c_str(), 0666), 0);
+
+  ASSERT_EQ(OpenTempFile(&file_, path_), Result::kSuccess);
+  ASSERT_NE(file_, nullptr);
+
+  struct stat st = {};
+
+  ASSERT_EQ(stat(path_.c_str(), &st), 0);
+
+  /* No group or other bits, and none of setuid, setgid or sticky */
+
+  EXPECT_EQ(st.st_mode & 07077, 0u);
 }
 
 #endif /* !_WIN32 */

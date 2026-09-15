@@ -83,7 +83,9 @@ void OpenFile(FILE** file, const std::string& path, const char* mode);
  * @brief   Create and open a private temporary file with a random name
  * @param   file	Opened stream on success, nullptr on failure
  * @param   path	In: template whose last six characters are "XXXXXX". Out: the path actually created
- * @param   model	Existing file whose permission bits are adopted, empty to keep owner-only
  * @return	kSuccess on success, kFailure on failure
+ *
+ * The file is created owner-only and nothing here widens it, so an atomic replace that publishes this temporary
+ * over an existing vault can tighten that vault's permissions but never loosen them.
  */
-[[nodiscard]] Result OpenTempFile(FILE** file, std::string& path, const std::string& model);
+[[nodiscard]] Result OpenTempFile(FILE** file, std::string& path);

@@ -48,6 +48,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 * RAII pattern ensures memory wipe for sensitive data, using `sodium_free` and `sodium_memzero`
 * Range check for key derivation parameters before Argon2id runs
 * Sensitive data is held in `sodium_malloc` memory, which provides guard pages and lock against swap
+* Vault files are created readable and writable by the owner alone
 * Vault files are re-encrypted with new initial vector for each save or master password change
 
 # 3. Specifications
@@ -164,12 +165,13 @@ src
 
 ## 3-3. Limitations
 
-* Argon2id runs at the cost the vault file asks for, before anything in that file has been authenticated. A file supplied by an attacker can therefore spend up to 2 GiB by 8 iterations by 8 lanes of work on the machine that opens it. Neither the key commitment nor the authenticated header prevents this, since both are compared after the derivation they would have to precede; the accepted range in the header is the only bound on it
+* A vault file becomes owner-only after each save, even if a user deliberately made it group-readable
 * No CLI mode (GUI only)
 * No key file support (Password only)
 * No cloud sync (Local vault file only)
 * No auto-lock on idle
 * No auto-type (clipboard only)
+* Vault file becomes 
 
 # 4. Build and Usage
 ## 4-1. Prerequisites

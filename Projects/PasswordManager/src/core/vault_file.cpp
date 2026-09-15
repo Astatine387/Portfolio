@@ -312,7 +312,7 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key) {
 
   std::string tmp_path = path + ".XXXXXX";
 
-  if (OpenTempFile(&file_, tmp_path, path) == Result::kFailure) {
+  if (OpenTempFile(&file_, tmp_path) == Result::kFailure) {
     ReportError("[File] Open failed - Cannot create temporary file for writing\n");
     return Result::kFailure;
   }

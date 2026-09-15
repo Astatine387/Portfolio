@@ -15,6 +15,10 @@
 #include <string>
 #include <vector>
 
+#ifndef _WIN32
+#include <sys/stat.h>
+#endif
+
 #include "core/secure_key.h"
 #include "core/vault.h"
 #include "core/vault_header.h"
@@ -912,6 +916,38 @@ TEST_F(VaultFileTest, SaveWritesFreshIV) {
   EXPECT_EQ(Reload(), Result::kSuccess);
   EXPECT_EQ(vault_.GetEntryCount(), 1);
 }
+
+#ifndef _WIN32
+
+/**
+ * @brief   Verify a save never widens the permissions of the vault it replaces
+ *
+ * SaveVault publishes its work by renaming a temporary over the vault, so the mode that temporary carries becomes
+ * the mode of the vault. That temporary used to be chmodded to match the file it was about to replace, which meant
+ * a vault left readable by everybody once stayed that way through every save afterwards, and carried setuid,
+ * setgid and sticky across with it. This is the layer the defect was actually felt at, so the guarantee is pinned
+ * here as well as at OpenTempFile. Only the bits that must never appear are asserted, because the umask in force
+ * is free to clear owner bits too and an exact 0600 would fail on a developer who sets one.
+ */
+TEST_F(VaultFileTest, SaveDoesNotWidenVaultPermissions) {
+  ASSERT_EQ(chmod(path_.c_str(), 0666), 0);
+
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+
+  struct stat st = {};
+
+  ASSERT_EQ(stat(path_.c_str(), &st), 0);
+
+  /* No group or other bits, and none of setuid, setgid or sticky */
+
+  EXPECT_EQ(st.st_mode & 07077, 0u);
+
+  /* The vault the tightened permissions belong to is still a vault that opens */
+
+  EXPECT_EQ(Reload(), Result::kSuccess);
+}
+
+#endif /* !_WIN32 */
 
 /**
  * @brief   Verify SaveVault fails when no vault is open

@@ -6,7 +6,6 @@
 
 #include <fcntl.h>
 #include <sys/random.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cerrno>
@@ -112,7 +111,7 @@ void OpenFile(FILE** file, const std::string& path, const char* mode) {
 }
 
 // cppcheck-suppress constParameterReference
-Result OpenTempFile(FILE** file, std::string& path, const std::string& model) {
+Result OpenTempFile(FILE** file, std::string& path) {
   *file = nullptr;
 
   const int fd = mkstemp(path.data());
@@ -127,12 +126,6 @@ Result OpenTempFile(FILE** file, std::string& path, const std::string& model) {
     unlink(path.c_str());
     return Result::kFailure;
     // LCOV_EXCL_STOP
-  }
-
-  struct stat st = {};
-
-  if (!model.empty() && stat(model.c_str(), &st) == 0) {
-    fchmod(fd, st.st_mode & 07777);
   }
 
   *file = fdopen(fd, "wb");
