@@ -591,6 +591,78 @@ TEST_F(VaultEntryTest, GetEntryPWMissing) {
 }
 
 /* ==================================================
+ * Unsaved Change Test
+ * ================================================== */
+
+/**
+ * @brief   Verify each kind of edit marks the vault dirty, starting each time from a saved vault
+ *
+ * The flag is what stands between an edit and a close that silently drops it, so every operation that rebuilds the
+ * image has to raise it on its own. Saving between the steps puts the vault back to clean first, so a later step
+ * cannot pass on the strength of an earlier one.
+ */
+TEST_F(VaultEntryTest, EveryEditMarksVaultDirty) {
+  ASSERT_EQ(vault_.NewVault(path_, MakePW("master")), Result::kSuccess);
+  EXPECT_FALSE(vault_.IsDirty());
+
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  EXPECT_TRUE(vault_.IsDirty());
+
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+  ASSERT_FALSE(vault_.IsDirty());
+
+  ASSERT_EQ(vault_.UpdateEntry("Google", "user@google.com", "Google", "user@google.com", MakePW("changed")),
+            UpdateResult::kSuccess);
+  EXPECT_TRUE(vault_.IsDirty());
+
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+  ASSERT_FALSE(vault_.IsDirty());
+
+  ASSERT_EQ(vault_.DeleteEntry("Google", "user@google.com"), Result::kSuccess);
+  EXPECT_TRUE(vault_.IsDirty());
+}
+
+/**
+ * @brief   Verify a refused edit leaves a saved vault clean
+ *
+ * A refusal installs nothing, so it has nothing to lose on close. Marking the vault dirty anyway would put a save
+ * prompt in front of a user who has changed nothing, and a prompt that is usually wrong is one people learn to click
+ * through.
+ */
+TEST_F(VaultEntryTest, RejectedEditLeavesVaultClean) {
+  ASSERT_EQ(vault_.NewVault(path_, MakePW("master")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+  ASSERT_FALSE(vault_.IsDirty());
+
+  EXPECT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kFailure);
+  EXPECT_EQ(vault_.CreateEntry(Field(kMaxSiteLen + 1), "user@google.com", MakePW("password")), Result::kFailure);
+  EXPECT_EQ(vault_.UpdateEntry("Amazon", "user@amazon.com", "Amazon", "user@amazon.com", MakePW("qwerty")),
+            UpdateResult::kNotFound);
+  EXPECT_EQ(vault_.UpdateEntry("Google", "user@google.com", "Microsoft", "user@microsoft.com", MakePW("qwerty")),
+            UpdateResult::kDuplicate);
+  EXPECT_EQ(vault_.DeleteEntry("Amazon", "user@amazon.com"), Result::kFailure);
+
+  EXPECT_FALSE(vault_.IsDirty());
+}
+
+/**
+ * @brief   Verify closing the vault leaves nothing marked unsaved
+ *
+ * Close is where the unsaved changes are dropped, whether saved first or discarded, so a flag that survived it would
+ * prompt about a vault that is no longer there.
+ */
+TEST_F(VaultEntryTest, CloseVaultClearsDirty) {
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_TRUE(vault_.IsDirty());
+
+  vault_.CloseVault();
+
+  EXPECT_FALSE(vault_.IsDirty());
+}
+
+/* ==================================================
  * Close Vault Test
  * ================================================== */
 

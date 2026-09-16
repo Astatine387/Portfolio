@@ -84,6 +84,17 @@ class Vault {
    */
   void CloseVault();
 
+  /**
+   * @brief   Report whether the session holds changes that no file has received yet
+   * @return  true if the image changed after this session last published a vault file
+   *
+   * Set by CommitImage and cleared once SaveVaultWith has renamed a file into place, whichever key that file was
+   * written under, so a password change that saves the image counts as a save. Opening, creating and closing all
+   * start from a clean session. Whoever is about to drop the session asks this first, since the image is the only
+   * copy of what was changed.
+   */
+  [[nodiscard]] bool IsDirty() const { return dirty_; }
+
   /* ==================================================
    * Vault password functions
    * ================================================== */
@@ -191,6 +202,7 @@ class Vault {
   std::array<uint8_t, kSaltSize> salt_{};  // Session salt (also written to the file header)
   KdfParams kdf_;                          // Argon2id parameters of the open vault (also written to the header)
   SecureBuffer img_;                       // Decrypted vault image (entry passwords live here)
+  bool dirty_ = false;                     // Image changed after this session last published a file
   std::set<Entry, EntryCmp> entry_set_;
   std::string last_error_;
 
@@ -212,7 +224,7 @@ class Vault {
   void Clear();
 
   /**
-   * @brief	Wipe all session state (key, salt, image, entries)
+   * @brief	Wipe all session state (key, salt, image, entries, unsaved-change flag)
    */
   void Reset();
 
@@ -268,6 +280,9 @@ class Vault {
    *
    * The one place img_ and entry_set_ are ever written after a vault is open. A caller builds both aside, hands them
    * over together, and on failure both die with the call while the session keeps the image it already had.
+   *
+   * Being the one place, it is also where the session is marked dirty, so an operation added later cannot change the
+   * image without IsDirty noticing.
    */
   Result CommitImage(SecureBuffer&& img, std::set<Entry, EntryCmp>&& entries);
 

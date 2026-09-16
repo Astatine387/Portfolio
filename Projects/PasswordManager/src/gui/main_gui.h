@@ -135,7 +135,7 @@ class MainGUI : public QWidget {
   ErrorCallback ecb_ = nullptr;
 
   /**
-   * @brief	Clean timer and clipboard when GUI is closed
+   * @brief	Confirm unsaved changes, then clean timer and clipboard when GUI is closed
    */
   void closeEvent(QCloseEvent* event) override;
 
@@ -143,4 +143,13 @@ class MainGUI : public QWidget {
    * @brief	Refresh list GUI
    */
   void RefreshList();
+
+  /**
+   * @brief	Ask what to do with unsaved changes before the open vault is dropped
+   * @return	true if the caller may drop the vault (nothing unsaved, saved now, or discarded on purpose)
+   *
+   * Saving from the prompt and failing returns false and shows the reason, so the changes stay open to retry or to
+   * discard knowingly.
+   */
+  [[nodiscard]] bool ConfirmDiscard();
 };

@@ -1050,6 +1050,71 @@ TEST_F(VaultFileTest, ChangePWSaveFailurePreservesSession) {
 }
 
 /* ==================================================
+ * Unsaved Change Test
+ * ================================================== */
+
+/**
+ * @brief   Verify created and opened vaults start clean, and what a close drops when one is not
+ *
+ * The reload is the failure the flag exists to announce: the unsaved entry is gone from the reopened vault, and
+ * nothing but the flag said so beforehand.
+ */
+TEST_F(VaultFileTest, NewAndOpenedVaultsAreClean) {
+  EXPECT_FALSE(vault_.IsDirty());
+
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_TRUE(vault_.IsDirty());
+
+  ASSERT_EQ(Reload(), Result::kSuccess);
+
+  EXPECT_FALSE(vault_.IsDirty());
+  EXPECT_EQ(vault_.GetEntryCount(), 0);
+}
+
+/**
+ * @brief   Verify a save that publishes nothing keeps the vault dirty until one does
+ *
+ * The prompt offers to save before closing, and a save that fails at that point must not also clear the flag, or the
+ * next close would drop the changes without asking.
+ */
+TEST_F(VaultFileTest, FailedSaveKeepsDirty) {
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+
+  EXPECT_EQ(vault_.SaveVault("no_such_dir/child.vault"), Result::kFailure);
+  EXPECT_TRUE(vault_.IsDirty());
+
+  EXPECT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+  EXPECT_FALSE(vault_.IsDirty());
+}
+
+/**
+ * @brief   Verify a password change counts as a save of the pending edits
+ *
+ * ChangePW writes the current image under the new key, unsaved edits included, so after it the file already holds
+ * them. The reload under the new password is what shows the flag was cleared for a reason.
+ */
+TEST_F(VaultFileTest, ChangePWClearsDirty) {
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_TRUE(vault_.IsDirty());
+
+  ASSERT_EQ(vault_.ChangePW(MakePW("asdf1234"), path_), Result::kSuccess);
+  EXPECT_FALSE(vault_.IsDirty());
+
+  ASSERT_EQ(Reload("asdf1234"), Result::kSuccess);
+  EXPECT_EQ(vault_.GetEntryCount(), 1);
+}
+
+/**
+ * @brief   Verify a password change that publishes nothing keeps the vault dirty
+ */
+TEST_F(VaultFileTest, FailedChangePWKeepsDirty) {
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+
+  EXPECT_EQ(vault_.ChangePW(MakePW("asdf1234"), "no_such_dir/child.vault"), Result::kFailure);
+  EXPECT_TRUE(vault_.IsDirty());
+}
+
+/* ==================================================
  * Header Authentication Test
  * ================================================== */
 

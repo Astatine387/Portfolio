@@ -60,6 +60,12 @@ class VaultInterface {
    */
   void CloseVault();
 
+  /**
+   * @brief		Check whether the vault has changes that have not been saved
+   * @return	true if closing now would lose changes
+   */
+  [[nodiscard]] bool IsDirty() const;
+
   /* ==================================================
    * Vault password functions
    * ================================================== */

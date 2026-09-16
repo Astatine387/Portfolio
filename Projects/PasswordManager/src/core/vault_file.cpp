@@ -364,6 +364,8 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key) {
     // LCOV_EXCL_STOP
   }
 
+  dirty_ = false;
+
   /* Sync the directory entry so the rename itself survives a crash */
 
   if (SyncDir(path) == Result::kFailure) {

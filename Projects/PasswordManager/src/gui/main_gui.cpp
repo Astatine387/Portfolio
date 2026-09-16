@@ -7,7 +7,9 @@
 #include "gui/main_gui.h"
 
 #include <QApplication>
+#include <QCloseEvent>
 #include <QGuiApplication>
+#include <QMessageBox>
 
 #include "gui/clipboard.h"
 #include "gui/entry_interface.h"
@@ -225,6 +227,10 @@ void MainGUI::OnSaveRequested() {
 }
 
 void MainGUI::OnCloseRequested() {
+  if (!ConfirmDiscard()) {
+    return;
+  }
+
   vault_.CloseVault();
 
   stack_->setCurrentWidget(login_gui_);
@@ -259,6 +265,13 @@ void MainGUI::OnChangePWRequested() {
 }
 
 void MainGUI::closeEvent(QCloseEvent* event) {
+  /* Asked before anything is torn down, so a cancelled close leaves the clipboard countdown running as it was */
+
+  if (!ConfirmDiscard()) {
+    event->ignore();
+    return;
+  }
+
   if (timer_) {
     timer_->stop();
     timer_->disconnect();
@@ -273,4 +286,27 @@ void MainGUI::closeEvent(QCloseEvent* event) {
 
 void MainGUI::RefreshList() {
   list_gui_->LoadEntries(vault_.GetEntries());
+}
+
+bool MainGUI::ConfirmDiscard() {
+  if (!vault_.IsDirty()) {
+    return true;
+  }
+
+  /* Save is the default so that Enter keeps the changes; Escape and the title bar close map to Cancel */
+
+  const QMessageBox::StandardButton choice = QMessageBox::warning(
+      this, "Unsaved Changes", "The vault has changes that have not been saved.\nSave them before closing?",
+      QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
+
+  if (choice == QMessageBox::Save) {
+    if (vault_.SaveVault() == Result::kFailure) {
+      list_gui_->SetErrMsg(vault_.GetLastError());
+      return false;
+    }
+
+    return true;
+  }
+
+  return choice == QMessageBox::Discard;
 }

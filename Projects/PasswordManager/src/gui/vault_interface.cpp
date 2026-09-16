@@ -29,6 +29,10 @@ void VaultInterface::CloseVault() {
   vault_path_.clear();
 }
 
+bool VaultInterface::IsDirty() const {
+  return vault_->IsDirty();
+}
+
 bool VaultInterface::VerifyPW(const Password& pw) const {
   return vault_->VerifyPW(pw);
 }

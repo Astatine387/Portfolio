@@ -149,6 +149,7 @@ Result Vault::CommitImage(SecureBuffer&& img, std::set<Entry, EntryCmp>&& entrie
 
   img_ = std::move(img);
   entry_set_ = std::move(entries);
+  dirty_ = true;
 
   return Result::kSuccess;
 }

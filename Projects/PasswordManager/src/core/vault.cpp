@@ -80,6 +80,7 @@ void Vault::Reset() {
   key_.reset();
   kdf_ = KdfParams{};
   sodium_memzero(salt_.data(), salt_.size());
+  dirty_ = false;
 }
 
 void Vault::ReportError(const char* msg) {
