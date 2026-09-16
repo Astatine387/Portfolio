@@ -409,7 +409,7 @@ TEST(EntryTest, DeserializeMaxFieldLengths) {
  * ================================================== */
 
 /**
- * @brief   Verify PwView maps the recorded offset onto an image span
+ * @brief   Verify PwSpan maps the recorded offset onto an image span
  */
 TEST(EntryTest, PwViewInRange) {
   Entry entry;
@@ -430,7 +430,7 @@ TEST(EntryTest, PwViewInRange) {
 }
 
 /**
- * @brief   Verify PwView rejects a view that runs past the end of the image
+ * @brief   Verify PwSpan rejects a view that runs past the end of the image
  */
 TEST(EntryTest, PwViewOutsideImage) {
   Entry entry;
@@ -444,7 +444,7 @@ TEST(EntryTest, PwViewOutsideImage) {
 }
 
 /**
- * @brief   Verify PwView rejects an offset past the end of the image
+ * @brief   Verify PwSpan rejects an offset past the end of the image
  */
 TEST(EntryTest, PwViewOffsetPastEnd) {
   Entry entry;

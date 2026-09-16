@@ -408,7 +408,7 @@ TEST_F(SeekTest, SeekBeforeBeginningFails) {
 
 /**
  * @class   DurabilityTest
- * @brief   Test class for RenameNoReplace, SyncFile and SyncDir
+ * @brief   Test class for RenameFile, SyncFile and SyncDir
  */
 class DurabilityTest : public ::testing::Test {
  protected:

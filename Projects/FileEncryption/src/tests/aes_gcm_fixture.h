@@ -112,7 +112,7 @@ class AesGcmTest : public ::testing::Test {
    * @param   file    Stream to read from; ReadHeader rewinds it first
    * @return  The parsed header
    *
-   * The engine no longer reads a header of its own, so a test that calls Decrypt directly has to hand it one the way
+   * The engine does not read a header of its own, so a test that calls Decrypt directly has to hand it one the way
    * CryptoWorker does. This is that step, kept in one place.
    */
   static FileHeader HeaderOf(FILE* file) {

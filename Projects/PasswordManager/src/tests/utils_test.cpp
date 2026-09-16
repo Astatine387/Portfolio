@@ -625,10 +625,10 @@ TEST_F(OpenTempFileTest, SetsCloseOnExec) {
 /**
  * @brief   Verify a permissive file already sitting at the destination does not widen the temporary
  *
- * The temporary used to be chmodded to match the file the caller was about to replace, so a vault that had once
- * been left readable by everybody stayed that way through every save that followed. Nothing widens the temporary
- * now, whatever mode the destination carries. Only the bits that must never appear are asserted, because the umask
- * in force is free to clear owner bits as well and an exact 0600 would fail on a developer who sets one.
+ * Nothing about the destination widens the temporary, whatever mode that destination carries, so a vault left
+ * readable by everybody does not pass those bits on to the temporary that replaces it. Only the bits that must never
+ * appear are asserted, because the umask in force is free to clear owner bits as well and an exact 0600 would fail
+ * on a developer who sets one.
  */
 TEST_F(OpenTempFileTest, IgnoresPermissiveDestination) {
   FILE* dst = nullptr;

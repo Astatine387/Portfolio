@@ -89,9 +89,7 @@ void DoInit() {
    * That last property is why this is held to NDEBUG: with the flag cleared, gdb and CLion cannot attach to a running
    * PasswordManager. NDEBUG is the whole condition, so this is active in Release and in RelWithDebInfo, which is what
    * the sanitizer job builds, and inactive in Debug, which is what a local debugging session and the coverage job
-   * build. It was measured on GCC 13 / Linux before being relied on: ASan and LeakSanitizer, including their
-   * multi-threaded paths, behave the same with the flag cleared, and /proc/self/exe and /proc/self/maps stay readable
-   * by the process itself, so Qt's applicationFilePath() and everything else reading its own /proc still works.
+   * build.
    *
    * Dropped for the same reason as the limit above: best effort, and a kernel that refuses is not a reason to refuse
    * to run. */
@@ -182,11 +180,10 @@ std::optional<SecureKey> DeriveKey(std::span<const char> pw, std::span<const uin
   }
 
   /* One derivation of kDerivedSize bytes rather than two of kKeySize. What Argon2id charges is set by the time,
-   * memory and parallelism parameters, none of which changed here, so asking for the commitment alongside the key
-   * costs the extra bytes of output and nothing else: the memory-hard work that dominates a derivation runs exactly
-   * as it did before. The output length is part of what Argon2id hashes, so the key half is not the value a
-   * kKeySize derivation would have produced, and vaults written by the earlier format are unreadable for that reason
-   * among others. The length is a ceiling rather than a preference, which is why constants.h asserts the bound. */
+   * memory and parallelism parameters, so asking for the commitment alongside the key costs the extra bytes of
+   * output and nothing else: the memory-hard work that dominates a derivation runs once. The output length is part
+   * of what Argon2id hashes, so the key half is not the value a kKeySize derivation would produce. The length is a
+   * ceiling rather than a preference, which is why constants.h asserts the bound. */
 
   if (argon2id_hash_raw(params.time_cost, params.mem_cost, params.parallelism, pw.data(), pw.size(), salt.data(),
                         salt.size(), key, kDerivedSize) != ARGON2_OK) {

@@ -60,7 +60,7 @@ class MainGUI : public QWidget {
   void OnPhaseChanged(const QString& status, bool cancellable);
 
   /**
-   * @brief	Show result and set deletion flag
+   * @brief	Show the result, unless the window is already closing
    * @param   msg             Result message
    */
   void OnWorkFinished(const QString& msg);

@@ -81,10 +81,8 @@ TEST_F(AesGcmFormatTest, FramingRoundTripsAcrossChunkBoundaries) {
  *
  * When regenerating the value is legitimate: only alongside a deliberate change to the format or
  * to the inputs below. A released format change also means a new magic number, because this format
- * carries no version field; the commitment field went in while the magic value was still unreleased,
- * which is the one circumstance under which the two move apart. A failure nobody intended is a
- * regression, and re-pinning the digest to make it pass would throw away the only thing this test
- * does.
+ * carries no version field. A failure nobody intended is a regression, and re-pinning the digest to
+ * make it pass would throw away the only thing this test does.
  *
  * How to check the value without trusting this test: encrypt MakePlain(2 * kChunkSize + 1000)
  * under the password "golden-password", a salt of sixteen 0x42 bytes and MinParams(), then run

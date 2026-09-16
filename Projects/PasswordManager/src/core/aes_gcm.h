@@ -78,8 +78,8 @@ class AesGcm {
    * every @p size because the IV and the tag are written even for an empty plaintext, or when @p src is null while
    * @p size is not zero. A @p size of zero is accepted, @p src null along with it.
    *
-   * The header is no longer this class's business: it neither writes the salt nor knows what the bytes it
-   * authenticates mean, and @p dst begins at the IV. Whoever owns the header writes it and passes the same bytes here.
+   * The header is not this class's business: it neither writes the salt nor knows what the bytes it authenticates
+   * mean, and @p dst begins at the IV. Whoever owns the header writes it and passes the same bytes here.
    */
   Result Encrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad);
 

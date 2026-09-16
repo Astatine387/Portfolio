@@ -14,7 +14,7 @@
 /**
  * @brief   Check a file exists
  * @param   path	File path
- * @return	1 if file exists, 0 if file not exists
+ * @return	true if the file exists, false otherwise
  */
 bool FileExists(const std::string& path);
 

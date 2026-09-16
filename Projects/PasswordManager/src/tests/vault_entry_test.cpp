@@ -157,7 +157,7 @@ TEST_F(VaultEntryTest, CreateStoresPassword) {
 
 /* Entry::Deserialize refuses a site, account or password past its ceiling, so an entry built out of longer fields
  * would go into an image the same parser cannot read back. These check that the core refuses such fields itself,
- * rather than leaving the format's invariant to the dialog that used to be the only thing enforcing it.
+ * rather than leaving the format's invariant to the dialog.
  *
  * Each case reads the reported reason as well as the return value, since a Result alone cannot tell an empty site
  * apart from an oversized one and it is the distinct reasons that make the rejection worth anything to a caller. */
@@ -209,9 +209,8 @@ TEST_F(VaultEntryTest, CreateEntryRejectsEmptyAccount) {
 /**
  * @brief   Verify creating an entry with an empty password fails
  *
- * The one of the three the validator used to let through. kMinEntrySize counts a byte for every field, and OpenVault
- * sizes its entry-count check on it, so an entry serialized a byte short of that figure is one this build writes and
- * then refuses to read back.
+ * kMinEntrySize counts a byte for every field, and OpenVault sizes its entry-count check on it, so an entry
+ * serialized a byte short of that figure is one this build would write and then refuse to read back.
  */
 TEST_F(VaultEntryTest, CreateEntryRejectsEmptyPassword) {
   Password empty;
@@ -327,10 +326,9 @@ TEST_F(VaultEntryTest, VaultRemainsUsableAfterRejectedCreate) {
 /**
  * @brief   Verify a failed create leaves every observable part of the session unchanged
  *
- * CreateEntry used to install the rebuilt image and entry set and only then check them, so a refusal reached after
- * that point returned kFailure over a session that had already been changed and had no way back. The image and the
- * set are now built aside and installed together in one step, which makes the claim a refusal makes - that nothing
- * happened - something a test can hold it to by reading everything back.
+ * The image and the entry set are built aside and installed together in one step, so a refusal reached at any point
+ * returns kFailure over a session nothing has touched. That makes the claim a refusal makes - that nothing happened -
+ * something a test can hold it to by reading everything back.
  *
  * Each of the three refusals leaves by a different exit, and the save at the end is what says the image and the set
  * still describe each other rather than merely looking unchanged from the outside.
@@ -377,9 +375,9 @@ TEST_F(VaultEntryTest, CreateEntryFailureLeavesSessionIntact) {
 /**
  * @brief   Verify a failed update leaves every observable part of the session unchanged
  *
- * The same property as CreateEntryFailureLeavesSessionIntact, over the path that had the most to lose: UpdateEntry
- * erased the old entry and inserted the new one into the live set before anything was checked, so a refusal after
- * that point left the vault holding neither the old entry nor a usable new one.
+ * The same property as CreateEntryFailureLeavesSessionIntact, over the path with the most to lose: an update that
+ * erased the old entry and inserted the new one into the live set before checking anything would leave a refused
+ * vault holding neither the old entry nor a usable new one.
  */
 TEST_F(VaultEntryTest, UpdateEntryFailureLeavesSessionIntact) {
   ASSERT_EQ(vault_.NewVault(path_, MakePW("master")), Result::kSuccess);
@@ -535,7 +533,7 @@ TEST_F(VaultEntryTest, DeletePreservesOthers) {
  * ================================================== */
 
 /**
- * @brief   Verify getEntries returns correct data in order
+ * @brief   Verify GetEntries returns correct data in order
  */
 TEST_F(VaultEntryTest, GetEntries) {
   vault_.CreateEntry("Google", "user1@google.com", MakePW("password"));
@@ -563,7 +561,7 @@ TEST_F(VaultEntryTest, GetEntries) {
 }
 
 /**
- * @brief   Verify getEntryCount returns correct count
+ * @brief   Verify GetEntryCount returns correct count
  */
 TEST_F(VaultEntryTest, GetEntryCount) {
   EXPECT_EQ(vault_.GetEntryCount(), 0);
@@ -582,7 +580,7 @@ TEST_F(VaultEntryTest, GetEntryCount) {
 }
 
 /**
- * @brief   Verify getEntryPW fails for a missing entry
+ * @brief   Verify GetEntryPW fails for a missing entry
  */
 TEST_F(VaultEntryTest, GetEntryPWMissing) {
   Password got;
@@ -667,7 +665,7 @@ TEST_F(VaultEntryTest, CloseVaultClearsDirty) {
  * ================================================== */
 
 /**
- * @brief   Verify closeVault clears all entries and the session
+ * @brief   Verify CloseVault clears all entries and the session
  */
 TEST_F(VaultEntryTest, CloseVault) {
   vault_.CreateEntry("Google", "user1@google.com", MakePW("password"));

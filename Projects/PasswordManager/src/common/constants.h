@@ -49,8 +49,7 @@ static_assert(kDerivedSize <= 64,
  * which is the one part of opening a vault that an attacker who hands over a file gets to choose the cost of. The
  * key commitment does not help here and neither does authenticating the header, since both are things that happen
  * after the derivation they would have to precede. Only these bounds do, so they are set at what this build could
- * plausibly have written rather than at what Argon2id will accept: 4 GiB by 16 iterations by 16 lanes was a machine
- * taken out of service by a file, and no vault has ever been written above 512 MiB by 4 by 4. */
+ * plausibly have written rather than at what Argon2id will accept. */
 
 inline constexpr uint32_t kMinMemCost = 64 * 1024;    /// Minimum accepted Argon2id memory cost in KiB
 inline constexpr uint32_t kMaxMemCost = 2048 * 1024;  /// Maximum accepted Argon2id memory cost in KiB
@@ -96,8 +95,7 @@ inline constexpr size_t kHeaderSize =
  * A systemd default grants 8 MiB, soft and hard alike, so raising the soft limit to the hard one at startup gains
  * nothing on such a machine, and libsodium locks a page of its own beyond what was asked for, which leaves a single
  * allocation under 8 MiB less a page if it is to be locked at all. Four MiB clears that with the master password and
- * the session key locked beside it. Two GiB cleared nothing, being 256 times the whole limit, and any vault written
- * near that old ceiling would have opened unpinned.
+ * the session key locked beside it.
  *
  * Little is given up for the smaller figure. The largest entry the parser will accept is 780 bytes, 256 of site and
  * 256 of account and 256 of password beside the three 4-byte length fields, and 5,377 of those fit under 4 MiB once
@@ -105,8 +103,8 @@ inline constexpr size_t kHeaderSize =
  * bytes, which is some seventy thousand of them.
  *
  * The same number bounds something else. The whole of a file is still pulled into memory before its tag has been
- * checked, so this is the most a single open can be made to allocate and read. It is no longer what a stranger gets
- * to spend, though: OpenVault reads the header alone until the commitment says the password was the right one, so a
+ * checked, so this is the most a single open can be made to allocate and read. It is not what a stranger gets to
+ * spend, though: OpenVault reads the header alone until the commitment says the password was the right one, so a
  * file that is not this build's, or not this password's, costs kHeaderSize and the derivation its header asked for. */
 
 inline constexpr int64_t kMaxSize = 4LL * 1024 * 1024;                                /// Maximum vault file size

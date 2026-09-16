@@ -104,8 +104,8 @@ class VaultInterface {
    * @param     new_site    New site name
    * @param     new_acc		New account
    * @param     new_pw		New password
-   * @return	kSuccess on success, kNotFound if original entry is missing,
-   *          kDuplicate if the new site/account collides with another entry
+   * @return	kSuccess on success, kNotFound if the original entry is missing, kDuplicate if the new site/account
+   *          collides with another entry, kError if a new field is out of range or the new image could not be built
    */
   UpdateResult UpdateEntry(const QString& old_site, const QString& old_acc, const QString& new_site,
                            const QString& new_acc, const Password& new_pw);
@@ -119,8 +119,8 @@ class VaultInterface {
   Result DeleteEntry(const QString& site, const QString& acc);
 
   /**
-   * @brief	Get a reference to the entry set
-   * @return	Reference to the entry set
+   * @brief	Copy the entry set into GUI view structs
+   * @return	Site and account of every entry, in entry set order
    */
   [[nodiscard]] QVector<EntryView> GetEntries() const;
 

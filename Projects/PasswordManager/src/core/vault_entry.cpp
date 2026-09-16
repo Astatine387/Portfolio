@@ -34,9 +34,9 @@ static_assert(kMaxSize == 4LL * 1024 * 1024, "The vault ceiling moved away from 
  * @return  Reason the fields were refused, or nullptr when every one of them fits
  *
  * Entry::Deserialize refuses a site or account past its ceiling and a password past kMaxEntryPwLen, so an image
- * built out of longer fields is one the parser that wrote it cannot read back. The only check on the way in used to
- * stand in EntryGUI::OnOKClicked, a layer the tests do not reach and one that a second entry point would not go
- * through, which left the format's own invariant resting on the dialog. It rests here now.
+ * built out of longer fields is one the parser that wrote it cannot read back. The check stands here rather than in
+ * EntryGUI::OnOKClicked, so the format's own invariant does not rest on a dialog the tests do not reach and a second
+ * entry point would not go through.
  */
 const char* ValidateEntryFields(const std::string& site, const std::string& acc, const Password& pw) {
   if (site.empty()) {
@@ -131,9 +131,9 @@ Result Vault::CommitImage(SecureBuffer&& img, std::set<Entry, EntryCmp>&& entrie
    * written while a vault is open, so an operation added later cannot walk around the check by forgetting it, which is
    * what a copy of it standing in CreateEntry and UpdateEntry would have invited.
    *
-   * Refusing at the entry that does not fit, rather than at the save that will not go through, is the point. The check
-   * SaveVaultWith makes stays where it is and is now a backstop; before this, it was the only guard, and it left a user
-   * holding a session whose only route out was deleting entries it would not name. */
+   * Refusing at the entry that does not fit, rather than at the save that will not go through, is the point. A user
+   * is told which entry the vault has no room for instead of being left holding a session whose only route out is
+   * deleting entries it would not name. The check SaveVaultWith makes is a backstop behind this one. */
 
   if (img.Size() > static_cast<size_t>(kMaxImageSize)) {
     ReportError("[Data] Commit failed - Vault would exceed maximum size (4 MiB)\n");
@@ -320,8 +320,8 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site, const std::string& 
   candidate.insert(std::move(entry));
 
   /* The old entry was never inserted into the candidate set, so installing it is the whole of the replacement. The
-   * failure below is reachable: an update that grows an entry can be the one that carries the image past kMaxImageSize,
-   * which is why it no longer claims otherwise. */
+   * failure below is reachable: an update that grows an entry can be the one that carries the image past
+   * kMaxImageSize. */
 
   if (CommitImage(std::move(buff), std::move(candidate)) == Result::kFailure) {
     return UpdateResult::kError;  // CommitImage reported the error and installed nothing
@@ -376,10 +376,10 @@ Result Vault::DeleteEntry(const std::string& site, const std::string& acc) {
 }
 
 Result Vault::VerifyImage(const SecureBuffer& img, const std::set<Entry, EntryCmp>& entries) {
-  /* Re-parse the image and confirm the recorded offsets match a fresh parse. Every branch below is defensive and
-   * none of them is reached by a run of the suite; what changed is the cost of being wrong about that. A caller now
-   * hands over a candidate it has not installed, so a failure here is a rebuild discarded rather than a session left
-   * holding an image its entries no longer describe. Each refusal is kept for the case it was written against. */
+  /* Re-parse the image and confirm the recorded offsets match a fresh parse. Every branch below is defensive: a
+   * caller hands over a candidate it has not installed, so a failure here is a rebuild discarded rather than a
+   * session left holding an image its entries do not describe. Each refusal is kept for the case it was written
+   * against. */
 
   std::span<const uint8_t> view = img.Span();
 

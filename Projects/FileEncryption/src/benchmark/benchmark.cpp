@@ -602,7 +602,7 @@ void BenchRawEvpStreaming(benchmark::State& state) {
 bool EncryptSync(FILE* src, FILE* dst, const SecureKey& key) {
   /* Built off the key for the same reason EncryptInit is: the control only measures the write strategy if everything
    * else, the associated data included, is identical to what the pipeline would emit. The commitment is part of that
-   * header and so part of every tag, which the fixed salt alone never covered. */
+   * header and so part of every tag. */
 
   FileHeader header;
 

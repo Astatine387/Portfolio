@@ -104,11 +104,10 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
   }
 
   /* Read the header, and nothing else yet. Everything that decides whether this is a vault at all and whether this
-   * password opens it lives in these bytes; the body is needed only once both have been answered. Reading the file
-   * whole first put an allocation and a read of up to 4 MiB ahead of that, which a wrong magic number was enough to
-   * spend, and which sat in front of the Argon2id pass Limitations names as the cost a crafted file gets to choose
-   * while being cheaper than it. What a stranger can spend here now is these kHeaderSize bytes and that one
-   * derivation, bounded by the range check ParseHeader applies. */
+   * password opens it lives in these bytes; the body is needed only once both have been answered. Keeping the
+   * allocation and the read of up to 4 MiB behind those answers means a wrong magic number never buys them. What a
+   * stranger can spend here is these kHeaderSize bytes and the one Argon2id pass Limitations names as the cost a
+   * crafted file gets to choose, bounded by the range check ParseHeader applies. */
 
   std::array<uint8_t, kHeaderSize> head_buff{};
 
@@ -148,8 +147,8 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
 
   /* Settle which of the two failures this is before decrypting anything. AES-GCM does not commit to the key a tag
    * was verified under, so a failing tag on its own cannot say whether the password was wrong or the file was
-   * damaged, and both used to be reported as one sentence. The commitment derived beside the key answers the first
-   * question by itself, and it is compared here so that every failure past this point means the file. */
+   * damaged. The commitment derived beside the key answers the first question by itself, and it is compared here so
+   * that every failure past this point means the file. */
 
   if (!key_->CommitmentMatches(header.commitment)) {
     Reset();
@@ -192,10 +191,10 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
 
   /* The associated data is a view into the buffer the file was read into, not a header re-serialized from the
    * fields just parsed out of it, so the bytes on the disk and the bytes under the tag are physically the same and
-   * have nowhere to disagree. The header no longer arrives in the same read as the body, but it is copied to the
-   * front of this buffer byte for byte rather than rebuilt from what was parsed out of it, so what the tag covers is
-   * still what the disk holds. FileEncryption has to rebuild its header for this because it drops the buffer it read
-   * from; a vault keeps the buffer it decrypts out of, so there is nothing to rebuild.
+   * have nowhere to disagree. The header arrives in a read of its own, but it is copied to the front of this buffer
+   * byte for byte rather than rebuilt from what was parsed out of it, so what the tag covers is what the disk holds.
+   * FileEncryption has to rebuild its header for this because it drops the buffer it read from; a vault keeps the
+   * buffer it decrypts out of, so there is nothing to rebuild.
    *
    * The password was settled by the commitment above, which leaves damage as the only thing a failing tag can mean
    * here. */

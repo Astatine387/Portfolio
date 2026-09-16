@@ -25,7 +25,7 @@ struct KdfParams {
 };
 
 /**
- * @brief	Initialize libsodium and best-effort raise the memory-lock limit
+ * @brief	Initialize libsodium, best-effort raise the memory-lock limit and refuse core dumps
  *
  * Idempotent and thread-safe to call more than once
  *

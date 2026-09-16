@@ -19,13 +19,11 @@ namespace {
  * @param   need    Bytes the next read wants
  * @return  true when the read fits
  *
- * A subtraction rather than cur + need > srclen. The addition was not wrong: @p need carries a length field taken
- * from the buffer being parsed and so can be as large as UINT32_MAX, but each of the three reads that supply one
- * also compares it against its field ceiling in the same condition, and a dlen past 256 is refused by that clause
- * whatever the addition did. What the subtraction changes is where that safety lives. It is a property of this
- * check rather than of the clause standing beside it, so raising a ceiling, or dropping one during a refactor,
- * cannot quietly put a wrapped sum back in front of a read. SecureBuffer::Subspan and Entry::PwSpan already bound
- * themselves this way, and this is the one place in the parser that did not.
+ * A subtraction rather than cur + need > srclen. @p need carries a length field taken from the buffer being parsed
+ * and so can be as large as UINT32_MAX, which an addition would wrap. Written this way the safety is a property of
+ * this check rather than of the field ceilings each caller compares against beside it, so raising a ceiling, or
+ * dropping one, cannot quietly put a wrapped sum in front of a read. SecureBuffer::Subspan and Entry::PwSpan bound
+ * themselves the same way.
  */
 constexpr bool HasBytes(size_t cur, size_t srclen, size_t need) {
   return cur <= srclen && need <= srclen - cur;

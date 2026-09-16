@@ -369,11 +369,11 @@ TEST(PasswordTest, CleanEmpty) {
 }
 
 /* ==================================================
- * MAX_SIZE Test
+ * Maximum Length Test
  * ================================================== */
 
 /**
- * @brief   Verify SetData succeeds at exactly MAX_SIZE
+ * @brief   Verify SetData succeeds at exactly kMaxMasterPwLen
  */
 TEST(PasswordTest, SetDataMaxSize) {
   Password pw;
@@ -384,7 +384,7 @@ TEST(PasswordTest, SetDataMaxSize) {
 }
 
 /**
- * @brief   Verify SetData rejects data exceeding MAX_SIZE
+ * @brief   Verify SetData rejects data exceeding kMaxMasterPwLen
  */
 TEST(PasswordTest, SetDataExceedsMaxSize) {
   Password pw;

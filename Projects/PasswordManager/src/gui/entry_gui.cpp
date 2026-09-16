@@ -95,7 +95,7 @@ EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
   spc_btn_box_->setSpacing(10);
   spc_btn_box_->setContentsMargins(0, 0, 0, 0);
 
-  /* Put OK, Cancel, and error message in the same line */
+  /* Put Generate, OK and Cancel buttons in the same line */
 
   btn_box_->addWidget(gen_btn_);
   btn_box_->addWidget(ok_btn_);

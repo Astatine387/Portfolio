@@ -19,7 +19,7 @@ PasswordGUI::PasswordGUI(QWidget* parent) : QWidget(parent) {
 
   err_msg_->setContentsMargins(5, 0, 0, 0);
 
-  /* Put buttons and error message in the same line */
+  /* Put confirm and back buttons in the same line */
 
   btn_box_->addWidget(confirm_btn_);
   btn_box_->addWidget(back_btn_);

@@ -52,7 +52,7 @@ ListGUI::ListGUI(QWidget* parent) : QWidget(parent) {
   entry_btns_->setSpacing(10);
   entry_btns_->setContentsMargins(0, 0, 0, 0);
 
-  /* Put save, change master password buttons in the same line */
+  /* Put save, close, change master password buttons in the same line */
 
   vault_btns_->addWidget(save_btn_);
   vault_btns_->addWidget(close_btn_);

@@ -757,10 +757,9 @@ TEST_F(VaultFileTest, SaveAfterManyEdits) {
 /**
  * @brief   Verify every vault this build writes is one it can reopen with every field intact
  *
- * The property whose absence let the entry-size invariant break. The suite covers each class thoroughly on its own,
- * but nothing asserted that what the CRUD layer accepts is what the file layer takes back, and the two halves drifted
- * apart in exactly that gap: an entry a byte under kMinEntrySize was accepted, serialized, encrypted and written
- * perfectly well, then refused on the way back in. Nothing was wrong with any one class.
+ * The property that holds the CRUD layer and the file layer to each other. The suite covers each class thoroughly on
+ * its own, which leaves a gap between them: an entry a byte under kMinEntrySize can be accepted, serialized,
+ * encrypted and written perfectly well by classes none of which is wrong on its own, and refused on the way back in.
  *
  * The cases are the edges of what the format accepts, since an off-by-one between the write path and the read path
  * shows up there and nowhere else. Multi-byte UTF-8 is carried because the ceilings are byte counts while the dialog
@@ -923,11 +922,10 @@ TEST_F(VaultFileTest, SaveWritesFreshIV) {
  * @brief   Verify a save never widens the permissions of the vault it replaces
  *
  * SaveVault publishes its work by renaming a temporary over the vault, so the mode that temporary carries becomes
- * the mode of the vault. That temporary used to be chmodded to match the file it was about to replace, which meant
- * a vault left readable by everybody once stayed that way through every save afterwards, and carried setuid,
- * setgid and sticky across with it. This is the layer the defect was actually felt at, so the guarantee is pinned
- * here as well as at OpenTempFile. Only the bits that must never appear are asserted, because the umask in force
- * is free to clear owner bits too and an exact 0600 would fail on a developer who sets one.
+ * the mode of the vault. Nothing copies the mode of the file being replaced onto it, so a vault left readable by
+ * everybody does not stay that way through the saves that follow, and setuid, setgid and sticky are not carried
+ * across either. This is the layer a user would feel that at, so the guarantee is pinned here as well as at
+ * OpenTempFile.
  */
 TEST_F(VaultFileTest, SaveDoesNotWidenVaultPermissions) {
   ASSERT_EQ(chmod(path_.c_str(), 0666), 0);
@@ -1172,8 +1170,8 @@ TEST_F(VaultFileTest, OpenRejectsInRangeKdfParamTamper) {
 /**
  * @brief   Verify a wrong password and a damaged vault are reported as different things
  *
- * The distinction the commitment exists to draw. Both used to arrive as one sentence, since a failing tag cannot say
- * which of the two it saw.
+ * The distinction the commitment exists to draw: a failing tag on its own cannot say which of the two it saw, so
+ * without it both arrive as one sentence.
  */
 TEST_F(VaultFileTest, WrongPasswordAndCorruptionDiffer) {
   ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
@@ -1239,7 +1237,7 @@ TEST_F(VaultFileTest, ErrorCallback) {
 }
 
 /**
- * @brief   Verify getLastError returns error message on failure
+ * @brief   Verify GetLastError returns error message on failure
  */
 TEST_F(VaultFileTest, GetLastError) {
   vault_.CloseVault();

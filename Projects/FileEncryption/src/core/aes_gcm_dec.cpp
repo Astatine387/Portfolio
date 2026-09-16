@@ -254,10 +254,10 @@ Result AesGcm::DecryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
   int final_len = 0;
 
   if (EVP_DecryptFinal_ex(ctx_, final_block.data(), &final_len) != 1) {
-    /* A wrong password no longer reaches this point: DecryptInit rejected it against the commitment
-     * before a chunk was read. That check cannot tell a wrong password from a commitment an attacker
-     * rewrote, and nothing could: both leave the derived key disagreeing with the 32 bytes in the header,
-     * which is one observation and not two. What it does separate is a header that does not name this key
+    /* A wrong password does not reach this point: DecryptInit rejects it against the commitment before
+     * a chunk is read. That check cannot tell a wrong password from a commitment an attacker rewrote,
+     * and nothing could: both leave the derived key disagreeing with the 32 bytes in the header, which
+     * is one observation and not two. What it does separate is a header that does not name this key
      * from a chunk that does not match the header it was authenticated under, and those two are distinct,
      * which is why the message here blames the file rather than the password. */
 

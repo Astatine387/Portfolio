@@ -234,9 +234,8 @@ class Vault {
    * @param   key   Key to encrypt with
    * @return  kSuccess on success, kFailure on failure
    *
-   * The header is built from @p key alone. Salt and parameters used to arrive beside the key as separate arguments,
-   * which left it possible to record a derivation the key had not come from; there is no longer an argument to get
-   * wrong.
+   * The header is built from @p key alone. Passed beside it as separate arguments, the salt and the parameters could
+   * record a derivation the key had not come from; taking them from the key leaves no argument to get wrong.
    */
   Result SaveVaultWith(const std::string& path, const SecureKey& key);
 

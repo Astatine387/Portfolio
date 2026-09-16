@@ -447,8 +447,8 @@ TEST_F(CryptoWorkerTest, HeaderOnlySourceIsRejectedAsTooSmall) {
 /**
  * @brief   Verify the costliest parameters a header may name buy no derivation for a file that cannot be decrypted
  *
- * The header is written by whoever supplied the file, so these are the parameters an attacker gets to choose: 4 GiB
- * held for sixteen passes, inside a phase that offers no way back out. A file this short can never decrypt, and
+ * The header is written by whoever supplied the file, so these are the parameters an attacker gets to choose: 2 GiB
+ * held for eight passes, inside a phase that offers no way back out. A file this short can never decrypt, and
  * establishing that costs a size lookup, so the lookup has to happen first.
  *
  * A regression would not show up in the message alone, since the file is still refused in the end, only minutes and
