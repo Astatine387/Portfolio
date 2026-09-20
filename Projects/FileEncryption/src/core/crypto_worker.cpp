@@ -264,9 +264,9 @@ void CryptoWorker::Work() {
     msg = "[File] Move failed - Destination already exists or cannot be written\n" + verb + " failed\n";
   }
   else if (SyncDir(dst_path_) == Result::kFailure) {
-    /* The data is already at the destination, so it stays; only its durability is in doubt */
+    /* The data is already at the destination, only its durability is in doubt */
 
-    msg = "[File] Sync failed - Cannot flush the destination directory\n" + verb + " failed\n";  // LCOV_EXCL_LINE
+    msg = "[File] Sync failed - Cannot flush the destination directory\n" + verb + " completed\n";  // LCOV_EXCL_LINE
   }
   else {
     msg = verb + " complete\n";
