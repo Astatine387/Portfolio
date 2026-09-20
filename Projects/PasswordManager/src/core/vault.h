@@ -196,6 +196,16 @@ class Vault {
    */
   [[nodiscard]] const std::string& GetLastError() const;
 
+  /**
+   * @brief   Get the warning left by the last successful operation
+   * @return  Warning message, empty when the operation had nothing to warn about
+   *
+   * A warning accompanies kSuccess. It names something the operation completed without, rather than something it
+   * failed to do: a vault that was published while its directory entry could not be flushed is saved, and saying so
+   * is the only way a caller can both trust the file and know what was not confirmed about it.
+   */
+  [[nodiscard]] const std::string& GetLastWarning() const { return last_warning_; }
+
  private:
   AesGcm aes_;
   std::optional<SecureKey> key_;           // Session key derived at open/change
@@ -205,6 +215,7 @@ class Vault {
   bool dirty_ = false;                     // Image changed after this session last published a file
   std::set<Entry, EntryCmp> entry_set_;
   std::string last_error_;
+  std::string last_warning_;
 
   ErrorCallback ecb_ = nullptr;
 

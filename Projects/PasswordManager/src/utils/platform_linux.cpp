@@ -95,11 +95,16 @@ Result SyncDir(const std::string& path) {
     return Result::kFailure;
   }
 
-  int res = fsync(fd);
+  const int res = fsync(fd);
+  const int err = errno;
 
   close(fd);
 
-  if (res) {
+  /* POSIX does not require fsync on a directory descriptor to be supported, and file systems that do not support it
+   * (CIFS among them) answer EINVAL or EBADF. There is nothing to flush on those, which is not a failure; a real
+   * error such as EIO still is. */
+
+  if (res != 0 && err != EINVAL && err != EBADF) {
     return Result::kFailure;
   }
 

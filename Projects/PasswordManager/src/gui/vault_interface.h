@@ -143,6 +143,12 @@ class VaultInterface {
    */
   [[nodiscard]] QString GetLastError() const;
 
+  /**
+   * @brief     Get the warning left by the last successful operation
+   * @return	Warning message, empty when there is none
+   */
+  [[nodiscard]] QString GetLastWarning() const;
+
  private:
   std::unique_ptr<Vault> vault_;
   QString vault_path_;

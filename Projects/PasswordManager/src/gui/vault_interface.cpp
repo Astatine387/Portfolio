@@ -73,3 +73,7 @@ bool VaultInterface::GetPW(const QString& site, const QString& acc, Password& pw
 QString VaultInterface::GetLastError() const {
   return QString::fromStdString(vault_->GetLastError());
 }
+
+QString VaultInterface::GetLastWarning() const {
+  return QString::fromStdString(vault_->GetLastWarning());
+}

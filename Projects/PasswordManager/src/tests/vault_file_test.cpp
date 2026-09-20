@@ -17,6 +17,7 @@
 
 #ifndef _WIN32
 #include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 #include "core/secure_key.h"
@@ -1166,6 +1167,55 @@ TEST_F(VaultFileTest, OpenRejectsInRangeKdfParamTamper) {
     EXPECT_NE(vault_.GetLastError().find("Incorrect master password"), std::string::npos);
   }
 }
+
+#ifndef _WIN32
+
+/**
+ * @brief   Verify a password change that published its file switches the session even when the directory sync fails
+ *
+ * A directory left writable and searchable but not readable is the cheapest way to reach the branch past the commit
+ * point: mkstemp and rename need write and search, and the open SyncDir performs needs read. By the time it runs the
+ * file already belongs to the new password, so the change is a success carrying a warning, and the session has to
+ * follow the file rather than keep a key the file no longer opens with. Skipped as root, whose permission checks
+ * these bits do not bind.
+ */
+TEST_F(VaultFileTest, PublishedChangePWSurvivesDirectorySyncFailure) {
+  if (geteuid() == 0) {
+    GTEST_SKIP() << "Directory permissions do not bind root";
+  }
+
+  const std::string dir = "sync_fail_dir";
+  const std::string path = dir + "/child.vault";
+
+  ASSERT_EQ(mkdir(dir.c_str(), 0700), 0);
+  ASSERT_EQ(vault_.NewVault(path, MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(chmod(dir.c_str(), 0300), 0);
+
+  EXPECT_EQ(vault_.ChangePW(MakePW("asdf1234"), path), Result::kSuccess);
+  EXPECT_FALSE(vault_.GetLastWarning().empty());
+  EXPECT_FALSE(vault_.IsDirty());
+  EXPECT_TRUE(vault_.VerifyPW(MakePW("asdf1234")));
+
+  /* A save that follows keeps the file on the new password instead of reverting it to the old one */
+
+  EXPECT_EQ(vault_.SaveVault(path), Result::kSuccess);
+
+  ASSERT_EQ(chmod(dir.c_str(), 0700), 0);
+
+  Vault fresh;
+
+  EXPECT_EQ(fresh.OpenVault(path, MakePW("asdf1234")), Result::kSuccess);
+  EXPECT_EQ(fresh.GetEntryCount(), 1);
+
+  fresh.CloseVault();
+  vault_.CloseVault();
+
+  EXPECT_EQ(RemoveFile(path), Result::kSuccess);
+  EXPECT_EQ(rmdir(dir.c_str()), 0);
+}
+
+#endif /* !_WIN32 */
 
 /**
  * @brief   Verify a wrong password and a damaged vault are reported as different things

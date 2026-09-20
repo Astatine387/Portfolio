@@ -223,7 +223,9 @@ void MainGUI::OnSaveRequested() {
     return;
   }
 
-  list_gui_->SetErrMsg("Saved");
+  const QString warning = vault_.GetLastWarning();
+
+  list_gui_->SetErrMsg(warning.isEmpty() ? QString("Saved") : warning);
 }
 
 void MainGUI::OnCloseRequested() {
@@ -256,11 +258,13 @@ void MainGUI::OnChangePWRequested() {
     QApplication::restoreOverrideCursor();
 
     if (res == Result::kFailure) {
-      list_gui_->SetErrMsg("Failed to save vault");
+      list_gui_->SetErrMsg(vault_.GetLastError());
       return;
     }
 
-    list_gui_->SetErrMsg("Password changed");
+    const QString warning = vault_.GetLastWarning();
+
+    list_gui_->SetErrMsg(warning.isEmpty() ? QString("Password changed") : "Password changed. " + warning);
   }
 }
 

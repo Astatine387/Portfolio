@@ -58,7 +58,8 @@ Result Vault::NewVault(const std::string& path, const Password& pw) {
   /* Encrypt and write the vault file atomically */
 
   if (SaveVaultWith(path, *key_) == Result::kFailure) {
-    return Result::kFailure;  // LCOV_EXCL_LINE
+    Reset();  // The failure was before the rename, so nothing was published and no session may outlive the attempt
+    return Result::kFailure;
   }
 
   return Result::kSuccess;
@@ -70,6 +71,7 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
   uint32_t entry_cnt = 0;
 
   last_error_.clear();
+  last_warning_.clear();
 
   Reset();
 
@@ -266,6 +268,8 @@ Result Vault::SaveVault(const std::string& path) {
 }
 
 Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key) {
+  last_warning_.clear();
+
   /* Confirm the image and the entry set still describe each other before encrypting. The pair checked here is the
    * installed one, which CommitImage has already verified; it is checked again because what is about to be written to
    * disk is these bytes, and a save is the last point at which a disagreement can still be caught instead of
@@ -353,7 +357,9 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key) {
   static_cast<void>(fclose(file_));
   file_ = nullptr;
 
-  /* Rename temporary file to vault file */
+  /* Rename temporary file to vault file. This is the commit point: the rename is atomic, the vault it replaces is
+   * gone the moment it returns, and nothing below can undo it. So nothing below may report the save as failed, since
+   * a caller reads kFailure as a promise that the file on disk is the one it was before the call. */
 
   if (RenameFile(tmp_path, path) == Result::kFailure) {
     // LCOV_EXCL_START
@@ -365,16 +371,15 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key) {
 
   dirty_ = false;
 
-  /* Sync the directory entry so the rename itself survives a crash */
+  Clear();
+
+  /* Sync the directory entry so the rename itself survives a crash. Failing here says the vault was published but
+   * its directory entry may not outlive a power loss, which is a warning about durability rather than a save that
+   * did not happen, and it is reported as one so the session can follow the file that is now on disk. */
 
   if (SyncDir(path) == Result::kFailure) {
-    // LCOV_EXCL_START
-    ReportError("[File] Sync failed - Cannot flush directory entry to disk\n");
-    return Result::kFailure;
-    // LCOV_EXCL_STOP
+    last_warning_ = "[File] Saved, but the directory entry could not be flushed to disk\n";
   }
-
-  Clear();
 
   return Result::kSuccess;
 }
@@ -437,10 +442,12 @@ Result Vault::ChangePW(const Password& pw, const std::string& path) {
     // LCOV_EXCL_STOP
   }
 
-  /* Persist with the new key before changing session state */
+  /* Persist with the new key before changing session state. SaveVaultWith fails only before its rename, so a failure
+   * here means the file still belongs to the old key, and a success means it belongs to the new one whether or not
+   * the directory entry could be flushed afterwards. The session key follows the file either way. */
 
   if (SaveVaultWith(path, *new_key) == Result::kFailure) {
-    return Result::kFailure;  // LCOV_EXCL_LINE
+    return Result::kFailure;
   }
 
   /* Commit the session state only after the save has succeeded */
