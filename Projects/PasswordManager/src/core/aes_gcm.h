@@ -74,7 +74,7 @@ class AesGcm {
    *
    * @p key is borrowed for the duration of the call and nothing derived from it survives the return.
    */
-  Result Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad);
+  Result Decrypt(const uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad);
 
   /**
    * @brief		Encrypt a buffer
@@ -94,7 +94,7 @@ class AesGcm {
    *
    * @p key is borrowed for the duration of the call and nothing derived from it survives the return.
    */
-  Result Encrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad);
+  Result Encrypt(const uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad);
 
   /* ==================================================
    * Callback functions

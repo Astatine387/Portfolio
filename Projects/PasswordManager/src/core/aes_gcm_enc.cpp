@@ -10,7 +10,8 @@
 #include "core/aes_gcm.h"
 #include "utils/platform.h"
 
-Result AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad) {
+Result AesGcm::Encrypt(const uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key,
+                       std::span<const uint8_t> aad) {
   /* The destination is written at every size, an empty plaintext included, since the IV and the tag go into it
    * regardless. The source is read only when there is a plaintext to read, so a caller holding the .data() of an
    * empty container may hand that over null rather than having to invent a pointer for zero bytes. */

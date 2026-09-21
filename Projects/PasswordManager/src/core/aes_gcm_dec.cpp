@@ -9,7 +9,8 @@
 
 #include "core/aes_gcm.h"
 
-Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad) {
+Result AesGcm::Decrypt(const uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key,
+                       std::span<const uint8_t> aad) {
   /* Everything below reads the buffer at offsets it takes on trust. The tag is lifted from src + size - kTagSize, and
    * that subtraction is size_t arithmetic, so a size under kTagSize wraps instead of going negative and the read
    * lands nowhere near the allocation. Vault::OpenVault refuses a file below kMinSize long before one reaches here,
