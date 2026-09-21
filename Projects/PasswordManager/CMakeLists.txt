@@ -189,6 +189,7 @@ set(GUI_SOURCES
     src/gui/change_pw_gui.cpp
     src/gui/clipboard.cpp
     src/gui/entry_gui.cpp
+    src/gui/entry_model.cpp
     src/gui/list_gui.cpp
     src/gui/login_gui.cpp
     src/gui/main_gui.cpp
@@ -202,6 +203,7 @@ set(GUI_HEADERS
     src/gui/clipboard.h
     src/gui/entry_gui.h
     src/gui/entry_interface.h
+    src/gui/entry_model.h
     src/gui/list_gui.h
     src/gui/login_gui.h
     src/gui/main_gui.h

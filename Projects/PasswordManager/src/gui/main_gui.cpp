@@ -233,7 +233,10 @@ void MainGUI::OnCloseRequested() {
     return;
   }
 
+  StopClipboardCountdown();
+
   vault_.CloseVault();
+  list_gui_->Clear();
 
   stack_->setCurrentWidget(login_gui_);
   resize(300, 150);
@@ -276,14 +279,7 @@ void MainGUI::closeEvent(QCloseEvent* event) {
     return;
   }
 
-  if (timer_) {
-    timer_->stop();
-    timer_->disconnect();
-    timer_->deleteLater();
-    timer_ = nullptr;
-
-    clipboard::ClearIfOwned();
-  }
+  StopClipboardCountdown();
 
   QWidget::closeEvent(event);
 }
@@ -313,4 +309,19 @@ bool MainGUI::ConfirmDiscard() {
   }
 
   return choice == QMessageBox::Discard;
+}
+
+void MainGUI::StopClipboardCountdown() {
+  if (!timer_) {
+    return;
+  }
+
+  timer_->stop();
+  timer_->disconnect();
+  timer_->deleteLater();
+  timer_ = nullptr;
+
+  /* Only clear if we still own the clipboard */
+
+  clipboard::ClearIfOwned();
 }

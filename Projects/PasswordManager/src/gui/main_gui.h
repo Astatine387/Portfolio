@@ -152,4 +152,13 @@ class MainGUI : public QWidget {
    * discard knowingly.
    */
   [[nodiscard]] bool ConfirmDiscard();
+
+  /**
+   * @brief	End the clipboard countdown and take the copied password off the clipboard
+   *
+   * The two belong together: stopping the countdown on its own would leave the password on the clipboard with
+   * nothing left to remove it. A clipboard this application no longer owns is left as it is, and calling this
+   * with no countdown running does nothing, since the password has already gone or was never copied.
+   */
+  void StopClipboardCountdown();
 };
