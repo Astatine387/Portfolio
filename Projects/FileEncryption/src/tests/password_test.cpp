@@ -187,6 +187,37 @@ TEST(PasswordTest, MoveAssignment) {
  * ================================================== */
 
 /**
+ * @brief   Verify SetData copes with a source that points into the password's own buffer
+ *
+ * GetData hands out the internal pointer, so passing it straight back is a call this interface allows. Releasing the
+ * buffer before copying out of it read an address the process had already returned to the operating system, which left
+ * the size in place and the bytes zeroed whenever the allocator handed the same page back.
+ */
+TEST(PasswordTest, SetDataFromOwnBuffer) {
+  Password pw;
+
+  ASSERT_EQ(pw.SetData("password", 8), Result::kSuccess);
+
+  /* The whole buffer, which is the call GetData most plainly invites */
+
+  EXPECT_EQ(pw.SetData(pw.GetData(), pw.GetSize()), Result::kSuccess);
+  EXPECT_EQ(pw.GetSize(), 8U);
+  EXPECT_STREQ(pw.GetData(), "password");
+
+  /* A source inside the buffer rather than at its start, and a length that shrinks the allocation with it */
+
+  EXPECT_EQ(pw.SetData(pw.GetData() + 4, 4), Result::kSuccess);
+  EXPECT_EQ(pw.GetSize(), 4U);
+  EXPECT_STREQ(pw.GetData(), "word");
+
+  /* Reads what the call above left behind */
+
+  EXPECT_EQ(pw.SetData(pw.GetData() + 1, 2), Result::kSuccess);
+  EXPECT_EQ(pw.GetSize(), 2U);
+  EXPECT_STREQ(pw.GetData(), "or");
+}
+
+/**
  * @brief   Verify a self-copy through SetData does not touch freed memory
  */
 TEST(PasswordTest, SetDataSelf) {

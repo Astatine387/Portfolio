@@ -35,28 +35,37 @@ Result Password::SetData(const Password& pw) {
 }
 
 Result Password::SetData(const char* str, size_t len) {
-  /* Wipe first: whatever is held now is gone either way, and a failed allocation below must not leave the
-   * previous password behind */
+  if (str == nullptr) {
+    Clean();
+    return Result::kSuccess;
+  }
+
+  InitCrypto();
+
+  /* sodium_malloc locks the pages against the swap file and wipes them on release. The extra byte is
+   * the terminator, which lets the buffer be handed to a C interface without a copy.
+   *
+   * The new buffer is filled before the old one is released. @p str is allowed to point into data_ itself,
+   * since GetData hands that pointer out, and releasing first would leave the copy below reading an
+   * address this process no longer owns. */
+
+  auto* fresh = static_cast<char*>(sodium_malloc(len + 1));
+
+  if (fresh == nullptr) {
+    // LCOV_EXCL_START  secure allocation failed
+    Clean();  // Whatever was held is gone either way, which is what the caller is told on kFailure
+    return Result::kFailure;
+    // LCOV_EXCL_STOP
+  }
+
+  memcpy(fresh, str, len);
+
+  fresh[len] = '\0';
 
   Clean();
 
-  if (str != nullptr) {
-    InitCrypto();
-
-    /* sodium_malloc locks the pages against the swap file and wipes them on release. The extra byte is
-     * the terminator, which lets the buffer be handed to a C interface without a copy. */
-
-    data_ = static_cast<char*>(sodium_malloc(len + 1));
-
-    if (data_ == nullptr) {
-      return Result::kFailure;  // LCOV_EXCL_LINE  secure allocation failed
-    }
-
-    size_ = len;
-    memcpy(data_, str, size_);
-
-    data_[size_] = '\0';
-  }
+  data_ = fresh;
+  size_ = len;
 
   return Result::kSuccess;
 }

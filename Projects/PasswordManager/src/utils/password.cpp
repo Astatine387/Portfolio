@@ -19,14 +19,14 @@ bool Password::Equal(const Password& other) const {
 
   static constexpr std::array<uint8_t, kMaxMasterPwLen + 1> kZero{};
 
-  const void* lhs = (data_ != nullptr) ? static_cast<const void*>(data_) : static_cast<const void*>(kZero.data());
-  const void* rhs =
+  const void* l = (data_ != nullptr) ? static_cast<const void*>(data_) : static_cast<const void*>(kZero.data());
+  const void* r =
       (other.data_ != nullptr) ? static_cast<const void*>(other.data_) : static_cast<const void*>(kZero.data());
 
   uint8_t len_diff = (size_ != other.size_) ? 1 : 0;
-  int content_diff = sodium_memcmp(lhs, rhs, kMaxMasterPwLen);
+  int data_diff = sodium_memcmp(l, r, kMaxMasterPwLen);
 
-  return len_diff == 0 && content_diff == 0;
+  return len_diff == 0 && data_diff == 0;
 }
 
 bool Password::IsEmpty() const {
@@ -54,22 +54,30 @@ Result Password::SetData(const char* str, size_t len) {
     return Result::kFailure;
   }
 
+  if (str == nullptr) {
+    Clean();
+    return Result::kSuccess;
+  }
+
+  /* The new buffer is filled before the old one is released. @p str may point into data_ itself, since GetData hands
+   * that pointer out, and releasing first would leave the copy below reading an address this process no longer owns.
+   * Building the replacement first is also what leaves the current value untouched when the allocation is refused. */
+
+  InitCrypto();
+
+  auto* fresh = static_cast<char*>(sodium_malloc(kMaxMasterPwLen + 1));
+
+  if (fresh == nullptr) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  sodium_memzero(fresh, kMaxMasterPwLen + 1);
+  memcpy(fresh, str, len);
+
   Clean();
 
-  if (str != nullptr) {
-    InitCrypto();
-
-    data_ = static_cast<char*>(sodium_malloc(kMaxMasterPwLen + 1));
-
-    if (data_ == nullptr) {
-      return Result::kFailure;  // LCOV_EXCL_LINE
-    }
-
-    sodium_memzero(data_, kMaxMasterPwLen + 1);
-
-    size_ = len;
-    memcpy(data_, str, size_);
-  }
+  data_ = fresh;
+  size_ = len;
 
   return Result::kSuccess;
 }
