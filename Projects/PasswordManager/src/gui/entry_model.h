@@ -11,6 +11,7 @@
 #include <QObject>
 #include <QVariant>
 #include <QVector>
+#include <cstdint>
 
 #include "gui/entry_interface.h"
 
@@ -31,7 +32,7 @@ class EntryModel : public QAbstractTableModel {
    * @enum    Column
    * @brief   Columns of the table, in the order they are shown
    */
-  enum Column : int {
+  enum Column : std::uint8_t {
     kSite = 0,
     kAccount = 1,
     kColumnCount = 2,
