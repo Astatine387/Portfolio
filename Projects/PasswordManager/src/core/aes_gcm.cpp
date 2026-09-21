@@ -7,18 +7,8 @@
 #include "core/aes_gcm.h"
 
 #include <openssl/err.h>
-#include <sodium.h>
 
-#include <cstring>
-
-AesGcm::~AesGcm() {
-  sodium_memzero(iv_.data(), iv_.size());
-
-  if (ctx_) {
-    EVP_CIPHER_CTX_free(ctx_);
-    ctx_ = nullptr;
-  }
-}
+#include <string>
 
 void AesGcm::ReportError(const char* msg) {
   if (!ecb_) {

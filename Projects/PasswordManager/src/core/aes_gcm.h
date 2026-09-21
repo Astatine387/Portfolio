@@ -11,11 +11,20 @@
 #include <array>
 #include <functional>
 #include <future>
+#include <memory>
 #include <span>
 
 #include "common/constants.h"
 #include "core/secure_key.h"
 
+/**
+ * @class	AesGcm
+ * @brief	AES-256-GCM engine
+ *
+ * Everything one operation needs — the cipher context, the initial vector, the tag, the key and the buffers — belongs
+ * to that operation and dies with it. Only the error callback outlives a call, because it is what the owner installs
+ * once and expects to stay installed.
+ */
 class AesGcm {
  public:
   /* ==================================================
@@ -30,7 +39,7 @@ class AesGcm {
   /**
    * @brief   Destructor of AesGcm class
    */
-  ~AesGcm();
+  ~AesGcm() = default;
 
   AesGcm(const AesGcm&) = delete;             // Delete copy constructor
   AesGcm& operator=(const AesGcm&) = delete;  // Delete copy assignment operator
@@ -62,6 +71,8 @@ class AesGcm {
    * @p aad has to be byte-for-byte what encryption was given or the tag fails. The caller is expected to hand over a
    * view into the very buffer the header was read into, rather than a header it rebuilt from parsed fields, so that
    * the bytes on the disk and the bytes under the tag cannot drift apart.
+   *
+   * @p key is borrowed for the duration of the call and nothing derived from it survives the return.
    */
   Result Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad);
 
@@ -80,6 +91,8 @@ class AesGcm {
    *
    * The header is not this class's business: it neither writes the salt nor knows what the bytes it authenticates
    * mean, and @p dst begins at the IV. Whoever owns the header writes it and passes the same bytes here.
+   *
+   * @p key is borrowed for the duration of the call and nothing derived from it survives the return.
    */
   Result Encrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad);
 
@@ -100,83 +113,97 @@ class AesGcm {
   void SetErrorCallback(ErrorCallback ecb) { ecb_ = std::move(ecb); }
 
  private:
-  EVP_CIPHER_CTX* ctx_ = nullptr;  // OpenSSL encryption/decryption context
+  /**
+   * @struct  CtxGuard
+   * @brief   Releases a cipher context, and with it the expanded key OpenSSL keeps inside one
+   *
+   * EVP_CIPHER_CTX_free cleanses the cipher data before releasing it, so this is both the release and the wipe. An
+   * empty type rather than a function pointer, so that a CtxPtr is the size of the pointer it wraps.
+   */
+  struct CtxGuard {
+    void operator()(EVP_CIPHER_CTX* ctx) const noexcept { EVP_CIPHER_CTX_free(ctx); }
+  };
+
+  /**
+   * @brief	Owning handle for the cipher context of one operation
+   *
+   * Declared where the operation is, never as a member, so that the expanded key cannot outlive the call whichever
+   * way that call returns.
+   */
+  using CtxPtr = std::unique_ptr<EVP_CIPHER_CTX, CtxGuard>;
 
   ErrorCallback ecb_ = nullptr;  // Error reporting callback function
-
-  std::array<uint8_t, kIVSize> iv_{};    // Initial vector
-  std::array<uint8_t, kTagSize> tag_{};  // Authentication tag read from buffer
-
-  const SecureKey* key_ = nullptr;  // Session key for the current operation
-
-  uint8_t* src_buff_ = nullptr;  // Source buffer
-  uint8_t* dst_buff_ = nullptr;  // Destination buffer
-
-  size_t dst_crs_ = 0;  // Current write position in buffer
-  size_t size_ = 0;     // Source buffer size
 
   /* ==================================================
    * Decryption functions
    * ================================================== */
 
   /**
-   * @brief	Read the IV and authentication tag from the buffer
-   *
-   * The header, salt included, was already consumed by the caller to derive the session key, so the buffer starts at
-   * the IV.
-   */
-  void DecryptInit();
-
-  /**
    * @brief   Create the decryption context and set key, IV, tag and associated data
+   * @param   key   Session key
+   * @param   iv    Initial vector read from the source buffer
+   * @param   tag   Authentication tag read from the source buffer
    * @param   aad   Associated data to authenticate
-   * @return  kSuccess on success, kFailure on failure
+   * @return  The context on success, nullptr on failure
    */
-  Result SetupDecryptCtx(std::span<const uint8_t> aad);
+  [[nodiscard]] CtxPtr MakeDecryptCtx(const SecureKey& key, std::span<const uint8_t, kIVSize> iv,
+                                      std::span<const uint8_t, kTagSize> tag, std::span<const uint8_t> aad);
 
   /**
    * @brief   Decrypt a buffer
+   * @param   ctx   Cipher context of the operation in progress
    * @param   src   Source buffer
    * @param   dst   Destination buffer
    * @param   len   Source buffer length
    * @return  kSuccess on success, kFailure on failure
    */
-  Result DecryptBuff(const uint8_t* src, uint8_t* dst, int len);
+  Result DecryptBuff(EVP_CIPHER_CTX* ctx, const uint8_t* src, uint8_t* dst, int len);
 
   /**
    * @brief   Finalize decryption and verify the authentication tag
+   * @param   ctx   Cipher context of the operation in progress
    * @return  kSuccess on success, kFailure on failure
    */
-  Result DecryptFinal();
+  Result DecryptFinal(EVP_CIPHER_CTX* ctx);
 
   /* ==================================================
    * Encryption functions
    * ================================================== */
 
   /**
-   * @brief   Initialize the encryption context, write the IV and authenticate the associated data
+   * @brief   Create the encryption context, set key and IV, and authenticate the associated data
+   * @param   key   Session key
+   * @param   iv    Initial vector generated for this operation
    * @param   aad   Associated data to authenticate
-   * @return  kSuccess on success, kFailure on failure
+   * @return  The context on success, nullptr on failure
    */
-  Result EncryptInit(std::span<const uint8_t> aad);
+  [[nodiscard]] CtxPtr MakeEncryptCtx(const SecureKey& key, std::span<const uint8_t, kIVSize> iv,
+                                      std::span<const uint8_t> aad);
 
   /**
    * @brief   Encrypt buffer
+   * @param   ctx   Cipher context of the operation in progress
+   * @param   src   Source buffer, null only when @p size is zero
+   * @param   dst   Destination buffer, positioned after the initial vector
+   * @param   size  Source buffer size
    * @return  kSuccess on success, kFailure on failure
    */
-  Result EncryptBuff();
+  Result EncryptBuff(EVP_CIPHER_CTX* ctx, const uint8_t* src, uint8_t* dst, size_t size);
 
   /**
    * @brief   Finalize encryption
+   * @param   ctx   Cipher context of the operation in progress
    * @return  kSuccess on success, kFailure on failure
    */
-  Result EncryptFinal();
+  Result EncryptFinal(EVP_CIPHER_CTX* ctx);
 
   /**
    * @brief   Generate and write authentication tag
+   * @param   ctx   Cipher context of the operation in progress
+   * @param   dst   Destination of the tag, at the end of the ciphertext
    * @return  kSuccess on success, kFailure on failure
    */
-  Result EncryptTag();
+  Result EncryptTag(EVP_CIPHER_CTX* ctx, std::span<uint8_t, kTagSize> dst);
 
   /* ==================================================
    * Callback helper functions

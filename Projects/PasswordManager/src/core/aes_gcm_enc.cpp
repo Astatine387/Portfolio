@@ -25,77 +25,76 @@ Result AesGcm::Encrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey&
     return Result::kFailure;
   }
 
-  src_buff_ = src;
-  dst_buff_ = dst;
-  size_ = size;
-  dst_crs_ = 0;
-  key_ = &key;
+  /* Generate a new IV for every encryption. It goes to the file in the clear and carries no secret, so an ordinary
+   * local is where it belongs and there is nothing here to wipe. */
 
-  if (EncryptInit(aad) == Result::kFailure) {
-    return Result::kFailure;  // LCOV_EXCL_LINE
-  }
+  std::array<uint8_t, kIVSize> iv{};
 
-  if (EncryptBuff() == Result::kFailure) {
-    return Result::kFailure;  // LCOV_EXCL_LINE
-  }
-
-  if (EncryptFinal() == Result::kFailure) {
-    return Result::kFailure;  // LCOV_EXCL_LINE
-  }
-
-  if (EncryptTag() == Result::kFailure) {
-    return Result::kFailure;  // LCOV_EXCL_LINE
-  }
-
-  return Result::kSuccess;
-}
-
-Result AesGcm::EncryptInit(std::span<const uint8_t> aad) {
-  /* Clear existing context */
-
-  if (ctx_) {
-    EVP_CIPHER_CTX_free(ctx_);
-    ctx_ = nullptr;
-  }
-
-  /* Generate a new IV for every encryption */
-
-  if (Random(iv_.data(), kIVSize) == Result::kFailure) {
+  if (Random(iv.data(), kIVSize) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Random failed - Cannot generate initial vector\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  /* Set encryption context */
+  /* The context carries the expanded key. It is created here and released on the way out of this function, whichever
+   * of the returns below is taken. */
 
-  ctx_ = EVP_CIPHER_CTX_new();
+  const CtxPtr ctx = MakeEncryptCtx(key, iv, aad);
 
-  if (!ctx_) {
+  if (!ctx) {
+    return Result::kFailure;  // LCOV_EXCL_LINE; MakeEncryptCtx reported the error
+  }
+
+  /* Write the fresh IV. The header ahead of it belongs to the caller, which has already written it and passed those
+   * same bytes in as the associated data. */
+
+  memcpy(dst, iv.data(), kIVSize);
+
+  if (EncryptBuff(ctx.get(), src, dst + kIVSize, size) == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  if (EncryptFinal(ctx.get()) == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  if (EncryptTag(ctx.get(), std::span<uint8_t, kTagSize>(dst + kIVSize + size, kTagSize)) == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  return Result::kSuccess;
+}
+
+AesGcm::CtxPtr AesGcm::MakeEncryptCtx(const SecureKey& key, std::span<const uint8_t, kIVSize> iv,
+                                      std::span<const uint8_t> aad) {
+  CtxPtr ctx(EVP_CIPHER_CTX_new());
+
+  if (!ctx) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot create context\n");
-    return Result::kFailure;
+    return nullptr;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_EncryptInit_ex(ctx_, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1) {
+  if (EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
-    return Result::kFailure;
+    return nullptr;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, kIVSize, nullptr) != 1) {
+  if (EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_IVLEN, kIVSize, nullptr) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set initial vector size\n");
-    return Result::kFailure;
+    return nullptr;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_EncryptInit_ex(ctx_, nullptr, nullptr, key_->Bytes().data(), iv_.data()) != 1) {
+  if (EVP_EncryptInit_ex(ctx.get(), nullptr, nullptr, key.Bytes().data(), iv.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
-    return Result::kFailure;
+    return nullptr;
     // LCOV_EXCL_STOP
   }
 
@@ -105,51 +104,43 @@ Result AesGcm::EncryptInit(std::span<const uint8_t> aad) {
 
   int out_len = 0;
 
-  if (!aad.empty() && EVP_EncryptUpdate(ctx_, nullptr, &out_len, aad.data(), static_cast<int>(aad.size())) != 1) {
+  if (!aad.empty() && EVP_EncryptUpdate(ctx.get(), nullptr, &out_len, aad.data(), static_cast<int>(aad.size())) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot authenticate the header\n");
-    return Result::kFailure;
+    return nullptr;
     // LCOV_EXCL_STOP
   }
 
-  /* Write the fresh IV. The header ahead of it belongs to the caller, which has already written it and passed those
-   * same bytes in as the associated data above. */
-
-  memcpy(dst_buff_ + dst_crs_, iv_.data(), kIVSize);
-  dst_crs_ += kIVSize;
-
-  return Result::kSuccess;
+  return ctx;
 }
 
-Result AesGcm::EncryptBuff() {
+Result AesGcm::EncryptBuff(EVP_CIPHER_CTX* ctx, const uint8_t* src, uint8_t* dst, size_t size) {
   int out_len;
 
   /* constants.h asserts that kMaxSize leaves no image longer than the int length this call takes */
 
-  if (EVP_EncryptUpdate(ctx_, dst_buff_ + dst_crs_, &out_len, src_buff_, static_cast<int>(size_)) != 1) {
+  if (EVP_EncryptUpdate(ctx, dst, &out_len, src, static_cast<int>(size)) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  if (std::cmp_not_equal(out_len, size_)) {
+  if (std::cmp_not_equal(out_len, size)) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
-
-  dst_crs_ += size_;
 
   return Result::kSuccess;
 }
 
-Result AesGcm::EncryptFinal() {
+Result AesGcm::EncryptFinal(EVP_CIPHER_CTX* ctx) {
   std::array<uint8_t, kBlockSize> final_block{};
   int final_len;
 
-  if (EVP_EncryptFinal_ex(ctx_, final_block.data(), &final_len) != 1) {
+  if (EVP_EncryptFinal_ex(ctx, final_block.data(), &final_len) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Finalization failed - Cannot finalize encryption\n");
     return Result::kFailure;
@@ -166,18 +157,17 @@ Result AesGcm::EncryptFinal() {
   return Result::kSuccess;
 }
 
-Result AesGcm::EncryptTag() {
+Result AesGcm::EncryptTag(EVP_CIPHER_CTX* ctx, std::span<uint8_t, kTagSize> dst) {
   std::array<uint8_t, kTagSize> tag{};
 
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_GET_TAG, kTagSize, tag.data()) != 1) {
+  if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, kTagSize, tag.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Tag Error - Cannot get authentication tag\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  memcpy(dst_buff_ + dst_crs_, tag.data(), kTagSize);
-  dst_crs_ += kTagSize;
+  memcpy(dst.data(), tag.data(), kTagSize);
 
   return Result::kSuccess;
 }

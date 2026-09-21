@@ -10,10 +10,10 @@
 #include "core/aes_gcm.h"
 
 Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey& key, std::span<const uint8_t> aad) {
-  /* Everything below reads the buffer at offsets it takes on trust. DecryptInit lifts the tag from src + size -
-   * kTagSize, and that subtraction is size_t arithmetic, so a size under kTagSize wraps instead of going negative and
-   * the read lands nowhere near the allocation. Vault::OpenVault refuses a file below kMinSize long before one
-   * reaches here, but that is a check in another class on another path, and this one is public and called directly. */
+  /* Everything below reads the buffer at offsets it takes on trust. The tag is lifted from src + size - kTagSize, and
+   * that subtraction is size_t arithmetic, so a size under kTagSize wraps instead of going negative and the read
+   * lands nowhere near the allocation. Vault::OpenVault refuses a file below kMinSize long before one reaches here,
+   * but that is a check in another class on another path, and this one is public and called directly. */
 
   if (src == nullptr) {
     ReportError("[Crypto] Decryption failed - No source buffer to read the ciphertext from\n");
@@ -33,28 +33,35 @@ Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey&
     return Result::kFailure;
   }
 
-  src_buff_ = src;
-  dst_buff_ = dst;
-  size_ = size;
-  dst_crs_ = 0;
-  key_ = &key;
+  /* Read the IV and the tag out of the buffer the caller handed over. The header, salt included, was already consumed
+   * by the caller to derive the session key, so the buffer starts at the IV and ends on the tag. Neither is a secret,
+   * since both go to the file in the clear, so both live in ordinary locals. */
 
-  DecryptInit();
+  std::array<uint8_t, kIVSize> iv{};
+  std::array<uint8_t, kTagSize> tag{};
 
-  if (SetupDecryptCtx(aad) == Result::kFailure) {
-    return Result::kFailure;  // LCOV_EXCL_LINE
+  memcpy(iv.data(), src, kIVSize);
+  memcpy(tag.data(), src + size - kTagSize, kTagSize);
+
+  /* The context carries the expanded key. It is created here and released on the way out of this function, whichever
+   * of the returns below is taken. */
+
+  const CtxPtr ctx = MakeDecryptCtx(key, iv, tag, aad);
+
+  if (!ctx) {
+    return Result::kFailure;  // LCOV_EXCL_LINE; MakeDecryptCtx reported the error
   }
 
   /* Decrypt the ciphertext in chunks */
 
-  int64_t rem = static_cast<int64_t>(size_ - kIVSize - kTagSize);
+  int64_t rem = static_cast<int64_t>(size - kIVSize - kTagSize);
   size_t src_crs = kIVSize;
   size_t dst_crs = 0;
 
   while (rem > 0) {
     int chunk_size = static_cast<int>(std::min<int64_t>(rem, kBuffSize * kBlockSize));
 
-    if (DecryptBuff(src_buff_ + src_crs, dst_buff_ + dst_crs, chunk_size) == Result::kFailure) {
+    if (DecryptBuff(ctx.get(), src + src_crs, dst + dst_crs, chunk_size) == Result::kFailure) {
       return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
@@ -65,58 +72,54 @@ Result AesGcm::Decrypt(uint8_t* src, uint8_t* dst, size_t size, const SecureKey&
     rem -= chunk_size;
   }
 
-  return DecryptFinal();
+  /* The return value is computed before ctx is destroyed, so the tag is still verified against a live context */
+
+  return DecryptFinal(ctx.get());
 }
 
-void AesGcm::DecryptInit() {
-  /* Read the IV, which the caller left at the front of the buffer it handed over */
+AesGcm::CtxPtr AesGcm::MakeDecryptCtx(const SecureKey& key, std::span<const uint8_t, kIVSize> iv,
+                                      std::span<const uint8_t, kTagSize> tag, std::span<const uint8_t> aad) {
+  CtxPtr ctx(EVP_CIPHER_CTX_new());
 
-  memcpy(iv_.data(), src_buff_, kIVSize);
-  memcpy(tag_.data(), src_buff_ + size_ - kTagSize, kTagSize);
-}
-
-Result AesGcm::SetupDecryptCtx(std::span<const uint8_t> aad) {
-  /* Clear existing context */
-
-  if (ctx_) {
-    EVP_CIPHER_CTX_free(ctx_);
-    ctx_ = nullptr;
-  }
-
-  ctx_ = EVP_CIPHER_CTX_new();
-
-  if (!ctx_) {
+  if (!ctx) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot create context\n");
-    return Result::kFailure;
+    return nullptr;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_DecryptInit_ex(ctx_, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1) {
+  if (EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
-    return Result::kFailure;
+    return nullptr;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, kIVSize, nullptr) != 1) {
+  if (EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_IVLEN, kIVSize, nullptr) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set initial vector size\n");
-    return Result::kFailure;
+    return nullptr;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_DecryptInit_ex(ctx_, nullptr, nullptr, key_->Bytes().data(), iv_.data()) != 1) {
+  if (EVP_DecryptInit_ex(ctx.get(), nullptr, nullptr, key.Bytes().data(), iv.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set key and initial vector\n");
-    return Result::kFailure;
+    return nullptr;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_TAG, kTagSize, tag_.data()) != 1) {
+  /* EVP_CTRL_GCM_SET_TAG takes a void* and copies the bytes into the context. They go in through a mutable copy
+   * rather than a cast that throws away the constness of the caller's buffer. */
+
+  std::array<uint8_t, kTagSize> tag_copy{};
+
+  memcpy(tag_copy.data(), tag.data(), kTagSize);
+
+  if (EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, kTagSize, tag_copy.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Tag failed - Cannot set authentication tag\n");
-    return Result::kFailure;
+    return nullptr;
     // LCOV_EXCL_STOP
   }
 
@@ -125,20 +128,20 @@ Result AesGcm::SetupDecryptCtx(std::span<const uint8_t> aad) {
 
   int out_len = 0;
 
-  if (!aad.empty() && EVP_DecryptUpdate(ctx_, nullptr, &out_len, aad.data(), static_cast<int>(aad.size())) != 1) {
+  if (!aad.empty() && EVP_DecryptUpdate(ctx.get(), nullptr, &out_len, aad.data(), static_cast<int>(aad.size())) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Decryption failed - Cannot authenticate the header\n");
-    return Result::kFailure;
+    return nullptr;
     // LCOV_EXCL_STOP
   }
 
-  return Result::kSuccess;
+  return ctx;
 }
 
-Result AesGcm::DecryptBuff(const uint8_t* src, uint8_t* dst, int len) {
+Result AesGcm::DecryptBuff(EVP_CIPHER_CTX* ctx, const uint8_t* src, uint8_t* dst, int len) {
   int out_len;
 
-  if (EVP_DecryptUpdate(ctx_, dst, &out_len, src, len) != 1) {
+  if (EVP_DecryptUpdate(ctx, dst, &out_len, src, len) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Decryption failed - Cannot decrypt buffer\n");
     return Result::kFailure;
@@ -155,11 +158,11 @@ Result AesGcm::DecryptBuff(const uint8_t* src, uint8_t* dst, int len) {
   return Result::kSuccess;
 }
 
-Result AesGcm::DecryptFinal() {
+Result AesGcm::DecryptFinal(EVP_CIPHER_CTX* ctx) {
   std::array<uint8_t, kBlockSize> final_block{};
   int final_len;
 
-  if (EVP_DecryptFinal_ex(ctx_, final_block.data(), &final_len) != 1) {
+  if (EVP_DecryptFinal_ex(ctx, final_block.data(), &final_len) != 1) {
     ReportError("[Auth] Verification failed - Invalid password or corrupted vault\n");
     return Result::kFailure;
   }
