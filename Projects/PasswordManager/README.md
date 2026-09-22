@@ -172,7 +172,7 @@ src
 * No cloud sync (Local vault file only)
 * No auto-lock on idle
 * No auto-type (clipboard only)
-* Vault file becomes 
+* Text in Qt widget may stay in unlocked heap after the widget is cleared
 
 # 4. Build and Usage
 ## 4-1. Prerequisites

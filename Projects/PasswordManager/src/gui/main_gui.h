@@ -130,7 +130,6 @@ class MainGUI : public QWidget {
 
   QString orig_site_;
   QString orig_acc_;
-  bool is_edit_mode_ = false;
 
   ErrorCallback ecb_ = nullptr;
 

@@ -164,6 +164,12 @@ EntryInput EntryGUI::GetInput() {
   return res;
 }
 
+void EntryGUI::done(int r) {
+  pwline_->Clear();
+
+  QDialog::done(r);
+}
+
 void EntryGUI::OnOKClicked() {
   err_msg_->clear();
 

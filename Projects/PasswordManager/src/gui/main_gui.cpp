@@ -100,8 +100,6 @@ void MainGUI::OnBackToLogin() {
 }
 
 void MainGUI::OnAddRequested() {
-  is_edit_mode_ = false;
-
   entry_gui_->SetAddMode();
 
   if (entry_gui_->exec() == QDialog::Accepted) {
@@ -117,7 +115,6 @@ void MainGUI::OnAddRequested() {
 }
 
 void MainGUI::OnEditRequested(const QString& site, const QString& acc) {
-  is_edit_mode_ = true;
   orig_site_ = site;
   orig_acc_ = acc;
 
@@ -236,7 +233,16 @@ void MainGUI::OnCloseRequested() {
   StopClipboardCountdown();
 
   vault_.CloseVault();
+
+  /* The widgets are built once and outlive every session, so what the session left in them goes with it. SetAddMode
+   * empties the edit dialog's site, account and password lines, and the entry it was editing stops being a thing
+   * this screen remembers. */
+
   list_gui_->Clear();
+  entry_gui_->SetAddMode();
+
+  orig_site_.clear();
+  orig_acc_.clear();
 
   stack_->setCurrentWidget(login_gui_);
   resize(300, 150);

@@ -49,13 +49,16 @@ Result PWLineEdit::Extract(Password& pw) {
 
   sodium_memzero(utf8.data(), static_cast<size_t>(utf8.size()));
 
-  pw_line_->clear();
+  Clear();
 
   return res;
 }
 
 void PWLineEdit::Clear() {
-  pw_line_->clear();
+  /* setText rather than clear(): QLineEdit::clear() leaves what it removed in the widget's undo history, so an undo
+   * afterwards puts the password back in the field. setText drops that history along with the text. */
+
+  pw_line_->setText(QString());
 }
 
 void PWLineEdit::SetPassword(const Password& pw) {
@@ -64,7 +67,7 @@ void PWLineEdit::SetPassword(const Password& pw) {
    * this one. Clearing here rather than at the call sites is what makes the function correct for every caller
    * instead of for the ones that remember to clear. */
 
-  pw_line_->clear();
+  Clear();
 
   if (!pw.IsEmpty()) {
     pw_line_->setText(QString::fromUtf8(pw.GetData(), static_cast<int>(pw.GetSize())));

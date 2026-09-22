@@ -57,6 +57,17 @@ class EntryGUI : public QDialog {
    */
   EntryInput GetInput();
 
+  /**
+   * @brief	Clear the password field, then close the dialog the way QDialog would
+   * @param	r	Result code to hand back to exec()
+   *
+   * Every way out of the dialog - Ok, Cancel, Escape, the title bar - ends up here, and the dialog is built once and
+   * lives as long as the application, so this is the one place that keeps an entry's password from sitting in the
+   * widget after the dialog is gone. Only the password field: GetInput() reads the site and account lines after
+   * exec() has returned, and clearing those would take the input with them.
+   */
+  void done(int r) override;
+
  private slots:
   /**
    * @brief	Validate input and accept dialog
