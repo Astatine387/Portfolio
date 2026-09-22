@@ -467,6 +467,52 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
 }
 
 /**
+ * @brief   Verify opening a vault whose image holds bytes past the last counted entry fails
+ *
+ * The count field and the bytes behind it are two statements about the same image, and a vault where they disagree
+ * this way is the one case the open path used to accept. Reading by the count alone, the session looks whole: one
+ * entry is listed and nothing reports a problem. What is not listed does not go away, though. The uncounted bytes
+ * stay in the decrypted image for as long as the vault is open, every save is refused because they are there, and
+ * the session is not dirty, so closing it warns about nothing. The one way out is to edit an entry, which rebuilds
+ * the image from the entry set and drops those bytes without saying so. Refusing the file at open is what this test
+ * pins down: the format is defined in one place, and the open path is held to it like the others.
+ */
+TEST_F(VaultFileTest, OpenRejectsTrailingBytes) {
+  const char* epw = "password";
+  const uint32_t pw_len = static_cast<uint32_t>(strlen(epw));
+
+  const Entry counted{ .site = "Google", .acc = "user@google.com", .pw_len = pw_len };
+  const Entry uncounted{ .site = "GitHub", .acc = "user@github.com", .pw_len = pw_len };
+
+  std::span<const uint8_t> pw_span(reinterpret_cast<const uint8_t*>(epw), pw_len);
+
+  /* Entry count is 1, but two well-formed entries follow it */
+
+  std::vector<uint8_t> img(kCountSize + counted.Size() + uncounted.Size(), 0);
+
+  StoreLE32(img.data(), 1);
+
+  size_t cur = kCountSize;
+
+  ASSERT_EQ(counted.Serialize(std::span(img).subspan(cur), pw_span), counted.Size());
+
+  cur += counted.Size();
+
+  ASSERT_EQ(uncounted.Serialize(std::span(img).subspan(cur), pw_span), uncounted.Size());
+
+  /* Write a vault the fixture password opens, at the cheapest legal parameters, so the image is what fails and the
+   * case does not spend a 512 MiB derivation saying so */
+
+  std::array<uint8_t, kSaltSize> salt{};
+  salt.fill(0x44);
+
+  WriteVault(path_, img, salt, MinParams());
+
+  EXPECT_EQ(Reload(), Result::kFailure);
+  EXPECT_NE(vault_.GetLastError().find("Validation failed - Trailing bytes after final entry"), std::string::npos);
+}
+
+/**
  * @brief   Verify decryption fails when the ciphertext is tampered
  */
 TEST_F(VaultFileTest, OpenTamperedCiphertext) {

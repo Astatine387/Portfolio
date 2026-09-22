@@ -13,4 +13,5 @@
 /Projects/PasswordManager/build
 /Projects/PasswordManager/build-asan
 /Projects/PasswordManager/build-cov
+/Projects/PasswordManager/build-tidy
 /Projects/PasswordManager/cmake-build-debug

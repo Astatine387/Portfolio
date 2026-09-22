@@ -38,6 +38,20 @@ enum class UpdateResult : std::uint8_t {
  */
 class Vault {
  public:
+  /**
+   * @enum    ImageOrigin
+   * @brief   Where an image handed to VerifyImage came from
+   *
+   * kFile is an image parsed out of a vault file, which is to say bytes this process did not write and has no reason
+   * to trust. kSession is one this process built from its own entry set, where a refusal means a rebuild went wrong
+   * rather than a file being malformed. The two differ in nothing VerifyImage checks; they differ in what a failure
+   * is about, and the reported message says which.
+   */
+  enum class ImageOrigin : std::uint8_t {
+    kFile,     // Parsed out of a vault file
+    kSession,  // Built by this process from the entry set
+  };
+
   /* ==================================================
    * Constructor and Destructor
    * ================================================== */
@@ -269,6 +283,7 @@ class Vault {
    * @brief   Verify an image against the entry set that describes it
    * @param   img       Image to check
    * @param   entries   Entry set the image is expected to match
+   * @param   origin    Where @p img came from, which selects how a failure is reported
    * @return  kSuccess when intact, kFailure on any mismatch
    *
    * Four things are checked, all of them about the image and the entry set still describing each other: the entry
@@ -277,10 +292,16 @@ class Vault {
    * exactly at the end of the image. An image too short to hold the count field fails the first of these. Nothing
    * about the allocation the image lives in is inspected here.
    *
+   * This is the one place the format states what a complete image is, and all three callers pass through it:
+   * OpenVault checks what it parsed out of a file before installing it, CommitImage checks a rebuild before it
+   * becomes the session, and SaveVaultWith checks the installed pair before it is written. Stated once and checked
+   * on every path, a vault that would fail one of them cannot be opened, built or saved rather than being caught by
+   * whichever path happened to ask.
+   *
    * Takes the pair as arguments rather than reading the members, so a candidate can be checked before it is
    * installed. Not const because ReportError is not.
    */
-  Result VerifyImage(const SecureBuffer& img, const std::set<Entry, EntryCmp>& entries);
+  Result VerifyImage(const SecureBuffer& img, const std::set<Entry, EntryCmp>& entries, ImageOrigin origin);
 
   /**
    * @brief   Install a verified image and entry set as the session state

@@ -140,7 +140,7 @@ Result Vault::CommitImage(SecureBuffer&& img, std::set<Entry, EntryCmp>&& entrie
     return Result::kFailure;
   }
 
-  if (VerifyImage(img, entries) == Result::kFailure) {
+  if (VerifyImage(img, entries, ImageOrigin::kSession) == Result::kFailure) {
     /* Unreachable from the CRUD paths as they stand, and the reason to keep it is that it is what makes them safe to
      * get wrong: a rebuild that does not describe itself correctly is dropped here rather than installed */
 
@@ -375,17 +375,22 @@ Result Vault::DeleteEntry(const std::string& site, const std::string& acc) {
   return CommitImage(std::move(nimg), std::move(candidate));
 }
 
-Result Vault::VerifyImage(const SecureBuffer& img, const std::set<Entry, EntryCmp>& entries) {
-  /* Re-parse the image and confirm the recorded offsets match a fresh parse. Every branch below is defensive: a
-   * caller hands over a candidate it has not installed, so a failure here is a rebuild discarded rather than a
-   * session left holding an image its entries do not describe. Each refusal is kept for the case it was written
-   * against. */
+Result Vault::VerifyImage(const SecureBuffer& img, const std::set<Entry, EntryCmp>& entries, ImageOrigin origin) {
+  auto report = [this, origin](const char* detail) {
+    std::string msg =
+        (origin == ImageOrigin::kFile) ? "[Data] Validation failed - " : "[Data] Integrity check failed - ";
+
+    msg += detail;
+    msg += '\n';
+
+    ReportError(msg.c_str());
+  };
 
   std::span<const uint8_t> view = img.Span();
 
   if (view.size() < kCountSize) {
     // LCOV_EXCL_START
-    ReportError("[Data] Integrity check failed - Image too small for the entry count\n");
+    report("Image too small for the entry count");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
@@ -394,7 +399,7 @@ Result Vault::VerifyImage(const SecureBuffer& img, const std::set<Entry, EntryCm
 
   if (entry_cnt != entries.size()) {
     // LCOV_EXCL_START
-    ReportError("[Data] Integrity check failed - Image entry count mismatch\n");
+    report("Image entry count mismatch");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
@@ -408,7 +413,7 @@ Result Vault::VerifyImage(const SecureBuffer& img, const std::set<Entry, EntryCm
 
     if (bytes == 0) {
       // LCOV_EXCL_START
-      ReportError("[Data] Integrity check failed - Invalid entry data in image\n");
+      report("Invalid entry data in image");
       return Result::kFailure;
       // LCOV_EXCL_STOP
     }
@@ -417,7 +422,7 @@ Result Vault::VerifyImage(const SecureBuffer& img, const std::set<Entry, EntryCm
 
     if (match == entries.end() || match->pw_off != parsed.pw_off || match->pw_len != parsed.pw_len) {
       // LCOV_EXCL_START
-      ReportError("[Data] Integrity check failed - Entry offset invariant violated\n");
+      report("Entry offset invariant violated");
       return Result::kFailure;
       // LCOV_EXCL_STOP
     }
@@ -426,10 +431,8 @@ Result Vault::VerifyImage(const SecureBuffer& img, const std::set<Entry, EntryCm
   }
 
   if (cur != view.size()) {
-    // LCOV_EXCL_START
-    ReportError("[Data] Integrity check failed - Trailing bytes after final entry\n");
+    report("Trailing bytes after final entry");
     return Result::kFailure;
-    // LCOV_EXCL_STOP
   }
 
   return Result::kSuccess;

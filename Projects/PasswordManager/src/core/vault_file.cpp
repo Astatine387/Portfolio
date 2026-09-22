@@ -249,6 +249,11 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
     }
   }
 
+  if (VerifyImage(img_, tmp, ImageOrigin::kFile) == Result::kFailure) {
+    Reset();
+    return Result::kFailure;  // VerifyImage reported the error
+  }
+
   entry_set_ = std::move(tmp);
 
   Clear();
@@ -275,7 +280,7 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key) {
    * disk is these bytes, and a save is the last point at which a disagreement can still be caught instead of
    * stored. */
 
-  if (VerifyImage(img_, entry_set_) == Result::kFailure) {
+  if (VerifyImage(img_, entry_set_, ImageOrigin::kSession) == Result::kFailure) {
     return Result::kFailure;  // VerifyImage reported the error
   }
 
