@@ -85,6 +85,29 @@ inline constexpr size_t kCountSize = sizeof(uint32_t);    /// Entry count field 
 inline constexpr size_t kHeaderSize =
     kMagicSize + kVersionSize + kKdfSize + kSaltSize + kCommitSize;  /// Authenticated header bytes
 
+/* The locking budget every buffer holding plaintext is drawn from, and the arithmetic that says what one allocation
+ * spends against it. sodium_malloc does not lock the bytes it was asked for: it places a canary ahead of them and
+ * locks the whole pages that the two together cover, so an allocation one byte past a page boundary pins a further
+ * page. The ceilings below are set against those rounded figures rather than against the sizes asked for.
+ *
+ * A 4 KiB page is an assumption of this arithmetic rather than something it reads off the machine. It holds on
+ * x86-64, which is what this is built and measured on; where the page is larger, each allocation rounds up further
+ * than LockedBytes accounts for and the budget below is no longer the conservative figure it is meant to be. */
+
+inline constexpr size_t kPageSize = 4096;                  /// Page size the locking arithmetic assumes
+inline constexpr size_t kCanarySize = 16;                  /// Canary libsodium places ahead of a sodium_malloc region
+inline constexpr size_t kLockBudget = 8ULL * 1024 * 1024;  /// Locked memory one process is assumed to be granted
+inline constexpr size_t kLockReserve = 32 * kPageSize;     /// Budget held back for what is locked beside the two images
+
+/**
+ * @brief   Report what an allocation of a given size spends against the locking budget
+ * @param   size  Bytes asked of sodium_malloc
+ * @return  Bytes sodium_malloc locks to satisfy the request
+ */
+constexpr size_t LockedBytes(size_t size) {
+  return ((size + kCanarySize + kPageSize - 1) / kPageSize) * kPageSize;
+}
+
 /* A vault is never streamed. The whole of it is decrypted into sodium_malloc memory and held there for as long as it
  * stays open, beside an ordinary heap copy of the ciphertext of the same size, so this ceiling is in the end a claim
  * about how much memory one process can lock. Nothing enforces it while running: sodium_malloc does not report a
@@ -92,22 +115,30 @@ inline constexpr size_t kHeaderSize =
  * does not fail to open. It opens with its plaintext no longer pinned and says nothing about it. There is no error to
  * catch, which is why this is a constant chosen to sit under the limit rather than a check written against it.
  *
- * A systemd default grants 8 MiB, soft and hard alike, so raising the soft limit to the hard one at startup gains
- * nothing on such a machine, and libsodium locks a page of its own beyond what was asked for, which leaves a single
- * allocation under 8 MiB less a page if it is to be locked at all. Four MiB clears that with the master password and
- * the session key locked beside it.
+ * What has to fit is two images, not one. CreateEntry, UpdateEntry and DeleteEntry each build the whole of the next
+ * image into a fresh SecureBuffer while the installed one is still held, and CommitImage swaps them only once it has
+ * verified the candidate, so every edit is a moment with both locked at once. The candidate is the larger of the
+ * two: it is allocated before CommitImage's ceiling has had anything to say about it, so the insert that will be
+ * refused is one that stands kMaxEntrySize above the image already installed. Sizing this constant against a single
+ * image is what left the second one swappable, and a session image holds every entry password in the vault.
  *
- * Little is given up for the smaller figure. The largest entry the parser will accept is 780 bytes, 256 of site and
- * 256 of account and 256 of password beside the three 4-byte length fields, and 5,377 of those fit under 4 MiB once
- * the header, IV, entry count and tag are paid for. Entries of the length a person actually types run nearer 60
- * bytes, which is some seventy thousand of them.
+ * The budget is the 8 MiB a systemd default grants, soft and hard alike, which is why raising the soft limit to the
+ * hard one at startup gains nothing on such a machine. kLockReserve is what is held back from it for the session
+ * key, the second key a password change derives beside it, the Password buffers the dialogs hold and libsodium's own
+ * allocations. The rest is what the pair of images has to fit inside, and the static_assert beside kMaxEntrySize is
+ * what holds them to it: this figure is chosen to satisfy that assert, not argued for here.
+ *
+ * Little is given up for it. The largest entry the parser will accept is kMaxEntrySize, 256 of site and 256 of
+ * account and 256 of password beside the three 4-byte length fields, and 5,251 of those fit once the header, IV,
+ * entry count and tag are paid for. Entries of the length a person actually types run nearer 60 bytes, which is some
+ * sixty-eight thousand of them.
  *
  * The same number bounds something else. The whole of a file is still pulled into memory before its tag has been
  * checked, so this is the most a single open can be made to allocate and read. It is not what a stranger gets to
  * spend, though: OpenVault reads the header alone until the commitment says the password was the right one, so a
  * file that is not this build's, or not this password's, costs kHeaderSize and the derivation its header asked for. */
 
-inline constexpr int64_t kMaxSize = 4LL * 1024 * 1024;                                /// Maximum vault file size
+inline constexpr int64_t kMaxSize = 4000LL * 1024;                                    /// Maximum vault file size
 inline constexpr int64_t kMinSize = (kHeaderSize + kIVSize + kCountSize + kTagSize);  /// Mininum vault file size
 inline constexpr size_t kFrameSize = kHeaderSize + kIVSize + kTagSize;  /// Vault file bytes outside the image
 
@@ -153,6 +184,24 @@ static_assert(kMaxGenPwLen <= kMaxEntryPwLen, "The generator can produce a passw
  * formed. Either way the file was already written by the time anything notices. */
 
 inline constexpr size_t kMinEntrySize = (sizeof(uint32_t) + 1) * 3;  /// Minimum serialized entry size
+
+/* The other end of the same figure, and what an edit costs over the image it is editing. It is stated here rather
+ * than left to the three ceilings because the locking budget is sized on it: the candidate image an insert builds is
+ * exactly this much larger than the one already installed, and the assert below is where that shows up. */
+
+inline constexpr size_t kMaxEntrySize =
+    (sizeof(uint32_t) * 3) + kMaxSiteLen + kMaxAccLen + kMaxEntryPwLen;  /// Maximum serialized entry size
+
+/* Where kMaxSize is actually decided. An edit holds the installed image and a candidate one entry larger at the same
+ * time, and both are sodium_malloc regions, so the two rounded up and the reserve beside them are what the budget
+ * has to cover. Stated as an assert rather than as the arithmetic in the comment above kMaxSize, because a ceiling
+ * raised past the budget costs nothing a build or a test run would report: the locking simply stops happening. */
+
+static_assert(LockedBytes(static_cast<size_t>(kMaxImageSize)) +
+                      LockedBytes(static_cast<size_t>(kMaxImageSize) + kMaxEntrySize) + kLockReserve <=
+                  kLockBudget,
+              "The installed image and the candidate one entry above it no longer fit the locking budget together, "
+              "which leaves the candidate swappable with every entry password in it");
 
 enum class VaultAction : std::uint8_t {
   kCreate,

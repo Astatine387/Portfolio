@@ -22,9 +22,10 @@ namespace {
 static_assert(kMaxSiteLen == 256 && kMaxAccLen == 256 && kMaxEntryPwLen == 256,
               "A field ceiling moved away from the 256 bytes these messages state");
 
-/* Same for the vault ceiling, which CommitImage below and SaveVaultWith both state in figures */
+/* Same for the vault ceiling, which CommitImage below states in figures; vault_file.cpp carries its own for the
+ * two refusals it words the same way */
 
-static_assert(kMaxSize == 4LL * 1024 * 1024, "The vault ceiling moved away from the 4 MiB these messages state");
+static_assert(kMaxSize == 4000LL * 1024, "The vault ceiling moved away from the 4,000 KiB these messages state");
 
 /**
  * @brief   Check entry fields against what the on-disk format accepts
@@ -136,7 +137,7 @@ Result Vault::CommitImage(SecureBuffer&& img, std::set<Entry, EntryCmp>&& entrie
    * deleting entries it would not name. The check SaveVaultWith makes is a backstop behind this one. */
 
   if (img.Size() > static_cast<size_t>(kMaxImageSize)) {
-    ReportError("[Data] Commit failed - Vault would exceed maximum size (4 MiB)\n");
+    ReportError("[Data] Commit failed - Vault would exceed maximum size (4,000 KiB)\n");
     return Result::kFailure;
   }
 

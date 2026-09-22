@@ -32,14 +32,19 @@ void DoInit() {
   }
 
 #ifdef _WIN32
-  /* Best-effort: raise the working-set minimum so locked pages are permitted */
+  /* Best-effort: raise the working-set minimum so locked pages are permitted. VirtualLock, which is what libsodium
+   * locks with here, charges against the process minimum working set rather than against a limit of its own, so the
+   * room asked for is the same room kMaxSize was sized against: kLockBudget covers the installed image, the
+   * candidate one entry larger that an edit builds beside it, and the reserve for the keys and Password buffers
+   * locked alongside both. Bumping by less would put the ceiling constants.h asserts against out of reach on
+   * Windows alone, and the shortfall would show up the same way it does on Linux, which is not at all. */
 
   SIZE_T min_ws = 0;
   SIZE_T max_ws = 0;
   HANDLE proc = GetCurrentProcess();
 
   if (GetProcessWorkingSetSize(proc, &min_ws, &max_ws)) {
-    constexpr SIZE_T kBump = 4ULL * 1024 * 1024;
+    constexpr SIZE_T kBump = static_cast<SIZE_T>(kLockBudget);
     SetProcessWorkingSetSize(proc, min_ws + kBump, max_ws + kBump);
   }
 

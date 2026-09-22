@@ -13,6 +13,17 @@
 #include <span>
 #include <utility>
 
+#ifndef _WIN32
+#include <sodium.h>
+#include <sys/resource.h>
+#include <unistd.h>
+
+#include <cstddef>
+
+#include "common/constants.h"
+#include "utils/password.h"
+#endif
+
 /* ==================================================
  * Allocation Test
  * ================================================== */
@@ -206,3 +217,138 @@ TEST(SecureBufferTest, SelfMoveAssign) {
   EXPECT_EQ(buff.Size(), 32u);
   EXPECT_TRUE(buff.Valid());
 }
+
+#ifndef _WIN32
+
+/* ==================================================
+ * Lock Budget Test
+ * ================================================== */
+
+namespace {
+
+/**
+ * @class   MemlockLimit
+ * @brief   Holds RLIMIT_MEMLOCK at a chosen soft limit for as long as it is in scope
+ *
+ * The limit has to go back up however the test leaves, including through the return an ASSERT makes, or every case
+ * that runs afterwards inherits a process that can lock less than the one it was written against.
+ */
+class MemlockLimit {
+ public:
+  explicit MemlockLimit(rlim_t soft) {
+    ok_ = getrlimit(RLIMIT_MEMLOCK, &saved_) == 0;
+
+    if (!ok_) {
+      return;  // LCOV_EXCL_LINE  getrlimit on a valid resource does not fail
+    }
+
+    rlimit next = saved_;
+
+    next.rlim_cur = soft;
+    ok_ = setrlimit(RLIMIT_MEMLOCK, &next) == 0;
+  }
+
+  ~MemlockLimit() {
+    if (ok_) {
+      static_cast<void>(setrlimit(RLIMIT_MEMLOCK, &saved_));
+    }
+  }
+
+  MemlockLimit(const MemlockLimit&) = delete;
+  MemlockLimit& operator=(const MemlockLimit&) = delete;
+  MemlockLimit(MemlockLimit&&) = delete;
+  MemlockLimit& operator=(MemlockLimit&&) = delete;
+
+  [[nodiscard]] bool Ok() const { return ok_; }
+
+ private:
+  rlimit saved_{};
+  bool ok_ = false;
+};
+
+/**
+ * @brief   Report whether a region is already held in locked memory
+ * @param   data  Start of the region
+ * @param   size  Region size in bytes
+ * @return  true when the region is locked
+ *
+ * There is nothing to ask. sodium_malloc does not report a refused mlock, which is the whole reason the ceiling is a
+ * constant rather than a check, so the question is put to the kernel instead: mlock over pages that are already
+ * locked costs nothing against RLIMIT_MEMLOCK and returns 0, while the same call over pages that are not has to
+ * charge them against a budget this test has already spent, and is refused.
+ */
+bool Locked(const uint8_t* data, size_t size) {
+  return sodium_mlock(const_cast<uint8_t*>(data), size) == 0;
+}
+
+}  // namespace
+
+/**
+ * @brief   Verify both images an edit holds at once stay locked inside the budget kMaxSize is sized against
+ *
+ * CreateEntry builds the candidate image while the installed one is still held, so the peak is the pair of them, and
+ * the candidate stands kMaxEntrySize above the image it replaces because it is allocated before CommitImage has had
+ * anything to say about its size. Allocated here in that shape, beside the session key and the Password buffers a
+ * dialog holds, against the same RLIMIT_MEMLOCK the static_assert in constants.h assumes. A ceiling raised past the
+ * budget reports nothing on its own: the pages simply stop being pinned, and a session image carries every entry
+ * password in the vault.
+ *
+ * Skipped as root, which locks memory under CAP_IPC_LOCK and never consults the limit this case lowers.
+ */
+TEST(SecureBufferTest, BothEditImagesStayLockedWithinBudget) {
+  if (geteuid() == 0) {
+    GTEST_SKIP() << "RLIMIT_MEMLOCK does not bind root";
+  }
+
+  /* Take the one-time libsodium init before the limit comes down. It raises the soft RLIMIT_MEMLOCK to the hard one,
+   * so reaching it afterwards would undo the lowering below on any machine whose hard limit is the larger of the
+   * two, and this case would then pass without ever having tested the budget. std::call_once keeps the first
+   * SecureBuffer below from running it a second time. */
+
+  SecureBuffer warmup(1);
+
+  ASSERT_TRUE(warmup.Valid());
+
+  /* A machine whose hard limit is under the budget cannot be held at it, and lowering to whatever it does allow
+   * would test a ceiling constants.h was never sized against. Read before the limit moves, so the figure is the one
+   * the process actually started with. */
+
+  rlimit current{};
+
+  ASSERT_EQ(getrlimit(RLIMIT_MEMLOCK, &current), 0);
+
+  if (current.rlim_max < static_cast<rlim_t>(kLockBudget)) {
+    GTEST_SKIP() << "Hard RLIMIT_MEMLOCK is below the budget kMaxSize is sized against";
+  }
+
+  MemlockLimit limit(static_cast<rlim_t>(kLockBudget));
+
+  ASSERT_TRUE(limit.Ok());
+
+  /* The installed image at its ceiling, and the candidate an insert would build beside it */
+
+  SecureBuffer installed(static_cast<size_t>(kMaxImageSize));
+  SecureBuffer candidate(static_cast<size_t>(kMaxImageSize) + kMaxEntrySize);
+
+  /* What kLockReserve is held back for */
+
+  SecureBuffer key(kDerivedSize);
+
+  Password entered;
+  Password confirmed;
+
+  ASSERT_EQ(entered.SetData("password", 8), Result::kSuccess);
+  ASSERT_EQ(confirmed.SetData("asdf1234", 8), Result::kSuccess);
+
+  ASSERT_TRUE(installed.Valid());
+  ASSERT_TRUE(candidate.Valid());
+  ASSERT_TRUE(key.Valid());
+
+  EXPECT_TRUE(Locked(installed.Data(), installed.Size()));
+  EXPECT_TRUE(Locked(candidate.Data(), candidate.Size()));
+  EXPECT_TRUE(Locked(key.Data(), key.Size()));
+  EXPECT_TRUE(Locked(reinterpret_cast<const uint8_t*>(entered.GetData()), entered.GetSize()));
+  EXPECT_TRUE(Locked(reinterpret_cast<const uint8_t*>(confirmed.GetData()), confirmed.GetSize()));
+}
+
+#endif /* !_WIN32 */

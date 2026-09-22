@@ -13,6 +13,11 @@
 #include "utils/byte_order.h"
 #include "utils/platform.h"
 
+/* Both refusals below state the ceiling outright, the way CommitImage's does. A constant moved without the figure
+ * beside it moving too would leave the text quietly wrong, so the figure is asserted rather than trusted. */
+
+static_assert(kMaxSize == 4000LL * 1024, "The vault ceiling moved away from the 4,000 KiB these messages state");
+
 Result Vault::NewVault(const std::string& path, const Password& pw) {
   last_error_.clear();
 
@@ -101,14 +106,14 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
   }
 
   if (src_size_ > kMaxSize) {
-    ReportError("[File] Validation failed - File exceeds maximum size (4 MiB)\n");
+    ReportError("[File] Validation failed - File exceeds maximum size (4,000 KiB)\n");
     return Result::kFailure;
   }
 
   /* Read the header, and nothing else yet. Everything that decides whether this is a vault at all and whether this
    * password opens it lives in these bytes; the body is needed only once both have been answered. Keeping the
-   * allocation and the read of up to 4 MiB behind those answers means a wrong magic number never buys them. What a
-   * stranger can spend here is these kHeaderSize bytes and the one Argon2id pass Limitations names as the cost a
+   * allocation and the read of up to kMaxSize behind those answers means a wrong magic number never buys them. What
+   * a stranger can spend here is these kHeaderSize bytes and the one Argon2id pass Limitations names as the cost a
    * crafted file gets to choose, bounded by the range check ParseHeader applies. */
 
   std::array<uint8_t, kHeaderSize> head_buff{};
@@ -294,7 +299,7 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key) {
 
   if (dst_size_ > kMaxSize) {
     // LCOV_EXCL_START
-    ReportError("[Data] Validation failed - Vault exceeds maximum size (4 MiB)\n");
+    ReportError("[Data] Validation failed - Vault exceeds maximum size (4,000 KiB)\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
