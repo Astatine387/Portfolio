@@ -15,6 +15,10 @@
 #include <sys/stat.h>
 #endif
 
+#ifdef _WIN32
+#include "tests/win32_dacl.h"
+#endif
+
 #include "utils/platform.h"
 
 /* ==================================================
@@ -652,3 +656,52 @@ TEST_F(OpenTempFileTest, IgnoresPermissiveDestination) {
 }
 
 #endif /* !_WIN32 */
+
+#ifdef _WIN32
+
+/**
+ * @brief   Verify the created file is reachable by the account that created it and by nobody else
+ *
+ * Asked for no security attributes, CreateFileW gives the new file a default security descriptor whose DACL is
+ * whatever the directory offers; what OpenTempFile passes instead is a protected DACL holding one ACE for the token
+ * user. The stream is closed before the check because that handle is opened with no sharing at all, and reading the
+ * security of a path means opening it a second time.
+ */
+TEST_F(OpenTempFileTest, CreatesOwnerOnlyFile) {
+  ASSERT_EQ(OpenTempFile(&file_, path_), Result::kSuccess);
+  ASSERT_NE(file_, nullptr);
+
+  fclose(file_);
+  file_ = nullptr;
+
+  EXPECT_TRUE(CheckOwnerOnlyDacl(path_));
+}
+
+/**
+ * @brief   Verify an inheritable ACE on the directory does not reach the file created inside it
+ *
+ * This is the regression test for the default security descriptor. A directory that offers Everyone an inheritable
+ * full-access ACE is what a vault kept in a shared folder sits in, and a file created there without a descriptor of
+ * its own comes out carrying that ACE, readable by every account on the machine. The descriptor OpenTempFile
+ * supplies is explicit and protected, so the directory contributes nothing to it.
+ */
+TEST_F(OpenTempFileTest, IgnoresInheritableDirectoryAces) {
+  const std::string dir = "temp_inherit_dir";
+
+  ASSERT_TRUE(MakeWorldAccessibleDir(dir));
+
+  path_ = dir + "/child.XXXXXX";
+
+  ASSERT_EQ(OpenTempFile(&file_, path_), Result::kSuccess);
+  ASSERT_NE(file_, nullptr);
+
+  fclose(file_);
+  file_ = nullptr;
+
+  EXPECT_TRUE(CheckOwnerOnlyDacl(path_));
+
+  EXPECT_EQ(RemoveFile(path_), Result::kSuccess);
+  EXPECT_TRUE(RemoveDirectoryW(ToWidePath(dir).c_str()));
+}
+
+#endif /* _WIN32 */

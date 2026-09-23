@@ -241,7 +241,11 @@ set(TEST_SOURCES
     src/tests/vault_file_test.cpp
 )
 
-add_executable(PasswordManager-tests ${TEST_SOURCES})
+set(TEST_HEADERS
+    src/tests/win32_dacl.h
+)
+
+add_executable(PasswordManager-tests ${TEST_SOURCES} ${TEST_HEADERS})
 
 target_link_libraries(PasswordManager-tests PRIVATE
     PasswordManager-core

@@ -20,6 +20,10 @@
 #include <unistd.h>
 #endif
 
+#ifdef _WIN32
+#include "tests/win32_dacl.h"
+#endif
+
 #include "core/secure_key.h"
 #include "core/vault.h"
 #include "core/vault_header.h"
@@ -993,6 +997,45 @@ TEST_F(VaultFileTest, SaveDoesNotWidenVaultPermissions) {
 }
 
 #endif /* !_WIN32 */
+
+#ifdef _WIN32
+
+/**
+ * @brief   Verify a save never widens the permissions of the vault it replaces
+ *
+ * The Windows half of the same guarantee. There is no mode word to loosen here, so what stands in for one is the
+ * directory: one that offers Everyone an inheritable full-access ACE would hand that ACE to anything created in it
+ * with a default security descriptor. Every vault file this program writes is created by OpenTempFile and published
+ * by a rename within that same directory, and a rename carries the file's own descriptor rather than taking one from
+ * where it lands, so the explicit DACL the temporary was created under is the DACL of the published vault.
+ */
+TEST_F(VaultFileTest, SaveDoesNotWidenVaultPermissions) {
+  const std::string dir = "vault_inherit_dir";
+  const std::string path = dir + "/child.vault";
+
+  ASSERT_TRUE(MakeWorldAccessibleDir(dir));
+  ASSERT_EQ(vault_.NewVault(path, MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.SaveVault(path), Result::kSuccess);
+
+  EXPECT_TRUE(CheckOwnerOnlyDacl(path));
+
+  /* The vault those permissions belong to is still a vault that opens */
+
+  vault_.CloseVault();
+
+  Vault fresh;
+
+  EXPECT_EQ(fresh.OpenVault(path, MakePW("password")), Result::kSuccess);
+  EXPECT_EQ(fresh.GetEntryCount(), 1);
+
+  fresh.CloseVault();
+
+  EXPECT_EQ(RemoveFile(path), Result::kSuccess);
+  EXPECT_TRUE(RemoveDirectoryW(ToWidePath(dir).c_str()));
+}
+
+#endif /* _WIN32 */
 
 /**
  * @brief   Verify SaveVault fails when no vault is open
