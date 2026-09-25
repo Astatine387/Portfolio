@@ -354,7 +354,12 @@ TEST_F(VaultFileTest, NewVaultRefusesExistingVault) {
 TEST_F(VaultFileTest, NewVaultLeavesForeignFileUntouched) {
   const std::string notes_path = "notes.txt";
   const std::string text = "Shopping list, not a vault\n";
-  const std::vector<uint8_t> notes(text.begin(), text.end());
+
+  /* Copying through the string's iterators would convert char to uint8_t per element, which MSVC reports as a
+   * signed/unsigned mismatch from inside <xutility>; the pointer pair carries the element type the vector wants. */
+
+  const auto* const text_bytes = reinterpret_cast<const uint8_t*>(text.data());
+  const std::vector<uint8_t> notes(text_bytes, text_bytes + text.size());
 
   WriteFile(notes_path, notes);
 
