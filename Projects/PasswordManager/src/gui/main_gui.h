@@ -183,7 +183,7 @@ class MainGUI : public QWidget {
    * answer, and the core acknowledges only the version the user was shown, so that second change comes back as
    * another conflict and is asked about in its turn instead of being replaced unseen.
    */
-  [[nodiscard]] SaveResult SaveWithConflictPrompt(const std::function<SaveResult(SaveMode)>& op);
+  [[nodiscard]] SaveResult SaveWithConflictPrompt(const std::function<::SaveResult(SaveMode)>& op);
 
   /**
    * @brief	Ask whether to overwrite a vault file that changed on disk

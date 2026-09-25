@@ -291,7 +291,7 @@ void MainGUI::OnChangePWRequested() {
       QApplication::setOverrideCursor(Qt::WaitCursor);
       QApplication::processEvents();
 
-      const SaveResult res = vault_.ChangePW(new_pw, mode);
+      const ::SaveResult res = vault_.ChangePW(new_pw, mode);
 
       QApplication::restoreOverrideCursor();
 
@@ -366,21 +366,21 @@ bool MainGUI::ConfirmDiscard() {
   return choice == QMessageBox::Discard;
 }
 
-MainGUI::SaveResult MainGUI::SaveWithConflictPrompt(const std::function<SaveResult(SaveMode)>& op) {
-  SaveResult res = op(SaveMode::kRefuseChanged);
+MainGUI::SaveResult MainGUI::SaveWithConflictPrompt(const std::function<::SaveResult(SaveMode)>& op) {
+  ::SaveResult res = op(SaveMode::kRefuseChanged);
 
-  if (res == SaveResult::kSuccess) {
+  if (res == ::SaveResult::kSuccess) {
     return SaveResult::kSaved;
   }
 
-  while (res == SaveResult::kConflict) {
+  while (res == ::SaveResult::kConflict) {
     if (!ConfirmOverwrite()) {
       return SaveResult::kCancelled;
     }
 
     res = op(SaveMode::kOverwriteAcknowledged);
 
-    if (res == SaveResult::kSuccess) {
+    if (res == ::SaveResult::kSuccess) {
       return SaveResult::kOverwrote;
     }
   }
