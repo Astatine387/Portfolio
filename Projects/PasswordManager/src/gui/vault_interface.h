@@ -51,9 +51,10 @@ class VaultInterface {
 
   /**
    * @brief		Save the current vault
-   * @return	kSuccess on success, kFailure on failure
+   * @param		mode    What to do about a vault file that changed on disk since this session read or wrote it
+   * @return	kSuccess on success, kConflict when the file changed on disk, kError on any other failure
    */
-  Result SaveVault();
+  SaveResult SaveVault(SaveMode mode = SaveMode::kRefuseChanged);
 
   /**
    * @brief	Close the vault and wipe all data
@@ -80,9 +81,10 @@ class VaultInterface {
   /**
    * @brief		Change the master password and re-encrypt vault
    * @param		pw      New password
-   * @return	kSuccess on success, kFailure on save failure
+   * @param		mode    What to do about a vault file that changed on disk since this session read or wrote it
+   * @return	kSuccess on success, kConflict when the file changed on disk, kError on any other save failure
    */
-  Result ChangePW(const Password& pw);
+  SaveResult ChangePW(const Password& pw, SaveMode mode = SaveMode::kRefuseChanged);
 
   /* ==================================================
    * Entry CRUD functions

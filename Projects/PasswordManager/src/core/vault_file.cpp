@@ -73,7 +73,7 @@ Result Vault::NewVault(const std::string& path, const Password& pw) {
 
   /* Encrypt and write the vault file atomically */
 
-  if (SaveVaultWith(path, *key_, PublishMode::kCreateOnly) == Result::kFailure) {
+  if (SaveVaultWith(path, *key_, PublishMode::kCreateOnly, SaveMode::kRefuseChanged) != SaveResult::kSuccess) {
     Reset();  // The failure was before the rename, so nothing was published and no session may outlive the attempt
     return Result::kFailure;
   }
@@ -272,23 +272,115 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
 
   entry_set_ = std::move(tmp);
 
+  /* Remember which version of the file this session is now holding, taken from the buffer that was decrypted and
+   * authenticated a few lines above rather than from a fresh read of the path. src_size_ is at least kMinSize, which
+   * accounts for the header and the IV both, so these bytes are there. Clear() wipes the buffer immediately after,
+   * which is why this stands ahead of it. */
+
+  RememberFile(path, std::span<const uint8_t, kIVSize>(src_buff_.data() + kHeaderSize, kIVSize));
+
   Clear();
 
   return Result::kSuccess;
 }
 
-Result Vault::SaveVault(const std::string& path) {
+SaveResult Vault::SaveVault(const std::string& path, SaveMode mode) {
   last_error_.clear();
 
   if (!key_.has_value()) {
     ReportError("[Auth] Save failed - No vault is open\n");
-    return Result::kFailure;
+    return SaveResult::kError;
   }
 
-  return SaveVaultWith(path, *key_, PublishMode::kReplace);
+  return SaveVaultWith(path, *key_, PublishMode::kReplace, mode);
 }
 
-Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, PublishMode mode) {
+Vault::FileState Vault::ReadFileState(const std::string& path) {
+  FileState state;
+  FILE* file = nullptr;
+
+  OpenFile(&file, path, "rb");
+
+  if (file == nullptr) {
+    /* A file that is there but refuses to open still holds the path, and saying otherwise would let the different-
+     * path rule replace it. What it cannot do is name a version, so it comes back carrying no IV either way. */
+
+    state.exists = FileExists(path);
+
+    return state;
+  }
+
+  state.exists = true;
+
+  /* The IV sits at kHeaderSize, immediately behind the header, and a file too short to reach the end of it is not a
+   * version this program wrote. GetFileSize leaves the position at the start of the file, so the seek below is from
+   * a known point. */
+
+  constexpr int64_t kIVEnd = static_cast<int64_t>(kHeaderSize + kIVSize);
+
+  std::array<uint8_t, kIVSize> iv{};
+
+  const int64_t size = GetFileSize(file);
+
+  if (size >= kIVEnd && fseek(file, static_cast<long>(kHeaderSize), SEEK_SET) == 0 &&
+      fread(iv.data(), sizeof(uint8_t), iv.size(), file) == iv.size()) {
+    state.iv = iv;
+    state.has_iv = true;
+  }
+
+  /* Nothing durable rides on this close: the stream was opened for reading and never written to */
+
+  static_cast<void>(fclose(file));
+
+  return state;
+}
+
+void Vault::RememberFile(const std::string& path, std::span<const uint8_t, kIVSize> iv) {
+  FileMark mark;
+
+  mark.path = path;
+
+  std::ranges::copy(iv, mark.iv.begin());
+
+  mark_ = std::move(mark);
+  ack_.reset();
+}
+
+SaveResult Vault::CheckTarget(const std::string& path, SaveMode mode) {
+  /* A plain save asks the question afresh, so whatever an earlier conflict was acknowledged for stops standing here.
+   * Without this a user could be warned, cancel, edit, save again and have the stale acknowledgement answer for a
+   * prompt they never saw. */
+
+  if (mode == SaveMode::kRefuseChanged) {
+    ack_.reset();
+  }
+
+  const FileState state = ReadFileState(path);
+
+  const bool changed =
+      (mark_.has_value() && mark_->path == path) ? (!state.has_iv || state.iv != mark_->iv) : state.exists;
+
+  if (!changed) {
+    return SaveResult::kSuccess;
+  }
+
+  /* An acknowledgement covers the one observation it was given for. The path has to be the same path and the disk
+   * has to still show the same thing, or the user would be overwriting a version nobody described to them. */
+
+  if (mode == SaveMode::kOverwriteAcknowledged && ack_.has_value() && ack_->path == path && ack_->state == state) {
+    return SaveResult::kSuccess;
+  }
+
+  /* Record what was seen before reporting, so the answer to this warning can be checked against it */
+
+  ack_ = Conflict{ .path = path, .state = state };
+
+  ReportError("[File] Save refused - The vault file changed on disk after this session read or wrote it\n");
+
+  return SaveResult::kConflict;
+}
+
+SaveResult Vault::SaveVaultWith(const std::string& path, const SecureKey& key, PublishMode mode, SaveMode save) {
   last_warning_.clear();
 
   /* Confirm the image and the entry set still describe each other before encrypting. The pair checked here is the
@@ -297,7 +389,7 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, Publi
    * stored. */
 
   if (VerifyImage(img_, entry_set_, ImageOrigin::kSession) == Result::kFailure) {
-    return Result::kFailure;  // VerifyImage reported the error
+    return SaveResult::kError;  // VerifyImage reported the error
   }
 
   /* Calculate file size. Every image that reaches this point is bounded already: NewVault builds a fixed four bytes,
@@ -311,7 +403,7 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, Publi
   if (dst_size_ > kMaxSize) {
     // LCOV_EXCL_START
     ReportError("[Data] Validation failed - Vault exceeds maximum size (4,000 KiB)\n");
-    return Result::kFailure;
+    return SaveResult::kError;
     // LCOV_EXCL_STOP
   }
 
@@ -339,7 +431,7 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, Publi
                    std::span(dst_buff_.data(), kHeaderSize)) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot encrypt vault data\n");
-    return Result::kFailure;
+    return SaveResult::kError;
     // LCOV_EXCL_STOP
   }
 
@@ -349,14 +441,14 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, Publi
 
   if (OpenTempFile(&file_, tmp_path) == Result::kFailure) {
     ReportError("[File] Open failed - Cannot create temporary file for writing\n");
-    return Result::kFailure;
+    return SaveResult::kError;
   }
 
   if (fwrite(dst_buff_.data(), sizeof(uint8_t), dst_bytes, file_) != dst_bytes) {
     // LCOV_EXCL_START
     ReportError("[File] Write failed - Cannot write temporary file");
     RemoveFile(tmp_path);
-    return Result::kFailure;
+    return SaveResult::kError;
     // LCOV_EXCL_STOP
   }
 
@@ -366,7 +458,7 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, Publi
     // LCOV_EXCL_START
     ReportError("[File] Sync failed - Cannot flush vault file to disk\n");
     RemoveFile(tmp_path);
-    return Result::kFailure;
+    return SaveResult::kError;
     // LCOV_EXCL_STOP
   }
 
@@ -378,9 +470,24 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, Publi
   static_cast<void>(fclose(file_));
   file_ = nullptr;
 
+  /* Last look at the path before it is taken. This stands here, rather than beside the encryption above, because
+   * everything between the two is time a second window or a sync client can write in, and a check is worth only the
+   * gap between it and the rename it guards. Nothing durable has happened yet: the bytes are in a temporary of this
+   * program's own, so a refusal costs that temporary and nothing else. */
+
+  if (mode == PublishMode::kReplace) {
+    const SaveResult target = CheckTarget(path, save);
+
+    if (target != SaveResult::kSuccess) {
+      RemoveFile(tmp_path);
+      return target;  // CheckTarget reported the refusal
+    }
+  }
+
   /* Rename the temporary onto the vault path. This is the commit point: the rename is atomic, whatever it does to
    * the path is done the moment it returns, and nothing below can undo it. So nothing below may report the save as
-   * failed, since a caller reads kFailure as a promise that the file on disk is the one it was before the call.
+   * anything but a success, since a caller reads kError and kConflict alike as a promise that the file on disk is
+   * the one it was before the call.
    *
    * The two modes differ here and nowhere else. kReplace publishes over the vault this session already owns, which
    * the rename replaces and which is gone once it returns. kCreateOnly is where a create's precondition is actually
@@ -396,12 +503,12 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, Publi
 
       if (status == RenameStatus::kExists) {
         ReportError("[File] Create failed - The path was taken before the vault could be written\n");
-        return Result::kFailure;
+        return SaveResult::kError;
       }
 
       // LCOV_EXCL_START
       ReportError("[File] Create failed - Cannot publish the new vault file\n");
-      return Result::kFailure;
+      return SaveResult::kError;
       // LCOV_EXCL_STOP
     }
   }
@@ -409,11 +516,18 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, Publi
     // LCOV_EXCL_START
     ReportError("[File] Rename failed - Cannot replace vault file\n");
     RemoveFile(tmp_path);
-    return Result::kFailure;
+    return SaveResult::kError;
     // LCOV_EXCL_STOP
   }
 
   dirty_ = false;
+
+  /* Follow the file that was just published, taking the IV out of the buffer that went to the disk rather than
+   * reading the path back: between the rename and a re-read something else could write, and this session would then
+   * claim a version it never held. dst_bytes is kFrameSize and up, which covers the header and the IV both. Clear()
+   * wipes the buffer immediately after, which is why this stands ahead of it. */
+
+  RememberFile(path, std::span<const uint8_t, kIVSize>(dst_buff_.data() + kHeaderSize, kIVSize));
 
   Clear();
 
@@ -425,7 +539,7 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, Publi
     last_warning_ = "[File] Saved, but the directory entry could not be flushed to disk\n";
   }
 
-  return Result::kSuccess;
+  return SaveResult::kSuccess;
 }
 
 void Vault::CloseVault() {
@@ -454,12 +568,21 @@ bool Vault::VerifyPW(const Password& pw) const {
   return cand->CommitmentMatches(key_->Commitment());
 }
 
-Result Vault::ChangePW(const Password& pw, const std::string& path) {
+SaveResult Vault::ChangePW(const Password& pw, const std::string& path, SaveMode mode) {
   last_error_.clear();
 
   if (!key_.has_value()) {
     ReportError("[Auth] Password change failed - No vault is open\n");
-    return Result::kFailure;
+    return SaveResult::kError;
+  }
+
+  /* Ask about the file before paying for the derivation. The check before the rename is the one that decides this,
+   * and it runs again down there over whatever the disk holds by then; this one is here so that a user whose vault
+   * was changed elsewhere is told so now rather than after Argon2id has spent seconds on a save that was never going
+   * to be published. */
+
+  if (CheckTarget(path, mode) == SaveResult::kConflict) {
+    return SaveResult::kConflict;  // CheckTarget reported the refusal
   }
 
   /* Generate a new salt */
@@ -469,7 +592,7 @@ Result Vault::ChangePW(const Password& pw, const std::string& path) {
   if (Random(new_salt.data(), kSaltSize) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Random failed - Cannot generate salt\n");
-    return Result::kFailure;
+    return SaveResult::kError;
     // LCOV_EXCL_STOP
   }
 
@@ -482,7 +605,7 @@ Result Vault::ChangePW(const Password& pw, const std::string& path) {
   if (!new_key.has_value()) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Key derivation failed - Argon2id error\n");
-    return Result::kFailure;
+    return SaveResult::kError;
     // LCOV_EXCL_STOP
   }
 
@@ -490,8 +613,10 @@ Result Vault::ChangePW(const Password& pw, const std::string& path) {
    * here means the file still belongs to the old key, and a success means it belongs to the new one whether or not
    * the directory entry could be flushed afterwards. The session key follows the file either way. */
 
-  if (SaveVaultWith(path, *new_key, PublishMode::kReplace) == Result::kFailure) {
-    return Result::kFailure;
+  const SaveResult res = SaveVaultWith(path, *new_key, PublishMode::kReplace, mode);
+
+  if (res != SaveResult::kSuccess) {
+    return res;
   }
 
   /* Commit the session state only after the save has succeeded */
@@ -500,5 +625,5 @@ Result Vault::ChangePW(const Password& pw, const std::string& path) {
   salt_ = new_salt;
   kdf_ = new_kdf;
 
-  return Result::kSuccess;
+  return SaveResult::kSuccess;
 }

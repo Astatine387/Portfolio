@@ -310,7 +310,7 @@ TEST_F(VaultEntryTest, VaultRemainsUsableAfterRejectedCreate) {
 
   /* The image still matches the entry set, so it still encrypts and writes */
 
-  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+  ASSERT_EQ(vault_.SaveVault(path_), SaveResult::kSuccess);
 
   vault_.CloseVault();
 
@@ -363,7 +363,7 @@ TEST_F(VaultEntryTest, CreateEntryFailureLeavesSessionIntact) {
 
   /* The session is still saveable, and what comes back off the disk is what was there before the refusals */
 
-  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+  ASSERT_EQ(vault_.SaveVault(path_), SaveResult::kSuccess);
 
   vault_.CloseVault();
 
@@ -413,7 +413,7 @@ TEST_F(VaultEntryTest, UpdateEntryFailureLeavesSessionIntact) {
 
   /* The session is still saveable, and what comes back off the disk is what was there before the refusals */
 
-  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+  ASSERT_EQ(vault_.SaveVault(path_), SaveResult::kSuccess);
 
   vault_.CloseVault();
 
@@ -606,14 +606,14 @@ TEST_F(VaultEntryTest, EveryEditMarksVaultDirty) {
   ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
   EXPECT_TRUE(vault_.IsDirty());
 
-  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+  ASSERT_EQ(vault_.SaveVault(path_), SaveResult::kSuccess);
   ASSERT_FALSE(vault_.IsDirty());
 
   ASSERT_EQ(vault_.UpdateEntry("Google", "user@google.com", "Google", "user@google.com", MakePW("changed")),
             UpdateResult::kSuccess);
   EXPECT_TRUE(vault_.IsDirty());
 
-  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+  ASSERT_EQ(vault_.SaveVault(path_), SaveResult::kSuccess);
   ASSERT_FALSE(vault_.IsDirty());
 
   ASSERT_EQ(vault_.DeleteEntry("Google", "user@google.com"), Result::kSuccess);
@@ -631,7 +631,7 @@ TEST_F(VaultEntryTest, RejectedEditLeavesVaultClean) {
   ASSERT_EQ(vault_.NewVault(path_, MakePW("master")), Result::kSuccess);
   ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
   ASSERT_EQ(vault_.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
-  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+  ASSERT_EQ(vault_.SaveVault(path_), SaveResult::kSuccess);
   ASSERT_FALSE(vault_.IsDirty());
 
   EXPECT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kFailure);

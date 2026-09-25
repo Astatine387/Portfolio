@@ -10,9 +10,27 @@
 #include <QCloseEvent>
 #include <QGuiApplication>
 #include <QMessageBox>
+#include <QPushButton>
 
 #include "gui/clipboard.h"
 #include "gui/entry_interface.h"
+
+namespace {
+
+/**
+ * @brief   State ahead of a message that the publish it reports replaced another program's changes
+ * @param   msg   Message the same publish would have shown had nothing else touched the file
+ * @return  That message with the overwrite stated in front of it
+ *
+ * Joined the way a warning is joined to what it qualifies, so the two read as one line. It goes in front rather than
+ * behind because the message it qualifies may itself be the core's warning, which ends in a newline and has nothing
+ * that can follow it, and because replacing somebody else's work is the larger of the two things to say.
+ */
+QString NoteOverwrite(const QString& msg) {
+  return "Overwrote changes made elsewhere. " + msg;
+}
+
+}  // namespace
 
 MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
   /* Create layouts and components */
@@ -215,14 +233,22 @@ void MainGUI::OnCopyPWRequested(const QString& site, const QString& acc) {
 }
 
 void MainGUI::OnSaveRequested() {
-  if (vault_.SaveVault() == Result::kFailure) {
+  const SaveResult outcome = SaveWithConflictPrompt([this](SaveMode mode) { return vault_.SaveVault(mode); });
+
+  if (outcome == SaveResult::kError) {
     list_gui_->SetErrMsg(vault_.GetLastError());
     return;
   }
 
-  const QString warning = vault_.GetLastWarning();
+  if (outcome == SaveResult::kCancelled) {
+    list_gui_->SetErrMsg("Not saved - the vault file changed on disk and was left as it is");
+    return;
+  }
 
-  list_gui_->SetErrMsg(warning.isEmpty() ? QString("Saved") : warning);
+  const QString warning = vault_.GetLastWarning();
+  const QString msg = warning.isEmpty() ? QString("Saved") : warning;
+
+  list_gui_->SetErrMsg(outcome == SaveResult::kOverwrote ? NoteOverwrite(msg) : msg);
 }
 
 void MainGUI::OnCloseRequested() {
@@ -256,24 +282,36 @@ void MainGUI::OnChangePWRequested() {
 
     change_pw_gui_->GetInput(cur_pw, new_pw);
 
-    /* Deriving the new key and re-encrypting is heavy, so show a busy state */
+    /* The busy state wraps the change itself and nothing else. A conflict prompt is asked between two of these
+     * calls, and a wait cursor left standing over a dialog tells the user to wait for something that is waiting for
+     * them. */
 
-    list_gui_->SetErrMsg("Changing master password...");
-    QApplication::setOverrideCursor(Qt::WaitCursor);
-    QApplication::processEvents();
+    const SaveResult outcome = SaveWithConflictPrompt([this, &new_pw](SaveMode mode) {
+      list_gui_->SetErrMsg("Changing master password...");
+      QApplication::setOverrideCursor(Qt::WaitCursor);
+      QApplication::processEvents();
 
-    Result res = vault_.ChangePW(new_pw);
+      const SaveResult res = vault_.ChangePW(new_pw, mode);
 
-    QApplication::restoreOverrideCursor();
+      QApplication::restoreOverrideCursor();
 
-    if (res == Result::kFailure) {
+      return res;
+    });
+
+    if (outcome == SaveResult::kError) {
       list_gui_->SetErrMsg(vault_.GetLastError());
       return;
     }
 
-    const QString warning = vault_.GetLastWarning();
+    if (outcome == SaveResult::kCancelled) {
+      list_gui_->SetErrMsg("Master password not changed - the vault file changed on disk and was left as it is");
+      return;
+    }
 
-    list_gui_->SetErrMsg(warning.isEmpty() ? QString("Password changed") : "Password changed. " + warning);
+    const QString warning = vault_.GetLastWarning();
+    const QString msg = warning.isEmpty() ? QString("Password changed") : "Password changed. " + warning;
+
+    list_gui_->SetErrMsg(outcome == SaveResult::kOverwrote ? NoteOverwrite(msg) : msg);
   }
 }
 
@@ -306,8 +344,19 @@ bool MainGUI::ConfirmDiscard() {
       QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
 
   if (choice == QMessageBox::Save) {
-    if (vault_.SaveVault() == Result::kFailure) {
+    const SaveResult outcome = SaveWithConflictPrompt([this](SaveMode mode) { return vault_.SaveVault(mode); });
+
+    /* Refusing to overwrite is an answer rather than a failure, but it leaves the changes exactly where a failure
+     * does: unsaved, and not to be dropped. So the close is called off either way, and the two differ only in what
+     * the line says about why. */
+
+    if (outcome == SaveResult::kError) {
       list_gui_->SetErrMsg(vault_.GetLastError());
+      return false;
+    }
+
+    if (outcome == SaveResult::kCancelled) {
+      list_gui_->SetErrMsg("Not saved - the vault file changed on disk and was left as it is");
       return false;
     }
 
@@ -315,6 +364,55 @@ bool MainGUI::ConfirmDiscard() {
   }
 
   return choice == QMessageBox::Discard;
+}
+
+MainGUI::SaveResult MainGUI::SaveWithConflictPrompt(const std::function<SaveResult(SaveMode)>& op) {
+  SaveResult res = op(SaveMode::kRefuseChanged);
+
+  if (res == SaveResult::kSuccess) {
+    return SaveResult::kSaved;
+  }
+
+  while (res == SaveResult::kConflict) {
+    if (!ConfirmOverwrite()) {
+      return SaveResult::kCancelled;
+    }
+
+    res = op(SaveMode::kOverwriteAcknowledged);
+
+    if (res == SaveResult::kSuccess) {
+      return SaveResult::kOverwrote;
+    }
+  }
+
+  return SaveResult::kError;
+}
+
+bool MainGUI::ConfirmOverwrite() {
+  QMessageBox box(this);
+
+  box.setIcon(QMessageBox::Warning);
+  box.setWindowTitle("Vault Changed on Disk");
+  box.setText(
+      "The vault file on disk is no longer the one this window opened or last saved. Another window or program may "
+      "have changed, replaced or deleted it.");
+  box.setInformativeText(
+      "Overwriting replaces those changes with this window's version, including a master password change if one was "
+      "made there. This cannot be undone.");
+
+  /* Added rather than taken from the standard set, so the destructive answer says what it does and is marked as
+   * destructive. Cancel is the default and the escape button both, which is what keeps Enter and Escape - the two
+   * keys a dialog gets dismissed with without being read - off the overwrite. */
+
+  const QPushButton* overwrite = box.addButton("Overwrite", QMessageBox::DestructiveRole);
+  QPushButton* cancel = box.addButton(QMessageBox::Cancel);
+
+  box.setDefaultButton(cancel);
+  box.setEscapeButton(cancel);
+
+  box.exec();
+
+  return box.clickedButton() == overwrite;
 }
 
 void MainGUI::StopClipboardCountdown() {

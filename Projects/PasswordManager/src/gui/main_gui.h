@@ -11,6 +11,8 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <cstdint>
+#include <functional>
 
 #include "core/vault.h"
 #include "gui/change_pw_gui.h"
@@ -116,6 +118,21 @@ class MainGUI : public QWidget {
   void OnChangePWRequested();
 
  private:
+  /**
+   * @enum    SaveResult
+   * @brief   What a publish routed through the conflict prompt ended up doing
+   *
+   * kCancelled is separated from kError because the two say opposite things to a user. An error is something that
+   * went wrong and may be worth retrying; a cancellation is the answer they just gave, and the file is untouched
+   * because they said so. Reporting the second as the first would read as a malfunction.
+   */
+  enum class SaveResult : std::uint8_t {
+    kSaved,      // Published, with nothing else having touched the file
+    kOverwrote,  // Published over changes another program had made, after the user acknowledged them
+    kCancelled,  // The file had changed and the user chose not to overwrite it; nothing was written
+    kError,      // The operation failed for another reason; GetLastError says which
+  };
+
   ChangePWGUI* change_pw_gui_;
   EntryGUI* entry_gui_;
   ListGUI* list_gui_;
@@ -151,6 +168,31 @@ class MainGUI : public QWidget {
    * discard knowingly.
    */
   [[nodiscard]] bool ConfirmDiscard();
+
+  /**
+   * @brief	Run a publish, asking before it overwrites a vault file that changed on disk
+   * @param	op	The publish to run, called with the mode it is to run under
+   * @return	What the publish ended up doing
+   *
+   * The one route to the disk for all three of the places that save, so none of them can overwrite another window's
+   * work without asking, or report that refusal as an ordinary failure. @p op is a function rather than a flag
+   * because the two operations behind it differ in more than a name: a password change needs a wait cursor around
+   * itself and a save does not, and that belongs to the caller that knows which it is running.
+   *
+   * The retry is a loop rather than a single second attempt. The file can change again between the prompt and the
+   * answer, and the core acknowledges only the version the user was shown, so that second change comes back as
+   * another conflict and is asked about in its turn instead of being replaced unseen.
+   */
+  [[nodiscard]] SaveResult SaveWithConflictPrompt(const std::function<SaveResult(SaveMode)>& op);
+
+  /**
+   * @brief	Ask whether to overwrite a vault file that changed on disk
+   * @return	true if the user chose to overwrite it
+   *
+   * Cancel is both the default and the escape button, so neither Enter nor Escape can overwrite. The destructive
+   * answer is the one that has to be aimed at.
+   */
+  [[nodiscard]] bool ConfirmOverwrite();
 
   /**
    * @brief	End the clipboard countdown and take the copied password off the clipboard

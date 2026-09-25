@@ -16,6 +16,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 * Automatic clipboard clear after 30 seconds of password copy
 * Search and filter entries by keyword
 * Warning before a vault with unsaved changes is closed
+* Warning before a save overwrites a vault file another window or program changed on disk
 * Cross-platform support for Windows and Linux
 
 ## 2-1. Cryptographic Choice
@@ -277,7 +278,7 @@ cmake --build build
 | Password | `password_test.cpp`    | Initialization, Setting Data, Copy and Move Semantics, Memory Safety, RAII, Comparison, Data, Cleanup, Maximum Size, Memory Lock |
 | Utils    | `utils_test.cpp`       | File Handling, Argon2id Key Derivation, Random Number Generation, Memory Wipe                                                    |
 | Vault    | `vault_entry_test.cpp` | Entry CRUD Operation, Duplication Check, Existence Check, Conflict Check, Field Validation, Accessor, Master Password Verification, Unsaved Change Tracking |
-| Vault    | `vault_file_test.cpp`  | Vault Creation, Opening, Validation, Header Parameters, Header Tampering, Save, Password Change, Unsaved Change Tracking, Error Handling |
+| Vault    | `vault_file_test.cpp`  | Vault Creation, Opening, Validation, Header Parameters, Header Tampering, Save, Password Change, Unsaved Change Tracking, Concurrent Modification Detection, Acknowledged Overwrite, Error Handling |
 
 **Note:** GUI files, error messages for external libraries and system calls are excluded from tests.
 

@@ -20,8 +20,8 @@ Result VaultInterface::OpenVault(const QString& path, const Password& pw) {
   return vault_->OpenVault(path.toStdString(), pw);
 }
 
-Result VaultInterface::SaveVault() {
-  return vault_->SaveVault(vault_path_.toStdString());
+SaveResult VaultInterface::SaveVault(SaveMode mode) {
+  return vault_->SaveVault(vault_path_.toStdString(), mode);
 }
 
 void VaultInterface::CloseVault() {
@@ -37,8 +37,8 @@ bool VaultInterface::VerifyPW(const Password& pw) const {
   return vault_->VerifyPW(pw);
 }
 
-Result VaultInterface::ChangePW(const Password& pw) {
-  return vault_->ChangePW(pw, vault_path_.toStdString());
+SaveResult VaultInterface::ChangePW(const Password& pw, SaveMode mode) {
+  return vault_->ChangePW(pw, vault_path_.toStdString(), mode);
 }
 
 Result VaultInterface::CreateEntry(const QString& site, const QString& acc, const Password& pw) {

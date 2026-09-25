@@ -11,6 +11,7 @@
 #include <functional>
 #include <optional>
 #include <set>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -30,6 +31,34 @@ enum class UpdateResult : std::uint8_t {
   kNotFound,   // Original entry is missing
   kDuplicate,  // Site or account collides with another entry
   kError,      // New fields are out of range, or the new image could not be built
+};
+
+/**
+ * @enum    SaveResult
+ * @brief   Outcome of publishing the session onto a vault file
+ *
+ * kConflict is less a failure of the save than a question about it: the file on disk is no longer the version this
+ * session read or wrote, so something else has written it since, and nothing was published. kError is every other
+ * failure. The two promise the same thing about the disk, which is that the file at the path is exactly what it was
+ * before the call.
+ */
+enum class SaveResult : std::uint8_t {
+  kSuccess,   // The session was published
+  kConflict,  // The file changed on disk and nothing was written
+  kError,     // Any other failure; nothing was published
+};
+
+/**
+ * @enum    SaveMode
+ * @brief   What a save does about a vault file that changed on disk
+ *
+ * kRefuseChanged is what an ordinary save asks for. kOverwriteAcknowledged is only ever an answer to a conflict that
+ * was already reported: it overwrites the one version that conflict named, so a file that has changed again since
+ * conflicts afresh rather than being replaced unseen.
+ */
+enum class SaveMode : std::uint8_t {
+  kRefuseChanged,          // Refuse to publish over a file this session did not last read or write
+  kOverwriteAcknowledged,  // Publish over the changed file a previous call reported
 };
 
 /**
@@ -108,9 +137,10 @@ class Vault {
   /**
    * @brief   Save the current vault, reusing the session key with a fresh IV
    * @param   path  Vault file path
-   * @return  kSuccess on success, kFailure on failure
+   * @param   mode  What to do about a file at @p path that changed since this session last read or wrote it
+   * @return  kSuccess on success, kConflict when the file changed on disk, kError on any other failure
    */
-  Result SaveVault(const std::string& path);
+  SaveResult SaveVault(const std::string& path, SaveMode mode = SaveMode::kRefuseChanged);
 
   /**
    * @brief	Close the vault and wipe all session state
@@ -143,9 +173,14 @@ class Vault {
    * @brief		Change the master password and re-encrypt the vault
    * @param		pw    New password
    * @param		path  Vault file path
-   * @return	kSuccess on success, kFailure on save failure
+   * @param		mode  What to do about a file at @p path that changed since this session last read or wrote it
+   * @return	kSuccess on success, kConflict when the file changed on disk, kError on any other save failure
+   *
+   * The file is checked before the new salt is generated as well as before the rename, so a conflict is reported
+   * without the seconds of Argon2id in between being spent on a save that was never going to happen. The check
+   * before the rename stays the authoritative one.
    */
-  Result ChangePW(const Password& pw, const std::string& path);
+  SaveResult ChangePW(const Password& pw, const std::string& path, SaveMode mode = SaveMode::kRefuseChanged);
 
   /* ==================================================
    * Entry CRUD functions
@@ -240,12 +275,56 @@ class Vault {
   [[nodiscard]] const std::string& GetLastWarning() const { return last_warning_; }
 
  private:
+  /**
+   * @struct  FileState
+   * @brief   What a path held at the moment it was looked at
+   *
+   * The IV is the whole of what a vault version is identified by here, and has_iv says whether one could be read at
+   * all. A file too short to hold one is not a vault version this session could have written, so it is described as
+   * carrying none rather than as carrying whatever bytes happened to sit at the offset. exists is kept beside it
+   * because a path this session never read is refused on existence alone, without the file having to parse.
+   */
+  struct FileState {
+    bool exists = false;                // Something holds the path, whether or not an IV came out of it
+    bool has_iv = false;                // The file was long enough for the IV to be read
+    std::array<uint8_t, kIVSize> iv{};  // Those bytes, meaningful only when has_iv
+
+    bool operator==(const FileState& other) const = default;
+  };
+
+  /**
+   * @struct  FileMark
+   * @brief   The vault version this session last read or published
+   *
+   * The IV is taken from the bytes the session actually used, never from a later read of the file, so what this
+   * describes is a version this session is known to have held rather than whatever is at the path now.
+   */
+  struct FileMark {
+    std::string path;                   // Path the version was read from or written to
+    std::array<uint8_t, kIVSize> iv{};  // IV of the bytes this session used
+  };
+
+  /**
+   * @struct  Conflict
+   * @brief   The changed file a refused save reported, and the one an acknowledged overwrite may replace
+   *
+   * A user acknowledges the version they were warned about and no other. Recording what was seen, rather than a bare
+   * permission to overwrite, is what keeps a file that changes again between the warning and the answer from being
+   * replaced on the strength of a warning about something else.
+   */
+  struct Conflict {
+    std::string path;  // Path the conflict was reported at
+    FileState state;   // What that path held when it was reported
+  };
+
   AesGcm aes_;
   std::optional<SecureKey> key_;           // Session key derived at open/change
   std::array<uint8_t, kSaltSize> salt_{};  // Session salt (also written to the file header)
   KdfParams kdf_;                          // Argon2id parameters of the open vault (also written to the header)
   SecureBuffer img_;                       // Decrypted vault image (entry passwords live here)
   bool dirty_ = false;                     // Image changed after this session last published a file
+  std::optional<FileMark> mark_;           // Vault version this session last read or published
+  std::optional<Conflict> ack_;            // Changed file a kOverwriteAcknowledged save is allowed to replace
   std::set<Entry, EntryCmp> entry_set_;
   std::string last_error_;
   std::string last_warning_;
@@ -268,7 +347,11 @@ class Vault {
   void Clear();
 
   /**
-   * @brief	Wipe all session state (key, salt, image, entries, unsaved-change flag)
+   * @brief	Wipe all session state (key, salt, image, entries, unsaved-change flag, remembered file)
+   *
+   * The remembered file goes with the rest of it. A session that has been reset holds no vault, so there is no
+   * version of any file it can claim to have read, and the acknowledgement that a conflict left behind names a
+   * warning nobody in this session was shown any more.
    */
   void Reset();
 
@@ -277,7 +360,8 @@ class Vault {
    * @param   path  Vault file path
    * @param   key   Key to encrypt with
    * @param   mode  Whether the publish may replace what is at @p path, or must find the name free
-   * @return  kSuccess on success, kFailure on failure
+   * @param   save  What to do about a file at @p path that changed since this session last read or wrote it
+   * @return  kSuccess on success, kConflict when the file changed on disk, kError on any other failure
    *
    * The header is built from @p key alone. Passed beside it as separate arguments, the salt and the parameters could
    * record a derivation the key had not come from; taking them from the key leaves no argument to get wrong.
@@ -285,8 +369,55 @@ class Vault {
    * @p mode reaches the commit point and nothing before it. Everything up to the rename writes a temporary file of
    * its own, which a create and a save do identically; the rename is the only step that touches @p path, and so the
    * only one that can tell the two apart.
+   *
+   * @p save is read only under kReplace, and so is CheckTarget. A create has nothing to compare against - it is
+   * publishing onto a path this session has never held - and its precondition is a stricter one that the create-only
+   * rename decides for itself, so asking the same question twice would only give the weaker answer first.
    */
-  Result SaveVaultWith(const std::string& path, const SecureKey& key, PublishMode mode);
+  SaveResult SaveVaultWith(const std::string& path, const SecureKey& key, PublishMode mode, SaveMode save);
+
+  /**
+   * @brief   Read what a path holds, as far as identifying a vault version needs
+   * @param   path  Path to look at
+   * @return  What was found there; a file that could not be opened or is too short carries no IV
+   *
+   * Every failure lands on the same answer, which is that no IV could be read. That is deliberate: this is asked in
+   * order to refuse a publish, so anything it cannot establish has to come back as a reason to refuse rather than as
+   * a reason to carry on.
+   */
+  static FileState ReadFileState(const std::string& path);
+
+  /**
+   * @brief   Record the vault version this session now holds
+   * @param   path  Path the version was read from or written to
+   * @param   iv    IV of the bytes this session read or wrote
+   *
+   * Called with a view into the buffer the session actually used, never with bytes read back off the disk: a re-read
+   * could capture a version written between the operation and the read, which this session never loaded and has no
+   * business claiming as its own.
+   *
+   * Any acknowledgement goes with it. The session and the file agree again at this point, so a permission to
+   * overwrite something they disagreed about has nothing left to apply to.
+   */
+  void RememberFile(const std::string& path, std::span<const uint8_t, kIVSize> iv);
+
+  /**
+   * @brief   Decide whether a publish onto a path may go ahead
+   * @param   path  Path the publish would write onto
+   * @param   mode  Whether a changed file refuses the publish or was already acknowledged
+   * @return  kSuccess when the publish may proceed, kConflict when nothing may be written
+   *
+   * Two questions, by whether @p path is the file this session last read or wrote. For that file, the IV on disk
+   * answers it: an equal IV means the bytes are the version this session last saw, since every save this program
+   * makes draws a fresh one. For any other path, existence answers it, because a file this session has never read
+   * is one it cannot claim to be replacing a known version of.
+   *
+   * Comparing only the IV is what makes the check cheap and what bounds what it can promise. A file restored to
+   * exactly the bytes this session last read passes, correctly, since there is nothing there to lose; a file whose
+   * IV was kept while later bytes were changed passes too, and loses nothing either, because those bytes would fail
+   * their own tag and are not a vault version anybody could have opened.
+   */
+  SaveResult CheckTarget(const std::string& path, SaveMode mode);
 
   /**
    * @brief   Serialize every entry except one into a candidate image and record their offsets in it
