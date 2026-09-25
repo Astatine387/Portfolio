@@ -21,6 +21,17 @@ static_assert(kMaxSize == 4000LL * 1024, "The vault ceiling moved away from the 
 Result Vault::NewVault(const std::string& path, const Password& pw) {
   last_error_.clear();
 
+  /* Refuse a path that is already taken, before a password has been typed against it and before the seconds of
+   * Argon2id that follow. This is here for whoever is creating the vault, so that the attempt fails at the point the
+   * name was chosen rather than after the wait; it is not the guarantee. FileExists answers about the instant it is
+   * called, and the derivation below leaves a window in which a sync client or a second instance can take the name,
+   * which is why the publish at the end is create-only and decides the same question in the rename itself. */
+
+  if (FileExists(path)) {
+    ReportError("[File] Create failed - A file already exists at this path\n");
+    return Result::kFailure;
+  }
+
   Reset();
 
   /* Generate a new salt */
@@ -62,7 +73,7 @@ Result Vault::NewVault(const std::string& path, const Password& pw) {
 
   /* Encrypt and write the vault file atomically */
 
-  if (SaveVaultWith(path, *key_) == Result::kFailure) {
+  if (SaveVaultWith(path, *key_, PublishMode::kCreateOnly) == Result::kFailure) {
     Reset();  // The failure was before the rename, so nothing was published and no session may outlive the attempt
     return Result::kFailure;
   }
@@ -274,10 +285,10 @@ Result Vault::SaveVault(const std::string& path) {
     return Result::kFailure;
   }
 
-  return SaveVaultWith(path, *key_);
+  return SaveVaultWith(path, *key_, PublishMode::kReplace);
 }
 
-Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key) {
+Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key, PublishMode mode) {
   last_warning_.clear();
 
   /* Confirm the image and the entry set still describe each other before encrypting. The pair checked here is the
@@ -367,11 +378,34 @@ Result Vault::SaveVaultWith(const std::string& path, const SecureKey& key) {
   static_cast<void>(fclose(file_));
   file_ = nullptr;
 
-  /* Rename temporary file to vault file. This is the commit point: the rename is atomic, the vault it replaces is
-   * gone the moment it returns, and nothing below can undo it. So nothing below may report the save as failed, since
-   * a caller reads kFailure as a promise that the file on disk is the one it was before the call. */
+  /* Rename the temporary onto the vault path. This is the commit point: the rename is atomic, whatever it does to
+   * the path is done the moment it returns, and nothing below can undo it. So nothing below may report the save as
+   * failed, since a caller reads kFailure as a promise that the file on disk is the one it was before the call.
+   *
+   * The two modes differ here and nowhere else. kReplace publishes over the vault this session already owns, which
+   * the rename replaces and which is gone once it returns. kCreateOnly is where a create's precondition is actually
+   * decided: the name has to be free at this instant rather than at the instant NewVault looked at it, so the move
+   * itself is the test, and a refusal means something took the name while the key was being derived. Either way the
+   * temporary is removed on failure, so a refused create leaves the directory as it found it. */
 
-  if (RenameFile(tmp_path, path) == Result::kFailure) {
+  if (mode == PublishMode::kCreateOnly) {
+    const RenameStatus status = RenameFileNoReplace(tmp_path, path);
+
+    if (status != RenameStatus::kOk) {
+      RemoveFile(tmp_path);
+
+      if (status == RenameStatus::kExists) {
+        ReportError("[File] Create failed - The path was taken before the vault could be written\n");
+        return Result::kFailure;
+      }
+
+      // LCOV_EXCL_START
+      ReportError("[File] Create failed - Cannot publish the new vault file\n");
+      return Result::kFailure;
+      // LCOV_EXCL_STOP
+    }
+  }
+  else if (RenameFile(tmp_path, path) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[File] Rename failed - Cannot replace vault file\n");
     RemoveFile(tmp_path);
@@ -456,7 +490,7 @@ Result Vault::ChangePW(const Password& pw, const std::string& path) {
    * here means the file still belongs to the old key, and a success means it belongs to the new one whether or not
    * the directory entry could be flushed afterwards. The session key follows the file either way. */
 
-  if (SaveVaultWith(path, *new_key) == Result::kFailure) {
+  if (SaveVaultWith(path, *new_key, PublishMode::kReplace) == Result::kFailure) {
     return Result::kFailure;
   }
 

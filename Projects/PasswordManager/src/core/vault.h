@@ -52,6 +52,22 @@ class Vault {
     kSession,  // Built by this process from the entry set
   };
 
+  /**
+   * @enum    PublishMode
+   * @brief   What the commit point of SaveVaultWith may do to the path it publishes onto
+   *
+   * Creating and saving write the same bytes and differ in their precondition. A save may replace, because the file
+   * at the path is the vault this session already owns; a create must succeed only if the name is free. The second of
+   * those cannot be settled by testing the path first, since the test would be separated from the publish by the
+   * seconds of Argon2id that run in between, and a sync client or a second instance can take the name inside that
+   * window. So the mode is carried down to the rename and the rename decides it, in one step that cannot be
+   * interleaved with.
+   */
+  enum class PublishMode : std::uint8_t {
+    kReplace,     // Save: the file at the path is this session's own vault
+    kCreateOnly,  // Create: the name must be free, decided atomically by the rename
+  };
+
   /* ==================================================
    * Constructor and Destructor
    * ================================================== */
@@ -75,6 +91,9 @@ class Vault {
    * @param   path  Vault file path
    * @param   pw  Master password (used to derive the session key)
    * @return  kSuccess on success, kFailure on failure
+   *
+   * Creates rather than replaces. A path that is already taken is refused and whatever holds it is left as it was,
+   * whether or not that file is a vault.
    */
   Result NewVault(const std::string& path, const Password& pw);
 
@@ -257,12 +276,17 @@ class Vault {
    * @brief   Encrypt the current image with a given key, then write atomically
    * @param   path  Vault file path
    * @param   key   Key to encrypt with
+   * @param   mode  Whether the publish may replace what is at @p path, or must find the name free
    * @return  kSuccess on success, kFailure on failure
    *
    * The header is built from @p key alone. Passed beside it as separate arguments, the salt and the parameters could
    * record a derivation the key had not come from; taking them from the key leaves no argument to get wrong.
+   *
+   * @p mode reaches the commit point and nothing before it. Everything up to the rename writes a temporary file of
+   * its own, which a create and a save do identically; the rename is the only step that touches @p path, and so the
+   * only one that can tell the two apart.
    */
-  Result SaveVaultWith(const std::string& path, const SecureKey& key);
+  Result SaveVaultWith(const std::string& path, const SecureKey& key, PublishMode mode);
 
   /**
    * @brief   Serialize every entry except one into a candidate image and record their offsets in it

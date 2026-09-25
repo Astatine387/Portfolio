@@ -10,6 +10,7 @@
 #include <array>
 #include <cstddef>
 #include <cstring>
+#include <filesystem>
 #include <optional>
 #include <span>
 #include <string>
@@ -320,6 +321,95 @@ TEST_F(VaultFileTest, NewVaultIsEmpty) {
   EXPECT_EQ(Reload(), Result::kSuccess);
   EXPECT_EQ(vault_.GetEntryCount(), 0);
 }
+
+/**
+ * @brief   Verify creating a vault at a path an existing vault holds is refused, and that vault survives intact
+ */
+TEST_F(VaultFileTest, NewVaultRefusesExistingVault) {
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("asdf1234")), Result::kSuccess);
+  ASSERT_EQ(vault_.SaveVault(path_), Result::kSuccess);
+
+  /* A second session, which knows nothing about this path beyond the name it was given */
+
+  Vault other;
+
+  EXPECT_EQ(other.NewVault(path_, MakePW("otherpassword")), Result::kFailure);
+  EXPECT_NE(other.GetLastError().find("already exists"), std::string::npos);
+
+  /* What the path holds is still the vault that was saved: the original password opens it and the entry it was
+   * saved with reads back, password included */
+
+  EXPECT_EQ(Reload(), Result::kSuccess);
+  EXPECT_EQ(vault_.GetEntryCount(), 1);
+
+  Password got;
+
+  EXPECT_TRUE(vault_.GetEntryPW("Google", "user@google.com", got));
+  EXPECT_TRUE(got.Equal(MakePW("asdf1234")));
+}
+
+/**
+ * @brief   Verify a file that is not a vault at all is refused and left byte for byte as it was
+ */
+TEST_F(VaultFileTest, NewVaultLeavesForeignFileUntouched) {
+  const std::string notes_path = "notes.txt";
+  const std::string text = "Shopping list, not a vault\n";
+  const std::vector<uint8_t> notes(text.begin(), text.end());
+
+  WriteFile(notes_path, notes);
+
+  Vault other;
+
+  EXPECT_EQ(other.NewVault(notes_path, MakePW("password")), Result::kFailure);
+  EXPECT_NE(other.GetLastError().find("already exists"), std::string::npos);
+
+  EXPECT_EQ(ReadFile(notes_path), notes);
+  EXPECT_EQ(RemoveFile(notes_path), Result::kSuccess);
+}
+
+#ifndef _WIN32
+
+/**
+ * @brief   Verify a dangling symbolic link at the chosen path is refused, by the publish rather than by the check
+ *
+ * FileExists resolves the path it is given, so a link pointing at nothing reports as absent and the check NewVault
+ * makes before deriving anything lets this path through. The refusal can therefore only come from the create-only
+ * publish at the end, and the message is what says which of the two answered: "was taken" is reported by the rename
+ * alone, so asserting on it is what makes this a test of the commit point rather than of the check above it. Under a
+ * replacing rename the link would simply be overwritten, which is the mutation this case is here to catch.
+ */
+TEST_F(VaultFileTest, NewVaultRefusesDanglingSymlink) {
+  const std::string link_path = "dangling.vault";
+
+  RemoveFile(link_path);  // A link an earlier run left behind would fail the symlink below
+
+  ASSERT_EQ(symlink("no_such_target", link_path.c_str()), 0);
+  ASSERT_FALSE(FileExists(link_path));
+
+  Vault other;
+
+  EXPECT_EQ(other.NewVault(link_path, MakePW("password")), Result::kFailure);
+  EXPECT_NE(other.GetLastError().find("was taken"), std::string::npos);
+
+  /* The path still holds the link itself, so nothing was written over it or through it */
+
+  struct stat st = {};
+
+  ASSERT_EQ(lstat(link_path.c_str(), &st), 0);
+  EXPECT_TRUE(S_ISLNK(st.st_mode));
+
+  /* And the temporary the attempt wrote was cleaned up rather than left beside the link */
+
+  const std::string prefix = link_path + ".";
+
+  for (const auto& entry : std::filesystem::directory_iterator(".")) {
+    EXPECT_FALSE(entry.path().filename().string().starts_with(prefix));
+  }
+
+  EXPECT_EQ(RemoveFile(link_path), Result::kSuccess);
+}
+
+#endif /* !_WIN32 */
 
 /* ==================================================
  * Open Vault Test
@@ -890,9 +980,12 @@ TEST_F(VaultFileTest, EveryVaultCanBeReopened) {
 
     SCOPED_TRACE(testing::Message() << "case=" << i << " entries=" << records.size());
 
-    /* A fresh vault per case, so each one is written and read on its own rather than on what the last case left */
+    /* A fresh vault per case, so each one is written and read on its own rather than on what the last case left.
+       The path is cleared first because a create refuses a name that is already taken, and what holds it here is the
+       fixture's own vault on the first pass and the previous case's on every one after it. */
 
-    ASSERT_EQ(vault_.NewVault(path_, MakePW("password")), Result::kSuccess);
+    ASSERT_EQ(RemoveFile(path_), Result::kSuccess);
+    ASSERT_EQ(vault_.NewVault(path_, MakePW("password")), Result::kSuccess) << vault_.GetLastError();
 
     for (const auto& rec : records) {
       ASSERT_EQ(vault_.CreateEntry(rec.site, rec.acc, MakePW(rec.pw.c_str())), Result::kSuccess)

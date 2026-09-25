@@ -182,6 +182,22 @@ Result RenameFile(const std::string& src, const std::string& dst) {
   return Result::kSuccess;
 }
 
+RenameStatus RenameFileNoReplace(const std::string& src, const std::string& dst) {
+  std::filesystem::path src_path = ToPath(src);
+  std::filesystem::path dst_path = ToPath(dst);
+
+  /* MOVEFILE_REPLACE_EXISTING is deliberately absent, so the move fails instead of overwriting an existing
+   * destination. That refusal is the whole point: the move itself decides whether the name was free, so nothing can
+   * appear at the destination between a separate existence test and the move that follows it. MOVEFILE_WRITE_THROUGH
+   * is kept, so a published vault reaches the disk as durably as a replacing save does. */
+
+  if (!MoveFileExW(src_path.c_str(), dst_path.c_str(), MOVEFILE_WRITE_THROUGH)) {
+    return CheckNameCollision(GetLastError()) ? RenameStatus::kExists : RenameStatus::kFailure;
+  }
+
+  return RenameStatus::kOk;
+}
+
 Result SyncFile(FILE* file) {
   if (fflush(file)) {
     return Result::kFailure;
@@ -203,7 +219,8 @@ Result SyncFile(FILE* file) {
 }
 
 Result SyncDir([[maybe_unused]] const std::string& path) {
-  /* Windows has no directory-fsync; rename durability is handled by MOVEFILE_WRITE_THROUGH in RenameFile */
+  /* Windows has no directory-fsync; rename durability is handled by MOVEFILE_WRITE_THROUGH in RenameFile and
+   * RenameFileNoReplace */
   return Result::kSuccess;
 }
 

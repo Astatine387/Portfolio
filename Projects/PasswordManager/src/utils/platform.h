@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <cstdio>
 #include <string>
 
@@ -56,6 +57,31 @@ Result RemoveFile(const std::string& path);
  * @return	kSuccess on success, kFailure on failure
  */
 Result RenameFile(const std::string& src, const std::string& dst);
+
+/**
+ * @enum	RenameStatus
+ * @brief	Outcome of a move that refuses to replace its destination
+ */
+enum class RenameStatus : std::uint8_t {
+  kOk,       // The move took the name
+  kExists,   // Something already held the name, and it is left as it was
+  kFailure,  // The move failed for any other reason
+};
+
+/**
+ * @brief   Move a file onto a path, refusing to replace whatever is already there
+ * @param   src		Source file path
+ * @param   dst		Destination file path
+ * @return	kOk when the move took the name, kExists when it was taken, kFailure on any other failure
+ *
+ * Refusing to overwrite is what makes this a create rather than a save: the move itself decides whether the name was
+ * free, so nothing can appear at the destination between a separate existence test and the move that follows it.
+ *
+ * How that refusal is obtained differs by file system, so the Linux side tries three ways in turn and only falls
+ * through on the errors that mean "this file system cannot do it". Whichever way is taken, the name is still won or
+ * lost in one atomic step.
+ */
+[[nodiscard]] RenameStatus RenameFileNoReplace(const std::string& src, const std::string& dst);
 
 /**
  * @brief   Flush and sync file data to disk

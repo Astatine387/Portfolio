@@ -466,6 +466,103 @@ TEST(UtilsTest, RenameFileOverwrite) {
 }
 
 /* ==================================================
+ * RenameFileNoReplace Test
+ * ================================================== */
+
+/**
+ * @class   RenameNoReplaceTest
+ * @brief   Test class for RenameFileNoReplace function
+ */
+class RenameNoReplaceTest : public ::testing::Test {
+ protected:
+  std::string src_path_ = "noreplace_src.tmp";
+  std::string dst_path_ = "noreplace_dst.tmp";
+
+  /**
+   * @brief   Clean up temporary files after each test
+   */
+  void TearDown() override {
+    RemoveFile(src_path_);
+    RemoveFile(dst_path_);
+  }
+
+  /**
+   * @brief   Create a file holding the given text
+   * @param   path    File path
+   * @param   text    Content to write
+   */
+  static void Create(const std::string& path, const std::string& text) {
+    FILE* file = nullptr;
+
+    OpenFile(&file, path, "wb");
+
+    ASSERT_NE(file, nullptr);
+
+    EXPECT_EQ(fwrite(text.data(), sizeof(char), text.size(), file), text.size());
+
+    fclose(file);
+  }
+
+  /**
+   * @brief   Read a file back as text
+   * @param   path    File path
+   * @return  File contents, empty when the file cannot be read
+   */
+  static std::string Read(const std::string& path) {
+    FILE* file = nullptr;
+    std::string res;
+
+    OpenFile(&file, path, "rb");
+
+    if (!file) {
+      return res;
+    }
+
+    std::array<char, 128> buff{};
+
+    res.assign(buff.data(), fread(buff.data(), sizeof(char), buff.size(), file));
+
+    fclose(file);
+
+    return res;
+  }
+};
+
+/**
+ * @brief   Verify a move onto a free path takes the name and carries the content
+ */
+TEST_F(RenameNoReplaceTest, MovesOntoFreePath) {
+  Create(src_path_, "Hello, world!");
+
+  EXPECT_EQ(RenameFileNoReplace(src_path_, dst_path_), RenameStatus::kOk);
+
+  EXPECT_FALSE(FileExists(src_path_));
+  EXPECT_TRUE(FileExists(dst_path_));
+  EXPECT_EQ(Read(dst_path_), "Hello, world!");
+}
+
+/**
+ * @brief   Verify an occupied destination is refused and both files survive byte for byte
+ */
+TEST_F(RenameNoReplaceTest, RefusesOccupiedDestination) {
+  Create(src_path_, "Hello, world!");
+  Create(dst_path_, "Don't overwrite this");
+
+  EXPECT_EQ(RenameFileNoReplace(src_path_, dst_path_), RenameStatus::kExists);
+
+  EXPECT_EQ(Read(src_path_), "Hello, world!");
+  EXPECT_EQ(Read(dst_path_), "Don't overwrite this");
+}
+
+/**
+ * @brief   Verify a missing source is refused rather than creating an empty destination
+ */
+TEST_F(RenameNoReplaceTest, RefusesMissingSource) {
+  EXPECT_EQ(RenameFileNoReplace(src_path_, dst_path_), RenameStatus::kFailure);
+  EXPECT_FALSE(FileExists(dst_path_));
+}
+
+/* ==================================================
  * SyncFile Test
  * ================================================== */
 
