@@ -84,6 +84,22 @@ enum class RenameStatus : std::uint8_t {
 [[nodiscard]] RenameStatus RenameFileNoReplace(const std::string& src, const std::string& dst);
 
 /**
+ * @brief   Resolve a path to the file it leads to
+ * @param   path	File path
+ * @param   out		Receives the resolved path on success, left as it was on failure
+ * @return	kSuccess on success, kFailure when the path does not resolve
+ *
+ * Every component is followed, a chain of symbolic links included, and a relative link target is read against the
+ * directory of the link that holds it. What comes back is the absolute path of the file itself, which is the path an
+ * atomic replace has to act on: a rename onto a link's own path replaces the link and leaves the file behind it as it
+ * was.
+ *
+ * A path that does not resolve is one whose file is not there, a dangling link among the ways of not being there, and
+ * it fails rather than coming back as a path a caller might publish onto.
+ */
+[[nodiscard]] Result ResolvePath(const std::string& path, std::string& out);
+
+/**
  * @brief   Flush and sync file data to disk
  * @param   file	File pointer
  * @return	kSuccess on success, kFailure on failure

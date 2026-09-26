@@ -14,6 +14,7 @@
 #include <array>
 #include <filesystem>
 #include <memory>
+#include <system_error>
 #include <vector>
 
 #include "utils/platform.h"
@@ -196,6 +197,29 @@ RenameStatus RenameFileNoReplace(const std::string& src, const std::string& dst)
   }
 
   return RenameStatus::kOk;
+}
+
+Result ResolvePath(const std::string& path, std::string& out) {
+  std::error_code ec;
+
+  /* canonical rather than a read of the link's own target, because a target may be another link and may be relative to
+   * the directory the link sits in. The error_code overload is the one that reports a path that does not resolve as a
+   * failure instead of throwing, which this build has no way to catch. */
+
+  const std::filesystem::path real = std::filesystem::canonical(ToPath(path), ec);
+
+  if (ec) {
+    return Result::kFailure;
+  }
+
+  /* u8string rather than string, which would narrow the wide path through the ANSI code page and lose whatever it
+   * cannot spell. Every path the core holds is UTF-8, which is what ToPath reads on the way in. */
+
+  const std::u8string text = real.u8string();
+
+  out.assign(reinterpret_cast<const char*>(text.data()), text.size());
+
+  return Result::kSuccess;
 }
 
 Result SyncFile(FILE* file) {

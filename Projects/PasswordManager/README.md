@@ -169,6 +169,7 @@ src
 ## 3-3. Limitations
 
 * A vault file becomes owner-only after each save, even if a user deliberately made it group-readable
+* A save replaces the vault file, so other hard links to it keep the previous version
 * No CLI mode (GUI only)
 * No key file support (Password only)
 * No cloud sync (Local vault file only)

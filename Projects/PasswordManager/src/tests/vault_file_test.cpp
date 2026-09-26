@@ -273,10 +273,11 @@ class VaultFileTest : public ::testing::Test {
   }
 
   /**
-   * @brief   Replace the vault file with an empty vault built under the given parameters
+   * @brief   Replace the file at a path with an empty vault built under the given parameters
+   * @param   path    File path to write
    * @param   params  Argon2id parameters to derive with and record
    */
-  void MakeVaultWith(const KdfParams& params) {
+  static void MakeVaultAt(const std::string& path, const KdfParams& params) {
     std::vector<uint8_t> img(kCountSize);
 
     StoreLE32(img.data(), 0);
@@ -284,8 +285,14 @@ class VaultFileTest : public ::testing::Test {
     std::array<uint8_t, kSaltSize> salt{};
     salt.fill(0x33);
 
-    WriteVault(path_, img, salt, params);
+    WriteVault(path, img, salt, params);
   }
+
+  /**
+   * @brief   Replace the vault file with an empty vault built under the given parameters
+   * @param   params  Argon2id parameters to derive with and record
+   */
+  void MakeVaultWith(const KdfParams& params) { MakeVaultAt(path_, params); }
 
   /**
    * @brief   Replace the vault file with a cheap one and open the fixture's session on it
@@ -1681,6 +1688,328 @@ TEST_F(VaultFileTest, SaveRefusesPathHoldingAFileThisSessionNeverRead) {
 
   EXPECT_EQ(RemoveFile(other_path), Result::kSuccess);
 }
+
+/**
+ * @brief   Verify a save onto a free path leaves the session following the file it made there
+ *
+ * Nothing holds the name, so this save is not replacing a version anybody owns and goes ahead. What it publishes is
+ * the file the name now leads to, and the save after it has to recognise that file as the one this session wrote.
+ * Resolving the name at one publish while comparing an unresolved one at the next would report a conflict against
+ * the session's own work, and ask the user to acknowledge a file only they had ever written.
+ */
+TEST_F(VaultFileTest, SaveOntoAFreePathFollowsTheFileItMade) {
+  const std::string other_path = "unheld.vault";
+
+  RemoveFile(other_path);  // A file an earlier run left behind would make this a different case
+
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.SaveVault(other_path), SaveResult::kSuccess);
+
+  EXPECT_EQ(vault_.SaveVault(other_path), SaveResult::kSuccess);
+  EXPECT_FALSE(vault_.IsDirty());
+  EXPECT_FALSE(TempFileLeft(other_path));
+
+  Vault fresh;
+
+  ASSERT_EQ(fresh.OpenVault(other_path, MakePW("password")), Result::kSuccess);
+  EXPECT_TRUE(HasEntry(fresh, "Google", "user@google.com"));
+
+  fresh.CloseVault();
+
+  EXPECT_EQ(RemoveFile(other_path), Result::kSuccess);
+}
+
+/* ==================================================
+ * Symbolic Link Test
+ * ================================================== */
+
+#ifndef _WIN32
+
+namespace {
+
+/**
+ * @brief   Report whether a path holds a symbolic link itself
+ * @param   path    Path to look at
+ * @return  true if the path is a link rather than whatever it leads to
+ *
+ * lstat rather than stat, because what every case below is about is the link surviving a save that went through it.
+ * A stat would follow the link and report on the file at the far end, which says nothing about the link.
+ */
+bool IsSymlink(const std::string& path) {
+  struct stat st = {};
+
+  return lstat(path.c_str(), &st) == 0 && S_ISLNK(st.st_mode);
+}
+
+}  // namespace
+
+/**
+ * @brief   Verify a save through a symbolic link replaces the file the link leads to, not the link
+ *
+ * A vault kept in a synced folder and reached through a link in the home directory is the ordinary shape of this. The
+ * publish is a rename, and a rename onto the link's own path replaces the link, so the file the user's path leads to
+ * would keep the version it had while the link turned into a regular file holding the new one. Both halves are
+ * asserted: the link is still a link, and the file at the far end is where the entry landed.
+ */
+TEST_F(VaultFileTest, SaveThroughSymlinkWritesTarget) {
+  const std::string dir = "symlink_dir";
+  const std::string target = dir + "/real.vault";
+  const std::string link = "symlink.vault";
+
+  ASSERT_EQ(mkdir(dir.c_str(), 0700), 0);
+
+  MakeVaultAt(target, MinParams());
+
+  RemoveFile(link);  // A link an earlier run left behind would fail the symlink below
+
+  ASSERT_EQ(symlink(target.c_str(), link.c_str()), 0);
+  ASSERT_EQ(vault_.OpenVault(link, MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+
+  EXPECT_EQ(vault_.SaveVault(link), SaveResult::kSuccess);
+  EXPECT_FALSE(vault_.IsDirty());
+
+  /* The link is still a link, and the temporary was published out of the target's directory rather than left in
+   * either of the two */
+
+  EXPECT_TRUE(IsSymlink(link));
+  EXPECT_FALSE(TempFileLeft(link));
+  EXPECT_FALSE(TempFileLeft(target));
+
+  vault_.CloseVault();
+
+  /* The entry is in the file the link leads to, opened by that file's own path rather than through the link */
+
+  Vault fresh;
+
+  ASSERT_EQ(fresh.OpenVault(target, MakePW("password")), Result::kSuccess);
+  EXPECT_EQ(fresh.GetEntryCount(), 1);
+  EXPECT_TRUE(HasEntry(fresh, "Google", "user@google.com"));
+
+  fresh.CloseVault();
+
+  EXPECT_EQ(RemoveFile(link), Result::kSuccess);
+  EXPECT_EQ(RemoveFile(target), Result::kSuccess);
+  EXPECT_EQ(rmdir(dir.c_str()), 0);
+}
+
+/**
+ * @brief   Verify a save follows a chain of relative links to the file at the end of it
+ *
+ * Every hop is resolved rather than the first one alone, and a relative target is read against the directory of the
+ * link that stores it rather than against the working directory. "../mid.vault" held in links/ has to reach the
+ * mid-chain link in the parent, and the rename has to land on the file at the far end, in a directory neither link
+ * sits in.
+ */
+TEST_F(VaultFileTest, SaveThroughRelativeSymlinkChainWritesTarget) {
+  const std::string link_dir = "chain_links";
+  const std::string target_dir = "chain_target";
+  const std::string target = target_dir + "/real.vault";
+  const std::string mid = "mid.vault";
+  const std::string link = link_dir + "/linked.vault";
+
+  ASSERT_EQ(mkdir(link_dir.c_str(), 0700), 0);
+  ASSERT_EQ(mkdir(target_dir.c_str(), 0700), 0);
+
+  MakeVaultAt(target, MinParams());
+
+  RemoveFile(mid);
+  RemoveFile(link);
+
+  /* Each target is stored relative to the directory of the link that holds it: the working directory's link names the
+   * vault below it, and the one inside links/ has to climb out of that directory to name the first link */
+
+  ASSERT_EQ(symlink(target.c_str(), mid.c_str()), 0);
+  ASSERT_EQ(symlink(("../" + mid).c_str(), link.c_str()), 0);
+  ASSERT_EQ(vault_.OpenVault(link, MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+
+  EXPECT_EQ(vault_.SaveVault(link), SaveResult::kSuccess);
+
+  /* Both hops came through it, and none of the three directories the chain passes through was left a temporary */
+
+  EXPECT_TRUE(IsSymlink(link));
+  EXPECT_TRUE(IsSymlink(mid));
+  EXPECT_FALSE(TempFileLeft(link));
+  EXPECT_FALSE(TempFileLeft(mid));
+  EXPECT_FALSE(TempFileLeft(target));
+
+  vault_.CloseVault();
+
+  Vault fresh;
+
+  ASSERT_EQ(fresh.OpenVault(target, MakePW("password")), Result::kSuccess);
+  EXPECT_EQ(fresh.GetEntryCount(), 1);
+  EXPECT_TRUE(HasEntry(fresh, "Google", "user@google.com"));
+
+  fresh.CloseVault();
+
+  EXPECT_EQ(RemoveFile(link), Result::kSuccess);
+  EXPECT_EQ(RemoveFile(mid), Result::kSuccess);
+  EXPECT_EQ(RemoveFile(target), Result::kSuccess);
+  EXPECT_EQ(rmdir(link_dir.c_str()), 0);
+  EXPECT_EQ(rmdir(target_dir.c_str()), 0);
+}
+
+/**
+ * @brief   Verify a password change through a symbolic link re-encrypts the file the link leads to
+ *
+ * ChangePW publishes through the commit point a save does, and it asks about the file twice: once before the
+ * derivation and once before the rename. All three have to mean the same file, or a check would clear one file and
+ * the rename would take another.
+ */
+TEST_F(VaultFileTest, ChangePWThroughSymlinkWritesTarget) {
+  const std::string dir = "changepw_link_dir";
+  const std::string target = dir + "/real.vault";
+  const std::string link = "changepw_link.vault";
+
+  ASSERT_EQ(mkdir(dir.c_str(), 0700), 0);
+
+  MakeVaultAt(target, MinParams());
+
+  RemoveFile(link);
+
+  ASSERT_EQ(symlink(target.c_str(), link.c_str()), 0);
+  ASSERT_EQ(vault_.OpenVault(link, MakePW("password")), Result::kSuccess);
+
+  EXPECT_EQ(vault_.ChangePW(MakePW("asdf1234"), link), SaveResult::kSuccess);
+  EXPECT_TRUE(IsSymlink(link));
+  EXPECT_FALSE(TempFileLeft(link));
+  EXPECT_FALSE(TempFileLeft(target));
+
+  vault_.CloseVault();
+
+  /* The new password belongs to the file at the far end, and the old one does not open it any more */
+
+  Vault fresh;
+
+  EXPECT_EQ(fresh.OpenVault(target, MakePW("password")), Result::kFailure);
+  EXPECT_EQ(fresh.OpenVault(target, MakePW("asdf1234")), Result::kSuccess);
+
+  fresh.CloseVault();
+
+  EXPECT_EQ(RemoveFile(link), Result::kSuccess);
+  EXPECT_EQ(RemoveFile(target), Result::kSuccess);
+  EXPECT_EQ(rmdir(dir.c_str()), 0);
+}
+
+/**
+ * @brief   Verify an acknowledged save puts back a target that was deleted from under the link
+ *
+ * A dangling link resolves to nothing, so the file to publish onto cannot be read off the path any more. What answers
+ * instead is the file this session read, which is the one the link was pointing at, so an acknowledged overwrite puts
+ * the vault back where the link leads and the link works again. Writing it to the link's own path would leave the
+ * target still missing and replace the link with a regular file.
+ */
+TEST_F(VaultFileTest, SaveAfterTargetDeletedRecreatesTarget) {
+  const std::string dir = "deleted_target_dir";
+  const std::string target = dir + "/real.vault";
+  const std::string link = "deleted_target.vault";
+
+  ASSERT_EQ(mkdir(dir.c_str(), 0700), 0);
+
+  MakeVaultAt(target, MinParams());
+
+  RemoveFile(link);
+
+  ASSERT_EQ(symlink(target.c_str(), link.c_str()), 0);
+  ASSERT_EQ(vault_.OpenVault(link, MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(RemoveFile(target), Result::kSuccess);
+
+  /* A vault that is not there is not the version this session read, so the first save reports it rather than
+   * recreating a file the user may have moved deliberately */
+
+  EXPECT_EQ(vault_.SaveVault(link), SaveResult::kConflict);
+  EXPECT_FALSE(FileExists(target));
+  EXPECT_TRUE(vault_.IsDirty());
+
+  EXPECT_EQ(vault_.SaveVault(link, SaveMode::kOverwriteAcknowledged), SaveResult::kSuccess);
+  EXPECT_TRUE(FileExists(target));
+  EXPECT_TRUE(IsSymlink(link));
+  EXPECT_FALSE(TempFileLeft(link));
+  EXPECT_FALSE(TempFileLeft(target));
+
+  vault_.CloseVault();
+
+  /* The link leads to a vault again, and the vault is this session's */
+
+  Vault fresh;
+
+  ASSERT_EQ(fresh.OpenVault(link, MakePW("password")), Result::kSuccess);
+  EXPECT_EQ(fresh.GetEntryCount(), 1);
+  EXPECT_TRUE(HasEntry(fresh, "Google", "user@google.com"));
+
+  fresh.CloseVault();
+
+  EXPECT_EQ(RemoveFile(link), Result::kSuccess);
+  EXPECT_EQ(RemoveFile(target), Result::kSuccess);
+  EXPECT_EQ(rmdir(dir.c_str()), 0);
+}
+
+/**
+ * @brief   Verify a link repointed under an open session conflicts rather than publishing unseen
+ *
+ * The path is resolved afresh at every publish rather than pinned when the vault was opened, which is what lets a
+ * save follow a link the user has since repointed. The file it now leads to is not the one this session read, so it
+ * is a changed file in the same sense a changed IV is, and it is reported before anything is written. A session that
+ * pinned its file at open would answer kSuccess here and write the old one, leaving the user's own path at a vault
+ * without their change.
+ */
+TEST_F(VaultFileTest, SaveAfterLinkRetargetIsConflict) {
+  const std::string first = "retarget_a.vault";
+  const std::string second = "retarget_b.vault";
+  const std::string link = "retarget_link.vault";
+
+  MakeVaultAt(first, MinParams());
+  MakeVaultAt(second, MinParams());
+
+  RemoveFile(link);
+
+  ASSERT_EQ(symlink(first.c_str(), link.c_str()), 0);
+  ASSERT_EQ(vault_.OpenVault(link, MakePW("password")), Result::kSuccess);
+
+  const std::vector<uint8_t> before_first = ReadFile(first);
+  const std::vector<uint8_t> before_second = ReadFile(second);
+
+  /* The user repoints the link while the session is open, which is a thing a person does between two saves */
+
+  ASSERT_EQ(RemoveFile(link), Result::kSuccess);
+  ASSERT_EQ(symlink(second.c_str(), link.c_str()), 0);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+
+  EXPECT_EQ(vault_.SaveVault(link), SaveResult::kConflict);
+  EXPECT_NE(vault_.GetLastError().find("changed on disk"), std::string::npos);
+
+  /* Neither vault was touched, the temporary went with the refusal, and the session still holds the edit */
+
+  EXPECT_EQ(ReadFile(first), before_first);
+  EXPECT_EQ(ReadFile(second), before_second);
+  EXPECT_FALSE(TempFileLeft(link));
+  EXPECT_TRUE(vault_.IsDirty());
+
+  EXPECT_EQ(vault_.SaveVault(link, SaveMode::kOverwriteAcknowledged), SaveResult::kSuccess);
+
+  /* The acknowledged save published where the link leads now, and the file it used to lead to is as it was */
+
+  EXPECT_EQ(ReadFile(first), before_first);
+
+  vault_.CloseVault();
+
+  Vault fresh;
+
+  ASSERT_EQ(fresh.OpenVault(link, MakePW("password")), Result::kSuccess);
+  EXPECT_EQ(fresh.GetEntryCount(), 1);
+  EXPECT_TRUE(HasEntry(fresh, "Google", "user@google.com"));
+
+  fresh.CloseVault();
+
+  EXPECT_EQ(RemoveFile(link), Result::kSuccess);
+  EXPECT_EQ(RemoveFile(first), Result::kSuccess);
+  EXPECT_EQ(RemoveFile(second), Result::kSuccess);
+}
+
+#endif /* !_WIN32 */
 
 /* ==================================================
  * Header Authentication Test

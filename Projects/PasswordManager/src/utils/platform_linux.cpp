@@ -13,6 +13,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <filesystem>
+#include <system_error>
 #include <thread>
 
 #include "utils/platform.h"
@@ -159,6 +160,24 @@ RenameStatus RenameFileNoReplace(const std::string& src, const std::string& dst)
 
   return RenameStatus::kOk;
   // LCOV_EXCL_STOP
+}
+
+Result ResolvePath(const std::string& path, std::string& out) {
+  std::error_code ec;
+
+  /* canonical rather than a read of the link's own target, because a target may be another link and may be relative to
+   * the directory the link sits in. The error_code overload is the one that reports a path that does not resolve as a
+   * failure instead of throwing, which this build has no way to catch. */
+
+  const std::filesystem::path real = std::filesystem::canonical(path, ec);
+
+  if (ec) {
+    return Result::kFailure;
+  }
+
+  out = real.string();
+
+  return Result::kSuccess;
 }
 
 Result SyncFile(FILE* file) {

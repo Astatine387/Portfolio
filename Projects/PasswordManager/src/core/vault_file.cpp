@@ -91,9 +91,20 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
 
   Reset();
 
+  /* Resolve the path before it is opened, so that the file this session goes on to claim as its own is named by the
+   * file it actually read rather than by a path that may lead somewhere else later. A path that does not resolve is a
+   * path nothing can be read from, so it fails here with what the failing open below would have said. */
+
+  std::string real_path;
+
+  if (ResolvePath(path, real_path) == Result::kFailure) {
+    ReportError("[File] Open failed - Cannot open vault file\n");
+    return Result::kFailure;
+  }
+
   /* Open file pointer */
 
-  OpenFile(&file_, path, "rb");
+  OpenFile(&file_, real_path, "rb");
 
   if (file_ == nullptr) {
     ReportError("[File] Open failed - Cannot open vault file\n");
@@ -277,7 +288,7 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
    * accounts for the header and the IV both, so these bytes are there. Clear() wipes the buffer immediately after,
    * which is why this stands ahead of it. */
 
-  RememberFile(path, std::span<const uint8_t, kIVSize>(src_buff_.data() + kHeaderSize, kIVSize));
+  RememberFile(path, real_path, std::span<const uint8_t, kIVSize>(src_buff_.data() + kHeaderSize, kIVSize));
 
   Clear();
 
@@ -298,6 +309,11 @@ SaveResult Vault::SaveVault(const std::string& path, SaveMode mode) {
 Vault::FileState Vault::ReadFileState(const std::string& path) {
   FileState state;
   FILE* file = nullptr;
+
+  /* Recorded whether or not anything is read, because it is half of what is being described: a caller comparing two
+   * observations is asking about one file, and two answers about two different files are not comparable. */
+
+  state.file = path;
 
   OpenFile(&file, path, "rb");
 
@@ -335,10 +351,11 @@ Vault::FileState Vault::ReadFileState(const std::string& path) {
   return state;
 }
 
-void Vault::RememberFile(const std::string& path, std::span<const uint8_t, kIVSize> iv) {
+void Vault::RememberFile(const std::string& path, const std::string& real_path, std::span<const uint8_t, kIVSize> iv) {
   FileMark mark;
 
   mark.path = path;
+  mark.real_path = real_path;
 
   std::ranges::copy(iv, mark.iv.begin());
 
@@ -346,7 +363,24 @@ void Vault::RememberFile(const std::string& path, std::span<const uint8_t, kIVSi
   ack_.reset();
 }
 
-SaveResult Vault::CheckTarget(const std::string& path, SaveMode mode) {
+std::string Vault::ReplaceTarget(const std::string& path) const {
+  std::string real_path;
+
+  if (ResolvePath(path, real_path) == Result::kSuccess) {
+    return real_path;
+  }
+
+  /* The path leads nowhere. If it is the one this session opened or last saved, the file that was behind it is the
+   * vault the user means, and the publish recreates it there rather than at the link standing in front of it. */
+
+  if (mark_.has_value() && mark_->path == path) {
+    return mark_->real_path;
+  }
+
+  return path;
+}
+
+SaveResult Vault::CheckTarget(const std::string& path, const std::string& target, SaveMode mode) {
   /* A plain save asks the question afresh, so whatever an earlier conflict was acknowledged for stops standing here.
    * Without this a user could be warned, cancel, edit, save again and have the stale acknowledgement answer for a
    * prompt they never saw. */
@@ -355,10 +389,14 @@ SaveResult Vault::CheckTarget(const std::string& path, SaveMode mode) {
     ack_.reset();
   }
 
-  const FileState state = ReadFileState(path);
+  const FileState state = ReadFileState(target);
 
-  const bool changed =
-      (mark_.has_value() && mark_->path == path) ? (!state.has_iv || state.iv != mark_->iv) : state.exists;
+  /* A file other than the one this session read is a changed file in the same sense a changed IV is: what the path
+   * leads to now is not what it led to then, and publishing over it would replace a vault nobody has looked at. */
+
+  const bool changed = (mark_.has_value() && mark_->path == path)
+                           ? (target != mark_->real_path || !state.has_iv || state.iv != mark_->iv)
+                           : state.exists;
 
   if (!changed) {
     return SaveResult::kSuccess;
@@ -435,9 +473,21 @@ SaveResult Vault::SaveVaultWith(const std::string& path, const SecureKey& key, P
     // LCOV_EXCL_STOP
   }
 
-  /* Save to a temporary file */
+  /* Settle which file is being published onto, once, before anything is written. A path leading through a symbolic
+   * link does not name the file at the end of it, and the check, the temporary, the rename and the directory flush all
+   * have to mean that file: a check that read one file while the rename replaced another would be answering about
+   * something nobody was about to overwrite. A create is the one case with nothing to resolve, its whole precondition
+   * being that the name holds nothing yet.
+   *
+   * Once, rather than at each of the four, so that a link repointed while this runs cannot leave them disagreeing. */
 
-  std::string tmp_path = path + ".XXXXXX";
+  const std::string target = (mode == PublishMode::kReplace) ? ReplaceTarget(path) : path;
+
+  /* Save to a temporary file, in the directory of the file it is going to replace. rename(2) is atomic within one file
+   * system and answers EXDEV across two, and a link pointing off to another disk is exactly what puts a vault there,
+   * so the temporary follows the target rather than the name that led to it. */
+
+  std::string tmp_path = target + ".XXXXXX";
 
   if (OpenTempFile(&file_, tmp_path) == Result::kFailure) {
     ReportError("[File] Open failed - Cannot create temporary file for writing\n");
@@ -470,30 +520,32 @@ SaveResult Vault::SaveVaultWith(const std::string& path, const SecureKey& key, P
   static_cast<void>(fclose(file_));
   file_ = nullptr;
 
-  /* Last look at the path before it is taken. This stands here, rather than beside the encryption above, because
+  /* Last look at the file before it is taken. This stands here, rather than beside the encryption above, because
    * everything between the two is time a second window or a sync client can write in, and a check is worth only the
    * gap between it and the rename it guards. Nothing durable has happened yet: the bytes are in a temporary of this
    * program's own, so a refusal costs that temporary and nothing else. */
 
   if (mode == PublishMode::kReplace) {
-    const SaveResult target = CheckTarget(path, save);
+    const SaveResult check = CheckTarget(path, target, save);
 
-    if (target != SaveResult::kSuccess) {
+    if (check != SaveResult::kSuccess) {
       RemoveFile(tmp_path);
-      return target;  // CheckTarget reported the refusal
+      return check;  // CheckTarget reported the refusal
     }
   }
 
-  /* Rename the temporary onto the vault path. This is the commit point: the rename is atomic, whatever it does to
-   * the path is done the moment it returns, and nothing below can undo it. So nothing below may report the save as
-   * anything but a success, since a caller reads kError and kConflict alike as a promise that the file on disk is
-   * the one it was before the call.
+  /* Rename the temporary onto the file being published. This is the commit point: the rename is atomic, whatever it
+   * does to that file is done the moment it returns, and nothing below can undo it. So nothing below may report the
+   * save as anything but a success, since a caller reads kError and kConflict alike as a promise that the file on disk
+   * is the one it was before the call.
    *
-   * The two modes differ here and nowhere else. kReplace publishes over the vault this session already owns, which
-   * the rename replaces and which is gone once it returns. kCreateOnly is where a create's precondition is actually
+   * The two modes differ here and nowhere else. kReplace publishes over the vault this session already owns, which is
+   * the file the path led to rather than the path itself, so a link standing in front of that vault is left pointing
+   * at the new version instead of being replaced by it. kCreateOnly is where a create's precondition is actually
    * decided: the name has to be free at this instant rather than at the instant NewVault looked at it, so the move
-   * itself is the test, and a refusal means something took the name while the key was being derived. Either way the
-   * temporary is removed on failure, so a refused create leaves the directory as it found it. */
+   * itself is the test, and a refusal means something took the name while the key was being derived. It is the path
+   * as the caller gave it, with nothing resolved away, because a name held by a dangling link is a name that is taken.
+   * Either way the temporary is removed on failure, so a refused create leaves the directory as it found it. */
 
   if (mode == PublishMode::kCreateOnly) {
     const RenameStatus status = RenameFileNoReplace(tmp_path, path);
@@ -512,7 +564,7 @@ SaveResult Vault::SaveVaultWith(const std::string& path, const SecureKey& key, P
       // LCOV_EXCL_STOP
     }
   }
-  else if (RenameFile(tmp_path, path) == Result::kFailure) {
+  else if (RenameFile(tmp_path, target) == Result::kFailure) {
     // LCOV_EXCL_START
     ReportError("[File] Rename failed - Cannot replace vault file\n");
     RemoveFile(tmp_path);
@@ -525,9 +577,26 @@ SaveResult Vault::SaveVaultWith(const std::string& path, const SecureKey& key, P
   /* Follow the file that was just published, taking the IV out of the buffer that went to the disk rather than
    * reading the path back: between the rename and a re-read something else could write, and this session would then
    * claim a version it never held. dst_bytes is kFrameSize and up, which covers the header and the IV both. Clear()
-   * wipes the buffer immediately after, which is why this stands ahead of it. */
+   * wipes the buffer immediately after, which is why this stands ahead of it.
+   *
+   * A publish that resolved the path away knows which file it wrote, that being the one the rename took, and it is
+   * taken from there rather than resolved again: a link repointed in the instant after the rename would answer with a
+   * file this session never wrote, and the next save would then replace that file unwarned.
+   *
+   * A publish onto the path itself is the other case, and there the name is resolved instead. It is what a create does
+   * always, and what a save does when it publishes onto a name that held nothing; either way the file the name leads
+   * to did not exist until the rename made it, so resolving it is what leaves the next save comparing a resolved path
+   * against a resolved one rather than against the name it was handed. ResolvePath leaves its output alone when it
+   * fails, so a file deleted in the moment between the rename and this leaves the name itself, which the next publish
+   * resolves afresh anyway. */
 
-  RememberFile(path, std::span<const uint8_t, kIVSize>(dst_buff_.data() + kHeaderSize, kIVSize));
+  std::string real_path = target;
+
+  if (target == path) {
+    static_cast<void>(ResolvePath(path, real_path));
+  }
+
+  RememberFile(path, real_path, std::span<const uint8_t, kIVSize>(dst_buff_.data() + kHeaderSize, kIVSize));
 
   Clear();
 
@@ -535,7 +604,7 @@ SaveResult Vault::SaveVaultWith(const std::string& path, const SecureKey& key, P
    * its directory entry may not outlive a power loss, which is a warning about durability rather than a save that
    * did not happen, and it is reported as one so the session can follow the file that is now on disk. */
 
-  if (SyncDir(path) == Result::kFailure) {
+  if (SyncDir(target) == Result::kFailure) {
     last_warning_ = "[File] Saved, but the directory entry could not be flushed to disk\n";
   }
 
@@ -581,7 +650,7 @@ SaveResult Vault::ChangePW(const Password& pw, const std::string& path, SaveMode
    * was changed elsewhere is told so now rather than after Argon2id has spent seconds on a save that was never going
    * to be published. */
 
-  if (CheckTarget(path, mode) == SaveResult::kConflict) {
+  if (CheckTarget(path, ReplaceTarget(path), mode) == SaveResult::kConflict) {
     return SaveResult::kConflict;  // CheckTarget reported the refusal
   }
 

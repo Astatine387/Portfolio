@@ -283,11 +283,15 @@ class Vault {
    * all. A file too short to hold one is not a vault version this session could have written, so it is described as
    * carrying none rather than as carrying whatever bytes happened to sit at the offset. exists is kept beside it
    * because a path this session never read is refused on existence alone, without the file having to parse.
+   *
+   * file says which file all of that is about, because a path that leads through a symbolic link does not name it. It
+   * is compared along with the rest, so an acknowledgement covers the file that was seen and not only its version.
    */
   struct FileState {
     bool exists = false;                // Something holds the path, whether or not an IV came out of it
     bool has_iv = false;                // The file was long enough for the IV to be read
     std::array<uint8_t, kIVSize> iv{};  // Those bytes, meaningful only when has_iv
+    std::string file;                   // The file that was looked at, which a path through a link does not name
 
     bool operator==(const FileState& other) const = default;
   };
@@ -298,9 +302,15 @@ class Vault {
    *
    * The IV is taken from the bytes the session actually used, never from a later read of the file, so what this
    * describes is a version this session is known to have held rather than whatever is at the path now.
+   *
+   * Two paths, because a path and the file it leads to are not the same thing once a symbolic link is in the way. path
+   * is the name the caller used, which is what a later call arrives with and what an acknowledgement is keyed on;
+   * real_path is the file that name led to at the time, which is what a publish has to replace and what says whether
+   * the name still leads where it did.
    */
   struct FileMark {
     std::string path;                   // Path the version was read from or written to
+    std::string real_path;              // File that path resolved to, which is where the bytes went
     std::array<uint8_t, kIVSize> iv{};  // IV of the bytes this session used
   };
 
@@ -389,35 +399,60 @@ class Vault {
 
   /**
    * @brief   Record the vault version this session now holds
-   * @param   path  Path the version was read from or written to
-   * @param   iv    IV of the bytes this session read or wrote
+   * @param   path       Path the version was read from or written to
+   * @param   real_path  File that path led to, which is where the bytes came from or went
+   * @param   iv         IV of the bytes this session read or wrote
    *
    * Called with a view into the buffer the session actually used, never with bytes read back off the disk: a re-read
    * could capture a version written between the operation and the read, which this session never loaded and has no
-   * business claiming as its own.
+   * business claiming as its own. @p real_path is the file the operation itself acted on for the same reason, rather
+   * than a resolution of @p path made afterwards, which a link repointed in between would answer differently.
    *
    * Any acknowledgement goes with it. The session and the file agree again at this point, so a permission to
    * overwrite something they disagreed about has nothing left to apply to.
    */
-  void RememberFile(const std::string& path, std::span<const uint8_t, kIVSize> iv);
+  void RememberFile(const std::string& path, const std::string& real_path, std::span<const uint8_t, kIVSize> iv);
 
   /**
-   * @brief   Decide whether a publish onto a path may go ahead
-   * @param   path  Path the publish would write onto
-   * @param   mode  Whether a changed file refuses the publish or was already acknowledged
+   * @brief   Decide which file a replacing publish onto a path should act on
+   * @param   path  Path the caller asked to publish onto
+   * @return  The file to look at, write beside and rename onto
+   *
+   * The path leads the way, and it is asked afresh at every publish rather than answered once when the vault was
+   * opened. A link the user has repointed since then leads somewhere else now, and following it is what keeps a save
+   * and the path the user opens tomorrow meaning the same vault. Nothing is thereby published unseen: a file this
+   * session never held is a changed file, and CheckTarget reports it as one.
+   *
+   * A path that leads nowhere falls back to the file this session read, which is the file a dangling link was pointing
+   * at, so an acknowledged overwrite puts the vault back there and the link leads to a vault again. Failing that there
+   * is nothing to resolve and the path stands for itself, which is what a save onto a name holding nothing means.
+   */
+  [[nodiscard]] std::string ReplaceTarget(const std::string& path) const;
+
+  /**
+   * @brief   Decide whether a publish onto a file may go ahead
+   * @param   path    Path the caller asked to publish onto
+   * @param   target  File that path leads to, which is the one the publish would replace
+   * @param   mode    Whether a changed file refuses the publish or was already acknowledged
    * @return  kSuccess when the publish may proceed, kConflict when nothing may be written
    *
-   * Two questions, by whether @p path is the file this session last read or wrote. For that file, the IV on disk
-   * answers it: an equal IV means the bytes are the version this session last saw, since every save this program
-   * makes draws a fresh one. For any other path, existence answers it, because a file this session has never read
-   * is one it cannot claim to be replacing a known version of.
+   * Both, because a path and the file it leads to stop being the same thing once a symbolic link is in the way. @p
+   * target is what is read and what the rename is going to replace, so the check and the commit cannot end up meaning
+   * different files; @p path is what decides which of the two questions below is asked, and it is what an
+   * acknowledgement is recorded against, that being the name the answer to it comes back on.
+   *
+   * Two questions, by whether @p path is the one this session last read or wrote. For that path, the file it leads to
+   * and the IV in that file answer together: a different file means the name leads somewhere other than it did, and an
+   * equal IV in the same file means the bytes are the version this session last saw, since every save this program
+   * makes draws a fresh one. For any other path, existence answers it, because a file this session has never read is
+   * one it cannot claim to be replacing a known version of.
    *
    * Comparing only the IV is what makes the check cheap and what bounds what it can promise. A file restored to
    * exactly the bytes this session last read passes, correctly, since there is nothing there to lose; a file whose
    * IV was kept while later bytes were changed passes too, and loses nothing either, because those bytes would fail
    * their own tag and are not a vault version anybody could have opened.
    */
-  SaveResult CheckTarget(const std::string& path, SaveMode mode);
+  SaveResult CheckTarget(const std::string& path, const std::string& target, SaveMode mode);
 
   /**
    * @brief   Serialize every entry except one into a candidate image and record their offsets in it
