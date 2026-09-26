@@ -478,6 +478,43 @@ TEST_F(VaultFileTest, NewVaultRefusesDanglingSymlink) {
   EXPECT_EQ(RemoveFile(link_path), Result::kSuccess);
 }
 
+/**
+ * @brief   Verify a path whose existence cannot be established is refused before anything is derived
+ *
+ * The counterpart of the dangling link above. There the path resolves, to nothing, and the check lets it through;
+ * here a pair of links pointing at each other resolves to neither a file nor an absence, and the check is what has
+ * to answer, because a question the file system will not answer is not a free name. The refusal therefore lands
+ * where the create's own message is, ahead of the password and the seconds of Argon2id behind it.
+ */
+TEST_F(VaultFileTest, NewVaultRefusesSymlinkLoop) {
+  const std::string loop_a = "loop_a.vault";
+  const std::string loop_b = "loop_b.vault";
+
+  RemoveFile(loop_a);  // Links an earlier run left behind would fail the calls below
+  RemoveFile(loop_b);
+
+  ASSERT_EQ(symlink(loop_b.c_str(), loop_a.c_str()), 0);
+  ASSERT_EQ(symlink(loop_a.c_str(), loop_b.c_str()), 0);
+
+  Vault other;
+
+  EXPECT_EQ(other.NewVault(loop_a, MakePW("password")), Result::kFailure);
+  EXPECT_FALSE(other.GetLastError().empty());
+
+  /* Both names still hold the links themselves, so nothing was written through the loop or over either of them */
+
+  struct stat st = {};
+
+  ASSERT_EQ(lstat(loop_a.c_str(), &st), 0);
+  EXPECT_TRUE(S_ISLNK(st.st_mode));
+
+  ASSERT_EQ(lstat(loop_b.c_str(), &st), 0);
+  EXPECT_TRUE(S_ISLNK(st.st_mode));
+
+  EXPECT_EQ(RemoveFile(loop_a), Result::kSuccess);
+  EXPECT_EQ(RemoveFile(loop_b), Result::kSuccess);
+}
+
 #endif /* !_WIN32 */
 
 /* ==================================================
@@ -1741,6 +1778,40 @@ bool IsSymlink(const std::string& path) {
   return lstat(path.c_str(), &st) == 0 && S_ISLNK(st.st_mode);
 }
 
+/**
+ * @brief   List the names sitting beside a path that a save temporary for it would be among
+ * @param   path    Vault file path
+ * @return  The names in the path's directory that begin with the file's own name and a dot, in order
+ *
+ * Taken twice and compared, rather than TempFileLeft's single look, for the case below. TempFileLeft asks about the
+ * one name shape SaveVaultWith writes, which is the right question when what is in doubt is whether that temporary
+ * was cleaned up. What is in doubt below is whether the refusal left the directory as it found it at all, so the
+ * whole prefix is listed, and comparing two listings is what keeps anything the case itself put there from counting
+ * as a leftover.
+ */
+std::vector<std::string> NamesBeside(const std::string& path) {
+  const std::filesystem::path target(path);
+  const std::filesystem::path dir = target.has_parent_path() ? target.parent_path() : std::filesystem::path(".");
+  const std::string prefix = target.filename().string() + ".";
+
+  std::vector<std::string> names;
+
+  for (const auto& item : std::filesystem::directory_iterator(dir)) {
+    std::string name = item.path().filename().string();
+
+    if (name.starts_with(prefix)) {
+      names.push_back(std::move(name));
+    }
+  }
+
+  /* directory_iterator hands names back in whatever order the file system holds them, which is not an order two
+   * listings of the same directory have to agree on */
+
+  std::ranges::sort(names);
+
+  return names;
+}
+
 }  // namespace
 
 /**
@@ -2007,6 +2078,47 @@ TEST_F(VaultFileTest, SaveAfterLinkRetargetIsConflict) {
   EXPECT_EQ(RemoveFile(link), Result::kSuccess);
   EXPECT_EQ(RemoveFile(first), Result::kSuccess);
   EXPECT_EQ(RemoveFile(second), Result::kSuccess);
+}
+
+/**
+ * @brief   Verify a save onto a path that cannot be examined is refused, with the edit and the directory intact
+ *
+ * The save path's own version of the rule the check states. The temporary has been written, synced and closed by the
+ * time the file at the far end is looked at, so a path the file system will not answer about has to come back as a
+ * reason to refuse: the last look before the rename is the only thing standing between an unexaminable file and a
+ * publish over it, and a look that cannot be made has established nothing.
+ *
+ * What is asserted after the refusal is the cost of it. The edit is still in the session, so the user has lost
+ * nothing they could not save again, and the directory holds exactly the names it held before, so the temporary this
+ * attempt wrote was taken away with it rather than left beside the vault.
+ */
+TEST_F(VaultFileTest, SaveRefusesSymlinkLoop) {
+  const std::string loop = "save_loop.vault";
+
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+
+  /* The vault this session is holding is replaced, at its own name, by a pair of links pointing at each other. A user
+   * reaches this by repointing a link they keep their vault behind while a window is open on it. */
+
+  RemoveFile(loop);  // A link an earlier run left behind would fail the calls below
+
+  ASSERT_EQ(RemoveFile(path_), Result::kSuccess);
+  ASSERT_EQ(symlink(loop.c_str(), path_.c_str()), 0);
+  ASSERT_EQ(symlink(path_.c_str(), loop.c_str()), 0);
+
+  const std::vector<std::string> before = NamesBeside(path_);
+
+  EXPECT_EQ(vault_.SaveVault(path_), SaveResult::kConflict);
+  EXPECT_NE(vault_.GetLastError().find("changed on disk"), std::string::npos);
+
+  EXPECT_TRUE(vault_.IsDirty());
+  EXPECT_EQ(NamesBeside(path_), before);
+
+  /* And the path still holds the link itself, so nothing was published over it either */
+
+  EXPECT_TRUE(IsSymlink(path_));
+
+  EXPECT_EQ(RemoveFile(loop), Result::kSuccess);
 }
 
 #endif /* !_WIN32 */

@@ -13,9 +13,18 @@
 #include "common/constants.h"
 
 /**
- * @brief   Check a file exists
+ * @brief   Check whether a path is free
  * @param   path	File path
- * @return	true if the file exists, false otherwise
+ * @return	false only when the path is known to hold nothing, true otherwise
+ *
+ * Never throws, whatever the file system answers. A lookup can fail without saying the name is free: a symbolic link
+ * loop, a name past the length the file system takes, a parent directory the caller may not search, an I/O error on
+ * a network or FUSE mount. None of those establish an absence, and all of them are reported here as present.
+ *
+ * Which way the unknown answer falls is the contract rather than an accident of the implementation. Every caller asks
+ * this in order to refuse, so the only answer that may cost anything is false: it says the name is free to write on,
+ * and a caller given it for a file that is merely unexaminable would publish over that file. A dangling symbolic link
+ * is the one failed lookup that is an answer, the link resolving to nothing, and it counts as free.
  */
 bool FileExists(const std::string& path);
 

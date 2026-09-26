@@ -13,6 +13,7 @@
 #ifndef _WIN32
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 #ifdef _WIN32
@@ -99,10 +100,37 @@ class FileExistsTest : public ::testing::Test {
  protected:
   std::string path_ = "test_exists.tmp";
 
+#ifndef _WIN32
+  std::string dir_ = "test_exists_dir";
+  std::string inside_ = "test_exists_dir/inside.tmp";
+  std::string loop_a_ = "test_exists_loop_a.tmp";
+  std::string loop_b_ = "test_exists_loop_b.tmp";
+  std::string dangling_ = "test_exists_dangling.tmp";
+#endif
+
   /**
    * @brief   Clean up temporary files after each test
    */
-  void TearDown() override { RemoveFile(path_); }
+  void TearDown() override {
+    RemoveFile(path_);
+
+#ifndef _WIN32
+    /* The search bit is put back here rather than at the end of the case that removes it, because a case that fails
+     * an assertion never reaches its own cleanup and a directory left at 0600 would then fail the next run instead
+     * of this one. Every path below is cleaned unconditionally: a case that never created one simply fails to remove
+     * it, which is what the discarded return values are. */
+
+    static_cast<void>(chmod(dir_.c_str(), 0700));
+
+    RemoveFile(inside_);
+
+    static_cast<void>(rmdir(dir_.c_str()));
+
+    RemoveFile(loop_a_);
+    RemoveFile(loop_b_);
+    RemoveFile(dangling_);
+#endif
+  }
 
   /**
    * @brief   Create a temporary test file
@@ -145,6 +173,95 @@ TEST_F(FileExistsTest, AfterDeletion) {
 
   EXPECT_FALSE(FileExists(path_));
 }
+
+#ifndef _WIN32
+
+/* The four cases below pin the contract rather than the implementation: false is reserved for a path that is known to
+ * hold nothing, and everything else, a path the file system will not answer about included, counts as taken. Every
+ * caller asks in order to refuse, so an answer that cannot be established has to come back as the refusing one.
+ *
+ * Three of them reach the file system errors that a lookup can fail with while the name may still be in use, and the
+ * fourth is the one kind of failed lookup that does mean the name is free. POSIX-only: none of them can be provoked
+ * the same way through the Win32 path. */
+
+/**
+ * @brief   Verify a path whose lookup loops reports as taken
+ *
+ * Two links pointing at each other resolve to nothing, and the lookup gives up with ELOOP rather than reaching either
+ * an answer or an absence. Something is there under both names; what cannot be reached is the file at the end.
+ */
+TEST_F(FileExistsTest, SymlinkLoop) {
+  RemoveFile(loop_a_);  // Links an earlier run left behind would fail the calls below
+  RemoveFile(loop_b_);
+
+  ASSERT_EQ(symlink(loop_b_.c_str(), loop_a_.c_str()), 0);
+  ASSERT_EQ(symlink(loop_a_.c_str(), loop_b_.c_str()), 0);
+
+  EXPECT_TRUE(FileExists(loop_a_));
+}
+
+/**
+ * @brief   Verify a name too long for the file system reports as taken
+ *
+ * NAME_MAX is 255 on the file systems this runs on, so the lookup is refused with ENAMETOOLONG before anything is
+ * examined. Nothing is created here, the name being one that cannot be created.
+ */
+TEST_F(FileExistsTest, NameTooLong) {
+  const std::string name(300, 'a');
+
+  EXPECT_TRUE(FileExists(name));
+}
+
+/**
+ * @brief   Verify a file whose directory refuses a lookup reports as taken
+ *
+ * The file is there and the caller may not look at it, which is the case this rule exists for: a directory the user
+ * cannot search is the likeliest way for a real vault to become unexaminable, and reporting it free would invite a
+ * publish onto a file nobody could read first.
+ */
+TEST_F(FileExistsTest, UnsearchableDirectory) {
+  if (geteuid() == 0) {
+    GTEST_SKIP() << "Running as root, which is exempt from the directory permissions this case relies on";
+  }
+
+  /* Pre-clean, because a run that failed inside this case left the directory behind. TearDown restores the search
+   * bit first, so what may be sitting here is a plain 0700 directory with the file still in it. */
+
+  RemoveFile(inside_);
+
+  static_cast<void>(rmdir(dir_.c_str()));
+
+  ASSERT_EQ(mkdir(dir_.c_str(), 0700), 0);
+
+  FILE* file = nullptr;
+
+  OpenFile(&file, inside_, "wb");
+  ASSERT_NE(file, nullptr);
+  fclose(file);
+
+  /* 0600 leaves the directory readable but not searchable, so a name inside it cannot be resolved at all */
+
+  ASSERT_EQ(chmod(dir_.c_str(), 0600), 0);
+
+  EXPECT_TRUE(FileExists(inside_));
+}
+
+/**
+ * @brief   Verify a dangling symbolic link reports as free
+ *
+ * The other side of the rule, and the one case where a failed lookup is an answer rather than the absence of one:
+ * the link resolves, to nothing, so the name holds no file. VaultFileTest.NewVaultRefusesDanglingSymlink rests on
+ * this, the refusal there coming from the create-only publish rather than from this check.
+ */
+TEST_F(FileExistsTest, DanglingSymlink) {
+  RemoveFile(dangling_);  // A link an earlier run left behind would fail the call below
+
+  ASSERT_EQ(symlink("no_such_target", dangling_.c_str()), 0);
+
+  EXPECT_FALSE(FileExists(dangling_));
+}
+
+#endif /* !_WIN32 */
 
 /* ==================================================
  * OpenFile Test

@@ -28,7 +28,14 @@ constexpr unsigned int kRenameNoReplace = 1U;
 }  // namespace
 
 bool FileExists(const std::string& path) {
-  return std::filesystem::exists(path);
+  std::error_code ec;
+
+  /* status with an error_code rather than exists, and the type compared rather than read as a bool. The throwing
+   * overloads report a lookup that failed for any reason other than absence by throwing, which this build has no way
+   * to catch, and exists with an error_code answers false there, which is the one answer a caller must not be given.
+   * A type of none is what such a failure leaves, and only not_found means the path is free. */
+
+  return std::filesystem::status(path, ec).type() != std::filesystem::file_type::not_found;
 }
 
 int64_t GetFileSize(FILE* file) {
