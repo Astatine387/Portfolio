@@ -16,6 +16,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 * Automatic clipboard clear after 30 seconds of password copy
 * Search and filter entries by keyword
 * Warning before a vault with unsaved changes is closed
+* Confirmation before an entry is deleted
 * Warning before a save overwrites a vault file another window or program changed on disk
 * Cross-platform support for Windows and Linux
 

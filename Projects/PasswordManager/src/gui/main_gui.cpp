@@ -171,6 +171,32 @@ void MainGUI::OnEditRequested(const QString& site, const QString& acc) {
 }
 
 void MainGUI::OnDeleteRequested(const QString& site, const QString& acc) {
+  QMessageBox box(this);
+
+  box.setIcon(QMessageBox::Warning);
+  box.setWindowTitle("Delete Entry");
+
+  /* Plain text because the site and the account are the user's own, and the default format would read tags in them
+   * as markup. One arg() call with both, so a "%2" in the site is not replaced with the account. */
+
+  box.setTextFormat(Qt::PlainText);
+  box.setText(QString("Delete the entry for %1 (%2)?").arg(site, acc));
+  box.setInformativeText("This cannot be undone once the vault is saved.");
+
+  /* Cancel is the default and the escape button both, so Enter, Escape and the title bar all keep the entry */
+
+  const QPushButton* del = box.addButton("Delete", QMessageBox::DestructiveRole);
+  QPushButton* cancel = box.addButton(QMessageBox::Cancel);
+
+  box.setDefaultButton(cancel);
+  box.setEscapeButton(cancel);
+
+  box.exec();
+
+  if (box.clickedButton() != del) {
+    return;
+  }
+
   if (vault_.DeleteEntry(site, acc) == Result::kFailure) {
     list_gui_->SetErrMsg("Failed to delete entry");
     return;
