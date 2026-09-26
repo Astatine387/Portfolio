@@ -82,6 +82,10 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 	* **Maximum Vault File Size:** 4,000 KiB
 	* **Maximum Master Password Length:** 256 bytes
 
+* **Input Limits**
+	* Every length above is counted in UTF-8 bytes rather than in characters, so a limit means the same thing whatever script the value is written in
+	* A value past its limit is refused with an error message and never truncated to fit, so what is stored is always what was entered
+
 ## 3-1. Vault File Format
 
 **Vault Format:** 
@@ -273,16 +277,17 @@ cmake --build build
 
 **Codecov Report:** https://app.codecov.io/gh/Astatine387/Portfolio/tree/main/Projects%2FPasswordManager%2Fsrc
 
-| Module   | Test File              | Test Cases                                                                                                                       |
-| -------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| AesGcm   | `aes_gcm_test.cpp`     | Encryption, Decryption, Authentication, Associated Data, Integrity Check, Edge Cases, Error Callback                             |
-| Entry    | `entry_test.cpp`       | Size Calculation, Comparison, Serialization, Deserialization, Boundary Check, Field Length Validation                            |
-| Password | `password_test.cpp`    | Initialization, Setting Data, Copy and Move Semantics, Memory Safety, RAII, Comparison, Data, Cleanup, Maximum Size, Memory Lock |
-| Utils    | `utils_test.cpp`       | File Handling, Argon2id Key Derivation, Random Number Generation, Memory Wipe                                                    |
-| Vault    | `vault_entry_test.cpp` | Entry CRUD Operation, Duplication Check, Existence Check, Conflict Check, Field Validation, Accessor, Master Password Verification, Unsaved Change Tracking |
+| Module   | Test File              | Test Cases                                                                                                                                                                                          |
+| -------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AesGcm   | `aes_gcm_test.cpp`     | Encryption, Decryption, Authentication, Associated Data, Integrity Check, Edge Cases, Error Callback                                                                                                |
+| Entry    | `entry_test.cpp`       | Size Calculation, Comparison, Serialization, Deserialization, Boundary Check, Field Length Validation                                                                                               |
+| GUI      | `gui_input_test.cpp`   | Oversized Paste Refusal, Limit Boundary, Byte-Counted Limit, Error Message Display                                                                                                                  |
+| Password | `password_test.cpp`    | Initialization, Setting Data, Copy and Move Semantics, Memory Safety, RAII, Comparison, Data, Cleanup, Maximum Size, Memory Lock                                                                    |
+| Utils    | `utils_test.cpp`       | File Handling, Argon2id Key Derivation, Random Number Generation, Memory Wipe                                                                                                                       |
+| Vault    | `vault_entry_test.cpp` | Entry CRUD Operation, Duplication Check, Existence Check, Conflict Check, Field Validation, Accessor, Master Password Verification, Unsaved Change Tracking                                         |
 | Vault    | `vault_file_test.cpp`  | Vault Creation, Opening, Validation, Header Parameters, Header Tampering, Save, Password Change, Unsaved Change Tracking, Concurrent Modification Detection, Acknowledged Overwrite, Error Handling |
 
-**Note:** GUI files, error messages for external libraries and system calls are excluded from tests.
+**Note:** GUI files are left out of the coverage report, as are error messages for external libraries and system calls. The input length limits are an exception: `gui_input_test.cpp` drives the widgets headlessly on Qt's offscreen platform, so a limit that stopped refusing an oversized value is caught by the suite rather than by a reader of the GUI sources.
 
 ## 5-2. Running Tests
 

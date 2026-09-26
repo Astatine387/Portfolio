@@ -267,6 +267,22 @@ endif()
 
 gtest_discover_tests(PasswordManager-tests)
 
+# The GUI has no display under CI and none at all while gtest_discover_tests enumerates this binary, so these tests
+# drive the widgets directly through a QApplication their own main() puts on the offscreen platform.
+add_executable(PasswordManager-gui-tests src/tests/gui_input_test.cpp)
+
+target_link_libraries(PasswordManager-gui-tests PRIVATE
+    PasswordManager-gui
+    GTest::gtest
+    project_warnings
+)
+
+# No TARGET_RUNTIME_DLLS copy beside this one, unlike PasswordManager-tests above: the list would carry the Qt DLLs
+# this target links as well, and on Windows the CI already has them on PATH from install-qt-action, which sets
+# QT_PLUGIN_PATH for the platform plugins the copy would not have brought along either way. The vcpkg DLLs the list
+# exists for, gtest among them, are copied by vcpkg's own applocal step.
+gtest_discover_tests(PasswordManager-gui-tests)
+
 file(GLOB_RECURSE ALL_CXX_SOURCE_FILES
      CONFIGURE_DEPENDS
      ${CMAKE_SOURCE_DIR}/src/*.cpp

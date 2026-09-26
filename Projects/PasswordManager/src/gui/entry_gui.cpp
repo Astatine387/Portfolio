@@ -56,10 +56,12 @@ EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
 
   /* Configure input lines */
 
+  /* No setMaxLength on either line. It counts UTF-16 characters rather than the UTF-8 bytes the limits are written
+   * in, and it truncates a paste without saying so, which would store a value the user never typed. OnOKClicked
+   * refuses anything past kMaxSiteLen or kMaxAccLen bytes instead. */
+
   site_line_->setPlaceholderText("Site");
-  site_line_->setMaxLength(kMaxSiteLen);
   acc_line_->setPlaceholderText("Account");
-  acc_line_->setMaxLength(kMaxAccLen);
 
   /* Configure password length slider */
 

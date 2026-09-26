@@ -17,8 +17,11 @@ PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
 
   /* Configure input line */
 
+  /* No setMaxLength here. It counts UTF-16 characters rather than the UTF-8 bytes the limit is written in, and it
+   * truncates a paste without saying so, which would derive a key from a password the user never typed. Extract
+   * refuses anything past kMaxMasterPwLen bytes instead. */
+
   pw_line_->setPlaceholderText("Password");
-  pw_line_->setMaxLength(kMaxMasterPwLen);
   pw_line_->setEchoMode(QLineEdit::Password);
 
   /* Configure masking toggle button */
