@@ -119,7 +119,7 @@ class VaultFileTest : public ::testing::Test {
   /**
    * @brief   Set up test fixture with a master password and an empty vault file
    */
-  void SetUp() override { vault_.NewVault(path_, MakePW("password")); }
+  void SetUp() override { ASSERT_EQ(vault_.NewVault(path_, MakePW("password")), Result::kSuccess); }
 
   /**
    * @brief   Clean up temporary vault files after each test
@@ -364,7 +364,14 @@ class VaultHeaderTamperTest : public VaultFileTest, public testing::WithParamInt
    * The base fixture derives at the build defaults, which is 512 MiB of Argon2id per case and more than a sweep of
    * this length needs. Those parameters are also what the offset-to-mechanism mapping above is stated against.
    */
-  void SetUp() override { MakeVaultWith(MinParams()); }
+  void SetUp() override {
+    MakeVaultWith(MinParams());
+
+    /* MakeVaultWith reports through EXPECT, which leaves the fixture standing. Without this the sweep would go on to
+     * flip a byte of whatever file the failure left and report on that instead. */
+
+    ASSERT_FALSE(HasFailure());
+  }
 };
 
 /* ==================================================
@@ -450,7 +457,7 @@ TEST_F(VaultFileTest, NewVaultLeavesForeignFileUntouched) {
 TEST_F(VaultFileTest, NewVaultRefusesDanglingSymlink) {
   const std::string link_path = "dangling.vault";
 
-  RemoveFile(link_path);  // A link an earlier run left behind would fail the symlink below
+  RemoveFile(link_path);  // The symlink below needs a free name
 
   ASSERT_EQ(symlink("no_such_target", link_path.c_str()), 0);
   ASSERT_FALSE(FileExists(link_path));
@@ -490,7 +497,7 @@ TEST_F(VaultFileTest, NewVaultRefusesSymlinkLoop) {
   const std::string loop_a = "loop_a.vault";
   const std::string loop_b = "loop_b.vault";
 
-  RemoveFile(loop_a);  // Links an earlier run left behind would fail the calls below
+  RemoveFile(loop_a);  // The symlinks below need free names
   RemoveFile(loop_b);
 
   ASSERT_EQ(symlink(loop_b.c_str(), loop_a.c_str()), 0);
@@ -804,7 +811,7 @@ TEST_F(VaultFileTest, OpenRejectsOutOfRangeKdfParams) {
     SCOPED_TRACE(testing::Message() << "t=" << params.time_cost << " m=" << params.mem_cost
                                     << " p=" << params.parallelism);
 
-    PatchHeaderParams(params);
+    ASSERT_NO_FATAL_FAILURE(PatchHeaderParams(params));
 
     EXPECT_EQ(Reload(), Result::kFailure);
     EXPECT_NE(vault_.GetLastError().find("Unsupported key derivation parameters"), std::string::npos);
@@ -1418,11 +1425,11 @@ TEST_F(VaultFileTest, FailedChangePWKeepsDirty) {
  * trace of the first one's work in it. Without the check both saves report success and one of them is a lie.
  */
 TEST_F(VaultFileTest, SaveRefusesFileAnotherSessionWrote) {
-  MakeCheapVault();
+  ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
 
   Vault other;
 
-  OpenOther(other);
+  ASSERT_NO_FATAL_FAILURE(OpenOther(other));
 
   ASSERT_EQ(other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
   ASSERT_EQ(other.SaveVault(path_), SaveResult::kSuccess);
@@ -1451,11 +1458,11 @@ TEST_F(VaultFileTest, SaveRefusesFileAnotherSessionWrote) {
  * @brief   Verify an acknowledged save publishes over the version it was warned about
  */
 TEST_F(VaultFileTest, AcknowledgedSaveOverwritesAnotherSessionsWork) {
-  MakeCheapVault();
+  ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
 
   Vault other;
 
-  OpenOther(other);
+  ASSERT_NO_FATAL_FAILURE(OpenOther(other));
 
   ASSERT_EQ(other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
   ASSERT_EQ(other.SaveVault(path_), SaveResult::kSuccess);
@@ -1486,11 +1493,11 @@ TEST_F(VaultFileTest, AcknowledgedSaveOverwritesAnotherSessionsWork) {
  * something nobody ever described to them.
  */
 TEST_F(VaultFileTest, AcknowledgementCoversOnlyTheVersionItWasGivenFor) {
-  MakeCheapVault();
+  ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
 
   Vault other;
 
-  OpenOther(other);
+  ASSERT_NO_FATAL_FAILURE(OpenOther(other));
 
   ASSERT_EQ(other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
   ASSERT_EQ(other.SaveVault(path_), SaveResult::kSuccess);
@@ -1522,11 +1529,11 @@ TEST_F(VaultFileTest, AcknowledgementCoversOnlyTheVersionItWasGivenFor) {
  * having been refused first has nothing the user could have agreed to, so it is treated as the plain save it is.
  */
 TEST_F(VaultFileTest, AcknowledgedSaveWithoutAWarningIsRefused) {
-  MakeCheapVault();
+  ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
 
   Vault other;
 
-  OpenOther(other);
+  ASSERT_NO_FATAL_FAILURE(OpenOther(other));
 
   ASSERT_EQ(other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
   ASSERT_EQ(other.SaveVault(path_), SaveResult::kSuccess);
@@ -1551,11 +1558,11 @@ TEST_F(VaultFileTest, AcknowledgedSaveWithoutAWarningIsRefused) {
  * were not looking at.
  */
 TEST_F(VaultFileTest, SaveRefusesFileAnotherSessionChangedThePasswordOf) {
-  MakeCheapVault();
+  ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
 
   Vault other;
 
-  OpenOther(other);
+  ASSERT_NO_FATAL_FAILURE(OpenOther(other));
 
   ASSERT_EQ(other.ChangePW(MakePW("asdf1234"), path_), SaveResult::kSuccess);
 
@@ -1579,11 +1586,11 @@ TEST_F(VaultFileTest, SaveRefusesFileAnotherSessionChangedThePasswordOf) {
  * the key it had either way.
  */
 TEST_F(VaultFileTest, ChangePWRefusesFileAnotherSessionWrote) {
-  MakeCheapVault();
+  ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
 
   Vault other;
 
-  OpenOther(other);
+  ASSERT_NO_FATAL_FAILURE(OpenOther(other));
 
   ASSERT_EQ(other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
   ASSERT_EQ(other.SaveVault(path_), SaveResult::kSuccess);
@@ -1607,7 +1614,7 @@ TEST_F(VaultFileTest, ChangePWRefusesFileAnotherSessionWrote) {
  * where the user thought they had removed one.
  */
 TEST_F(VaultFileTest, SaveRefusesMissingFileUntilAcknowledged) {
-  MakeCheapVault();
+  ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
 
   ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
   ASSERT_EQ(RemoveFile(path_), Result::kSuccess);
@@ -1656,13 +1663,13 @@ TEST_F(VaultFileTest, SaveRefusesRestoredOlderCopy) {
  * taken by whoever restored these bytes, and this check is about the file rather than about the history of it.
  */
 TEST_F(VaultFileTest, SaveAcceptsFileRestoredToTheVersionItRead) {
-  MakeCheapVault();
+  ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
 
   const std::vector<uint8_t> opened = ReadFile(path_);
 
   Vault other;
 
-  OpenOther(other);
+  ASSERT_NO_FATAL_FAILURE(OpenOther(other));
 
   ASSERT_EQ(other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
   ASSERT_EQ(other.SaveVault(path_), SaveResult::kSuccess);
@@ -1737,7 +1744,7 @@ TEST_F(VaultFileTest, SaveRefusesPathHoldingAFileThisSessionNeverRead) {
 TEST_F(VaultFileTest, SaveOntoAFreePathFollowsTheFileItMade) {
   const std::string other_path = "unheld.vault";
 
-  RemoveFile(other_path);  // A file an earlier run left behind would make this a different case
+  RemoveFile(other_path);  // The case needs this path to hold nothing
 
   ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
   ASSERT_EQ(vault_.SaveVault(other_path), SaveResult::kSuccess);
@@ -1831,7 +1838,7 @@ TEST_F(VaultFileTest, SaveThroughSymlinkWritesTarget) {
 
   MakeVaultAt(target, MinParams());
 
-  RemoveFile(link);  // A link an earlier run left behind would fail the symlink below
+  RemoveFile(link);  // The symlink below needs a free name
 
   ASSERT_EQ(symlink(target.c_str(), link.c_str()), 0);
   ASSERT_EQ(vault_.OpenVault(link, MakePW("password")), Result::kSuccess);
@@ -2100,7 +2107,7 @@ TEST_F(VaultFileTest, SaveRefusesSymlinkLoop) {
   /* The vault this session is holding is replaced, at its own name, by a pair of links pointing at each other. A user
    * reaches this by repointing a link they keep their vault behind while a window is open on it. */
 
-  RemoveFile(loop);  // A link an earlier run left behind would fail the calls below
+  RemoveFile(loop);  // The symlinks below need free names
 
   ASSERT_EQ(RemoveFile(path_), Result::kSuccess);
   ASSERT_EQ(symlink(loop.c_str(), path_.c_str()), 0);
@@ -2171,7 +2178,7 @@ TEST_F(VaultFileTest, OpenRejectsInRangeKdfParamTamper) {
 
     ASSERT_EQ(Reload(), Result::kSuccess);
 
-    PatchHeaderParams(params);
+    ASSERT_NO_FATAL_FAILURE(PatchHeaderParams(params));
 
     EXPECT_EQ(Reload(), Result::kFailure);
     EXPECT_NE(vault_.GetLastError().find("Incorrect master password"), std::string::npos);

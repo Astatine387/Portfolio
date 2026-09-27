@@ -116,9 +116,9 @@ class FileExistsTest : public ::testing::Test {
 
 #ifndef _WIN32
     /* The search bit is put back here rather than at the end of the case that removes it, because a case that fails
-     * an assertion never reaches its own cleanup and a directory left at 0600 would then fail the next run instead
-     * of this one. Every path below is cleaned unconditionally: a case that never created one simply fails to remove
-     * it, which is what the discarded return values are. */
+     * an assertion never reaches its own cleanup and the rmdir below would fail behind it. Every path below is cleaned
+     * unconditionally: a case that never created one simply fails to remove it, which is what the discarded return
+     * values are. */
 
     static_cast<void>(chmod(dir_.c_str(), 0700));
 
@@ -191,7 +191,7 @@ TEST_F(FileExistsTest, AfterDeletion) {
  * an answer or an absence. Something is there under both names; what cannot be reached is the file at the end.
  */
 TEST_F(FileExistsTest, SymlinkLoop) {
-  RemoveFile(loop_a_);  // Links an earlier run left behind would fail the calls below
+  RemoveFile(loop_a_);  // The symlinks below need free names
   RemoveFile(loop_b_);
 
   ASSERT_EQ(symlink(loop_b_.c_str(), loop_a_.c_str()), 0);
@@ -254,7 +254,7 @@ TEST_F(FileExistsTest, UnsearchableDirectory) {
  * this, the refusal there coming from the create-only publish rather than from this check.
  */
 TEST_F(FileExistsTest, DanglingSymlink) {
-  RemoveFile(dangling_);  // A link an earlier run left behind would fail the call below
+  RemoveFile(dangling_);  // The symlink below needs a free name
 
   ASSERT_EQ(symlink("no_such_target", dangling_.c_str()), 0);
 
@@ -649,7 +649,7 @@ class RenameNoReplaceTest : public ::testing::Test {
  * @brief   Verify a move onto a free path takes the name and carries the content
  */
 TEST_F(RenameNoReplaceTest, MovesOntoFreePath) {
-  Create(src_path_, "Hello, world!");
+  ASSERT_NO_FATAL_FAILURE(Create(src_path_, "Hello, world!"));
 
   EXPECT_EQ(RenameFileNoReplace(src_path_, dst_path_), RenameStatus::kOk);
 
@@ -662,8 +662,8 @@ TEST_F(RenameNoReplaceTest, MovesOntoFreePath) {
  * @brief   Verify an occupied destination is refused and both files survive byte for byte
  */
 TEST_F(RenameNoReplaceTest, RefusesOccupiedDestination) {
-  Create(src_path_, "Hello, world!");
-  Create(dst_path_, "Don't overwrite this");
+  ASSERT_NO_FATAL_FAILURE(Create(src_path_, "Hello, world!"));
+  ASSERT_NO_FATAL_FAILURE(Create(dst_path_, "Don't overwrite this"));
 
   EXPECT_EQ(RenameFileNoReplace(src_path_, dst_path_), RenameStatus::kExists);
 

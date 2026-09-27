@@ -265,6 +265,7 @@ set(TEST_SOURCES
     src/tests/password_test.cpp
     src/tests/secure_buffer_test.cpp
     src/tests/secure_key_test.cpp
+    src/tests/test_main.cpp
     src/tests/utils_test.cpp
     src/tests/vault_entry_test.cpp
     src/tests/vault_file_test.cpp
@@ -276,10 +277,11 @@ set(TEST_HEADERS
 
 add_executable(PasswordManager-tests ${TEST_SOURCES} ${TEST_HEADERS})
 
+# GTest::gtest rather than GTest::gtest_main: src/tests/test_main.cpp carries the main() this suite needs, which
+# registers the listener that gives every test a working directory of its own.
 target_link_libraries(PasswordManager-tests PRIVATE
     PasswordManager-core
     GTest::gtest
-    GTest::gtest_main
     project_warnings_strict
 )
 
