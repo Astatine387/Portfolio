@@ -22,12 +22,15 @@ class VaultInterface {
   /**
    * @brief	Constructor of VaultInterface class
    */
-  VaultInterface();
+  VaultInterface() = default;
 
   /**
    * @brief	Destructor of VaultInterface class
    */
   ~VaultInterface() = default;
+
+  VaultInterface(const VaultInterface&) = delete;             // Delete copy constructor
+  VaultInterface& operator=(const VaultInterface&) = delete;  // Delete copy assignment operator
 
   /* ==================================================
    * Vault file functions
@@ -132,8 +135,10 @@ class VaultInterface {
    * @param     acc     Account
    * @param     pw      Password of the found entry
    * @return    true if entry found, false otherwise
+   *
+   * Not const: when the password bytes cannot be read, the vault records the failure as its last error.
    */
-  bool GetPW(const QString& site, const QString& acc, Password& pw) const;
+  bool GetPW(const QString& site, const QString& acc, Password& pw);
 
   /**
    * @brief     Get the last error message
@@ -152,6 +157,6 @@ class VaultInterface {
   [[nodiscard]] QString GetLastWarning() const;
 
  private:
-  std::unique_ptr<Vault> vault_;
+  Vault vault_;
   QString vault_path_;
 };

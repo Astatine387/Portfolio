@@ -6,58 +6,54 @@
 
 #include "gui/vault_interface.h"
 
-VaultInterface::VaultInterface() : vault_(std::make_unique<Vault>()) {
-  ;
-}
-
 Result VaultInterface::NewVault(const QString& path, const Password& pw) {
   vault_path_ = path;
-  return vault_->NewVault(path.toStdString(), pw);
+  return vault_.NewVault(path.toStdString(), pw);
 }
 
 Result VaultInterface::OpenVault(const QString& path, const Password& pw) {
   vault_path_ = path;
-  return vault_->OpenVault(path.toStdString(), pw);
+  return vault_.OpenVault(path.toStdString(), pw);
 }
 
 SaveResult VaultInterface::SaveVault(SaveMode mode) {
-  return vault_->SaveVault(vault_path_.toStdString(), mode);
+  return vault_.SaveVault(vault_path_.toStdString(), mode);
 }
 
 void VaultInterface::CloseVault() {
-  vault_->CloseVault();
+  vault_.CloseVault();
   vault_path_.clear();
 }
 
 bool VaultInterface::IsDirty() const {
-  return vault_->IsDirty();
+  return vault_.IsDirty();
 }
 
 bool VaultInterface::VerifyPW(const Password& pw) const {
-  return vault_->VerifyPW(pw);
+  return vault_.VerifyPW(pw);
 }
 
 SaveResult VaultInterface::ChangePW(const Password& pw, SaveMode mode) {
-  return vault_->ChangePW(pw, vault_path_.toStdString(), mode);
+  return vault_.ChangePW(pw, vault_path_.toStdString(), mode);
 }
 
 Result VaultInterface::CreateEntry(const QString& site, const QString& acc, const Password& pw) {
-  return vault_->CreateEntry(site.toStdString(), acc.toStdString(), pw);
+  return vault_.CreateEntry(site.toStdString(), acc.toStdString(), pw);
 }
 
 UpdateResult VaultInterface::UpdateEntry(const QString& old_site, const QString& old_acc, const QString& new_site,
                                          const QString& new_acc, const Password& new_pw) {
-  return vault_->UpdateEntry(old_site.toStdString(), old_acc.toStdString(), new_site.toStdString(),
-                             new_acc.toStdString(), new_pw);
+  return vault_.UpdateEntry(old_site.toStdString(), old_acc.toStdString(), new_site.toStdString(),
+                            new_acc.toStdString(), new_pw);
 }
 
 Result VaultInterface::DeleteEntry(const QString& site, const QString& acc) {
-  return vault_->DeleteEntry(site.toStdString(), acc.toStdString());
+  return vault_.DeleteEntry(site.toStdString(), acc.toStdString());
 }
 
 QVector<EntryView> VaultInterface::GetEntries() const {
   QVector<EntryView> views;
-  const auto& entries = vault_->GetEntries();
+  const auto& entries = vault_.GetEntries();
 
   for (const auto& entry : entries) {
     views.append({ .site = QString::fromStdString(entry.site), .acc = QString::fromStdString(entry.acc) });
@@ -66,14 +62,14 @@ QVector<EntryView> VaultInterface::GetEntries() const {
   return views;
 }
 
-bool VaultInterface::GetPW(const QString& site, const QString& acc, Password& pw) const {
-  return vault_->GetEntryPW(site.toStdString(), acc.toStdString(), pw);
+bool VaultInterface::GetPW(const QString& site, const QString& acc, Password& pw) {
+  return vault_.GetEntryPW(site.toStdString(), acc.toStdString(), pw);
 }
 
 QString VaultInterface::GetLastError() const {
-  return QString::fromStdString(vault_->GetLastError());
+  return QString::fromStdString(vault_.GetLastError());
 }
 
 QString VaultInterface::GetLastWarning() const {
-  return QString::fromStdString(vault_->GetLastWarning());
+  return QString::fromStdString(vault_.GetLastWarning());
 }
