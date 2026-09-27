@@ -1,5 +1,7 @@
 /Projects/DigitalLogicSimulator/.idea
 /Projects/DigitalLogicSimulator/build
+/Projects/DigitalLogicSimulator/build-asan
+/Projects/DigitalLogicSimulator/build-cov
 /Projects/DigitalLogicSimulator/build-tidy
 /Projects/FileEncryption/.idea
 /Projects/FileEncryption/build
