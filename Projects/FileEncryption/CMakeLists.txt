@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.21)
 project(FileEncryption VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -235,6 +235,35 @@ target_link_libraries(FileEncryption-gui PRIVATE project_warnings)
 
 add_executable(${PROJECT_NAME} src/common/main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE FileEncryption-gui project_warnings)
+
+# Windows package: the application, every non-Qt DLL it imports, and the MSVC runtime.
+# Qt and its plugins are windeployqt's job.
+#
+# The set is resolved from what the executable actually imports, so a dependency added
+# to the build reaches the package without a list anywhere being edited to match.
+if(WIN32 AND DEFINED VCPKG_INSTALLED_DIR)
+    install(TARGETS ${PROJECT_NAME}
+            RUNTIME_DEPENDENCY_SET app_runtime_deps
+            RUNTIME DESTINATION .)
+
+    # The filters have to precede RUNTIME DESTINATION; after it CMake reads them as
+    # unknown arguments to the destination and stops.
+    install(RUNTIME_DEPENDENCY_SET app_runtime_deps
+            # Qt resolves through windeployqt, not here, and leaving it in would fail the
+            # resolution outright. The ms- families are Windows API sets.
+            PRE_EXCLUDE_REGEXES "^api-ms-" "^ext-ms-" "^[Qq][Tt]6"
+            # Anything answered by System32 belongs to the machine rather than the package.
+            # That covers the MSVC runtime too, which is why the include below is needed.
+            POST_EXCLUDE_REGEXES "[Ss][Yy][Ss][Tt][Ee][Mm]32"
+            # In manifest mode this is build/vcpkg_installed, the tree the executable linked
+            # against -- not the classic $VCPKG_ROOT/installed tree beside it.
+            DIRECTORIES "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+            RUNTIME DESTINATION .)
+
+    # A machine without Visual Studio has no MSVC runtime, so the package carries its own.
+    set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION .)
+    include(InstallRequiredSystemLibraries)
+endif()
 
 enable_testing()
 

@@ -176,13 +176,13 @@ That gap is the remaining limitation, and it matters most for the Argon2id worki
 
 **Windows:**
 * Visual Studio 2022+ with the "Desktop development with C++" workload
-* CMake 3.16+
+* CMake 3.21+
 * vcpkg
 * Qt 6.7+
 
 **Linux:**
 * GCC 11+ or Clang 14+
-* CMake 3.16+
+* CMake 3.21+
 * Qt6 development packages
 
 Dependencies (OpenSSL 3.0+, Argon2, libsodium, Google Test, Google Benchmark)
@@ -205,6 +205,25 @@ cmake -B build ^
 cmake --build build --config Release
 ```
 * Replace `CMAKE_PREFIX_PATH` with your Qt installation path.
+
+**Windows** (package for distribution): the install rules gather the executable,
+every non-Qt DLL it imports and the MSVC runtime into one folder, and
+`windeployqt` adds Qt on top:
+```cmd
+cd Projects\FileEncryption
+
+cmake --install build --config Release --prefix deploy
+
+windeployqt --no-translations --no-system-d3d-compiler --no-opengl-sw deploy\FileEncryption.exe
+```
+The DLL set is read from the executable's own import table rather than from a
+list, so a newly added dependency is packaged without this command changing.
+The MSVC runtime is included, which is what lets the folder run on a machine
+that has no Visual Studio installed.
+
+CI packages the release zip exactly this way and fails the build if anything in
+the folder imports a DLL the folder does not carry, so an incomplete package
+cannot be released (`.github/scripts/deploy_windows.ps1`).
 
 **Linux** (system packages):
 ```bash
@@ -303,6 +322,7 @@ ctest --test-dir build --output-on-failure
 | ---------------------------- | ----------- | --------- |
 | Build                        | ✅ MSVC 2022 | ✅ GCC 11+ |
 | Unit Tests                   | ✅           | ✅         |
+| Deploy Package Check         | ✅           | -         |
 | Format Check (clang-format)  | -           | ✅         |
 | Static Analysis (cppcheck)   | -           | ✅         |
 | Static Analysis (clang-tidy) | -           | ✅         |
