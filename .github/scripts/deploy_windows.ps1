@@ -26,7 +26,7 @@ if ($LASTEXITCODE -ne 0) { throw 'windeployqt failed' }
 Get-ChildItem $deploy -Recurse | Format-Table Name, Length
 
 # Refuse a package that imports a DLL it does not carry
-python -m pip install --quiet pefile
+python -m pip install --quiet --require-hashes --only-binary=:all: -r (Join-Path $PSScriptRoot 'requirements-deploy.txt')
 if ($LASTEXITCODE -ne 0) { throw 'pip install pefile failed' }
 
 python (Join-Path $PSScriptRoot 'check_deploy.py') $deploy
