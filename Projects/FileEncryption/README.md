@@ -45,7 +45,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * The plaintext header is authenticated as associated data of every chunk, so editing it is detected
 * Chunk order, truncation and extension are detected, because the nonce carries the chunk counter and a final-chunk flag
 * AES-GCM is not key-committing, so a crafted file can be made to authenticate under multiple chosen passwords; the header carries a commitment derived beside the key, and comparing it is what ties a file to one password. A mismatch does not say which side is at fault: a wrong password and a commitment edited by an attacker are the same observation, so the failure is reported as either one
-* Newly and randomly generated salt for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
+* Newly and randomly generated salt for each file, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * The password and the derived key are held in `sodium_malloc` memory: guard pages, a wipe on release, and a best-effort lock against swap
 * Core dumps are refused process-wide, because Argon2id's working buffer is a key equivalent that libargon2 allocates outside the locked memory: `RLIMIT_CORE = 0` on POSIX, `PR_SET_DUMPABLE = 0` on Linux release builds, `SEM_NOGPFAULTERRORBOX` on Windows
 * RAII ties every secret to a scope, so releasing it is what wipes it; see 3-3-1 for the allocations this covers and the ones it does not
@@ -71,7 +71,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 
 * **Chunk Size:** 64 KiB default, 4 KiB to 1 MiB accepted
 
-* **Maximum File Size:** 4 PiB (2 ^ 52 bytes)
+* **Maximum Plaintext Size:** 4 PiB (2 ^ 52 bytes), enforced on encryption only; decryption carries no such bound
 
 ## 3-1. Encrypted File Format
 
@@ -111,7 +111,7 @@ Chunk_i = Ciphertext_i (L_i bytes) ‖ Tag_i (16 Bytes)
 
 ### 3-1-3. Nonce
 
-12 bytes, not stored in the file, instead derived from the chunk counter and file size
+12 bytes, not stored in the file, instead derived from the chunk counter and the final-chunk flag, which the file size decides
 
 ```
 nonce[0..2]  = 0x00 padding
@@ -123,6 +123,8 @@ nonce[11]    = 0x00 for a normal chunk, 0x01 for the final chunk
 
 ```
 src
+├── benchmark
+│   └── benchmark.cpp         # Throughput and key derivation benchmarks (Linux only)
 ├── common
 │   ├── constants.h           # Constant values
 │   └── main.cpp              # Application entry point
@@ -140,12 +142,17 @@ src
 │   ├── progress_gui.h/cpp    # Progress tracking
 │   ├── mode_button.h/cpp     # Encrypt/Decrypt mode selection widget
 │   └── pw_line_edit.h/cpp    # Password input widget
+├── tests
+│   ├── aes_gcm_fixture.h     # Shared fixture for the AesGcm test files
+│   └── *_test.cpp            # One file per module, listed in 5-1
 └── utils
     ├── byte_order.h          # Explicit little/big-endian helpers for on-disk fields
+    ├── mutex.h               # Annotated wrappers around the standard locking primitives
     ├── password.h/cpp        # Secure password container
     ├── platform.h            # Utility function declarations
     ├── platform_linux.cpp    # Linux utility functions
-    └── platform_win32.cpp    # Windows utility functions
+    ├── platform_win32.cpp    # Windows utility functions
+    └── thread_annotations.h  # Portable wrappers around Clang's thread safety attributes
 ```
 
 ## 3-3. Limitations
@@ -252,11 +259,14 @@ cmake --build build
 
 **Build Options:** 
 
-| Option            | Default | Description                                   |
-| ----------------- | ------- | --------------------------------------------- |
-| `COVERAGE`        | `OFF`   | Coverage instrumentation (GCC/Clang)          |
-| `SANITIZE`        | `OFF`   | AddressSanitizer + UndefinedBehaviorSanitizer |
-| `THREAD_SANITIZE` | `OFF`   | ThreadSanitizer                               |
+| Option               | Default | Description                                   |
+| -------------------- | ------- | --------------------------------------------- |
+| `WARNINGS_AS_ERRORS` | `OFF`   | Treat compiler warnings as errors             |
+| `COVERAGE`           | `OFF`   | Coverage instrumentation (GCC/Clang)          |
+| `SANITIZE`           | `OFF`   | AddressSanitizer + UndefinedBehaviorSanitizer |
+| `THREAD_SANITIZE`    | `OFF`   | ThreadSanitizer                               |
+
+`SANITIZE` and `THREAD_SANITIZE` are mutually exclusive, and configuring both stops with a fatal error. `WARNINGS_AS_ERRORS` is off by default so that a new compiler's warnings do not break a local build; CI turns it on for every configuration it builds.
 
 None of these require a particular build type. CI builds coverage and the thread sanitizer as `Debug`, and the address sanitizer as `RelWithDebInfo`:
 ```bash
@@ -284,23 +294,24 @@ cmake --build build
 
 **Codecov Report:** https://app.codecov.io/gh/Astatine387/Portfolio/tree/main/Projects%2FFileEncryption%2Fsrc
 
-| Module        | Test File                 | Test Cases                                                                                                                    |
-| ------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Known Answer  | `kat_test.cpp`            | NIST CAVP AES-256-GCM vectors, RFC 9106 Argon2id vector, Tag Rejection                                                        |
-| AesGcm        | `aes_gcm_test.cpp`        | Encryption, Decryption, Header, Authentication, Wrong Password Reporting, Edge Cases, Callbacks, Cancellation, Write Failures |
-| AesGcm Format | `aes_gcm_format_test.cpp` | Chunk Framing, Golden Vector with byte-exact header, Associated Data, Context Reuse                                           |
-| AesGcm Tamper | `aes_gcm_tamper_test.cpp` | Header, Commitment and Chunk Bit Flips, Reordering, Truncation, Appending, Splicing, Failure Messages, Write Ordering         |
-| CryptoWorker  | `crypto_worker_test.cpp`  | Encryption, Decryption, Header Parameters, Atomic Publication, Callbacks, Cancellation, Error Handling, Concurrency           |
-| FileHeader    | `file_header_test.cpp`    | Field Layout and Endianness, Magic Number, Commitment Round Trip, Chunk Size and Parameter Validation, Error Messages         |
-| Byte Order    | `byte_order_test.cpp`     | Little-Endian and Big-Endian Encoding, Round Trips, Field Bounds                                                              |
-| OpenNewFile   | `open_new_file_test.cpp`  | Exclusive Creation, Permissions, Symlink and FIFO Refusal, Close-on-Exec                                                      |
-| Password      | `password_test.cpp`       | Initialization, Setting Data, Copy and Move Semantics, Memory Safety, RAII                                                    |
-| SecureKey     | `secure_key_test.cpp`     | Argon2id Key Derivation, Key Commitment, Salt and Password Sensitivity, Parameter Rejection, Move Semantics                   |
-| Utils         | `utils_test.cpp`          | File Handling, Durability Helpers, Random Number Generation                                                                   |
+| Module         | Test File                   | Test Cases                                                                                                                    |
+| -------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Known Answer   | `kat_test.cpp`              | NIST CAVP AES-256-GCM vectors, RFC 9106 Argon2id vector, Tag Rejection                                                        |
+| AesGcm         | `aes_gcm_test.cpp`          | Encryption, Decryption, Header, Authentication, Wrong Password Reporting, Edge Cases, Callbacks, Cancellation, Write Failures |
+| AesGcm Format  | `aes_gcm_format_test.cpp`   | Chunk Framing, Golden Vector with byte-exact header, Associated Data, Context Reuse                                           |
+| AesGcm Tamper  | `aes_gcm_tamper_test.cpp`   | Header, Commitment and Chunk Bit Flips, Reordering, Truncation, Appending, Splicing, Failure Messages, Write Ordering         |
+| CryptoWorker   | `crypto_worker_test.cpp`    | Encryption, Decryption, Header Parameters, Atomic Publication, Callbacks, Cancellation, Error Handling, Concurrency           |
+| FileHeader     | `file_header_test.cpp`      | Field Layout and Endianness, Magic Number, Commitment Round Trip, Chunk Size and Parameter Validation, Error Messages         |
+| Byte Order     | `byte_order_test.cpp`       | Little-Endian and Big-Endian Encoding, Round Trips, Field Bounds                                                              |
+| OpenNewFile    | `open_new_file_test.cpp`    | Exclusive Creation, Permissions, Symlink and FIFO Refusal, Close-on-Exec                                                      |
+| OpenSourceFile | `open_source_file_test.cpp` | Regular and Empty File Reading, Directory Refusal, Pseudo-File Refusal                                                        |
+| Password       | `password_test.cpp`         | Initialization, Setting Data, Copy and Move Semantics, Memory Safety, RAII                                                    |
+| SecureKey      | `secure_key_test.cpp`       | Argon2id Key Derivation, Key Commitment, Salt and Password Sensitivity, Parameter Rejection, Move Semantics                   |
+| Utils          | `utils_test.cpp`            | File Handling, Durability Helpers, Random Number Generation                                                                   |
 
 The known-answer tests are the correctness anchor: their values come from the NIST CAVP response files and the RFC 9106 text, never from this implementation. The golden vector in `aes_gcm_format_test.cpp` is the opposite kind of test, a regression pin generated by this code to catch accidental format drift.
 
-**Note:** GUI files, error messages for external libraries and system calls are excluded from tests.
+**Note:** The GUI, the application entry point (`main.cpp`) and the benchmark harness are excluded from the coverage report, as are error messages for external library and system call failures.
 
 ## 5-2. Running Tests
 
@@ -318,17 +329,17 @@ ctest --test-dir build --output-on-failure
 
 ## 5-3. Continuous Integration
 
-| Check                        | Windows     | Linux     |
-| ---------------------------- | ----------- | --------- |
-| Build                        | ✅ MSVC 2022 | ✅ GCC 11+ |
-| Unit Tests                   | ✅           | ✅         |
-| Deploy Package Check         | ✅           | -         |
-| Format Check (clang-format)  | -           | ✅         |
-| Static Analysis (cppcheck)   | -           | ✅         |
-| Static Analysis (clang-tidy) | -           | ✅         |
-| Coverage Report              | -           | ✅ Codecov |
-| AddressSanitizer (ASan)      | -           | ✅         |
-| ThreadSanitizer (TSan)       | -           | ✅         |
+| Check                        | Windows      | Linux               |
+| ---------------------------- | ------------ | ------------------- |
+| Build                        | ✅ MSVC 2026 | ✅ GCC 13, Clang 18 |
+| Unit Tests                   | ✅           | ✅                  |
+| Deploy Package Check         | ✅           | -                   |
+| Format Check (clang-format)  | -            | ✅                  |
+| Static Analysis (cppcheck)   | -            | ✅                  |
+| Static Analysis (clang-tidy) | -            | ✅ Clang 18         |
+| Coverage Report              | -            | ✅ Codecov          |
+| AddressSanitizer (ASan)      | -            | ✅                  |
+| ThreadSanitizer (TSan)       | -            | ✅                  |
 
 # 6. Benchmark
 
@@ -349,3 +360,5 @@ ctest --test-dir build --output-on-failure
 	- Argon2 (CC0/Apache 2.0)
 	- Qt (LGPL v3)
 	- Google Test (BSD 3-Clause)
+	- libsodium (ISC)
+	- Google Benchmark (Apache 2.0)
