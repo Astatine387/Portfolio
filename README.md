@@ -34,18 +34,27 @@ Password-based file encryption tool using AES-256-GCM, Argon2id, and Qt6.
 * AES-256-GCM for file encryption and integrity check
 * Argon2id for key derivation from password
 * Qt6 graphical user interface
-* Double buffering and asynchronous write for better performance
-* Two-pass decryption that never writes unverified plaintext into disk
+* Chunked AEAD file format, each chunk authenticated on its own
+* Decryption authenticates every byte before it reaches the disk
+* Atomic write: the destination path never holds an incomplete file
+* Double buffering and asynchronous write for better performance 
 * Asynchronous, multithread processing for non-blocking UI
 * Real-time progress tracking and cancellation support
-* Error report and automatic stop when error occurs
+* Error report and automatic stop on failure
+* Cross-platform support for Windows and Linux
 
 **Security Considerations**
-* Argon2id memory hard and data independent key derivation, resistant to both brute force attacks and side channel attacks
-* GCM tag provides integrity check, and two-pass decryption procedure verifies it before writing any plaintext into disk
-* Newly and randomly generated salt and initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
-* RAII pattern ensures memory wipe for sensitive data, using `sodium_free` and `sodium_memzero`
-* Sensitive data is held in `sodium_malloc` memory, which provides guard pages and lock against swap
+* Every byte written to disk has been authenticated first, and the source is read exactly once
+* The plaintext header is authenticated as associated data of every chunk, so editing it is detected
+* Chunk order, truncation and extension are detected, because the nonce carries the chunk counter and a final-chunk flag
+* AES-GCM is not key-committing, so a crafted file can be made to authenticate under multiple chosen passwords; the header carries a commitment derived beside the key, and comparing it is what ties a file to one password. A mismatch does not say which side is at fault: a wrong password and a commitment edited by an attacker are the same observation, so the failure is reported as either one
+* Newly and randomly generated salt for each file, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
+* The password and the derived key are held in `sodium_malloc` memory: guard pages, a wipe on release, and a best-effort lock against swap
+* Core dumps are refused process-wide, because Argon2id's working buffer is a key equivalent that libargon2 allocates outside the locked memory: `RLIMIT_CORE = 0` on POSIX, `PR_SET_DUMPABLE = 0` on Linux release builds, `SEM_NOGPFAULTERRORBOX` on Windows
+* RAII ties every secret to a scope, so releasing it is what wipes it; see 3-3-1 for the allocations this covers and the ones it does not
+* Range check for the chunk size and the key derivation parameters before anything is allocated or Argon2id runs
+* Output is written to a temporary file, fsynced, then moved into place, so a partial or unverified file never appears at the destination
+* The destination is never overwritten: the move fails if the path is taken
 
 ## 3-2. [PasswordManager](./Projects/PasswordManager)
 
@@ -55,21 +64,31 @@ Encrypted password vault manager using AES-256-GCM, Argon2id, and Qt6.
 
 **Features**
 * AES-256-GCM for vault encryption and integrity check
+* Argon2id for key derivation from master password
 * Qt6 graphical user interface
 * Vault is never written to disk in plaintext; unverified plaintext exists only in locked memory
 * Random password generator with customizable length and special characters
+* Automatic clipboard clear after 30 seconds of password copy
 * Search and filter entries by keyword
+* Warning before a vault with unsaved changes is closed
+* Confirmation before an entry is deleted
+* Warning before a save overwrites a vault file another window or program changed on disk
+* Cross-platform support for Windows and Linux
 
 **Security Considerations**
 * Automatic clipboard clear after 30 seconds
 * Copied passwords are excluded from OS clipboard history and cloud clipboard sync
 * Constant time password comparison
-* GCM tag provides integrity check, and two-pass decryption procedure verifies it before writing any plaintext into disk
+* GCM tag provides integrity check
+* Key commitment stored in the header separates a wrong master password from a damaged vault, which a GCM tag cannot do on its own
+* The whole plaintext header is the associated data of the vault, so an edit to it fails the tag
 * Newly and randomly generated initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * Password generator guarantees at least one each of uppercase, lowercase, digit, and special character
 * RAII pattern ensures memory wipe for sensitive data, using `sodium_free` and `sodium_memzero`
+* Range check for key derivation parameters before Argon2id runs
 * Sensitive data is held in `sodium_malloc` memory, which provides guard pages and lock against swap
-* Vault files are re-encrypted with new salt and initial vector for each save or master password change
+* Vault files are created reachable by their owner alone: mode 0600 on Linux, a protected DACL holding one ACE for the process token user on Windows
+* Vault files are re-encrypted with new initial vector for each save or master password change
 
 # 4. LeetCode
 
