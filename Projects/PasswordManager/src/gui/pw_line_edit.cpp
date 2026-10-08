@@ -17,8 +17,9 @@ PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
 
   /* Configure input line */
 
-  /* No setMaxLength here. It counts UTF-16 characters rather than the UTF-8 bytes the limit is written in, and it
-   * truncates a paste without saying so, which would derive a key from a password the user never typed. Extract
+  /* No setMaxLength here. It counts UTF-16 characters rather than the UTF-8
+   * bytes the limit is written in, and it truncates a paste without saying so,
+   * which would derive a key from a password the user never typed. Extract
    * refuses anything past kMaxMasterPwLen bytes instead. */
 
   pw_line_->setPlaceholderText("Password");
@@ -26,8 +27,9 @@ PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
 
   /* Configure masking toggle button */
 
-  mask_btn_->setFixedSize(static_cast<int>(45 * kFontScale),
-                          static_cast<int>(pw_line_->sizeHint().height() * kFontScale));
+  mask_btn_->setFixedSize(
+      static_cast<int>(45 * kFontScale),
+      static_cast<int>(pw_line_->sizeHint().height() * kFontScale));
 
   /* Configure layout */
 
@@ -58,22 +60,26 @@ Result PWLineEdit::Extract(Password& pw) {
 }
 
 void PWLineEdit::Clear() {
-  /* setText rather than clear(): QLineEdit::clear() leaves what it removed in the widget's undo history, so an undo
-   * afterwards puts the password back in the field. setText drops that history along with the text. */
+  /* setText rather than clear(): QLineEdit::clear() leaves what it removed in
+   * the widget's undo history, so an undo afterwards puts the password back in
+   * the field. setText drops that history along with the text. */
 
   pw_line_->setText(QString());
 }
 
 void PWLineEdit::SetPassword(const Password& pw) {
-  /* Cleared first, whatever is being set. SetEditMode hands this whatever the dialog was last showing, so without
-   * the clear an empty password would leave the previous entry's password sitting in the field for OK to write onto
-   * this one. Clearing here rather than at the call sites is what makes the function correct for every caller
-   * instead of for the ones that remember to clear. */
+  /* Cleared first, whatever is being set. SetEditMode hands this whatever the
+   * dialog was last showing, so without the clear an empty password would leave
+   * the previous entry's password sitting in the field for OK to write onto
+   * this one. Clearing here rather than at the call sites is what makes the
+   * function correct for every caller instead of for the ones that remember to
+   * clear. */
 
   Clear();
 
   if (!pw.IsEmpty()) {
-    pw_line_->setText(QString::fromUtf8(pw.GetData(), static_cast<int>(pw.GetSize())));
+    pw_line_->setText(
+        QString::fromUtf8(pw.GetData(), static_cast<int>(pw.GetSize())));
   }
 }
 

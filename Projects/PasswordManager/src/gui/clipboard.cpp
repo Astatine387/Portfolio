@@ -19,10 +19,12 @@ void SetSecret(const Password& pw) {
 
   QMimeData* mime = new QMimeData;
 
-  mime->setText(QString::fromUtf8(pw.GetData(), static_cast<int>(pw.GetSize())));
+  mime->setText(
+      QString::fromUtf8(pw.GetData(), static_cast<int>(pw.GetSize())));
 
 #ifdef Q_OS_WIN
-  mime->setData("ExcludeClipboardContentFromMonitorProcessing", QByteArray(1, 1));
+  mime->setData("ExcludeClipboardContentFromMonitorProcessing",
+                QByteArray(1, 1));
   mime->setData("CanIncludeInClipboardHistory", QByteArray(4, '\0'));
   mime->setData("CanUploadToCloudClipboard", QByteArray(4, '\0'));
 

@@ -19,7 +19,8 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key) {
   last_perc_ = -1;
   key_ = &key;
 
-  /* Drain any write left over from a previous (possibly aborted) run, then arm a clean result */
+  /* Drain any write left over from a previous (possibly aborted) run, then arm
+   * a clean result */
 
   FlushWrite();
 
@@ -28,7 +29,8 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key) {
     write_result_ = Result::kSuccess;
   }
 
-  /* Drain the writer on every exit path so the caller can safely close the destination file */
+  /* Drain the writer on every exit path so the caller can safely close the
+   * destination file */
 
   WriterGuard writer_guard(this);
 
@@ -53,15 +55,19 @@ Result AesGcm::EncryptInit() {
     // LCOV_EXCL_STOP
   }
 
-  /* Refused before a context, a buffer or a header exists, and the caller refuses it earlier still:
-   * CryptoWorker::Work looks the size up before it derives a key, so a source that cannot be encrypted
-   * within the bound really does cost nothing beyond that lookup, rather than costing a full Argon2id
-   * pass first. Kept here as well, for a caller that drives the engine without going through the
-   * worker. See kMaxPlaintextSize for where the bound comes from and why decryption does not carry it. */
+  /* Refused before a context, a buffer or a header exists, and the caller
+   * refuses it earlier still: CryptoWorker::Work looks the size up before it
+   * derives a key, so a source that cannot be encrypted within the bound really
+   * does cost nothing beyond that lookup, rather than costing a full Argon2id
+   * pass first. Kept here as well, for a caller that drives the engine without
+   * going through the worker. See kMaxPlaintextSize for where the bound comes
+   * from and why decryption does not carry it. */
 
   if (src_size_ > kMaxPlaintextSize) {
     // LCOV_EXCL_START
-    ReportError("[File] Size check failed - Source file exceeds the supported maximum\n");
+    ReportError(
+        "[File] Size check failed - Source file exceeds the supported "
+        "maximum\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
@@ -70,23 +76,26 @@ Result AesGcm::EncryptInit() {
 
   progress_max_ = src_size_;
 
-  /* Describe the file, then keep the serialized bytes as the associated data of every chunk */
+  /* Describe the file, then keep the serialized bytes as the associated data of
+   * every chunk */
 
   FileHeader header;
 
   header.chunk_log2 = kChunkSizeLog2;
 
-  /* Salt, parameters and commitment all come off the key, so the header cannot end up describing a derivation other
-   * than the one that produced the key the file is encrypted under. A caller has no way to supply a salt of its own
-   * here, which is the point: the file that would result is one no password can ever open, and every step of writing it
-   * would still report success. */
+  /* Salt, parameters and commitment all come off the key, so the header cannot
+   * end up describing a derivation other than the one that produced the key the
+   * file is encrypted under. A caller has no way to supply a salt of its own
+   * here, which is the point: the file that would result is one no password can
+   * ever open, and every step of writing it would still report success. */
 
   header.params = key_->Params();
   std::ranges::copy(key_->Salt(), header.salt.begin());
 
-  /* The commitment is what a later decryption compares its own derivation against, so it is recorded
-   * here and nowhere else. It is written in the clear and needs no protection of its own: the header is
-   * the associated data of every chunk, so an attacker who edits it invalidates the whole file. */
+  /* The commitment is what a later decryption compares its own derivation
+   * against, so it is recorded here and nowhere else. It is written in the
+   * clear and needs no protection of its own: the header is the associated data
+   * of every chunk, so an attacker who edits it invalidates the whole file. */
 
   std::ranges::copy(key_->Commitment(), header.commitment.begin());
 
@@ -112,7 +121,8 @@ Result AesGcm::EncryptLoop() {
   uint64_t idx = 0;
   size_t cur = 0;
 
-  /* A file always holds at least one chunk, so an empty plaintext still produces a tag */
+  /* A file always holds at least one chunk, so an empty plaintext still
+   * produces a tag */
 
   for (;;) {
     const bool is_last = std::cmp_less_equal(rem, chunk_size_);
@@ -122,7 +132,8 @@ Result AesGcm::EncryptLoop() {
       return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
-    if (EncryptChunk(buff_[cur].data(), len, idx, is_last) == Result::kFailure) {
+    if (EncryptChunk(buff_[cur].data(), len, idx, is_last) ==
+        Result::kFailure) {
       return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
@@ -132,7 +143,8 @@ Result AesGcm::EncryptLoop() {
       return Result::kFailure;
     }
 
-    /* The writer still holds the buffer just submitted, so the next chunk goes into the other one */
+    /* The writer still holds the buffer just submitted, so the next chunk goes
+     * into the other one */
 
     cur = 1 - cur;
 
@@ -160,11 +172,12 @@ Result AesGcm::EncryptLoop() {
     idx++;
   }
 
-  /* The size was taken once, before the first chunk, and the loop stopped at it. A source that grew in
-   * between, or one that reported a size it does not have, leaves bytes past that point that no chunk
-   * covers, and every step so far would still have reported success. Reading one more byte is what turns
-   * that into a failure instead of a silently truncated copy. A source that shrank needs nothing here,
-   * since the short read fails on its own. */
+  /* The size was taken once, before the first chunk, and the loop stopped at
+   * it. A source that grew in between, or one that reported a size it does not
+   * have, leaves bytes past that point that no chunk covers, and every step so
+   * far would still have reported success. Reading one more byte is what turns
+   * that into a failure instead of a silently truncated copy. A source that
+   * shrank needs nothing here, since the short read fails on its own. */
 
   uint8_t extra = 0;
 
@@ -173,7 +186,8 @@ Result AesGcm::EncryptLoop() {
     return Result::kFailure;
   }
 
-  /* The loop leaves one chunk still in flight, and a failure on that last write is reported here */
+  /* The loop leaves one chunk still in flight, and a failure on that last write
+   * is reported here */
 
   if (FlushWrite() == Result::kFailure) {
     return Result::kFailure;
@@ -182,11 +196,13 @@ Result AesGcm::EncryptLoop() {
   return Result::kSuccess;
 }
 
-Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_last) {
+Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx,
+                            bool is_last) {
   BuildNonce(idx, is_last);
 
-  /* Cipher and key stay as SetupCtx left them and only the nonce moves, so the key schedule is computed
-   * once for the whole file rather than once per chunk */
+  /* Cipher and key stay as SetupCtx left them and only the nonce moves, so the
+   * key schedule is computed once for the whole file rather than once per chunk
+   */
 
   if (EVP_EncryptInit_ex(ctx_, nullptr, nullptr, nullptr, nonce_.data()) != 1) {
     // LCOV_EXCL_START
@@ -197,22 +213,27 @@ Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
 
   int outlen = 0;
 
-  /* Passing a null output buffer feeds the header in as associated data. It carries the salt, the
-   * Argon2id parameters and the chunk size, so binding it to every chunk means an edited header cannot
-   * decrypt anywhere in the file rather than only at the front. */
+  /* Passing a null output buffer feeds the header in as associated data. It
+   * carries the salt, the Argon2id parameters and the chunk size, so binding it
+   * to every chunk means an edited header cannot decrypt anywhere in the file
+   * rather than only at the front. */
 
-  if (EVP_EncryptUpdate(ctx_, nullptr, &outlen, header_.data(), static_cast<int>(header_.size())) != 1) {
+  if (EVP_EncryptUpdate(ctx_, nullptr, &outlen, header_.data(),
+                        static_cast<int>(header_.size())) != 1) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Encryption failed - Cannot authenticate the header\n");
+    ReportError(
+        "[Crypto] Encryption failed - Cannot authenticate the header\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
   if (len > 0) {
-    /* Same buffer in and out: the ciphertext overwrites the plaintext, which leaves no second copy of
-     * the plaintext in memory and no second buffer to allocate */
+    /* Same buffer in and out: the ciphertext overwrites the plaintext, which
+     * leaves no second copy of the plaintext in memory and no second buffer to
+     * allocate */
 
-    if (EVP_EncryptUpdate(ctx_, buff, &outlen, buff, static_cast<int>(len)) != 1) {
+    if (EVP_EncryptUpdate(ctx_, buff, &outlen, buff, static_cast<int>(len)) !=
+        1) {
       // LCOV_EXCL_START
       ReportError("[Crypto] Encryption failed - Cannot encrypt buffer\n");
       return Result::kFailure;
@@ -227,8 +248,9 @@ Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
     }
   }
 
-  /* GCM is a counter mode, so there is no partial block held back and this call emits no bytes. It runs
-   * only to close the chunk, which is what makes the tag available below. */
+  /* GCM is a counter mode, so there is no partial block held back and this call
+   * emits no bytes. It runs only to close the chunk, which is what makes the
+   * tag available below. */
 
   std::array<uint8_t, kBlockSize> final_block{};
   int final_len = 0;
@@ -240,9 +262,11 @@ Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_las
     // LCOV_EXCL_STOP
   }
 
-  /* The tag lands at buff + len, in the room AllocBuffers reserved past the chunk */
+  /* The tag lands at buff + len, in the room AllocBuffers reserved past the
+   * chunk */
 
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_GET_TAG, static_cast<int>(kTagSize), buff + len) != 1) {
+  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_GET_TAG,
+                          static_cast<int>(kTagSize), buff + len) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Tag Error - Cannot get auth tag\n");
     return Result::kFailure;

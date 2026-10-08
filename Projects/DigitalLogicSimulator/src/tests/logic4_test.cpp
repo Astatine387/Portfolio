@@ -11,7 +11,8 @@
 #include <array>
 #include <sstream>
 
-constexpr std::array<Logic4, 4> kAll = { Logic4::k0, Logic4::k1, Logic4::kX, Logic4::kZ };
+constexpr std::array<Logic4, 4> kAll = { Logic4::k0, Logic4::k1, Logic4::kX,
+                                         Logic4::kZ };
 
 /* ==================================================
  * Two-input gate truth tables

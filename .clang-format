@@ -8,8 +8,11 @@ IndentWidth: 2
 TabWidth: 2
 UseTab: Never
 
-# Maximum 120 characters per line
-ColumnLimit: 120
+# Maximum 80 characters per line
+ColumnLimit: 80
+
+# Leave comments as they are written, so the limit above governs code only
+ReflowComments: Never
 
 # Left alignment for pointers and references
 DerivePointerAlignment: false

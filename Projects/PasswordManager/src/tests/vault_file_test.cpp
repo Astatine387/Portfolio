@@ -33,8 +33,9 @@
 
 namespace {
 
-/* Header field offsets, restated here rather than imported from the module under test, so that moving a field in the
- * format has to be done twice before these tests agree that it moved */
+/* Header field offsets, restated here rather than imported from the module
+ * under test, so that moving a field in the format has to be done twice before
+ * these tests agree that it moved */
 
 constexpr size_t kVersionOff = 4;
 constexpr size_t kTimeCostOff = 5;
@@ -43,38 +44,49 @@ constexpr size_t kParallelismOff = 13;
 constexpr size_t kSaltOff = 17;
 constexpr size_t kCommitOff = 33;
 
-static_assert(kVersionOff == kMagicSize, "Version does not follow the magic number");
-static_assert(kTimeCostOff == kVersionOff + kVersionSize, "Time cost does not follow the version");
-static_assert(kMemCostOff == kTimeCostOff + sizeof(uint32_t), "Memory cost does not follow the time cost");
-static_assert(kParallelismOff == kMemCostOff + sizeof(uint32_t), "Parallelism does not follow the memory cost");
-static_assert(kSaltOff == kParallelismOff + sizeof(uint32_t), "Salt does not follow the parameters");
-static_assert(kCommitOff == kSaltOff + kSaltSize, "Commitment does not follow the salt");
-static_assert(kCommitOff + kCommitSize == kHeaderSize, "Header field offsets do not fill the header");
+static_assert(kVersionOff == kMagicSize,
+              "Version does not follow the magic number");
+static_assert(kTimeCostOff == kVersionOff + kVersionSize,
+              "Time cost does not follow the version");
+static_assert(kMemCostOff == kTimeCostOff + sizeof(uint32_t),
+              "Memory cost does not follow the time cost");
+static_assert(kParallelismOff == kMemCostOff + sizeof(uint32_t),
+              "Parallelism does not follow the memory cost");
+static_assert(kSaltOff == kParallelismOff + sizeof(uint32_t),
+              "Salt does not follow the parameters");
+static_assert(kCommitOff == kSaltOff + kSaltSize,
+              "Commitment does not follow the salt");
+static_assert(kCommitOff + kCommitSize == kHeaderSize,
+              "Header field offsets do not fill the header");
 
 /**
  * @brief   Which check refuses a vault whose header has had one byte flipped
  * @param   off     Byte offset within the header
  * @return  Substring the reported error is expected to contain
  *
- * The mapping is the point of the sweep. That every offset fails says little on its own; which mechanism catches
- * each one is a property of this exact layout and of the parameters the swept vault is written with, and writing it
- * down is what makes the sweep documentation rather than a smoke test.
+ * The mapping is the point of the sweep. That every offset fails says little on
+ * its own; which mechanism catches each one is a property of this exact layout
+ * and of the parameters the swept vault is written with, and writing it down is
+ * what makes the sweep documentation rather than a smoke test.
  *
- *  0..3    magic        kMagicNum differs from kLegacyMagicNum in all four bytes, so one flipped byte can reach
- *                       neither value -> kBadMagic
- *  4       version      Anything but kFormatVersion -> kBadVersion
- *  5..8    time_cost    kMinTimeCost flips to 254 or higher, all far outside the range -> kBadParams
- *  9..10   mem_cost     The two low bytes of kMinMemCost flip to values still inside the range, so these two are the
- *                       only header bytes that get past validation while changing the derivation -> commitment
- *  11..12  mem_cost     The two high bytes flip to gigabytes -> kBadParams
- *  13..16  parallelism  kMinParallelism flips as time_cost does -> kBadParams
- *  17..32  salt         A different salt derives a different key, and with it a different commitment -> commitment
- *  33..64  commitment   Compared against the derivation directly -> commitment
+ *  0..3    magic        kMagicNum differs from kLegacyMagicNum in all four
+ * bytes, so one flipped byte can reach neither value -> kBadMagic 4 version
+ * Anything but kFormatVersion -> kBadVersion 5..8    time_cost    kMinTimeCost
+ * flips to 254 or higher, all far outside the range -> kBadParams 9..10
+ * mem_cost     The two low bytes of kMinMemCost flip to values still inside the
+ * range, so these two are the only header bytes that get past validation while
+ * changing the derivation -> commitment 11..12  mem_cost     The two high bytes
+ * flip to gigabytes -> kBadParams 13..16  parallelism  kMinParallelism flips as
+ * time_cost does -> kBadParams 17..32  salt         A different salt derives a
+ * different key, and with it a different commitment -> commitment 33..64
+ * commitment   Compared against the derivation directly -> commitment
  *
- * No offset reaches the authentication tag. Whatever survives the range checks changes either the key or the stored
- * commitment, and the commitment is compared before anything is decrypted, so a header edit is refused without a
- * ciphertext byte being read. The associated data covers these bytes too, and it is AesGcmTest.MismatchedAad that
- * shows that wiring works: here the commitment always answers first.
+ * No offset reaches the authentication tag. Whatever survives the range checks
+ * changes either the key or the stored commitment, and the commitment is
+ * compared before anything is decrypted, so a header edit is refused without a
+ * ciphertext byte being read. The associated data covers these bytes too, and
+ * it is AesGcmTest.MismatchedAad that shows that wiring works: here the
+ * commitment always answers first.
  */
 const char* ExpectedMessage(size_t off) {
   if (off < kVersionOff) {
@@ -119,7 +131,9 @@ class VaultFileTest : public ::testing::Test {
   /**
    * @brief   Set up test fixture with a master password and an empty vault file
    */
-  void SetUp() override { ASSERT_EQ(vault_.NewVault(path_, MakePW("password")), Result::kSuccess); }
+  void SetUp() override {
+    ASSERT_EQ(vault_.NewVault(path_, MakePW("password")), Result::kSuccess);
+  }
 
   /**
    * @brief   Clean up temporary vault files after each test
@@ -149,10 +163,12 @@ class VaultFileTest : public ::testing::Test {
    * @param   params  Argon2id parameters to derive with
    * @return  Derived key
    */
-  static SecureKey KeyForFile(const std::array<uint8_t, kSaltSize>& salt, const KdfParams& params = {}) {
+  static SecureKey KeyForFile(const std::array<uint8_t, kSaltSize>& salt,
+                              const KdfParams& params = {}) {
     auto key = DeriveKey(std::span<const char>("password", 8), salt, params);
 
-    return std::move(key.value());  // NOLINT(bugprone-unchecked-optional-access)
+    return std::move(
+        key.value());  // NOLINT(bugprone-unchecked-optional-access)
   }
 
   /**
@@ -160,7 +176,9 @@ class VaultFileTest : public ::testing::Test {
    * @return  Argon2id parameter of minimal value
    */
   static KdfParams MinParams() {
-    return KdfParams{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism };
+    return KdfParams{ .time_cost = kMinTimeCost,
+                      .mem_cost = kMinMemCost,
+                      .parallelism = kMinParallelism };
   }
 
   /**
@@ -180,7 +198,8 @@ class VaultFileTest : public ::testing::Test {
       if (size > 0) {
         buff.resize(static_cast<size_t>(size));
 
-        EXPECT_EQ(fread(buff.data(), sizeof(uint8_t), buff.size(), file), buff.size());
+        EXPECT_EQ(fread(buff.data(), sizeof(uint8_t), buff.size(), file),
+                  buff.size());
       }
 
       fclose(file);
@@ -194,29 +213,35 @@ class VaultFileTest : public ::testing::Test {
    * @param   path    File path
    * @param   buff    Bytes to write
    */
-  static void WriteFile(const std::string& path, const std::vector<uint8_t>& buff) {
+  static void WriteFile(const std::string& path,
+                        const std::vector<uint8_t>& buff) {
     FILE* file = nullptr;
 
     OpenFile(&file, path, "wb");
 
     if (file) {
-      EXPECT_EQ(fwrite(buff.data(), sizeof(uint8_t), buff.size(), file), buff.size());
+      EXPECT_EQ(fwrite(buff.data(), sizeof(uint8_t), buff.size(), file),
+                buff.size());
 
       fclose(file);
     }
   }
 
   /**
-   * @brief   Write a vault file holding the given image, derived under the given salt and parameters
+   * @brief   Write a vault file holding the given image, derived under the
+   * given salt and parameters
    * @param   path    File path
    * @param   img     Plaintext vault image
    * @param   salt    Salt to derive with and record in the header
-   * @param   params  Argon2id parameters to derive with and record in the header
+   * @param   params  Argon2id parameters to derive with and record in the
+   * header
    *
-   * Assembled the way SaveVaultWith assembles one, commitment and associated data included, so a crafted vault
-   * differs from a real one only in what its image says.
+   * Assembled the way SaveVaultWith assembles one, commitment and associated
+   * data included, so a crafted vault differs from a real one only in what its
+   * image says.
    */
-  static void WriteVault(const std::string& path, std::vector<uint8_t>& img, const std::array<uint8_t, kSaltSize>& salt,
+  static void WriteVault(const std::string& path, std::vector<uint8_t>& img,
+                         const std::array<uint8_t, kSaltSize>& salt,
                          const KdfParams& params = {}) {
     SecureKey key = KeyForFile(salt, params);
 
@@ -229,11 +254,13 @@ class VaultFileTest : public ::testing::Test {
 
     std::vector<uint8_t> buff(kHeaderSize + kIVSize + img.size() + kTagSize);
 
-    SerializeHeader(std::span<uint8_t, kHeaderSize>(buff.data(), kHeaderSize), header);
+    SerializeHeader(std::span<uint8_t, kHeaderSize>(buff.data(), kHeaderSize),
+                    header);
 
     AesGcm aes;
 
-    EXPECT_EQ(aes.Encrypt(img.data(), buff.data() + kHeaderSize, img.size(), key, std::span(buff.data(), kHeaderSize)),
+    EXPECT_EQ(aes.Encrypt(img.data(), buff.data() + kHeaderSize, img.size(),
+                          key, std::span(buff.data(), kHeaderSize)),
               Result::kSuccess);
 
     WriteFile(path, buff);
@@ -257,7 +284,8 @@ class VaultFileTest : public ::testing::Test {
   }
 
   /**
-   * @brief   Replace the Argon2id parameters in the vault file, leaving the body untouched
+   * @brief   Replace the Argon2id parameters in the vault file, leaving the
+   * body untouched
    * @param   params  Parameters to store
    */
   void PatchHeaderParams(const KdfParams& params) {
@@ -273,7 +301,8 @@ class VaultFileTest : public ::testing::Test {
   }
 
   /**
-   * @brief   Replace the file at a path with an empty vault built under the given parameters
+   * @brief   Replace the file at a path with an empty vault built under the
+   * given parameters
    * @param   path    File path to write
    * @param   params  Argon2id parameters to derive with and record
    */
@@ -289,16 +318,19 @@ class VaultFileTest : public ::testing::Test {
   }
 
   /**
-   * @brief   Replace the vault file with an empty vault built under the given parameters
+   * @brief   Replace the vault file with an empty vault built under the given
+   * parameters
    * @param   params  Argon2id parameters to derive with and record
    */
   void MakeVaultWith(const KdfParams& params) { MakeVaultAt(path_, params); }
 
   /**
-   * @brief   Replace the vault file with a cheap one and open the fixture's session on it
+   * @brief   Replace the vault file with a cheap one and open the fixture's
+   * session on it
    *
-   * What every concurrent-modification case starts from. The two sessions below each pay for an Argon2id derivation
-   * to open, so the vault they open is written at the cheapest parameters a header may legally carry.
+   * What every concurrent-modification case starts from. The two sessions below
+   * each pay for an Argon2id derivation to open, so the vault they open is
+   * written at the cheapest parameters a header may legally carry.
    */
   void MakeCheapVault() {
     MakeVaultWith(MinParams());
@@ -307,24 +339,31 @@ class VaultFileTest : public ::testing::Test {
   }
 
   /**
-   * @brief   Open a second session on the fixture's vault, as a second window on the same file would
+   * @brief   Open a second session on the fixture's vault, as a second window
+   * on the same file would
    * @param   other   Vault to open
    */
-  void OpenOther(Vault& other) const { ASSERT_EQ(other.OpenVault(path_, MakePW("password")), Result::kSuccess); }
+  void OpenOther(Vault& other) const {
+    ASSERT_EQ(other.OpenVault(path_, MakePW("password")), Result::kSuccess);
+  }
 
   /**
-   * @brief   Report whether a save temporary for a path is still sitting in its directory
+   * @brief   Report whether a save temporary for a path is still sitting in its
+   * directory
    * @param   path    Vault file path
    * @return  true if a "<vault>.XXXXXX" file is there
    *
-   * SaveVaultWith writes to path + ".XXXXXX" with the last six characters replaced, so a leftover is a file named
-   * exactly that much longer than the vault. A refused save has to take its temporary with it: the directory is the
-   * user's, and a vault that grows a litter of half-written copies every time another window saves first is its own
-   * kind of data loss.
+   * SaveVaultWith writes to path + ".XXXXXX" with the last six characters
+   * replaced, so a leftover is a file named exactly that much longer than the
+   * vault. A refused save has to take its temporary with it: the directory is
+   * the user's, and a vault that grows a litter of half-written copies every
+   * time another window saves first is its own kind of data loss.
    */
   static bool TempFileLeft(const std::string& path) {
     const std::filesystem::path target(path);
-    const std::filesystem::path dir = target.has_parent_path() ? target.parent_path() : std::filesystem::path(".");
+    const std::filesystem::path dir = target.has_parent_path()
+                                          ? target.parent_path()
+                                          : std::filesystem::path(".");
     const std::string prefix = target.filename().string() + ".";
 
     for (const auto& item : std::filesystem::directory_iterator(dir)) {
@@ -345,7 +384,8 @@ class VaultFileTest : public ::testing::Test {
    * @param   acc     Account
    * @return  true if the entry is there
    */
-  static bool HasEntry(const Vault& vault, const std::string& site, const std::string& acc) {
+  static bool HasEntry(const Vault& vault, const std::string& site,
+                       const std::string& acc) {
     const auto& entries = vault.GetEntries();
 
     return entries.find({ .site = site, .acc = acc }) != entries.end();
@@ -356,19 +396,24 @@ class VaultFileTest : public ::testing::Test {
  * @class   VaultHeaderTamperTest
  * @brief   Fixture flipping one header byte per case, over the whole header
  */
-class VaultHeaderTamperTest : public VaultFileTest, public testing::WithParamInterface<size_t> {
+class VaultHeaderTamperTest : public VaultFileTest,
+                              public testing::WithParamInterface<size_t> {
  protected:
   /**
-   * @brief   Replace the base fixture's vault with one written at the cheapest legal parameters
+   * @brief   Replace the base fixture's vault with one written at the cheapest
+   * legal parameters
    *
-   * The base fixture derives at the build defaults, which is 512 MiB of Argon2id per case and more than a sweep of
-   * this length needs. Those parameters are also what the offset-to-mechanism mapping above is stated against.
+   * The base fixture derives at the build defaults, which is 512 MiB of
+   * Argon2id per case and more than a sweep of this length needs. Those
+   * parameters are also what the offset-to-mechanism mapping above is stated
+   * against.
    */
   void SetUp() override {
     MakeVaultWith(MinParams());
 
-    /* MakeVaultWith reports through EXPECT, which leaves the fixture standing. Without this the sweep would go on to
-     * flip a byte of whatever file the failure left and report on that instead. */
+    /* MakeVaultWith reports through EXPECT, which leaves the fixture standing.
+     * Without this the sweep would go on to flip a byte of whatever file the
+     * failure left and report on that instead. */
 
     ASSERT_FALSE(HasFailure());
   }
@@ -394,21 +439,25 @@ TEST_F(VaultFileTest, NewVaultIsEmpty) {
 }
 
 /**
- * @brief   Verify creating a vault at a path an existing vault holds is refused, and that vault survives intact
+ * @brief   Verify creating a vault at a path an existing vault holds is
+ * refused, and that vault survives intact
  */
 TEST_F(VaultFileTest, NewVaultRefusesExistingVault) {
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("asdf1234")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("asdf1234")),
+            Result::kSuccess);
   ASSERT_EQ(vault_.SaveVault(path_), SaveResult::kSuccess);
 
-  /* A second session, which knows nothing about this path beyond the name it was given */
+  /* A second session, which knows nothing about this path beyond the name it
+   * was given */
 
   Vault other;
 
   EXPECT_EQ(other.NewVault(path_, MakePW("otherpassword")), Result::kFailure);
   EXPECT_NE(other.GetLastError().find("already exists"), std::string::npos);
 
-  /* What the path holds is still the vault that was saved: the original password opens it and the entry it was
-   * saved with reads back, password included */
+  /* What the path holds is still the vault that was saved: the original
+   * password opens it and the entry it was saved with reads back, password
+   * included */
 
   EXPECT_EQ(Reload(), Result::kSuccess);
   EXPECT_EQ(vault_.GetEntryCount(), 1);
@@ -420,14 +469,16 @@ TEST_F(VaultFileTest, NewVaultRefusesExistingVault) {
 }
 
 /**
- * @brief   Verify a file that is not a vault at all is refused and left byte for byte as it was
+ * @brief   Verify a file that is not a vault at all is refused and left byte
+ * for byte as it was
  */
 TEST_F(VaultFileTest, NewVaultLeavesForeignFileUntouched) {
   const std::string notes_path = "notes.txt";
   const std::string text = "Shopping list, not a vault\n";
 
-  /* Copying through the string's iterators would convert char to uint8_t per element, which MSVC reports as a
-   * signed/unsigned mismatch from inside <xutility>; the pointer pair carries the element type the vector wants. */
+  /* Copying through the string's iterators would convert char to uint8_t per
+   * element, which MSVC reports as a signed/unsigned mismatch from inside
+   * <xutility>; the pointer pair carries the element type the vector wants. */
 
   const auto* const text_bytes = reinterpret_cast<const uint8_t*>(text.data());
   const std::vector<uint8_t> notes(text_bytes, text_bytes + text.size());
@@ -446,13 +497,17 @@ TEST_F(VaultFileTest, NewVaultLeavesForeignFileUntouched) {
 #ifndef _WIN32
 
 /**
- * @brief   Verify a dangling symbolic link at the chosen path is refused, by the publish rather than by the check
+ * @brief   Verify a dangling symbolic link at the chosen path is refused, by
+ * the publish rather than by the check
  *
- * FileExists resolves the path it is given, so a link pointing at nothing reports as absent and the check NewVault
- * makes before deriving anything lets this path through. The refusal can therefore only come from the create-only
- * publish at the end, and the message is what says which of the two answered: "was taken" is reported by the rename
- * alone, so asserting on it is what makes this a test of the commit point rather than of the check above it. Under a
- * replacing rename the link would simply be overwritten, which is the mutation this case is here to catch.
+ * FileExists resolves the path it is given, so a link pointing at nothing
+ * reports as absent and the check NewVault makes before deriving anything lets
+ * this path through. The refusal can therefore only come from the create-only
+ * publish at the end, and the message is what says which of the two answered:
+ * "was taken" is reported by the rename alone, so asserting on it is what makes
+ * this a test of the commit point rather than of the check above it. Under a
+ * replacing rename the link would simply be overwritten, which is the mutation
+ * this case is here to catch.
  */
 TEST_F(VaultFileTest, NewVaultRefusesDanglingSymlink) {
   const std::string link_path = "dangling.vault";
@@ -467,14 +522,16 @@ TEST_F(VaultFileTest, NewVaultRefusesDanglingSymlink) {
   EXPECT_EQ(other.NewVault(link_path, MakePW("password")), Result::kFailure);
   EXPECT_NE(other.GetLastError().find("was taken"), std::string::npos);
 
-  /* The path still holds the link itself, so nothing was written over it or through it */
+  /* The path still holds the link itself, so nothing was written over it or
+   * through it */
 
   struct stat st = {};
 
   ASSERT_EQ(lstat(link_path.c_str(), &st), 0);
   EXPECT_TRUE(S_ISLNK(st.st_mode));
 
-  /* And the temporary the attempt wrote was cleaned up rather than left beside the link */
+  /* And the temporary the attempt wrote was cleaned up rather than left beside
+   * the link */
 
   const std::string prefix = link_path + ".";
 
@@ -486,12 +543,15 @@ TEST_F(VaultFileTest, NewVaultRefusesDanglingSymlink) {
 }
 
 /**
- * @brief   Verify a path whose existence cannot be established is refused before anything is derived
+ * @brief   Verify a path whose existence cannot be established is refused
+ * before anything is derived
  *
- * The counterpart of the dangling link above. There the path resolves, to nothing, and the check lets it through;
- * here a pair of links pointing at each other resolves to neither a file nor an absence, and the check is what has
- * to answer, because a question the file system will not answer is not a free name. The refusal therefore lands
- * where the create's own message is, ahead of the password and the seconds of Argon2id behind it.
+ * The counterpart of the dangling link above. There the path resolves, to
+ * nothing, and the check lets it through; here a pair of links pointing at each
+ * other resolves to neither a file nor an absence, and the check is what has to
+ * answer, because a question the file system will not answer is not a free
+ * name. The refusal therefore lands where the create's own message is, ahead of
+ * the password and the seconds of Argon2id behind it.
  */
 TEST_F(VaultFileTest, NewVaultRefusesSymlinkLoop) {
   const std::string loop_a = "loop_a.vault";
@@ -508,7 +568,8 @@ TEST_F(VaultFileTest, NewVaultRefusesSymlinkLoop) {
   EXPECT_EQ(other.NewVault(loop_a, MakePW("password")), Result::kFailure);
   EXPECT_FALSE(other.GetLastError().empty());
 
-  /* Both names still hold the links themselves, so nothing was written through the loop or over either of them */
+  /* Both names still hold the links themselves, so nothing was written through
+   * the loop or over either of them */
 
   struct stat st = {};
 
@@ -541,7 +602,8 @@ TEST_F(VaultFileTest, OpenWrongPassword) {
 TEST_F(VaultFileTest, OpenNonExistent) {
   vault_.CloseVault();
 
-  EXPECT_EQ(vault_.OpenVault("nonexistent.vault", MakePW("asdf1234")), Result::kFailure);
+  EXPECT_EQ(vault_.OpenVault("nonexistent.vault", MakePW("asdf1234")),
+            Result::kFailure);
 }
 
 /**
@@ -616,7 +678,8 @@ TEST_F(VaultFileTest, OpenOversizedFile) {
 }
 
 /**
- * @brief   Verify opening a vault where entry count grossly exceeds available data fails
+ * @brief   Verify opening a vault where entry count grossly exceeds available
+ * data fails
  */
 TEST_F(VaultFileTest, OpenInflatedEntryCount) {
   /* Entry count is 10, but there are no actual entries */
@@ -625,7 +688,8 @@ TEST_F(VaultFileTest, OpenInflatedEntryCount) {
 
   StoreLE32(src.data(), 10);
 
-  /* Write a vault the fixture password opens, so the entry count is what fails and not the password */
+  /* Write a vault the fixture password opens, so the entry count is what fails
+   * and not the password */
 
   std::array<uint8_t, kSaltSize> salt{};
   salt.fill(0x11);
@@ -636,7 +700,8 @@ TEST_F(VaultFileTest, OpenInflatedEntryCount) {
 }
 
 /**
- * @brief   Verify opening a vault where entry count exceeds actual entries fails
+ * @brief   Verify opening a vault where entry count exceeds actual entries
+ * fails
  */
 TEST_F(VaultFileTest, OpenPartialEntryData) {
   /* Entry count is 2, but only 1 entry is valid */
@@ -659,11 +724,13 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
   memcpy(src.data() + cur, &entry_cnt, sizeof(uint32_t));
   cur += sizeof(uint32_t);
 
-  std::span<const uint8_t> epw_span(reinterpret_cast<const uint8_t*>(epw), entry.pw_len);
+  std::span<const uint8_t> epw_span(reinterpret_cast<const uint8_t*>(epw),
+                                    entry.pw_len);
 
   ASSERT_EQ(entry.Serialize(std::span(src).subspan(cur), epw_span), entry_size);
 
-  /* Write a vault the fixture password opens, so the entry data is what fails and not the password */
+  /* Write a vault the fixture password opens, so the entry data is what fails
+   * and not the password */
 
   std::array<uint8_t, kSaltSize> salt{};
   salt.fill(0x22);
@@ -674,24 +741,34 @@ TEST_F(VaultFileTest, OpenPartialEntryData) {
 }
 
 /**
- * @brief   Verify opening a vault whose image holds bytes past the last counted entry fails
+ * @brief   Verify opening a vault whose image holds bytes past the last counted
+ * entry fails
  *
- * The count field and the bytes behind it are two statements about the same image, and a vault where they disagree
- * this way is the one case the open path used to accept. Reading by the count alone, the session looks whole: one
- * entry is listed and nothing reports a problem. What is not listed does not go away, though. The uncounted bytes
- * stay in the decrypted image for as long as the vault is open, every save is refused because they are there, and
- * the session is not dirty, so closing it warns about nothing. The one way out is to edit an entry, which rebuilds
- * the image from the entry set and drops those bytes without saying so. Refusing the file at open is what this test
- * pins down: the format is defined in one place, and the open path is held to it like the others.
+ * The count field and the bytes behind it are two statements about the same
+ * image, and a vault where they disagree this way is the one case the open path
+ * used to accept. Reading by the count alone, the session looks whole: one
+ * entry is listed and nothing reports a problem. What is not listed does not go
+ * away, though. The uncounted bytes stay in the decrypted image for as long as
+ * the vault is open, every save is refused because they are there, and the
+ * session is not dirty, so closing it warns about nothing. The one way out is
+ * to edit an entry, which rebuilds the image from the entry set and drops those
+ * bytes without saying so. Refusing the file at open is what this test pins
+ * down: the format is defined in one place, and the open path is held to it
+ * like the others.
  */
 TEST_F(VaultFileTest, OpenRejectsTrailingBytes) {
   const char* epw = "password";
   const uint32_t pw_len = static_cast<uint32_t>(strlen(epw));
 
-  const Entry counted{ .site = "Google", .acc = "user@google.com", .pw_len = pw_len };
-  const Entry uncounted{ .site = "GitHub", .acc = "user@github.com", .pw_len = pw_len };
+  const Entry counted{ .site = "Google",
+                       .acc = "user@google.com",
+                       .pw_len = pw_len };
+  const Entry uncounted{ .site = "GitHub",
+                         .acc = "user@github.com",
+                         .pw_len = pw_len };
 
-  std::span<const uint8_t> pw_span(reinterpret_cast<const uint8_t*>(epw), pw_len);
+  std::span<const uint8_t> pw_span(reinterpret_cast<const uint8_t*>(epw),
+                                   pw_len);
 
   /* Entry count is 1, but two well-formed entries follow it */
 
@@ -701,14 +778,17 @@ TEST_F(VaultFileTest, OpenRejectsTrailingBytes) {
 
   size_t cur = kCountSize;
 
-  ASSERT_EQ(counted.Serialize(std::span(img).subspan(cur), pw_span), counted.Size());
+  ASSERT_EQ(counted.Serialize(std::span(img).subspan(cur), pw_span),
+            counted.Size());
 
   cur += counted.Size();
 
-  ASSERT_EQ(uncounted.Serialize(std::span(img).subspan(cur), pw_span), uncounted.Size());
+  ASSERT_EQ(uncounted.Serialize(std::span(img).subspan(cur), pw_span),
+            uncounted.Size());
 
-  /* Write a vault the fixture password opens, at the cheapest legal parameters, so the image is what fails and the
-   * case does not spend a 512 MiB derivation saying so */
+  /* Write a vault the fixture password opens, at the cheapest legal parameters,
+   * so the image is what fails and the case does not spend a 512 MiB derivation
+   * saying so */
 
   std::array<uint8_t, kSaltSize> salt{};
   salt.fill(0x44);
@@ -716,7 +796,9 @@ TEST_F(VaultFileTest, OpenRejectsTrailingBytes) {
   WriteVault(path_, img, salt, MinParams());
 
   EXPECT_EQ(Reload(), Result::kFailure);
-  EXPECT_NE(vault_.GetLastError().find("Validation failed - Trailing bytes after final entry"), std::string::npos);
+  EXPECT_NE(vault_.GetLastError().find(
+                "Validation failed - Trailing bytes after final entry"),
+            std::string::npos);
 }
 
 /**
@@ -785,7 +867,8 @@ TEST_F(VaultFileTest, HeaderRecordsKdfParams) {
 }
 
 /**
- * @brief   Verify the key is derived with the header parameters rather than the build defaults
+ * @brief   Verify the key is derived with the header parameters rather than the
+ * build defaults
  */
 TEST_F(VaultFileTest, OpenUsesHeaderKdfParams) {
   MakeVaultWith(MinParams());
@@ -795,32 +878,48 @@ TEST_F(VaultFileTest, OpenUsesHeaderKdfParams) {
 }
 
 /**
- * @brief   Verify parameters outside the accepted range are rejected before any key derivation
+ * @brief   Verify parameters outside the accepted range are rejected before any
+ * key derivation
  */
 TEST_F(VaultFileTest, OpenRejectsOutOfRangeKdfParams) {
   const std::array<KdfParams, 6> cases{
-    KdfParams{ .time_cost = kMinTimeCost - 1, .mem_cost = kMemCost, .parallelism = kParallelism },
-    KdfParams{ .time_cost = kMaxTimeCost + 1, .mem_cost = kMemCost, .parallelism = kParallelism },
-    KdfParams{ .time_cost = kTimeCost, .mem_cost = kMinMemCost - 1, .parallelism = kParallelism },
-    KdfParams{ .time_cost = kTimeCost, .mem_cost = kMaxMemCost + 1, .parallelism = kParallelism },
-    KdfParams{ .time_cost = kTimeCost, .mem_cost = kMemCost, .parallelism = kMinParallelism - 1 },
-    KdfParams{ .time_cost = kTimeCost, .mem_cost = kMemCost, .parallelism = kMaxParallelism + 1 },
+    KdfParams{ .time_cost = kMinTimeCost - 1,
+               .mem_cost = kMemCost,
+               .parallelism = kParallelism },
+    KdfParams{ .time_cost = kMaxTimeCost + 1,
+               .mem_cost = kMemCost,
+               .parallelism = kParallelism },
+    KdfParams{ .time_cost = kTimeCost,
+               .mem_cost = kMinMemCost - 1,
+               .parallelism = kParallelism },
+    KdfParams{ .time_cost = kTimeCost,
+               .mem_cost = kMaxMemCost + 1,
+               .parallelism = kParallelism },
+    KdfParams{ .time_cost = kTimeCost,
+               .mem_cost = kMemCost,
+               .parallelism = kMinParallelism - 1 },
+    KdfParams{ .time_cost = kTimeCost,
+               .mem_cost = kMemCost,
+               .parallelism = kMaxParallelism + 1 },
   };
 
   for (const KdfParams& params : cases) {
-    SCOPED_TRACE(testing::Message() << "t=" << params.time_cost << " m=" << params.mem_cost
-                                    << " p=" << params.parallelism);
+    SCOPED_TRACE(testing::Message()
+                 << "t=" << params.time_cost << " m=" << params.mem_cost
+                 << " p=" << params.parallelism);
 
     ASSERT_NO_FATAL_FAILURE(PatchHeaderParams(params));
 
     EXPECT_EQ(Reload(), Result::kFailure);
-    EXPECT_NE(vault_.GetLastError().find("Unsupported key derivation parameters"), std::string::npos);
+    EXPECT_NE(
+        vault_.GetLastError().find("Unsupported key derivation parameters"),
+        std::string::npos);
   }
 }
 
 /**
- * @brief   Verify a vault written before the key commitment existed is refused, and said to be old rather than
- *          foreign
+ * @brief   Verify a vault written before the key commitment existed is refused,
+ * and said to be old rather than foreign
  */
 TEST_F(VaultFileTest, OpenLegacyFormatFails) {
   std::vector<uint8_t> buff = ReadFile(path_);
@@ -832,7 +931,8 @@ TEST_F(VaultFileTest, OpenLegacyFormatFails) {
   WriteFile(path_, buff);
 
   EXPECT_EQ(Reload(), Result::kFailure);
-  EXPECT_NE(vault_.GetLastError().find("predates the current format"), std::string::npos);
+  EXPECT_NE(vault_.GetLastError().find("predates the current format"),
+            std::string::npos);
 }
 
 /**
@@ -852,7 +952,8 @@ TEST_F(VaultFileTest, SavePreservesKdfParams) {
 }
 
 /**
- * @brief   Verify a password change lifts the vault to the current default parameters
+ * @brief   Verify a password change lifts the vault to the current default
+ * parameters
  */
 TEST_F(VaultFileTest, ChangePWUpdatesKdfParams) {
   MakeVaultWith(MinParams());
@@ -884,8 +985,10 @@ TEST_F(VaultFileTest, SaveAndReload) {
 
   const auto& entries = vault_.GetEntries();
 
-  EXPECT_NE(entries.find({ .site = "Google", .acc = "user1@google.com" }), entries.end());
-  EXPECT_NE(entries.find({ .site = "Microsoft", .acc = "user2@microsoft.com" }), entries.end());
+  EXPECT_NE(entries.find({ .site = "Google", .acc = "user1@google.com" }),
+            entries.end());
+  EXPECT_NE(entries.find({ .site = "Microsoft", .acc = "user2@microsoft.com" }),
+            entries.end());
 }
 
 /**
@@ -906,19 +1009,23 @@ TEST_F(VaultFileTest, SavePreservesPasswords) {
 }
 
 /**
- * @brief   Verify a vault edited many times over saves and reopens with every password intact
+ * @brief   Verify a vault edited many times over saves and reopens with every
+ * password intact
  *
- * Every create, update and delete rewrites the whole image and recomputes every offset in it, so an offset written
- * against the wrong buffer, or onto the wrong entry, does not announce itself: the site and the account still read
- * correctly and the password comes back as whichever bytes that offset now lands on. A single edit moves too little
- * to show it. This one runs enough edits, over fields of deliberately unequal length, that the surviving entries end
- * up at different offsets and in a different order than they were created at, then reads every field back off the
- * disk.
+ * Every create, update and delete rewrites the whole image and recomputes every
+ * offset in it, so an offset written against the wrong buffer, or onto the
+ * wrong entry, does not announce itself: the site and the account still read
+ * correctly and the password comes back as whichever bytes that offset now
+ * lands on. A single edit moves too little to show it. This one runs enough
+ * edits, over fields of deliberately unequal length, that the surviving entries
+ * end up at different offsets and in a different order than they were created
+ * at, then reads every field back off the disk.
  */
 TEST_F(VaultFileTest, SaveAfterManyEdits) {
   /**
    * @struct  Record
-   * @brief   What one entry is expected to hold, kept in step with the edits below
+   * @brief   What one entry is expected to hold, kept in step with the edits
+   * below
    */
   struct Record {
     std::string site;
@@ -928,61 +1035,71 @@ TEST_F(VaultFileTest, SaveAfterManyEdits) {
 
   std::vector<Record> records;
 
-  /* Lengths that vary in opposite directions, so no two entries are interchangeable in size */
+  /* Lengths that vary in opposite directions, so no two entries are
+   * interchangeable in size */
 
   for (int i = 0; i < 10; i++) {
     const size_t n = static_cast<size_t>(i);
 
-    records.push_back({ .site = "site" + std::to_string(i) + std::string(n, 's'),
-                        .acc = "acc" + std::to_string(i) + std::string(9 - n, 'a') + "@example.com",
-                        .pw = "pw" + std::to_string(i) + std::string(n * 4, 'p') });
+    records.push_back(
+        { .site = "site" + std::to_string(i) + std::string(n, 's'),
+          .acc = "acc" + std::to_string(i) + std::string(9 - n, 'a') +
+                 "@example.com",
+          .pw = "pw" + std::to_string(i) + std::string(n * 4, 'p') });
   }
 
   for (const auto& rec : records) {
-    ASSERT_EQ(vault_.CreateEntry(rec.site, rec.acc, MakePW(rec.pw.c_str())), Result::kSuccess);
+    ASSERT_EQ(vault_.CreateEntry(rec.site, rec.acc, MakePW(rec.pw.c_str())),
+              Result::kSuccess);
   }
 
   ASSERT_EQ(vault_.GetEntryCount(), 10);
 
-  /* Three updates: one moves the entry in the ordering, one only rewrites the password, one does both. Each reads
-   * the target out of the record before overwriting it, so the edit and the expectation cannot drift apart. */
+  /* Three updates: one moves the entry in the ordering, one only rewrites the
+   * password, one does both. Each reads the target out of the record before
+   * overwriting it, so the edit and the expectation cannot drift apart. */
 
   const Record moved_last = records[1];
 
   records[1].site = "zzz-moved-last";
 
-  ASSERT_EQ(vault_.UpdateEntry(moved_last.site, moved_last.acc, records[1].site, records[1].acc,
-                               MakePW(records[1].pw.c_str())),
+  ASSERT_EQ(vault_.UpdateEntry(moved_last.site, moved_last.acc, records[1].site,
+                               records[1].acc, MakePW(records[1].pw.c_str())),
             UpdateResult::kSuccess);
 
   const Record repassworded = records[4];
 
   records[4].pw = "rewritten-" + std::string(37, 'r');
 
-  ASSERT_EQ(vault_.UpdateEntry(repassworded.site, repassworded.acc, records[4].site, records[4].acc,
-                               MakePW(records[4].pw.c_str())),
-            UpdateResult::kSuccess);
+  ASSERT_EQ(
+      vault_.UpdateEntry(repassworded.site, repassworded.acc, records[4].site,
+                         records[4].acc, MakePW(records[4].pw.c_str())),
+      UpdateResult::kSuccess);
 
   const Record moved_first = records[7];
 
   records[7].site = "aaa-moved-first";
   records[7].pw = "short";
 
-  ASSERT_EQ(vault_.UpdateEntry(moved_first.site, moved_first.acc, records[7].site, records[7].acc,
-                               MakePW(records[7].pw.c_str())),
-            UpdateResult::kSuccess);
+  ASSERT_EQ(
+      vault_.UpdateEntry(moved_first.site, moved_first.acc, records[7].site,
+                         records[7].acc, MakePW(records[7].pw.c_str())),
+      UpdateResult::kSuccess);
 
   /* Two deletes, one from either end of the ordering */
 
-  ASSERT_EQ(vault_.DeleteEntry(records[0].site, records[0].acc), Result::kSuccess);
-  ASSERT_EQ(vault_.DeleteEntry(records[8].site, records[8].acc), Result::kSuccess);
+  ASSERT_EQ(vault_.DeleteEntry(records[0].site, records[0].acc),
+            Result::kSuccess);
+  ASSERT_EQ(vault_.DeleteEntry(records[8].site, records[8].acc),
+            Result::kSuccess);
 
   records.erase(records.begin() + 8);
   records.erase(records.begin());
 
   ASSERT_EQ(vault_.GetEntryCount(), 8);
 
-  /* Correct in memory before the save, so a failure below tells the two apart */
+  /* Correct in memory before the save, so a failure below tells the two apart
+   */
 
   for (const auto& rec : records) {
     Password got;
@@ -999,7 +1116,8 @@ TEST_F(VaultFileTest, SaveAfterManyEdits) {
   const auto& entries = vault_.GetEntries();
 
   for (const auto& rec : records) {
-    EXPECT_NE(entries.find({ .site = rec.site, .acc = rec.acc }), entries.end()) << rec.site;
+    EXPECT_NE(entries.find({ .site = rec.site, .acc = rec.acc }), entries.end())
+        << rec.site;
 
     Password got;
 
@@ -1009,16 +1127,20 @@ TEST_F(VaultFileTest, SaveAfterManyEdits) {
 }
 
 /**
- * @brief   Verify every vault this build writes is one it can reopen with every field intact
+ * @brief   Verify every vault this build writes is one it can reopen with every
+ * field intact
  *
- * The property that holds the CRUD layer and the file layer to each other. The suite covers each class thoroughly on
- * its own, which leaves a gap between them: an entry a byte under kMinEntrySize can be accepted, serialized,
- * encrypted and written perfectly well by classes none of which is wrong on its own, and refused on the way back in.
+ * The property that holds the CRUD layer and the file layer to each other. The
+ * suite covers each class thoroughly on its own, which leaves a gap between
+ * them: an entry a byte under kMinEntrySize can be accepted, serialized,
+ * encrypted and written perfectly well by classes none of which is wrong on its
+ * own, and refused on the way back in.
  *
- * The cases are the edges of what the format accepts, since an off-by-one between the write path and the read path
- * shows up there and nowhere else. Multi-byte UTF-8 is carried because the ceilings are byte counts while the dialog
- * counts characters, so 128 two-byte or 64 four-byte characters is what lands on exactly 256 bytes without looking
- * like it.
+ * The cases are the edges of what the format accepts, since an off-by-one
+ * between the write path and the read path shows up there and nowhere else.
+ * Multi-byte UTF-8 is carried because the ceilings are byte counts while the
+ * dialog counts characters, so 128 two-byte or 64 four-byte characters is what
+ * lands on exactly 256 bytes without looking like it.
  */
 TEST_F(VaultFileTest, EveryVaultCanBeReopened) {
   /**
@@ -1039,8 +1161,9 @@ TEST_F(VaultFileTest, EveryVaultCanBeReopened) {
   const std::string max_acc(static_cast<size_t>(kMaxAccLen), 'a');
   const std::string max_pw(static_cast<size_t>(kMaxEntryPwLen), 'p');
 
-  /* Written as bytes rather than as characters, so that these are 256 bytes whatever the compiler's execution
-   * character set is, and so the count is checkable by reading it */
+  /* Written as bytes rather than as characters, so that these are 256 bytes
+   * whatever the compiler's execution character set is, and so the count is
+   * checkable by reading it */
 
   std::string utf8_site;
   std::string utf8_acc;
@@ -1061,8 +1184,9 @@ TEST_F(VaultFileTest, EveryVaultCanBeReopened) {
 
     {},
 
-    /* One entry, every field exactly one byte: the smallest vault that holds anything, and the one the entry-count
-       check refused while the validator still accepted an empty password */
+    /* One entry, every field exactly one byte: the smallest vault that holds
+       anything, and the one the entry-count check refused while the validator
+       still accepted an empty password */
 
     { { .site = one_site, .acc = one_acc, .pw = one_pw } },
 
@@ -1070,15 +1194,16 @@ TEST_F(VaultFileTest, EveryVaultCanBeReopened) {
 
     { { .site = max_site, .acc = max_acc, .pw = max_pw } },
 
-    /* Several entries mixing both extremes, so no two are interchangeable in size and a misplaced offset lands on a
-       neighbour of a different length */
+    /* Several entries mixing both extremes, so no two are interchangeable in
+       size and a misplaced offset lands on a neighbour of a different length */
 
     { { .site = one_site, .acc = one_acc, .pw = max_pw },
       { .site = "b", .acc = max_acc, .pw = one_pw },
       { .site = max_site, .acc = "c", .pw = one_pw },
       { .site = "d", .acc = "e", .pw = max_pw } },
 
-    /* A site and an account of multi-byte UTF-8 landing on exactly the ceiling */
+    /* A site and an account of multi-byte UTF-8 landing on exactly the ceiling
+     */
 
     { { .site = utf8_site, .acc = utf8_acc, .pw = one_pw } },
 
@@ -1091,21 +1216,27 @@ TEST_F(VaultFileTest, EveryVaultCanBeReopened) {
   for (size_t i = 0; i < cases.size(); i++) {
     const std::vector<Record>& records = cases[i];
 
-    SCOPED_TRACE(testing::Message() << "case=" << i << " entries=" << records.size());
+    SCOPED_TRACE(testing::Message()
+                 << "case=" << i << " entries=" << records.size());
 
-    /* A fresh vault per case, so each one is written and read on its own rather than on what the last case left.
-       The path is cleared first because a create refuses a name that is already taken, and what holds it here is the
-       fixture's own vault on the first pass and the previous case's on every one after it. */
+    /* A fresh vault per case, so each one is written and read on its own rather
+       than on what the last case left. The path is cleared first because a
+       create refuses a name that is already taken, and what holds it here is
+       the fixture's own vault on the first pass and the previous case's on
+       every one after it. */
 
     ASSERT_EQ(RemoveFile(path_), Result::kSuccess);
-    ASSERT_EQ(vault_.NewVault(path_, MakePW("password")), Result::kSuccess) << vault_.GetLastError();
+    ASSERT_EQ(vault_.NewVault(path_, MakePW("password")), Result::kSuccess)
+        << vault_.GetLastError();
 
     for (const auto& rec : records) {
-      ASSERT_EQ(vault_.CreateEntry(rec.site, rec.acc, MakePW(rec.pw.c_str())), Result::kSuccess)
+      ASSERT_EQ(vault_.CreateEntry(rec.site, rec.acc, MakePW(rec.pw.c_str())),
+                Result::kSuccess)
           << vault_.GetLastError();
     }
 
-    ASSERT_EQ(vault_.SaveVault(path_), SaveResult::kSuccess) << vault_.GetLastError();
+    ASSERT_EQ(vault_.SaveVault(path_), SaveResult::kSuccess)
+        << vault_.GetLastError();
     ASSERT_EQ(Reload(), Result::kSuccess) << vault_.GetLastError();
 
     EXPECT_EQ(vault_.GetEntryCount(), static_cast<int>(records.size()));
@@ -1113,10 +1244,11 @@ TEST_F(VaultFileTest, EveryVaultCanBeReopened) {
     const auto& entries = vault_.GetEntries();
 
     for (const auto& rec : records) {
-      EXPECT_NE(entries.find({ .site = rec.site, .acc = rec.acc }), entries.end());
+      EXPECT_NE(entries.find({ .site = rec.site, .acc = rec.acc }),
+                entries.end());
 
-      /* Read back through GetEntryPW, as a caller would, so a stale offset comes back as the wrong bytes rather than
-         being stepped over */
+      /* Read back through GetEntryPW, as a caller would, so a stale offset
+         comes back as the wrong bytes rather than being stepped over */
 
       Password got;
 
@@ -1157,7 +1289,8 @@ TEST_F(VaultFileTest, SaveWritesFreshIV) {
 
   /* Salt is reused so the key stays stable */
 
-  EXPECT_EQ(memcmp(first.data() + salt_off, second.data() + salt_off, kSaltSize), 0);
+  EXPECT_EQ(
+      memcmp(first.data() + salt_off, second.data() + salt_off, kSaltSize), 0);
 
   /* IV is regenerated on every write */
 
@@ -1165,7 +1298,9 @@ TEST_F(VaultFileTest, SaveWritesFreshIV) {
 
   /* Ciphertext and tag differ under the fresh IV */
 
-  EXPECT_NE(memcmp(first.data() + ct_off, second.data() + ct_off, first.size() - ct_off), 0);
+  EXPECT_NE(memcmp(first.data() + ct_off, second.data() + ct_off,
+                   first.size() - ct_off),
+            0);
 
   /* The vault still opens correctly after the repeated saves */
 
@@ -1178,10 +1313,12 @@ TEST_F(VaultFileTest, SaveWritesFreshIV) {
 /**
  * @brief   Verify a save never widens the permissions of the vault it replaces
  *
- * SaveVault publishes its work by renaming a temporary over the vault, so the mode that temporary carries becomes
- * the mode of the vault. Nothing copies the mode of the file being replaced onto it, so a vault left readable by
- * everybody does not stay that way through the saves that follow, and setuid, setgid and sticky are not carried
- * across either. This is the layer a user would feel that at, so the guarantee is pinned here as well as at
+ * SaveVault publishes its work by renaming a temporary over the vault, so the
+ * mode that temporary carries becomes the mode of the vault. Nothing copies the
+ * mode of the file being replaced onto it, so a vault left readable by
+ * everybody does not stay that way through the saves that follow, and setuid,
+ * setgid and sticky are not carried across either. This is the layer a user
+ * would feel that at, so the guarantee is pinned here as well as at
  * OpenTempFile.
  */
 TEST_F(VaultFileTest, SaveDoesNotWidenVaultPermissions) {
@@ -1197,7 +1334,8 @@ TEST_F(VaultFileTest, SaveDoesNotWidenVaultPermissions) {
 
   EXPECT_EQ(st.st_mode & 07077, 0u);
 
-  /* The vault the tightened permissions belong to is still a vault that opens */
+  /* The vault the tightened permissions belong to is still a vault that opens
+   */
 
   EXPECT_EQ(Reload(), Result::kSuccess);
 }
@@ -1209,11 +1347,14 @@ TEST_F(VaultFileTest, SaveDoesNotWidenVaultPermissions) {
 /**
  * @brief   Verify a save never widens the permissions of the vault it replaces
  *
- * The Windows half of the same guarantee. There is no mode word to loosen here, so what stands in for one is the
- * directory: one that offers Everyone an inheritable full-access ACE would hand that ACE to anything created in it
- * with a default security descriptor. Every vault file this program writes is created by OpenTempFile and published
- * by a rename within that same directory, and a rename carries the file's own descriptor rather than taking one from
- * where it lands, so the explicit DACL the temporary was created under is the DACL of the published vault.
+ * The Windows half of the same guarantee. There is no mode word to loosen here,
+ * so what stands in for one is the directory: one that offers Everyone an
+ * inheritable full-access ACE would hand that ACE to anything created in it
+ * with a default security descriptor. Every vault file this program writes is
+ * created by OpenTempFile and published by a rename within that same directory,
+ * and a rename carries the file's own descriptor rather than taking one from
+ * where it lands, so the explicit DACL the temporary was created under is the
+ * DACL of the published vault.
  */
 TEST_F(VaultFileTest, SaveDoesNotWidenVaultPermissions) {
   const std::string dir = "vault_inherit_dir";
@@ -1221,7 +1362,8 @@ TEST_F(VaultFileTest, SaveDoesNotWidenVaultPermissions) {
 
   ASSERT_TRUE(MakeWorldAccessibleDir(dir));
   ASSERT_EQ(vault_.NewVault(path, MakePW("password")), Result::kSuccess);
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
   ASSERT_EQ(vault_.SaveVault(path), SaveResult::kSuccess);
 
   EXPECT_TRUE(CheckOwnerOnlyDacl(path));
@@ -1286,7 +1428,8 @@ TEST_F(VaultFileTest, VerifyPWWrong) {
  * ================================================== */
 
 /**
- * @brief   Verify changing master password and reopening with new password succeeds
+ * @brief   Verify changing master password and reopening with new password
+ * succeeds
  */
 TEST_F(VaultFileTest, ChangePW) {
   vault_.CreateEntry("Google", "user@google.com", MakePW("password"));
@@ -1297,12 +1440,14 @@ TEST_F(VaultFileTest, ChangePW) {
 }
 
 /**
- * @brief   Verify entry contents survive a master password change and the reopen that follows
+ * @brief   Verify entry contents survive a master password change and the
+ * reopen that follows
  */
 TEST_F(VaultFileTest, ChangePWPreservesEntries) {
   Password pw = MakePW("entrypassword");
 
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", pw), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", pw),
+            Result::kSuccess);
   ASSERT_EQ(vault_.ChangePW(MakePW("asdf1234"), path_), SaveResult::kSuccess);
   ASSERT_EQ(Reload("asdf1234"), Result::kSuccess);
 
@@ -1337,7 +1482,8 @@ TEST_F(VaultFileTest, ChangePWUpdatesSession) {
  * @brief   Verify a failed save leaves the session key and salt untouched
  */
 TEST_F(VaultFileTest, ChangePWSaveFailurePreservesSession) {
-  EXPECT_EQ(vault_.ChangePW(MakePW("asdf1234"), "no_such_dir/child.vault"), SaveResult::kError);
+  EXPECT_EQ(vault_.ChangePW(MakePW("asdf1234"), "no_such_dir/child.vault"),
+            SaveResult::kError);
 
   EXPECT_TRUE(vault_.VerifyPW(MakePW("password")));
   EXPECT_FALSE(vault_.VerifyPW(MakePW("asdf1234")));
@@ -1348,15 +1494,17 @@ TEST_F(VaultFileTest, ChangePWSaveFailurePreservesSession) {
  * ================================================== */
 
 /**
- * @brief   Verify created and opened vaults start clean, and what a close drops when one is not
+ * @brief   Verify created and opened vaults start clean, and what a close drops
+ * when one is not
  *
- * The reload is the failure the flag exists to announce: the unsaved entry is gone from the reopened vault, and
- * nothing but the flag said so beforehand.
+ * The reload is the failure the flag exists to announce: the unsaved entry is
+ * gone from the reopened vault, and nothing but the flag said so beforehand.
  */
 TEST_F(VaultFileTest, NewAndOpenedVaultsAreClean) {
   EXPECT_FALSE(vault_.IsDirty());
 
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
   ASSERT_TRUE(vault_.IsDirty());
 
   ASSERT_EQ(Reload(), Result::kSuccess);
@@ -1366,13 +1514,16 @@ TEST_F(VaultFileTest, NewAndOpenedVaultsAreClean) {
 }
 
 /**
- * @brief   Verify a save that publishes nothing keeps the vault dirty until one does
+ * @brief   Verify a save that publishes nothing keeps the vault dirty until one
+ * does
  *
- * The prompt offers to save before closing, and a save that fails at that point must not also clear the flag, or the
- * next close would drop the changes without asking.
+ * The prompt offers to save before closing, and a save that fails at that point
+ * must not also clear the flag, or the next close would drop the changes
+ * without asking.
  */
 TEST_F(VaultFileTest, FailedSaveKeepsDirty) {
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
 
   EXPECT_EQ(vault_.SaveVault("no_such_dir/child.vault"), SaveResult::kError);
   EXPECT_TRUE(vault_.IsDirty());
@@ -1384,11 +1535,13 @@ TEST_F(VaultFileTest, FailedSaveKeepsDirty) {
 /**
  * @brief   Verify a password change counts as a save of the pending edits
  *
- * ChangePW writes the current image under the new key, unsaved edits included, so after it the file already holds
- * them. The reload under the new password is what shows the flag was cleared for a reason.
+ * ChangePW writes the current image under the new key, unsaved edits included,
+ * so after it the file already holds them. The reload under the new password is
+ * what shows the flag was cleared for a reason.
  */
 TEST_F(VaultFileTest, ChangePWClearsDirty) {
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
   ASSERT_TRUE(vault_.IsDirty());
 
   ASSERT_EQ(vault_.ChangePW(MakePW("asdf1234"), path_), SaveResult::kSuccess);
@@ -1399,12 +1552,15 @@ TEST_F(VaultFileTest, ChangePWClearsDirty) {
 }
 
 /**
- * @brief   Verify a password change that publishes nothing keeps the vault dirty
+ * @brief   Verify a password change that publishes nothing keeps the vault
+ * dirty
  */
 TEST_F(VaultFileTest, FailedChangePWKeepsDirty) {
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
 
-  EXPECT_EQ(vault_.ChangePW(MakePW("asdf1234"), "no_such_dir/child.vault"), SaveResult::kError);
+  EXPECT_EQ(vault_.ChangePW(MakePW("asdf1234"), "no_such_dir/child.vault"),
+            SaveResult::kError);
   EXPECT_TRUE(vault_.IsDirty());
 }
 
@@ -1412,17 +1568,22 @@ TEST_F(VaultFileTest, FailedChangePWKeepsDirty) {
  * Concurrent Modification Test
  * ================================================== */
 
-/* Two Vault objects on one path stand for two windows on one vault. Each reads the file once and closes it, so
- * neither can see what the other does to it except by looking again, which is exactly the situation a save has to
- * survive. The IV is what tells them apart: every save this program makes draws a fresh one, so the bytes at
- * kHeaderSize identify the version a session is holding. */
+/* Two Vault objects on one path stand for two windows on one vault. Each reads
+ * the file once and closes it, so neither can see what the other does to it
+ * except by looking again, which is exactly the situation a save has to
+ * survive. The IV is what tells them apart: every save this program makes draws
+ * a fresh one, so the bytes at kHeaderSize identify the version a session is
+ * holding. */
 
 /**
- * @brief   Verify a save is refused when another session published over the vault first
+ * @brief   Verify a save is refused when another session published over the
+ * vault first
  *
- * The lost update this check exists for. Both sessions opened the same file, both hold edits the other cannot see,
- * and an atomic rename does nothing about it: it publishes whole files, and the second whole file simply has no
- * trace of the first one's work in it. Without the check both saves report success and one of them is a lie.
+ * The lost update this check exists for. Both sessions opened the same file,
+ * both hold edits the other cannot see, and an atomic rename does nothing about
+ * it: it publishes whole files, and the second whole file simply has no trace
+ * of the first one's work in it. Without the check both saves report success
+ * and one of them is a lie.
  */
 TEST_F(VaultFileTest, SaveRefusesFileAnotherSessionWrote) {
   ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
@@ -1431,23 +1592,28 @@ TEST_F(VaultFileTest, SaveRefusesFileAnotherSessionWrote) {
 
   ASSERT_NO_FATAL_FAILURE(OpenOther(other));
 
-  ASSERT_EQ(other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
+  ASSERT_EQ(
+      other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")),
+      Result::kSuccess);
   ASSERT_EQ(other.SaveVault(path_), SaveResult::kSuccess);
 
   const std::vector<uint8_t> before = ReadFile(path_);
 
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
 
   EXPECT_EQ(vault_.SaveVault(path_), SaveResult::kConflict);
   EXPECT_NE(vault_.GetLastError().find("changed on disk"), std::string::npos);
 
-  /* Nothing was published, and the temporary the refused save had already written went with the refusal */
+  /* Nothing was published, and the temporary the refused save had already
+   * written went with the refusal */
 
   EXPECT_EQ(ReadFile(path_), before);
   EXPECT_FALSE(TempFileLeft(path_));
 
-  /* The refused session is untouched: it still holds its own edit and still knows the edit is unsaved, so the user
-   * can answer the warning rather than having to reconstruct what they had */
+  /* The refused session is untouched: it still holds its own edit and still
+   * knows the edit is unsaved, so the user can answer the warning rather than
+   * having to reconstruct what they had */
 
   EXPECT_TRUE(vault_.IsDirty());
   EXPECT_EQ(vault_.GetEntryCount(), 1);
@@ -1455,7 +1621,8 @@ TEST_F(VaultFileTest, SaveRefusesFileAnotherSessionWrote) {
 }
 
 /**
- * @brief   Verify an acknowledged save publishes over the version it was warned about
+ * @brief   Verify an acknowledged save publishes over the version it was warned
+ * about
  */
 TEST_F(VaultFileTest, AcknowledgedSaveOverwritesAnotherSessionsWork) {
   ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
@@ -1464,18 +1631,23 @@ TEST_F(VaultFileTest, AcknowledgedSaveOverwritesAnotherSessionsWork) {
 
   ASSERT_NO_FATAL_FAILURE(OpenOther(other));
 
-  ASSERT_EQ(other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
+  ASSERT_EQ(
+      other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")),
+      Result::kSuccess);
   ASSERT_EQ(other.SaveVault(path_), SaveResult::kSuccess);
 
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
   ASSERT_EQ(vault_.SaveVault(path_), SaveResult::kConflict);
 
-  EXPECT_EQ(vault_.SaveVault(path_, SaveMode::kOverwriteAcknowledged), SaveResult::kSuccess);
+  EXPECT_EQ(vault_.SaveVault(path_, SaveMode::kOverwriteAcknowledged),
+            SaveResult::kSuccess);
   EXPECT_FALSE(vault_.IsDirty());
   EXPECT_FALSE(TempFileLeft(path_));
 
-  /* The overwrite is what it says it is. What comes back off the disk is this session's vault, and the other
-   * session's entry went with the file that held it. */
+  /* The overwrite is what it says it is. What comes back off the disk is this
+   * session's vault, and the other session's entry went with the file that held
+   * it. */
 
   Vault fresh;
 
@@ -1486,11 +1658,13 @@ TEST_F(VaultFileTest, AcknowledgedSaveOverwritesAnotherSessionsWork) {
 }
 
 /**
- * @brief   Verify an acknowledgement covers the one version it was given for and no later one
+ * @brief   Verify an acknowledgement covers the one version it was given for
+ * and no later one
  *
- * A prompt is answered by a person, which takes time, and the file can move again inside it. What the user agreed to
- * replace is the version they were shown; treating their answer as a standing permission would let the save destroy
- * something nobody ever described to them.
+ * A prompt is answered by a person, which takes time, and the file can move
+ * again inside it. What the user agreed to replace is the version they were
+ * shown; treating their answer as a standing permission would let the save
+ * destroy something nobody ever described to them.
  */
 TEST_F(VaultFileTest, AcknowledgementCoversOnlyTheVersionItWasGivenFor) {
   ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
@@ -1499,34 +1673,44 @@ TEST_F(VaultFileTest, AcknowledgementCoversOnlyTheVersionItWasGivenFor) {
 
   ASSERT_NO_FATAL_FAILURE(OpenOther(other));
 
-  ASSERT_EQ(other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
+  ASSERT_EQ(
+      other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")),
+      Result::kSuccess);
   ASSERT_EQ(other.SaveVault(path_), SaveResult::kSuccess);
 
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
   ASSERT_EQ(vault_.SaveVault(path_), SaveResult::kConflict);
 
   /* The file moves on between the warning and the answer to it */
 
-  ASSERT_EQ(other.CreateEntry("Amazon", "user@amazon.com", MakePW("qwerty12")), Result::kSuccess);
+  ASSERT_EQ(other.CreateEntry("Amazon", "user@amazon.com", MakePW("qwerty12")),
+            Result::kSuccess);
   ASSERT_EQ(other.SaveVault(path_), SaveResult::kSuccess);
 
   const std::vector<uint8_t> before = ReadFile(path_);
 
-  EXPECT_EQ(vault_.SaveVault(path_, SaveMode::kOverwriteAcknowledged), SaveResult::kConflict);
+  EXPECT_EQ(vault_.SaveVault(path_, SaveMode::kOverwriteAcknowledged),
+            SaveResult::kConflict);
 
   EXPECT_EQ(ReadFile(path_), before);
   EXPECT_FALSE(TempFileLeft(path_));
 
-  /* That second refusal recorded what it saw, so the acknowledgement answering it is the one that goes through */
+  /* That second refusal recorded what it saw, so the acknowledgement answering
+   * it is the one that goes through */
 
-  EXPECT_EQ(vault_.SaveVault(path_, SaveMode::kOverwriteAcknowledged), SaveResult::kSuccess);
+  EXPECT_EQ(vault_.SaveVault(path_, SaveMode::kOverwriteAcknowledged),
+            SaveResult::kSuccess);
 }
 
 /**
- * @brief   Verify an acknowledgement with nothing to acknowledge is refused like any other save
+ * @brief   Verify an acknowledgement with nothing to acknowledge is refused
+ * like any other save
  *
- * The mode is an answer to a warning, not a way of asking for one to be skipped. A caller that reaches for it without
- * having been refused first has nothing the user could have agreed to, so it is treated as the plain save it is.
+ * The mode is an answer to a warning, not a way of asking for one to be
+ * skipped. A caller that reaches for it without having been refused first has
+ * nothing the user could have agreed to, so it is treated as the plain save it
+ * is.
  */
 TEST_F(VaultFileTest, AcknowledgedSaveWithoutAWarningIsRefused) {
   ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
@@ -1535,26 +1719,34 @@ TEST_F(VaultFileTest, AcknowledgedSaveWithoutAWarningIsRefused) {
 
   ASSERT_NO_FATAL_FAILURE(OpenOther(other));
 
-  ASSERT_EQ(other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
+  ASSERT_EQ(
+      other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")),
+      Result::kSuccess);
   ASSERT_EQ(other.SaveVault(path_), SaveResult::kSuccess);
 
   const std::vector<uint8_t> before = ReadFile(path_);
 
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
 
-  EXPECT_EQ(vault_.SaveVault(path_, SaveMode::kOverwriteAcknowledged), SaveResult::kConflict);
+  EXPECT_EQ(vault_.SaveVault(path_, SaveMode::kOverwriteAcknowledged),
+            SaveResult::kConflict);
   EXPECT_EQ(ReadFile(path_), before);
 
-  /* That refusal is itself the warning, and the acknowledgement answering it goes through */
+  /* That refusal is itself the warning, and the acknowledgement answering it
+   * goes through */
 
-  EXPECT_EQ(vault_.SaveVault(path_, SaveMode::kOverwriteAcknowledged), SaveResult::kSuccess);
+  EXPECT_EQ(vault_.SaveVault(path_, SaveMode::kOverwriteAcknowledged),
+            SaveResult::kSuccess);
 }
 
 /**
- * @brief   Verify a save is refused when another session changed the master password
+ * @brief   Verify a save is refused when another session changed the master
+ * password
  *
- * The costliest version of the same loss. A save that went through here would put the vault back under the password
- * this session opened with, and whoever changed it elsewhere would be locked out of their own vault by a window they
+ * The costliest version of the same loss. A save that went through here would
+ * put the vault back under the password this session opened with, and whoever
+ * changed it elsewhere would be locked out of their own vault by a window they
  * were not looking at.
  */
 TEST_F(VaultFileTest, SaveRefusesFileAnotherSessionChangedThePasswordOf) {
@@ -1566,7 +1758,8 @@ TEST_F(VaultFileTest, SaveRefusesFileAnotherSessionChangedThePasswordOf) {
 
   ASSERT_EQ(other.ChangePW(MakePW("asdf1234"), path_), SaveResult::kSuccess);
 
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
 
   EXPECT_EQ(vault_.SaveVault(path_), SaveResult::kConflict);
   EXPECT_FALSE(TempFileLeft(path_));
@@ -1579,11 +1772,13 @@ TEST_F(VaultFileTest, SaveRefusesFileAnotherSessionChangedThePasswordOf) {
 }
 
 /**
- * @brief   Verify a password change is refused when another session published over the vault first
+ * @brief   Verify a password change is refused when another session published
+ * over the vault first
  *
- * Refused before the derivation rather than after it, so the report arrives at the moment the user asked rather than
- * at the end of several seconds of Argon2id spent on a file that was never going to be written. The session keeps
- * the key it had either way.
+ * Refused before the derivation rather than after it, so the report arrives at
+ * the moment the user asked rather than at the end of several seconds of
+ * Argon2id spent on a file that was never going to be written. The session
+ * keeps the key it had either way.
  */
 TEST_F(VaultFileTest, ChangePWRefusesFileAnotherSessionWrote) {
   ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
@@ -1592,7 +1787,9 @@ TEST_F(VaultFileTest, ChangePWRefusesFileAnotherSessionWrote) {
 
   ASSERT_NO_FATAL_FAILURE(OpenOther(other));
 
-  ASSERT_EQ(other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
+  ASSERT_EQ(
+      other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")),
+      Result::kSuccess);
   ASSERT_EQ(other.SaveVault(path_), SaveResult::kSuccess);
 
   const std::vector<uint8_t> before = ReadFile(path_);
@@ -1607,23 +1804,27 @@ TEST_F(VaultFileTest, ChangePWRefusesFileAnotherSessionWrote) {
 }
 
 /**
- * @brief   Verify a save is refused when the vault file is gone, and recreates it once acknowledged
+ * @brief   Verify a save is refused when the vault file is gone, and recreates
+ * it once acknowledged
  *
- * A missing file is not a free path to write onto. It may have been deleted on purpose, or moved, or be missing
- * because the volume holding it is not mounted, and quietly recreating it turns any of those into a vault appearing
+ * A missing file is not a free path to write onto. It may have been deleted on
+ * purpose, or moved, or be missing because the volume holding it is not
+ * mounted, and quietly recreating it turns any of those into a vault appearing
  * where the user thought they had removed one.
  */
 TEST_F(VaultFileTest, SaveRefusesMissingFileUntilAcknowledged) {
   ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
 
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
   ASSERT_EQ(RemoveFile(path_), Result::kSuccess);
 
   EXPECT_EQ(vault_.SaveVault(path_), SaveResult::kConflict);
   EXPECT_FALSE(FileExists(path_));
   EXPECT_FALSE(TempFileLeft(path_));
 
-  EXPECT_EQ(vault_.SaveVault(path_, SaveMode::kOverwriteAcknowledged), SaveResult::kSuccess);
+  EXPECT_EQ(vault_.SaveVault(path_, SaveMode::kOverwriteAcknowledged),
+            SaveResult::kSuccess);
   EXPECT_TRUE(FileExists(path_));
 
   Vault fresh;
@@ -1633,21 +1834,26 @@ TEST_F(VaultFileTest, SaveRefusesMissingFileUntilAcknowledged) {
 }
 
 /**
- * @brief   Verify a save is refused when a backup has been restored over the vault
+ * @brief   Verify a save is refused when a backup has been restored over the
+ * vault
  *
- * What the file holds is a perfectly valid vault under the same password; it is simply older than the one this
- * session published. Nothing about the file itself says so, which is why the comparison is against what the session
- * last wrote rather than against anything the file claims about itself.
+ * What the file holds is a perfectly valid vault under the same password; it is
+ * simply older than the one this session published. Nothing about the file
+ * itself says so, which is why the comparison is against what the session last
+ * wrote rather than against anything the file claims about itself.
  */
 TEST_F(VaultFileTest, SaveRefusesRestoredOlderCopy) {
   const std::vector<uint8_t> backup = ReadFile(path_);
 
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
   ASSERT_EQ(vault_.SaveVault(path_), SaveResult::kSuccess);
 
   WriteFile(path_, backup);
 
-  ASSERT_EQ(vault_.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
+  ASSERT_EQ(
+      vault_.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")),
+      Result::kSuccess);
 
   EXPECT_EQ(vault_.SaveVault(path_), SaveResult::kConflict);
   EXPECT_EQ(ReadFile(path_), backup);
@@ -1655,12 +1861,16 @@ TEST_F(VaultFileTest, SaveRefusesRestoredOlderCopy) {
 }
 
 /**
- * @brief   Verify a save goes through when the file was put back to the exact version this session read
+ * @brief   Verify a save goes through when the file was put back to the exact
+ * version this session read
  *
- * The limit of comparing an IV, pinned here so that it is a decision rather than an oversight. Another session wrote
- * in between, and the check does not notice, because by the time the save runs the bytes at the path are the version
- * this session is holding. Nothing is lost by writing over them: what the intervening save produced is already gone,
- * taken by whoever restored these bytes, and this check is about the file rather than about the history of it.
+ * The limit of comparing an IV, pinned here so that it is a decision rather
+ * than an oversight. Another session wrote in between, and the check does not
+ * notice, because by the time the save runs the bytes at the path are the
+ * version this session is holding. Nothing is lost by writing over them: what
+ * the intervening save produced is already gone, taken by whoever restored
+ * these bytes, and this check is about the file rather than about the history
+ * of it.
  */
 TEST_F(VaultFileTest, SaveAcceptsFileRestoredToTheVersionItRead) {
   ASSERT_NO_FATAL_FAILURE(MakeCheapVault());
@@ -1671,12 +1881,15 @@ TEST_F(VaultFileTest, SaveAcceptsFileRestoredToTheVersionItRead) {
 
   ASSERT_NO_FATAL_FAILURE(OpenOther(other));
 
-  ASSERT_EQ(other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")), Result::kSuccess);
+  ASSERT_EQ(
+      other.CreateEntry("Microsoft", "user@microsoft.com", MakePW("asdf1234")),
+      Result::kSuccess);
   ASSERT_EQ(other.SaveVault(path_), SaveResult::kSuccess);
 
   WriteFile(path_, opened);
 
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
 
   EXPECT_EQ(vault_.SaveVault(path_), SaveResult::kSuccess);
 
@@ -1687,10 +1900,12 @@ TEST_F(VaultFileTest, SaveAcceptsFileRestoredToTheVersionItRead) {
 }
 
 /**
- * @brief   Verify a save is refused when the file is too short for an IV to be read out of it
+ * @brief   Verify a save is refused when the file is too short for an IV to be
+ * read out of it
  *
- * A file that cannot be asked which version it is has to answer as a different one. "Nothing could be read, so carry
- * on" is the single answer this check must never give, since every way of failing to read reaches it.
+ * A file that cannot be asked which version it is has to answer as a different
+ * one. "Nothing could be read, so carry on" is the single answer this check
+ * must never give, since every way of failing to read reaches it.
  */
 TEST_F(VaultFileTest, SaveRefusesFileTooShortToHoldAnIV) {
   std::vector<uint8_t> stub = ReadFile(path_);
@@ -1701,7 +1916,8 @@ TEST_F(VaultFileTest, SaveRefusesFileTooShortToHoldAnIV) {
 
   WriteFile(path_, stub);
 
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
 
   EXPECT_EQ(vault_.SaveVault(path_), SaveResult::kConflict);
   EXPECT_EQ(ReadFile(path_), stub);
@@ -1709,17 +1925,20 @@ TEST_F(VaultFileTest, SaveRefusesFileTooShortToHoldAnIV) {
 }
 
 /**
- * @brief   Verify a save onto a path holding a file this session never read is refused
+ * @brief   Verify a save onto a path holding a file this session never read is
+ * refused
  *
- * There is no version to compare against on a path the session has not opened, so existence is the whole of the
- * question. Whatever holds the name belongs to somebody, and this session has never seen it.
+ * There is no version to compare against on a path the session has not opened,
+ * so existence is the whole of the question. Whatever holds the name belongs to
+ * somebody, and this session has never seen it.
  */
 TEST_F(VaultFileTest, SaveRefusesPathHoldingAFileThisSessionNeverRead) {
   const std::string other_path = "unread.vault";
   const std::string text = "Not this session's vault\n";
 
-  /* Copying through the string's iterators would convert char to uint8_t per element, which MSVC reports as a
-   * signed/unsigned mismatch from inside <xutility>; the pointer pair carries the element type the vector wants. */
+  /* Copying through the string's iterators would convert char to uint8_t per
+   * element, which MSVC reports as a signed/unsigned mismatch from inside
+   * <xutility>; the pointer pair carries the element type the vector wants. */
 
   const auto* const text_bytes = reinterpret_cast<const uint8_t*>(text.data());
   const std::vector<uint8_t> notes(text_bytes, text_bytes + text.size());
@@ -1734,19 +1953,23 @@ TEST_F(VaultFileTest, SaveRefusesPathHoldingAFileThisSessionNeverRead) {
 }
 
 /**
- * @brief   Verify a save onto a free path leaves the session following the file it made there
+ * @brief   Verify a save onto a free path leaves the session following the file
+ * it made there
  *
- * Nothing holds the name, so this save is not replacing a version anybody owns and goes ahead. What it publishes is
- * the file the name now leads to, and the save after it has to recognise that file as the one this session wrote.
- * Resolving the name at one publish while comparing an unresolved one at the next would report a conflict against
- * the session's own work, and ask the user to acknowledge a file only they had ever written.
+ * Nothing holds the name, so this save is not replacing a version anybody owns
+ * and goes ahead. What it publishes is the file the name now leads to, and the
+ * save after it has to recognise that file as the one this session wrote.
+ * Resolving the name at one publish while comparing an unresolved one at the
+ * next would report a conflict against the session's own work, and ask the user
+ * to acknowledge a file only they had ever written.
  */
 TEST_F(VaultFileTest, SaveOntoAFreePathFollowsTheFileItMade) {
   const std::string other_path = "unheld.vault";
 
   RemoveFile(other_path);  // The case needs this path to hold nothing
 
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
   ASSERT_EQ(vault_.SaveVault(other_path), SaveResult::kSuccess);
 
   EXPECT_EQ(vault_.SaveVault(other_path), SaveResult::kSuccess);
@@ -1776,8 +1999,9 @@ namespace {
  * @param   path    Path to look at
  * @return  true if the path is a link rather than whatever it leads to
  *
- * lstat rather than stat, because what every case below is about is the link surviving a save that went through it.
- * A stat would follow the link and report on the file at the far end, which says nothing about the link.
+ * lstat rather than stat, because what every case below is about is the link
+ * surviving a save that went through it. A stat would follow the link and
+ * report on the file at the far end, which says nothing about the link.
  */
 bool IsSymlink(const std::string& path) {
   struct stat st = {};
@@ -1786,19 +2010,25 @@ bool IsSymlink(const std::string& path) {
 }
 
 /**
- * @brief   List the names sitting beside a path that a save temporary for it would be among
+ * @brief   List the names sitting beside a path that a save temporary for it
+ * would be among
  * @param   path    Vault file path
- * @return  The names in the path's directory that begin with the file's own name and a dot, in order
+ * @return  The names in the path's directory that begin with the file's own
+ * name and a dot, in order
  *
- * Taken twice and compared, rather than TempFileLeft's single look, for the case below. TempFileLeft asks about the
- * one name shape SaveVaultWith writes, which is the right question when what is in doubt is whether that temporary
- * was cleaned up. What is in doubt below is whether the refusal left the directory as it found it at all, so the
- * whole prefix is listed, and comparing two listings is what keeps anything the case itself put there from counting
+ * Taken twice and compared, rather than TempFileLeft's single look, for the
+ * case below. TempFileLeft asks about the one name shape SaveVaultWith writes,
+ * which is the right question when what is in doubt is whether that temporary
+ * was cleaned up. What is in doubt below is whether the refusal left the
+ * directory as it found it at all, so the whole prefix is listed, and comparing
+ * two listings is what keeps anything the case itself put there from counting
  * as a leftover.
  */
 std::vector<std::string> NamesBeside(const std::string& path) {
   const std::filesystem::path target(path);
-  const std::filesystem::path dir = target.has_parent_path() ? target.parent_path() : std::filesystem::path(".");
+  const std::filesystem::path dir = target.has_parent_path()
+                                        ? target.parent_path()
+                                        : std::filesystem::path(".");
   const std::string prefix = target.filename().string() + ".";
 
   std::vector<std::string> names;
@@ -1811,8 +2041,9 @@ std::vector<std::string> NamesBeside(const std::string& path) {
     }
   }
 
-  /* directory_iterator hands names back in whatever order the file system holds them, which is not an order two
-   * listings of the same directory have to agree on */
+  /* directory_iterator hands names back in whatever order the file system holds
+   * them, which is not an order two listings of the same directory have to
+   * agree on */
 
   std::ranges::sort(names);
 
@@ -1822,12 +2053,15 @@ std::vector<std::string> NamesBeside(const std::string& path) {
 }  // namespace
 
 /**
- * @brief   Verify a save through a symbolic link replaces the file the link leads to, not the link
+ * @brief   Verify a save through a symbolic link replaces the file the link
+ * leads to, not the link
  *
- * A vault kept in a synced folder and reached through a link in the home directory is the ordinary shape of this. The
- * publish is a rename, and a rename onto the link's own path replaces the link, so the file the user's path leads to
- * would keep the version it had while the link turned into a regular file holding the new one. Both halves are
- * asserted: the link is still a link, and the file at the far end is where the entry landed.
+ * A vault kept in a synced folder and reached through a link in the home
+ * directory is the ordinary shape of this. The publish is a rename, and a
+ * rename onto the link's own path replaces the link, so the file the user's
+ * path leads to would keep the version it had while the link turned into a
+ * regular file holding the new one. Both halves are asserted: the link is still
+ * a link, and the file at the far end is where the entry landed.
  */
 TEST_F(VaultFileTest, SaveThroughSymlinkWritesTarget) {
   const std::string dir = "symlink_dir";
@@ -1842,13 +2076,14 @@ TEST_F(VaultFileTest, SaveThroughSymlinkWritesTarget) {
 
   ASSERT_EQ(symlink(target.c_str(), link.c_str()), 0);
   ASSERT_EQ(vault_.OpenVault(link, MakePW("password")), Result::kSuccess);
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
 
   EXPECT_EQ(vault_.SaveVault(link), SaveResult::kSuccess);
   EXPECT_FALSE(vault_.IsDirty());
 
-  /* The link is still a link, and the temporary was published out of the target's directory rather than left in
-   * either of the two */
+  /* The link is still a link, and the temporary was published out of the
+   * target's directory rather than left in either of the two */
 
   EXPECT_TRUE(IsSymlink(link));
   EXPECT_FALSE(TempFileLeft(link));
@@ -1856,7 +2091,8 @@ TEST_F(VaultFileTest, SaveThroughSymlinkWritesTarget) {
 
   vault_.CloseVault();
 
-  /* The entry is in the file the link leads to, opened by that file's own path rather than through the link */
+  /* The entry is in the file the link leads to, opened by that file's own path
+   * rather than through the link */
 
   Vault fresh;
 
@@ -1872,12 +2108,14 @@ TEST_F(VaultFileTest, SaveThroughSymlinkWritesTarget) {
 }
 
 /**
- * @brief   Verify a save follows a chain of relative links to the file at the end of it
+ * @brief   Verify a save follows a chain of relative links to the file at the
+ * end of it
  *
- * Every hop is resolved rather than the first one alone, and a relative target is read against the directory of the
- * link that stores it rather than against the working directory. "../mid.vault" held in links/ has to reach the
- * mid-chain link in the parent, and the rename has to land on the file at the far end, in a directory neither link
- * sits in.
+ * Every hop is resolved rather than the first one alone, and a relative target
+ * is read against the directory of the link that stores it rather than against
+ * the working directory. "../mid.vault" held in links/ has to reach the
+ * mid-chain link in the parent, and the rename has to land on the file at the
+ * far end, in a directory neither link sits in.
  */
 TEST_F(VaultFileTest, SaveThroughRelativeSymlinkChainWritesTarget) {
   const std::string link_dir = "chain_links";
@@ -1894,17 +2132,20 @@ TEST_F(VaultFileTest, SaveThroughRelativeSymlinkChainWritesTarget) {
   RemoveFile(mid);
   RemoveFile(link);
 
-  /* Each target is stored relative to the directory of the link that holds it: the working directory's link names the
-   * vault below it, and the one inside links/ has to climb out of that directory to name the first link */
+  /* Each target is stored relative to the directory of the link that holds it:
+   * the working directory's link names the vault below it, and the one inside
+   * links/ has to climb out of that directory to name the first link */
 
   ASSERT_EQ(symlink(target.c_str(), mid.c_str()), 0);
   ASSERT_EQ(symlink(("../" + mid).c_str(), link.c_str()), 0);
   ASSERT_EQ(vault_.OpenVault(link, MakePW("password")), Result::kSuccess);
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
 
   EXPECT_EQ(vault_.SaveVault(link), SaveResult::kSuccess);
 
-  /* Both hops came through it, and none of the three directories the chain passes through was left a temporary */
+  /* Both hops came through it, and none of the three directories the chain
+   * passes through was left a temporary */
 
   EXPECT_TRUE(IsSymlink(link));
   EXPECT_TRUE(IsSymlink(mid));
@@ -1930,11 +2171,13 @@ TEST_F(VaultFileTest, SaveThroughRelativeSymlinkChainWritesTarget) {
 }
 
 /**
- * @brief   Verify a password change through a symbolic link re-encrypts the file the link leads to
+ * @brief   Verify a password change through a symbolic link re-encrypts the
+ * file the link leads to
  *
- * ChangePW publishes through the commit point a save does, and it asks about the file twice: once before the
- * derivation and once before the rename. All three have to mean the same file, or a check would clear one file and
- * the rename would take another.
+ * ChangePW publishes through the commit point a save does, and it asks about
+ * the file twice: once before the derivation and once before the rename. All
+ * three have to mean the same file, or a check would clear one file and the
+ * rename would take another.
  */
 TEST_F(VaultFileTest, ChangePWThroughSymlinkWritesTarget) {
   const std::string dir = "changepw_link_dir";
@@ -1957,7 +2200,8 @@ TEST_F(VaultFileTest, ChangePWThroughSymlinkWritesTarget) {
 
   vault_.CloseVault();
 
-  /* The new password belongs to the file at the far end, and the old one does not open it any more */
+  /* The new password belongs to the file at the far end, and the old one does
+   * not open it any more */
 
   Vault fresh;
 
@@ -1972,12 +2216,15 @@ TEST_F(VaultFileTest, ChangePWThroughSymlinkWritesTarget) {
 }
 
 /**
- * @brief   Verify an acknowledged save puts back a target that was deleted from under the link
+ * @brief   Verify an acknowledged save puts back a target that was deleted from
+ * under the link
  *
- * A dangling link resolves to nothing, so the file to publish onto cannot be read off the path any more. What answers
- * instead is the file this session read, which is the one the link was pointing at, so an acknowledged overwrite puts
- * the vault back where the link leads and the link works again. Writing it to the link's own path would leave the
- * target still missing and replace the link with a regular file.
+ * A dangling link resolves to nothing, so the file to publish onto cannot be
+ * read off the path any more. What answers instead is the file this session
+ * read, which is the one the link was pointing at, so an acknowledged overwrite
+ * puts the vault back where the link leads and the link works again. Writing it
+ * to the link's own path would leave the target still missing and replace the
+ * link with a regular file.
  */
 TEST_F(VaultFileTest, SaveAfterTargetDeletedRecreatesTarget) {
   const std::string dir = "deleted_target_dir";
@@ -1992,17 +2239,20 @@ TEST_F(VaultFileTest, SaveAfterTargetDeletedRecreatesTarget) {
 
   ASSERT_EQ(symlink(target.c_str(), link.c_str()), 0);
   ASSERT_EQ(vault_.OpenVault(link, MakePW("password")), Result::kSuccess);
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
   ASSERT_EQ(RemoveFile(target), Result::kSuccess);
 
-  /* A vault that is not there is not the version this session read, so the first save reports it rather than
-   * recreating a file the user may have moved deliberately */
+  /* A vault that is not there is not the version this session read, so the
+   * first save reports it rather than recreating a file the user may have moved
+   * deliberately */
 
   EXPECT_EQ(vault_.SaveVault(link), SaveResult::kConflict);
   EXPECT_FALSE(FileExists(target));
   EXPECT_TRUE(vault_.IsDirty());
 
-  EXPECT_EQ(vault_.SaveVault(link, SaveMode::kOverwriteAcknowledged), SaveResult::kSuccess);
+  EXPECT_EQ(vault_.SaveVault(link, SaveMode::kOverwriteAcknowledged),
+            SaveResult::kSuccess);
   EXPECT_TRUE(FileExists(target));
   EXPECT_TRUE(IsSymlink(link));
   EXPECT_FALSE(TempFileLeft(link));
@@ -2026,13 +2276,16 @@ TEST_F(VaultFileTest, SaveAfterTargetDeletedRecreatesTarget) {
 }
 
 /**
- * @brief   Verify a link repointed under an open session conflicts rather than publishing unseen
+ * @brief   Verify a link repointed under an open session conflicts rather than
+ * publishing unseen
  *
- * The path is resolved afresh at every publish rather than pinned when the vault was opened, which is what lets a
- * save follow a link the user has since repointed. The file it now leads to is not the one this session read, so it
- * is a changed file in the same sense a changed IV is, and it is reported before anything is written. A session that
- * pinned its file at open would answer kSuccess here and write the old one, leaving the user's own path at a vault
- * without their change.
+ * The path is resolved afresh at every publish rather than pinned when the
+ * vault was opened, which is what lets a save follow a link the user has since
+ * repointed. The file it now leads to is not the one this session read, so it
+ * is a changed file in the same sense a changed IV is, and it is reported
+ * before anything is written. A session that pinned its file at open would
+ * answer kSuccess here and write the old one, leaving the user's own path at a
+ * vault without their change.
  */
 TEST_F(VaultFileTest, SaveAfterLinkRetargetIsConflict) {
   const std::string first = "retarget_a.vault";
@@ -2050,25 +2303,30 @@ TEST_F(VaultFileTest, SaveAfterLinkRetargetIsConflict) {
   const std::vector<uint8_t> before_first = ReadFile(first);
   const std::vector<uint8_t> before_second = ReadFile(second);
 
-  /* The user repoints the link while the session is open, which is a thing a person does between two saves */
+  /* The user repoints the link while the session is open, which is a thing a
+   * person does between two saves */
 
   ASSERT_EQ(RemoveFile(link), Result::kSuccess);
   ASSERT_EQ(symlink(second.c_str(), link.c_str()), 0);
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
 
   EXPECT_EQ(vault_.SaveVault(link), SaveResult::kConflict);
   EXPECT_NE(vault_.GetLastError().find("changed on disk"), std::string::npos);
 
-  /* Neither vault was touched, the temporary went with the refusal, and the session still holds the edit */
+  /* Neither vault was touched, the temporary went with the refusal, and the
+   * session still holds the edit */
 
   EXPECT_EQ(ReadFile(first), before_first);
   EXPECT_EQ(ReadFile(second), before_second);
   EXPECT_FALSE(TempFileLeft(link));
   EXPECT_TRUE(vault_.IsDirty());
 
-  EXPECT_EQ(vault_.SaveVault(link, SaveMode::kOverwriteAcknowledged), SaveResult::kSuccess);
+  EXPECT_EQ(vault_.SaveVault(link, SaveMode::kOverwriteAcknowledged),
+            SaveResult::kSuccess);
 
-  /* The acknowledged save published where the link leads now, and the file it used to lead to is as it was */
+  /* The acknowledged save published where the link leads now, and the file it
+   * used to lead to is as it was */
 
   EXPECT_EQ(ReadFile(first), before_first);
 
@@ -2088,24 +2346,30 @@ TEST_F(VaultFileTest, SaveAfterLinkRetargetIsConflict) {
 }
 
 /**
- * @brief   Verify a save onto a path that cannot be examined is refused, with the edit and the directory intact
+ * @brief   Verify a save onto a path that cannot be examined is refused, with
+ * the edit and the directory intact
  *
- * The save path's own version of the rule the check states. The temporary has been written, synced and closed by the
- * time the file at the far end is looked at, so a path the file system will not answer about has to come back as a
- * reason to refuse: the last look before the rename is the only thing standing between an unexaminable file and a
- * publish over it, and a look that cannot be made has established nothing.
+ * The save path's own version of the rule the check states. The temporary has
+ * been written, synced and closed by the time the file at the far end is looked
+ * at, so a path the file system will not answer about has to come back as a
+ * reason to refuse: the last look before the rename is the only thing standing
+ * between an unexaminable file and a publish over it, and a look that cannot be
+ * made has established nothing.
  *
- * What is asserted after the refusal is the cost of it. The edit is still in the session, so the user has lost
- * nothing they could not save again, and the directory holds exactly the names it held before, so the temporary this
+ * What is asserted after the refusal is the cost of it. The edit is still in
+ * the session, so the user has lost nothing they could not save again, and the
+ * directory holds exactly the names it held before, so the temporary this
  * attempt wrote was taken away with it rather than left beside the vault.
  */
 TEST_F(VaultFileTest, SaveRefusesSymlinkLoop) {
   const std::string loop = "save_loop.vault";
 
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
 
-  /* The vault this session is holding is replaced, at its own name, by a pair of links pointing at each other. A user
-   * reaches this by repointing a link they keep their vault behind while a window is open on it. */
+  /* The vault this session is holding is replaced, at its own name, by a pair
+   * of links pointing at each other. A user reaches this by repointing a link
+   * they keep their vault behind while a window is open on it. */
 
   RemoveFile(loop);  // The symlinks below need free names
 
@@ -2121,7 +2385,8 @@ TEST_F(VaultFileTest, SaveRefusesSymlinkLoop) {
   EXPECT_TRUE(vault_.IsDirty());
   EXPECT_EQ(NamesBeside(path_), before);
 
-  /* And the path still holds the link itself, so nothing was published over it either */
+  /* And the path still holds the link itself, so nothing was published over it
+   * either */
 
   EXPECT_TRUE(IsSymlink(path_));
 
@@ -2135,7 +2400,8 @@ TEST_F(VaultFileTest, SaveRefusesSymlinkLoop) {
  * ================================================== */
 
 /**
- * @brief   Verify a vault whose header has one byte flipped never opens, and fails for the documented reason
+ * @brief   Verify a vault whose header has one byte flipped never opens, and
+ * fails for the documented reason
  */
 TEST_P(VaultHeaderTamperTest, FlippedHeaderByteIsRefused) {
   const size_t off = GetParam();
@@ -2148,31 +2414,44 @@ TEST_P(VaultHeaderTamperTest, FlippedHeaderByteIsRefused) {
 
   WriteFile(path_, buff);
 
-  /* The correct password, so what is on trial is the header and not the password */
+  /* The correct password, so what is on trial is the header and not the
+   * password */
 
   EXPECT_EQ(Reload(), Result::kFailure);
-  EXPECT_NE(vault_.GetLastError().find(ExpectedMessage(off)), std::string::npos);
+  EXPECT_NE(vault_.GetLastError().find(ExpectedMessage(off)),
+            std::string::npos);
 }
 
-INSTANTIATE_TEST_SUITE_P(EveryHeaderByte, VaultHeaderTamperTest, testing::Range(size_t{ 0 }, kHeaderSize));
+INSTANTIATE_TEST_SUITE_P(EveryHeaderByte, VaultHeaderTamperTest,
+                         testing::Range(size_t{ 0 }, kHeaderSize));
 
 /**
- * @brief   Verify parameters edited to another accepted value are refused as well
+ * @brief   Verify parameters edited to another accepted value are refused as
+ * well
  *
- * Out-of-range parameters are caught by the range check, which says nothing about the ones inside it. An edit from
- * one legal value to another survives validation and derives a different key, so what refuses it is the commitment,
- * and the vault reports it the way it reports any other derivation that does not match: as a wrong password.
+ * Out-of-range parameters are caught by the range check, which says nothing
+ * about the ones inside it. An edit from one legal value to another survives
+ * validation and derives a different key, so what refuses it is the commitment,
+ * and the vault reports it the way it reports any other derivation that does
+ * not match: as a wrong password.
  */
 TEST_F(VaultFileTest, OpenRejectsInRangeKdfParamTamper) {
   const std::array<KdfParams, 3> cases{
-    KdfParams{ .time_cost = kMinTimeCost + 1, .mem_cost = kMinMemCost, .parallelism = kMinParallelism },
-    KdfParams{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost + 1024, .parallelism = kMinParallelism },
-    KdfParams{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism + 1 },
+    KdfParams{ .time_cost = kMinTimeCost + 1,
+               .mem_cost = kMinMemCost,
+               .parallelism = kMinParallelism },
+    KdfParams{ .time_cost = kMinTimeCost,
+               .mem_cost = kMinMemCost + 1024,
+               .parallelism = kMinParallelism },
+    KdfParams{ .time_cost = kMinTimeCost,
+               .mem_cost = kMinMemCost,
+               .parallelism = kMinParallelism + 1 },
   };
 
   for (const KdfParams& params : cases) {
-    SCOPED_TRACE(testing::Message() << "t=" << params.time_cost << " m=" << params.mem_cost
-                                    << " p=" << params.parallelism);
+    SCOPED_TRACE(testing::Message()
+                 << "t=" << params.time_cost << " m=" << params.mem_cost
+                 << " p=" << params.parallelism);
 
     MakeVaultWith(MinParams());
 
@@ -2181,20 +2460,24 @@ TEST_F(VaultFileTest, OpenRejectsInRangeKdfParamTamper) {
     ASSERT_NO_FATAL_FAILURE(PatchHeaderParams(params));
 
     EXPECT_EQ(Reload(), Result::kFailure);
-    EXPECT_NE(vault_.GetLastError().find("Incorrect master password"), std::string::npos);
+    EXPECT_NE(vault_.GetLastError().find("Incorrect master password"),
+              std::string::npos);
   }
 }
 
 #ifndef _WIN32
 
 /**
- * @brief   Verify a password change that published its file switches the session even when the directory sync fails
+ * @brief   Verify a password change that published its file switches the
+ * session even when the directory sync fails
  *
- * A directory left writable and searchable but not readable is the cheapest way to reach the branch past the commit
- * point: mkstemp and rename need write and search, and the open SyncDir performs needs read. By the time it runs the
- * file already belongs to the new password, so the change is a success carrying a warning, and the session has to
- * follow the file rather than keep a key the file no longer opens with. Skipped as root, whose permission checks
- * these bits do not bind.
+ * A directory left writable and searchable but not readable is the cheapest way
+ * to reach the branch past the commit point: mkstemp and rename need write and
+ * search, and the open SyncDir performs needs read. By the time it runs the
+ * file already belongs to the new password, so the change is a success carrying
+ * a warning, and the session has to follow the file rather than keep a key the
+ * file no longer opens with. Skipped as root, whose permission checks these
+ * bits do not bind.
  */
 TEST_F(VaultFileTest, PublishedChangePWSurvivesDirectorySyncFailure) {
   if (geteuid() == 0) {
@@ -2206,7 +2489,8 @@ TEST_F(VaultFileTest, PublishedChangePWSurvivesDirectorySyncFailure) {
 
   ASSERT_EQ(mkdir(dir.c_str(), 0700), 0);
   ASSERT_EQ(vault_.NewVault(path, MakePW("password")), Result::kSuccess);
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
   ASSERT_EQ(chmod(dir.c_str(), 0300), 0);
 
   EXPECT_EQ(vault_.ChangePW(MakePW("asdf1234"), path), SaveResult::kSuccess);
@@ -2214,7 +2498,8 @@ TEST_F(VaultFileTest, PublishedChangePWSurvivesDirectorySyncFailure) {
   EXPECT_FALSE(vault_.IsDirty());
   EXPECT_TRUE(vault_.VerifyPW(MakePW("asdf1234")));
 
-  /* A save that follows keeps the file on the new password instead of reverting it to the old one */
+  /* A save that follows keeps the file on the new password instead of reverting
+   * it to the old one */
 
   EXPECT_EQ(vault_.SaveVault(path), SaveResult::kSuccess);
 
@@ -2235,22 +2520,27 @@ TEST_F(VaultFileTest, PublishedChangePWSurvivesDirectorySyncFailure) {
 #endif /* !_WIN32 */
 
 /**
- * @brief   Verify a wrong password and a damaged vault are reported as different things
+ * @brief   Verify a wrong password and a damaged vault are reported as
+ * different things
  *
- * The distinction the commitment exists to draw: a failing tag on its own cannot say which of the two it saw, so
- * without it both arrive as one sentence.
+ * The distinction the commitment exists to draw: a failing tag on its own
+ * cannot say which of the two it saw, so without it both arrive as one
+ * sentence.
  */
 TEST_F(VaultFileTest, WrongPasswordAndCorruptionDiffer) {
-  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")), Result::kSuccess);
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
   ASSERT_EQ(vault_.SaveVault(path_), SaveResult::kSuccess);
 
-  /* Wrong password, intact file: settled by the commitment before anything is decrypted */
+  /* Wrong password, intact file: settled by the commitment before anything is
+   * decrypted */
 
   EXPECT_EQ(Reload("asdf1234"), Result::kFailure);
 
   const std::string wrong_pw = vault_.GetLastError();
 
-  /* Right password, one ciphertext byte flipped: the commitment matches and the tag does not */
+  /* Right password, one ciphertext byte flipped: the commitment matches and the
+   * tag does not */
 
   std::vector<uint8_t> buff = ReadFile(path_);
 
@@ -2272,8 +2562,8 @@ TEST_F(VaultFileTest, WrongPasswordAndCorruptionDiffer) {
 /**
  * @brief   Verify ParseHeader refuses a buffer shorter than a header
  *
- * Unreachable through Vault, which rejects anything below kMinSize before it reads, and checked here because the
- * module promises it to any other caller.
+ * Unreachable through Vault, which rejects anything below kMinSize before it
+ * reads, and checked here because the module promises it to any other caller.
  */
 TEST(VaultHeaderTest, ParseRejectsShortInput) {
   const std::vector<uint8_t> buff(kHeaderSize - 1, 0x00);

@@ -35,15 +35,17 @@ ListGUI::ListGUI(QWidget* parent) : QWidget(parent) {
 
   search_line_->setPlaceholderText("Search");
 
-  /* Configure the filter. The search line matches against every column, and as a fixed string rather than a pattern,
-   * so a user typing a bracket or a dot searches for that character instead of writing a regular expression. */
+  /* Configure the filter. The search line matches against every column, and as
+   * a fixed string rather than a pattern, so a user typing a bracket or a dot
+   * searches for that character instead of writing a regular expression. */
 
   proxy_->setSourceModel(model_);
   proxy_->setFilterKeyColumn(-1);
   proxy_->setFilterCaseSensitivity(Qt::CaseInsensitive);
 
-  /* Configure table. The view is given the proxy, so what it shows is what passed the filter: a row the filter turns
-   * away has no index in the view and cannot be selected, be current, or be reached by the keyboard. */
+  /* Configure table. The view is given the proxy, so what it shows is what
+   * passed the filter: a row the filter turns away has no index in the view and
+   * cannot be selected, be current, or be reached by the keyboard. */
 
   table_->setModel(proxy_);
 
@@ -96,13 +98,16 @@ ListGUI::ListGUI(QWidget* parent) : QWidget(parent) {
   connect(copy_pw_btn_, &QPushButton::clicked, this, &ListGUI::OnCopyPWClicked);
   connect(save_btn_, &QPushButton::clicked, this, &ListGUI::SaveRequested);
   connect(close_btn_, &QPushButton::clicked, this, &ListGUI::CloseRequested);
-  connect(change_pw_btn_, &QPushButton::clicked, this, &ListGUI::ChangePWRequested);
-  connect(search_line_, &QLineEdit::textChanged, this, &ListGUI::OnSearchChanged);
+  connect(change_pw_btn_, &QPushButton::clicked, this,
+          &ListGUI::ChangePWRequested);
+  connect(search_line_, &QLineEdit::textChanged, this,
+          &ListGUI::OnSearchChanged);
 }
 
 void ListGUI::LoadEntries(const QVector<EntryView>& entries) {
-  /* The filter lives in the proxy and survives the rows it was filtering, so a refresh has nothing to re-apply. The
-   * reset drops the selection along with the rows it belonged to. */
+  /* The filter lives in the proxy and survives the rows it was filtering, so a
+   * refresh has nothing to re-apply. The reset drops the selection along with
+   * the rows it belonged to. */
 
   model_->SetEntries(entries);
 
@@ -154,22 +159,29 @@ void ListGUI::OnCopyPWClicked() {
 }
 
 void ListGUI::OnSearchChanged(const QString& text) {
-  /* Filtering is a change of which rows exist, not of which rows are painted, so a row that stops matching leaves the
-   * view entirely and no operation can be left pointing at an entry the user cannot see.
+  /* Filtering is a change of which rows exist, not of which rows are painted,
+   * so a row that stops matching leaves the view entirely and no operation can
+   * be left pointing at an entry the user cannot see.
    *
-   * What the entry the user chose becomes is decided here rather than left to Qt. A view in single selection mode
-   * answers rows being removed by selecting the next row still present, which would hand the next operation an entry
-   * nobody picked, so the choice is carried over when it survives the filter and dropped when it does not. */
+   * What the entry the user chose becomes is decided here rather than left to
+   * Qt. A view in single selection mode answers rows being removed by selecting
+   * the next row still present, which would hand the next operation an entry
+   * nobody picked, so the choice is carried over when it survives the filter
+   * and dropped when it does not. */
 
   const QModelIndexList selected = table_->selectionModel()->selectedRows();
-  const QModelIndex chosen = selected.isEmpty() ? QModelIndex() : proxy_->mapToSource(selected.first());
+  const QModelIndex chosen = selected.isEmpty()
+                                 ? QModelIndex()
+                                 : proxy_->mapToSource(selected.first());
 
   proxy_->setFilterFixedString(text);
 
-  const QModelIndex kept = chosen.isValid() ? proxy_->mapFromSource(chosen) : QModelIndex();
+  const QModelIndex kept =
+      chosen.isValid() ? proxy_->mapFromSource(chosen) : QModelIndex();
 
   if (kept.isValid()) {
-    table_->selectionModel()->setCurrentIndex(kept, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+    table_->selectionModel()->setCurrentIndex(
+        kept, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
     return;
   }
 
@@ -178,9 +190,10 @@ void ListGUI::OnSearchChanged(const QString& text) {
 }
 
 bool ListGUI::GetSelectedEntry(QString& site, QString& acc) {
-  /* The selection rather than the current cell. The two are separate pieces of state in Qt: clearing the selection or
-   * Ctrl-clicking the selected row leaves the current cell where it was, and an operation reading the current cell
-   * would act on a row that is no longer highlighted. */
+  /* The selection rather than the current cell. The two are separate pieces of
+   * state in Qt: clearing the selection or Ctrl-clicking the selected row
+   * leaves the current cell where it was, and an operation reading the current
+   * cell would act on a row that is no longer highlighted. */
 
   const QModelIndexList selected = table_->selectionModel()->selectedRows();
 
@@ -189,9 +202,11 @@ bool ListGUI::GetSelectedEntry(QString& site, QString& acc) {
     return false;
   }
 
-  /* Through the proxy to the row the model holds, and out of the model rather than out of the cells */
+  /* Through the proxy to the row the model holds, and out of the model rather
+   * than out of the cells */
 
-  const EntryView* entry = model_->EntryAt(proxy_->mapToSource(selected.first()));
+  const EntryView* entry =
+      model_->EntryAt(proxy_->mapToSource(selected.first()));
 
   if (entry == nullptr) {
     err_msg_->setText("No entry selected");

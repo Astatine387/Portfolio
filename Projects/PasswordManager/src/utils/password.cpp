@@ -19,9 +19,11 @@ bool Password::Equal(const Password& other) const {
 
   static constexpr std::array<uint8_t, kMaxMasterPwLen + 1> kZero{};
 
-  const void* l = (data_ != nullptr) ? static_cast<const void*>(data_) : static_cast<const void*>(kZero.data());
-  const void* r =
-      (other.data_ != nullptr) ? static_cast<const void*>(other.data_) : static_cast<const void*>(kZero.data());
+  const void* l = (data_ != nullptr) ? static_cast<const void*>(data_)
+                                     : static_cast<const void*>(kZero.data());
+  const void* r = (other.data_ != nullptr)
+                      ? static_cast<const void*>(other.data_)
+                      : static_cast<const void*>(kZero.data());
 
   uint8_t len_diff = (size_ != other.size_) ? 1 : 0;
   int data_diff = sodium_memcmp(l, r, kMaxMasterPwLen);
@@ -59,9 +61,11 @@ Result Password::SetData(const char* str, size_t len) {
     return Result::kSuccess;
   }
 
-  /* The new buffer is filled before the old one is released. @p str may point into data_ itself, since GetData hands
-   * that pointer out, and releasing first would leave the copy below reading an address this process no longer owns.
-   * Building the replacement first is also what leaves the current value untouched when the allocation is refused. */
+  /* The new buffer is filled before the old one is released. @p str may point
+   * into data_ itself, since GetData hands that pointer out, and releasing
+   * first would leave the copy below reading an address this process no longer
+   * owns. Building the replacement first is also what leaves the current value
+   * untouched when the allocation is refused. */
 
   InitCrypto();
 

@@ -101,12 +101,18 @@ TEST(PasswordTest, SetDataReplace) {
  * that failure, so copying is deleted in favour of SetData(const Password&)
  */
 TEST(PasswordTest, IsMoveOnly) {
-  static_assert(!std::is_copy_constructible_v<Password>, "Password must not be copy constructible");
-  static_assert(!std::is_copy_assignable_v<Password>, "Password must not be copy assignable");
-  static_assert(std::is_move_constructible_v<Password>, "Password must be move constructible");
-  static_assert(std::is_move_assignable_v<Password>, "Password must be move assignable");
-  static_assert(std::is_nothrow_move_constructible_v<Password>, "Password move must be noexcept");
-  static_assert(std::is_nothrow_move_assignable_v<Password>, "Password move must be noexcept");
+  static_assert(!std::is_copy_constructible_v<Password>,
+                "Password must not be copy constructible");
+  static_assert(!std::is_copy_assignable_v<Password>,
+                "Password must not be copy assignable");
+  static_assert(std::is_move_constructible_v<Password>,
+                "Password must be move constructible");
+  static_assert(std::is_move_assignable_v<Password>,
+                "Password must be move assignable");
+  static_assert(std::is_nothrow_move_constructible_v<Password>,
+                "Password move must be noexcept");
+  static_assert(std::is_nothrow_move_assignable_v<Password>,
+                "Password move must be noexcept");
 
   SUCCEED();
 }
@@ -240,11 +246,14 @@ TEST(PasswordTest, SetDataNull) {
 }
 
 /**
- * @brief   Verify SetData copes with a source that points into the password's own buffer
+ * @brief   Verify SetData copes with a source that points into the password's
+ * own buffer
  *
- * GetData hands out the internal pointer, so passing it straight back is a call this interface allows. Releasing the
- * buffer before copying out of it read an address the process had already returned to the operating system, which
- * left the size in place and the bytes zeroed whenever the allocator handed the same page back.
+ * GetData hands out the internal pointer, so passing it straight back is a call
+ * this interface allows. Releasing the buffer before copying out of it read an
+ * address the process had already returned to the operating system, which left
+ * the size in place and the bytes zeroed whenever the allocator handed the same
+ * page back.
  */
 TEST(PasswordTest, SetDataFromOwnBuffer) {
   Password pw;
@@ -257,7 +266,8 @@ TEST(PasswordTest, SetDataFromOwnBuffer) {
   EXPECT_EQ(pw.GetSize(), 8U);
   EXPECT_EQ(memcmp(pw.GetData(), "password", 8), 0);
 
-  /* A source inside the buffer rather than at its start, and a length that shrinks with it */
+  /* A source inside the buffer rather than at its start, and a length that
+   * shrinks with it */
 
   EXPECT_EQ(pw.SetData(pw.GetData() + 4, 4), Result::kSuccess);
   EXPECT_EQ(pw.GetSize(), 4U);
@@ -371,8 +381,9 @@ TEST(PasswordTest, CompareSelf) {
 /**
  * @brief   Verify Clean releases the buffer and leaves the password empty
  *
- * The wipe itself belongs to sodium_free and lands on memory this process has handed back, so nothing here can
- * assert on those bytes. What is asserted is the state Clean leaves behind.
+ * The wipe itself belongs to sodium_free and lands on memory this process has
+ * handed back, so nothing here can assert on those bytes. What is asserted is
+ * the state Clean leaves behind.
  */
 TEST(PasswordTest, Clean) {
   Password pw;

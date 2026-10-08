@@ -39,9 +39,11 @@ MainGUI::MainGUI(QWidget* parent) : QWidget(parent) {
 
   /* Connect functions to buttons */
 
-  connect(input_gui_, &InputGUI::StartRequested, this, &MainGUI::OnStartRequested);
+  connect(input_gui_, &InputGUI::StartRequested, this,
+          &MainGUI::OnStartRequested);
   connect(prg_gui_, &ProgressGUI::CloseRequested, this, &QWidget::close);
-  connect(prg_gui_, &ProgressGUI::CancelRequested, this, &MainGUI::RequestCancel);
+  connect(prg_gui_, &ProgressGUI::CancelRequested, this,
+          &MainGUI::RequestCancel);
 }
 
 MainGUI::~MainGUI() {
@@ -49,17 +51,18 @@ MainGUI::~MainGUI() {
 }
 
 void MainGUI::OnStartRequested(const CryptoRequest& input) {
-  /* An unset mode reaches here only from a sender that skipped the check InputGUI makes. There is no
-   * direction to fall back on, since guessing would run the opposite operation on the user's file, so
-   * it is refused the same way the input window refuses it. */
+  /* An unset mode reaches here only from a sender that skipped the check
+   * InputGUI makes. There is no direction to fall back on, since guessing would
+   * run the opposite operation on the user's file, so it is refused the same
+   * way the input window refuses it. */
 
   if (!input.mode.has_value()) {
     input_gui_->SetErrMsg("Mode is not selected");
     return;
   }
 
-  /* ValidatePaths and the worker both read the members rather than the request, which does not outlive
-   * this call */
+  /* ValidatePaths and the worker both read the members rather than the request,
+   * which does not outlive this call */
 
   src_path_ = input.src;
   dst_path_ = input.dst;
@@ -76,32 +79,39 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
 
     widget_->setCurrentWidget(prg_gui_);
 
-    /* Shared rather than owned, so cancelling stays safe whichever side lets go of it first */
+    /* Shared rather than owned, so cancelling stays safe whichever side lets go
+     * of it first */
 
     cancel_flag_ = std::make_shared<std::atomic<bool>>(false);
 
-    /* Create worker thread. The wrapper is built here but given away immediately: after moveToThread
-     * every one of its slots, Run included, runs on the worker thread. It gets no parent, because a
-     * parent would have to live on the same thread as the child. */
+    /* Create worker thread. The wrapper is built here but given away
+     * immediately: after moveToThread every one of its slots, Run included,
+     * runs on the worker thread. It gets no parent, because a parent would have
+     * to live on the same thread as the child. */
 
     thread_ = new QThread(this);
 
-    CryptoWrapper* wrapper = new CryptoWrapper(src_path_, dst_path_, std::move(pw), input.mode.value(), cancel_flag_);
+    CryptoWrapper* wrapper = new CryptoWrapper(
+        src_path_, dst_path_, std::move(pw), input.mode.value(), cancel_flag_);
 
     wrapper->moveToThread(thread_);
 
-    /* Connect signals. Both Finished connections are queued into this thread in the order they are made,
-     * so the result reaches the window before the thread is asked to stop. */
+    /* Connect signals. Both Finished connections are queued into this thread in
+     * the order they are made, so the result reaches the window before the
+     * thread is asked to stop. */
 
     connect(thread_, &QThread::started, wrapper, &CryptoWrapper::Run);
-    connect(wrapper, &CryptoWrapper::ProgressUpdate, this, &MainGUI::OnProgressUpdated);
-    connect(wrapper, &CryptoWrapper::PhaseChanged, this, &MainGUI::OnPhaseChanged);
+    connect(wrapper, &CryptoWrapper::ProgressUpdate, this,
+            &MainGUI::OnProgressUpdated);
+    connect(wrapper, &CryptoWrapper::PhaseChanged, this,
+            &MainGUI::OnPhaseChanged);
     connect(wrapper, &CryptoWrapper::Finished, this, &MainGUI::OnWorkFinished);
     connect(wrapper, &CryptoWrapper::Finished, thread_, &QThread::quit);
     connect(thread_, &QThread::finished, this, &MainGUI::OnThreadFinished);
 
-    /* Nothing else owns the wrapper. Hanging its deletion off the thread's own finished signal is what
-     * guarantees it outlives the code running on that thread. */
+    /* Nothing else owns the wrapper. Hanging its deletion off the thread's own
+     * finished signal is what guarantees it outlives the code running on that
+     * thread. */
 
     connect(thread_, &QThread::finished, wrapper, &QObject::deleteLater);
 
@@ -112,8 +122,9 @@ void MainGUI::OnStartRequested(const CryptoRequest& input) {
 }
 
 void MainGUI::OnProgressUpdated(int perc, const QString& status) {
-  /* Once closeEvent has deferred a close, reports that were already queued would paint over the busy
-   * message and the window is on its way out regardless */
+  /* Once closeEvent has deferred a close, reports that were already queued
+   * would paint over the busy message and the window is on its way out
+   * regardless */
 
   if (closing_) {
     return;
@@ -123,8 +134,9 @@ void MainGUI::OnProgressUpdated(int perc, const QString& status) {
 }
 
 void MainGUI::OnPhaseChanged(const QString& status, bool cancellable) {
-  /* Same reason as above, and one more: closeEvent has already disabled cancelling for good, and a
-   * phase report queued before it would hand the button back to a window that is on its way out */
+  /* Same reason as above, and one more: closeEvent has already disabled
+   * cancelling for good, and a phase report queued before it would hand the
+   * button back to a window that is on its way out */
 
   if (closing_) {
     return;
@@ -142,7 +154,8 @@ void MainGUI::OnWorkFinished(const QString& msg) {
 }
 
 void MainGUI::OnThreadFinished() {
-  /* Reached from the thread's own finished signal, so the thread object cannot be deleted outright */
+  /* Reached from the thread's own finished signal, so the thread object cannot
+   * be deleted outright */
 
   if (thread_) {
     thread_->deleteLater();
@@ -151,7 +164,8 @@ void MainGUI::OnThreadFinished() {
 
   cancel_flag_.reset();
 
-  /* The close deferred in closeEvent happens here, now that no worker is left running */
+  /* The close deferred in closeEvent happens here, now that no worker is left
+   * running */
 
   if (closing_) {
     close();
@@ -191,9 +205,10 @@ int MainGUI::ValidatePaths() {
 }
 
 void MainGUI::Clean() {
-  /* Last-resort forced-quit path; cancel the worker and wait for it with no timeout. Running from the
-   * destructor, there is no event loop left to defer to, and the wait is unbounded because the worker
-   * only looks at the flag between chunks. */
+  /* Last-resort forced-quit path; cancel the worker and wait for it with no
+   * timeout. Running from the destructor, there is no event loop left to defer
+   * to, and the wait is unbounded because the worker only looks at the flag
+   * between chunks. */
 
   RequestCancel();
 
@@ -204,9 +219,10 @@ void MainGUI::Clean() {
 }
 
 void MainGUI::closeEvent(QCloseEvent* event) {
-  /* Request cancellation and keep the window alive in a busy state. Letting the close through would
-   * destroy the QThread this widget owns while it is still running, which Qt terminates the process
-   * over; OnThreadFinished closes the window instead, once the worker has actually returned. */
+  /* Request cancellation and keep the window alive in a busy state. Letting the
+   * close through would destroy the QThread this widget owns while it is still
+   * running, which Qt terminates the process over; OnThreadFinished closes the
+   * window instead, once the worker has actually returned. */
 
   if (thread_ && thread_->isRunning()) {
     RequestCancel();

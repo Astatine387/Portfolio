@@ -30,7 +30,8 @@ class PWLineEdit : public QWidget {
   /**
    * @brief		Extract data from the input line to Password class
    * @param		pw	Destination
-   * @return	kSuccess on success, kFailure when the text exceeds kMaxMasterPwLen bytes
+   * @return	kSuccess on success, kFailure when the text exceeds
+   * kMaxMasterPwLen bytes
    */
   [[nodiscard]] Result Extract(Password& pw);
 

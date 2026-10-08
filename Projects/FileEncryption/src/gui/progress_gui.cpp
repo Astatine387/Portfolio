@@ -21,9 +21,10 @@ ProgressGUI::ProgressGUI(QWidget* parent) : QWidget(parent) {
   prg_bar_->setRange(0, 100);
   prg_bar_->setValue(0);
 
-  /* A run opens with a key derivation that cannot be interrupted, so the button starts dead and only
-   * the phase that polls the flag hands it over. A button that does nothing when pressed is worse than
-   * one that is visibly unavailable. */
+  /* A run opens with a key derivation that cannot be interrupted, so the button
+   * starts dead and only the phase that polls the flag hands it over. A button
+   * that does nothing when pressed is worse than one that is visibly
+   * unavailable. */
 
   cancel_btn_->setEnabled(false);
 
@@ -50,8 +51,10 @@ ProgressGUI::ProgressGUI(QWidget* parent) : QWidget(parent) {
 
   /* Connect cancel/close functions to each button */
 
-  connect(cancel_btn_, &QPushButton::clicked, this, &ProgressGUI::OnCancelClicked);
-  connect(close_btn_, &QPushButton::clicked, this, &ProgressGUI::CloseRequested);
+  connect(cancel_btn_, &QPushButton::clicked, this,
+          &ProgressGUI::OnCancelClicked);
+  connect(close_btn_, &QPushButton::clicked, this,
+          &ProgressGUI::CloseRequested);
 }
 
 bool ProgressGUI::IsCancelled() {
@@ -75,8 +78,9 @@ void ProgressGUI::ShowResult(const QString& msg) {
 }
 
 void ProgressGUI::ShowBusy(const QString& msg) {
-  /* An empty range is Qt's indeterminate bar: the worker only stops between chunks, so there is nothing
-   * left to report a percentage for, and cancelling again would change nothing */
+  /* An empty range is Qt's indeterminate bar: the worker only stops between
+   * chunks, so there is nothing left to report a percentage for, and cancelling
+   * again would change nothing */
 
   prg_label_->setText(msg);
   prg_bar_->setRange(0, 0);

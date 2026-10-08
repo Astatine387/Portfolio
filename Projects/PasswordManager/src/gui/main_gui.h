@@ -122,15 +122,19 @@ class MainGUI : public QWidget {
    * @enum    SaveResult
    * @brief   What a publish routed through the conflict prompt ended up doing
    *
-   * kCancelled is separated from kError because the two say opposite things to a user. An error is something that
-   * went wrong and may be worth retrying; a cancellation is the answer they just gave, and the file is untouched
-   * because they said so. Reporting the second as the first would read as a malfunction.
+   * kCancelled is separated from kError because the two say opposite things to
+   * a user. An error is something that went wrong and may be worth retrying; a
+   * cancellation is the answer they just gave, and the file is untouched
+   * because they said so. Reporting the second as the first would read as a
+   * malfunction.
    */
   enum class SaveResult : std::uint8_t {
     kSaved,      // Published, with nothing else having touched the file
-    kOverwrote,  // Published over changes another program had made, after the user acknowledged them
-    kCancelled,  // The file had changed and the user chose not to overwrite it; nothing was written
-    kError,      // The operation failed for another reason; GetLastError says which
+    kOverwrote,  // Published over changes another program had made, after the
+                 // user acknowledged them
+    kCancelled,  // The file had changed and the user chose not to overwrite it;
+                 // nothing was written
+    kError,  // The operation failed for another reason; GetLastError says which
   };
 
   ChangePWGUI* change_pw_gui_;
@@ -151,7 +155,8 @@ class MainGUI : public QWidget {
   ErrorCallback ecb_ = nullptr;
 
   /**
-   * @brief	Confirm unsaved changes, then clean timer and clipboard when GUI is closed
+   * @brief	Confirm unsaved changes, then clean timer and clipboard when GUI is
+   * closed
    */
   void closeEvent(QCloseEvent* event) override;
 
@@ -162,44 +167,55 @@ class MainGUI : public QWidget {
 
   /**
    * @brief	Ask what to do with unsaved changes before the open vault is dropped
-   * @return	true if the caller may drop the vault (nothing unsaved, saved now, or discarded on purpose)
+   * @return	true if the caller may drop the vault (nothing unsaved, saved now,
+   * or discarded on purpose)
    *
-   * Saving from the prompt and failing returns false and shows the reason, so the changes stay open to retry or to
-   * discard knowingly.
+   * Saving from the prompt and failing returns false and shows the reason, so
+   * the changes stay open to retry or to discard knowingly.
    */
   [[nodiscard]] bool ConfirmDiscard();
 
   /**
-   * @brief	Run a publish, asking before it overwrites a vault file that changed on disk
+   * @brief	Run a publish, asking before it overwrites a vault file that changed
+   * on disk
    * @param	op	The publish to run, called with the mode it is to run under
    * @return	What the publish ended up doing
    *
-   * The one route to the disk for all three of the places that save, so none of them can overwrite another window's
-   * work without asking, or report that refusal as an ordinary failure. @p op is a function rather than a flag
-   * because the two operations behind it differ in more than a name: a password change needs a wait cursor around
-   * itself and a save does not, and that belongs to the caller that knows which it is running.
+   * The one route to the disk for all three of the places that save, so none of
+   * them can overwrite another window's work without asking, or report that
+   * refusal as an ordinary failure. @p op is a function rather than a flag
+   * because the two operations behind it differ in more than a name: a password
+   * change needs a wait cursor around itself and a save does not, and that
+   * belongs to the caller that knows which it is running.
    *
-   * The retry is a loop rather than a single second attempt. The file can change again between the prompt and the
-   * answer, and the core acknowledges only the version the user was shown, so that second change comes back as
-   * another conflict and is asked about in its turn instead of being replaced unseen.
+   * The retry is a loop rather than a single second attempt. The file can
+   * change again between the prompt and the answer, and the core acknowledges
+   * only the version the user was shown, so that second change comes back as
+   * another conflict and is asked about in its turn instead of being replaced
+   * unseen.
    */
-  [[nodiscard]] SaveResult SaveWithConflictPrompt(const std::function<::SaveResult(SaveMode)>& op);
+  [[nodiscard]] SaveResult SaveWithConflictPrompt(
+      const std::function<::SaveResult(SaveMode)>& op);
 
   /**
    * @brief	Ask whether to overwrite a vault file that changed on disk
    * @return	true if the user chose to overwrite it
    *
-   * Cancel is both the default and the escape button, so neither Enter nor Escape can overwrite. The destructive
-   * answer is the one that has to be aimed at.
+   * Cancel is both the default and the escape button, so neither Enter nor
+   * Escape can overwrite. The destructive answer is the one that has to be
+   * aimed at.
    */
   [[nodiscard]] bool ConfirmOverwrite();
 
   /**
-   * @brief	End the clipboard countdown and take the copied password off the clipboard
+   * @brief	End the clipboard countdown and take the copied password off the
+   * clipboard
    *
-   * The two belong together: stopping the countdown on its own would leave the password on the clipboard with
-   * nothing left to remove it. A clipboard this application no longer owns is left as it is, and calling this
-   * with no countdown running does nothing, since the password has already gone or was never copied.
+   * The two belong together: stopping the countdown on its own would leave the
+   * password on the clipboard with nothing left to remove it. A clipboard this
+   * application no longer owns is left as it is, and calling this with no
+   * countdown running does nothing, since the password has already gone or was
+   * never copied.
    */
   void StopClipboardCountdown();
 };

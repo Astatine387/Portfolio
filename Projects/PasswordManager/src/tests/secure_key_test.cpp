@@ -48,8 +48,10 @@ std::array<uint8_t, kSaltSize> MakeSalt(uint8_t fill) {
 
 /* Derive a key, failing the test if derivation unexpectedly fails */
 
-SecureKey Derive(const std::string& pw, const std::array<uint8_t, kSaltSize>& salt) {
-  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt, FastParams());
+SecureKey Derive(const std::string& pw,
+                 const std::array<uint8_t, kSaltSize>& salt) {
+  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt,
+                       FastParams());
   EXPECT_TRUE(key.has_value());
   return std::move(key.value());  // NOLINT(bugprone-unchecked-optional-access)
 }
@@ -66,10 +68,12 @@ SecureKey Derive(const std::string& pw, const std::array<uint8_t, kSaltSize>& sa
 TEST(SecureKeyTest, DeriveSucceeds) {
   std::string pw = "password";
   auto salt = MakeSalt(0x01);
-  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt, FastParams());
+  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt,
+                       FastParams());
 
   ASSERT_TRUE(key.has_value());
-  EXPECT_EQ(key->Bytes().size(), kKeySize);  // NOLINT(bugprone-unchecked-optional-access)
+  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
+  EXPECT_EQ(key->Bytes().size(), kKeySize);
 }
 
 /**
@@ -109,7 +113,8 @@ TEST(SecureKeyTest, DifferentPasswordDiffersKey) {
 TEST(SecureKeyTest, DeriveEmptyPassword) {
   std::string pw;
   auto salt = MakeSalt(0x01);
-  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt, FastParams());
+  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt,
+                       FastParams());
 
   EXPECT_TRUE(key.has_value());
 }
@@ -122,9 +127,18 @@ TEST(SecureKeyTest, DeriveFailsInvalidParams) {
   auto salt = MakeSalt(0x01);
   std::span<const char> pw_span(pw.data(), pw.size());
 
-  EXPECT_FALSE(DeriveKey(pw_span, salt, KdfParams{ .time_cost = 0, .mem_cost = 8, .parallelism = 1 }).has_value());
-  EXPECT_FALSE(DeriveKey(pw_span, salt, KdfParams{ .time_cost = 1, .mem_cost = 0, .parallelism = 1 }).has_value());
-  EXPECT_FALSE(DeriveKey(pw_span, salt, KdfParams{ .time_cost = 1, .mem_cost = 8, .parallelism = 0 }).has_value());
+  EXPECT_FALSE(
+      DeriveKey(pw_span, salt,
+                KdfParams{ .time_cost = 0, .mem_cost = 8, .parallelism = 1 })
+          .has_value());
+  EXPECT_FALSE(
+      DeriveKey(pw_span, salt,
+                KdfParams{ .time_cost = 1, .mem_cost = 0, .parallelism = 1 })
+          .has_value());
+  EXPECT_FALSE(
+      DeriveKey(pw_span, salt,
+                KdfParams{ .time_cost = 1, .mem_cost = 8, .parallelism = 0 })
+          .has_value());
 }
 
 /* ==================================================
@@ -134,8 +148,8 @@ TEST(SecureKeyTest, DeriveFailsInvalidParams) {
 /**
  * @brief   Verify a key carries the salt and parameters its derivation consumed
  *
- * What the header is written from, so a key that reported anything else here would describe a derivation other than
- * the one that produced it.
+ * What the header is written from, so a key that reported anything else here
+ * would describe a derivation other than the one that produced it.
  */
 TEST(SecureKeyTest, CarriesSaltAndParams) {
   auto salt = MakeSalt(0x0A);
@@ -148,7 +162,8 @@ TEST(SecureKeyTest, CarriesSaltAndParams) {
 }
 
 /**
- * @brief   Verify the same password, salt and parameters commit to the same value
+ * @brief   Verify the same password, salt and parameters commit to the same
+ * value
  */
 TEST(SecureKeyTest, CommitmentIsDeterministic) {
   SecureKey k0 = Derive("password", MakeSalt(0x01));
@@ -179,7 +194,8 @@ TEST(SecureKeyTest, CommitmentFollowsSalt) {
 }
 
 /**
- * @brief   Verify CommitmentMatches accepts the stored value and refuses it one bit later
+ * @brief   Verify CommitmentMatches accepts the stored value and refuses it one
+ * bit later
  */
 TEST(SecureKeyTest, CommitmentMatchesOneBitApart) {
   SecureKey key = Derive("password", MakeSalt(0x01));
@@ -218,7 +234,8 @@ TEST(SecureKeyTest, MoveTransfersKey) {
 }
 
 /**
- * @brief   Verify move construction carries the commitment, salt and parameters along with the key
+ * @brief   Verify move construction carries the commitment, salt and parameters
+ * along with the key
  */
 TEST(SecureKeyTest, MoveTransfersSaltAndParams) {
   auto salt = MakeSalt(0x07);
@@ -237,8 +254,8 @@ TEST(SecureKeyTest, MoveTransfersSaltAndParams) {
 /**
  * @brief   Verify move assignment carries them too
  *
- * The form ChangePW uses to install a new session key, where a key arriving with the previous derivation's salt
- * would be written into the next header.
+ * The form ChangePW uses to install a new session key, where a key arriving
+ * with the previous derivation's salt would be written into the next header.
  */
 TEST(SecureKeyTest, MoveAssignmentTransfersSaltAndParams) {
   auto salt = MakeSalt(0x07);

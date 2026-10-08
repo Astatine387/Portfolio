@@ -13,7 +13,8 @@
 #include <vector>
 
 void Kernel::Poke(NetId net, Logic4 value, Time at) {
-  assert(netlist_.GetNet(net).drivers.empty() && "Poke expects a driverless primary input");
+  assert(netlist_.GetNet(net).drivers.empty() &&
+         "Poke expects a driverless primary input");
 
   Schedule(net, value, at);
 }
@@ -44,7 +45,8 @@ RunResult Kernel::Run(Time until) {
           queue_.pop();
         }
 
-        std::sort(nets.begin(), nets.end(), [](NetId a, NetId b) { return Index(a) < Index(b); });
+        std::sort(nets.begin(), nets.end(),
+                  [](NetId a, NetId b) { return Index(a) < Index(b); });
 
         nets.erase(std::unique(nets.begin(), nets.end()), nets.end());
 
@@ -84,7 +86,8 @@ RunResult Kernel::Run(Time until) {
         to_eval.insert(to_eval.end(), sink.fanout.begin(), sink.fanout.end());
       }
 
-      std::sort(to_eval.begin(), to_eval.end(), [](GateId a, GateId b) { return Index(a) < Index(b); });
+      std::sort(to_eval.begin(), to_eval.end(),
+                [](GateId a, GateId b) { return Index(a) < Index(b); });
 
       to_eval.erase(std::unique(to_eval.begin(), to_eval.end()), to_eval.end());
 
@@ -114,8 +117,10 @@ Logic4 Kernel::ResolveNet(NetId net) const {
     return net_values_[Index(net)];
   }
 
-  return std::accumulate(record.drivers.begin(), record.drivers.end(), Logic4::kZ,
-                         [this](Logic4 acc, GateId driver) { return Resolve(acc, driver_values_[Index(driver)]); });
+  return std::accumulate(record.drivers.begin(), record.drivers.end(),
+                         Logic4::kZ, [this](Logic4 acc, GateId driver) {
+                           return Resolve(acc, driver_values_[Index(driver)]);
+                         });
 }
 
 void Kernel::EvaluateGate(GateId gate_id, Time now) {
@@ -132,7 +137,8 @@ void Kernel::EvaluateGate(GateId gate_id, Time now) {
 
     const bool rising = prev == Logic4::k0 && clock == Logic4::k1;
 
-    output = rising ? net_values_[Index(gate.inputs[0])] : driver_values_[index];
+    output =
+        rising ? net_values_[Index(gate.inputs[0])] : driver_values_[index];
   }
   else {
     const auto reduce = [&](Logic4 (*op)(Logic4, Logic4), Logic4 identity) {

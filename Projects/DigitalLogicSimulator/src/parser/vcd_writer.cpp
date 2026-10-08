@@ -13,7 +13,8 @@
 #include "core/logic4.h"
 #include "core/netlist.h"
 
-VcdWriter::VcdWriter(const Netlist& netlist, std::ostream& out, std::string_view module, std::string_view timescale)
+VcdWriter::VcdWriter(const Netlist& netlist, std::ostream& out,
+                     std::string_view module, std::string_view timescale)
     : netlist_(netlist),
       out_(out),
       module_(module),

@@ -15,7 +15,8 @@
 namespace clipboard {
 
 /**
- * @brief	Copy a password to the system clipboard, excluded from OS history and cloud sync
+ * @brief	Copy a password to the system clipboard, excluded from OS history and
+ * cloud sync
  * @param	pw	Password to place on the clipboard
  */
 void SetSecret(const Password& pw);

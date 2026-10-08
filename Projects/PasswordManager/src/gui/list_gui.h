@@ -46,7 +46,8 @@ class ListGUI : public QWidget {
   void SetErrMsg(const QString& msg);
 
   /**
-   * @brief	Drop every row, the search text and the message, so nothing of a closed vault stays in the widget
+   * @brief	Drop every row, the search text and the message, so nothing of a
+   * closed vault stays in the widget
    */
   void Clear();
 
@@ -142,9 +143,10 @@ class ListGUI : public QWidget {
    * @param	acc		Destination for account
    * @return	true if an entry is selected
    *
-   * The search line filters through the proxy model, so a row the filter leaves out is not in the view at all and
-   * cannot be selected or current. What this returns is therefore always an entry the user is looking at, and it is
-   * read from the model rather than from the text of the cells.
+   * The search line filters through the proxy model, so a row the filter leaves
+   * out is not in the view at all and cannot be selected or current. What this
+   * returns is therefore always an entry the user is looking at, and it is read
+   * from the model rather than from the text of the cells.
    */
   bool GetSelectedEntry(QString& site, QString& acc);
 };

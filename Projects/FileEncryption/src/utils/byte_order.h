@@ -3,8 +3,9 @@
  * @brief	Explicit byte order helpers for on-disk integer fields
  * @author	Astatine387
  *
- * Two orders coexist on purpose: the header stores its integer fields little-endian, while the chunk
- * counter inside the nonce is big-endian, the order the STREAM construction uses.
+ * Two orders coexist on purpose: the header stores its integer fields
+ * little-endian, while the chunk counter inside the nonce is big-endian, the
+ * order the STREAM construction uses.
  */
 
 #pragma once
@@ -29,7 +30,8 @@ constexpr void StoreLE32(uint8_t* dst, uint32_t val) {
  * @return  Decoded value
  */
 [[nodiscard]] constexpr uint32_t LoadLE32(const uint8_t* src) {
-  return static_cast<uint32_t>(src[0]) | (static_cast<uint32_t>(src[1]) << 8) | (static_cast<uint32_t>(src[2]) << 16) |
+  return static_cast<uint32_t>(src[0]) | (static_cast<uint32_t>(src[1]) << 8) |
+         (static_cast<uint32_t>(src[2]) << 16) |
          (static_cast<uint32_t>(src[3]) << 24);
 }
 

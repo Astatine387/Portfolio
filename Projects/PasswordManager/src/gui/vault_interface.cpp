@@ -37,14 +37,19 @@ SaveResult VaultInterface::ChangePW(const Password& pw, SaveMode mode) {
   return vault_.ChangePW(pw, vault_path_.toStdString(), mode);
 }
 
-Result VaultInterface::CreateEntry(const QString& site, const QString& acc, const Password& pw) {
+Result VaultInterface::CreateEntry(const QString& site, const QString& acc,
+                                   const Password& pw) {
   return vault_.CreateEntry(site.toStdString(), acc.toStdString(), pw);
 }
 
-UpdateResult VaultInterface::UpdateEntry(const QString& old_site, const QString& old_acc, const QString& new_site,
-                                         const QString& new_acc, const Password& new_pw) {
-  return vault_.UpdateEntry(old_site.toStdString(), old_acc.toStdString(), new_site.toStdString(),
-                            new_acc.toStdString(), new_pw);
+UpdateResult VaultInterface::UpdateEntry(const QString& old_site,
+                                         const QString& old_acc,
+                                         const QString& new_site,
+                                         const QString& new_acc,
+                                         const Password& new_pw) {
+  return vault_.UpdateEntry(old_site.toStdString(), old_acc.toStdString(),
+                            new_site.toStdString(), new_acc.toStdString(),
+                            new_pw);
 }
 
 Result VaultInterface::DeleteEntry(const QString& site, const QString& acc) {
@@ -56,13 +61,15 @@ QVector<EntryView> VaultInterface::GetEntries() const {
   const auto& entries = vault_.GetEntries();
 
   for (const auto& entry : entries) {
-    views.append({ .site = QString::fromStdString(entry.site), .acc = QString::fromStdString(entry.acc) });
+    views.append({ .site = QString::fromStdString(entry.site),
+                   .acc = QString::fromStdString(entry.acc) });
   }
 
   return views;
 }
 
-bool VaultInterface::GetPW(const QString& site, const QString& acc, Password& pw) {
+bool VaultInterface::GetPW(const QString& site, const QString& acc,
+                           Password& pw) {
   return vault_.GetEntryPW(site.toStdString(), acc.toStdString(), pw);
 }
 

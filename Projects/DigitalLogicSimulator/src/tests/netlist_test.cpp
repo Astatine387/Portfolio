@@ -180,7 +180,8 @@ TEST(NetlistGate, SpanAndInitializerListAgree) {
   const NetId y2 = nl.AddOutput("y2");
 
   const std::array<NetId, 2> inputs = { a, b };
-  const GateId g_span = nl.AddGate(GateType::kOr, std::span<const NetId>(inputs), y1);
+  const GateId g_span =
+      nl.AddGate(GateType::kOr, std::span<const NetId>(inputs), y1);
   const GateId g_list = nl.AddGate(GateType::kOr, { a, b }, y2);
 
   EXPECT_EQ(nl.GetGate(g_span).inputs, nl.GetGate(g_list).inputs);
@@ -364,7 +365,8 @@ TEST(NetlistFullAdder, Structure) {
 }
 
 /**
- * @brief   Verify the full-adder's primary inputs and outputs are wired at the boundary
+ * @brief   Verify the full-adder's primary inputs and outputs are wired at the
+ * boundary
  */
 TEST(NetlistFullAdder, Boundary) {
   const FullAdder fa = MakeFullAdder();

@@ -26,7 +26,8 @@ Result RandomRange(uint32_t* dst, uint32_t min, uint32_t max) {
   uint32_t tmp;
 
   do {
-    if (Random(reinterpret_cast<uint8_t*>(&tmp), sizeof(uint32_t)) == Result::kFailure) {
+    if (Random(reinterpret_cast<uint8_t*>(&tmp), sizeof(uint32_t)) ==
+        Result::kFailure) {
       return Result::kFailure;  // LCOV_EXCL_LINE
     }
   } while (tmp >= limit);

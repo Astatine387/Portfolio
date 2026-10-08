@@ -22,7 +22,8 @@ SecureBuffer::~SecureBuffer() {
   Reset();
 }
 
-SecureBuffer::SecureBuffer(SecureBuffer&& other) noexcept : data_(other.data_), size_(other.size_) {
+SecureBuffer::SecureBuffer(SecureBuffer&& other) noexcept
+    : data_(other.data_), size_(other.size_) {
   other.data_ = nullptr;
   other.size_ = 0;
 }
@@ -65,7 +66,8 @@ std::span<const uint8_t> SecureBuffer::Span() const {
   return { data_, size_ };
 }
 
-std::optional<std::span<uint8_t>> SecureBuffer::Subspan(size_t off, size_t len) {
+std::optional<std::span<uint8_t>> SecureBuffer::Subspan(size_t off,
+                                                        size_t len) {
   if (off > size_ || len > size_ - off) {
     return std::nullopt;
   }
@@ -73,7 +75,8 @@ std::optional<std::span<uint8_t>> SecureBuffer::Subspan(size_t off, size_t len) 
   return std::span<uint8_t>{ data_ + off, len };
 }
 
-std::optional<std::span<const uint8_t>> SecureBuffer::Subspan(size_t off, size_t len) const {
+std::optional<std::span<const uint8_t>> SecureBuffer::Subspan(
+    size_t off, size_t len) const {
   if (off > size_ || len > size_ - off) {
     return std::nullopt;
   }

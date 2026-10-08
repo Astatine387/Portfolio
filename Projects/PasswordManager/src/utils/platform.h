@@ -17,14 +17,18 @@
  * @param   path	File path
  * @return	false only when the path is known to hold nothing, true otherwise
  *
- * Never throws, whatever the file system answers. A lookup can fail without saying the name is free: a symbolic link
- * loop, a name past the length the file system takes, a parent directory the caller may not search, an I/O error on
- * a network or FUSE mount. None of those establish an absence, and all of them are reported here as present.
+ * Never throws, whatever the file system answers. A lookup can fail without
+ * saying the name is free: a symbolic link loop, a name past the length the
+ * file system takes, a parent directory the caller may not search, an I/O error
+ * on a network or FUSE mount. None of those establish an absence, and all of
+ * them are reported here as present.
  *
- * Which way the unknown answer falls is the contract rather than an accident of the implementation. Every caller asks
- * this in order to refuse, so the only answer that may cost anything is false: it says the name is free to write on,
- * and a caller given it for a file that is merely unexaminable would publish over that file. A dangling symbolic link
- * is the one failed lookup that is an answer, the link resolving to nothing, and it counts as free.
+ * Which way the unknown answer falls is the contract rather than an accident of
+ * the implementation. Every caller asks this in order to refuse, so the only
+ * answer that may cost anything is false: it says the name is free to write on,
+ * and a caller given it for a file that is merely unexaminable would publish
+ * over that file. A dangling symbolic link is the one failed lookup that is an
+ * answer, the link resolving to nothing, and it counts as free.
  */
 bool FileExists(const std::string& path);
 
@@ -78,33 +82,41 @@ enum class RenameStatus : std::uint8_t {
 };
 
 /**
- * @brief   Move a file onto a path, refusing to replace whatever is already there
+ * @brief   Move a file onto a path, refusing to replace whatever is already
+ * there
  * @param   src		Source file path
  * @param   dst		Destination file path
- * @return	kOk when the move took the name, kExists when it was taken, kFailure on any other failure
+ * @return	kOk when the move took the name, kExists when it was taken, kFailure
+ * on any other failure
  *
- * Refusing to overwrite is what makes this a create rather than a save: the move itself decides whether the name was
- * free, so nothing can appear at the destination between a separate existence test and the move that follows it.
+ * Refusing to overwrite is what makes this a create rather than a save: the
+ * move itself decides whether the name was free, so nothing can appear at the
+ * destination between a separate existence test and the move that follows it.
  *
- * How that refusal is obtained differs by file system, so the Linux side tries three ways in turn and only falls
- * through on the errors that mean "this file system cannot do it". Whichever way is taken, the name is still won or
- * lost in one atomic step.
+ * How that refusal is obtained differs by file system, so the Linux side tries
+ * three ways in turn and only falls through on the errors that mean "this file
+ * system cannot do it". Whichever way is taken, the name is still won or lost
+ * in one atomic step.
  */
-[[nodiscard]] RenameStatus RenameFileNoReplace(const std::string& src, const std::string& dst);
+[[nodiscard]] RenameStatus RenameFileNoReplace(const std::string& src,
+                                               const std::string& dst);
 
 /**
  * @brief   Resolve a path to the file it leads to
  * @param   path	File path
- * @param   out		Receives the resolved path on success, left as it was on failure
+ * @param   out		Receives the resolved path on success, left as it was on
+ * failure
  * @return	kSuccess on success, kFailure when the path does not resolve
  *
- * Every component is followed, a chain of symbolic links included, and a relative link target is read against the
- * directory of the link that holds it. What comes back is the absolute path of the file itself, which is the path an
- * atomic replace has to act on: a rename onto a link's own path replaces the link and leaves the file behind it as it
- * was.
+ * Every component is followed, a chain of symbolic links included, and a
+ * relative link target is read against the directory of the link that holds it.
+ * What comes back is the absolute path of the file itself, which is the path an
+ * atomic replace has to act on: a rename onto a link's own path replaces the
+ * link and leaves the file behind it as it was.
  *
- * A path that does not resolve is one whose file is not there, a dangling link among the ways of not being there, and
- * it fails rather than coming back as a path a caller might publish onto.
+ * A path that does not resolve is one whose file is not there, a dangling link
+ * among the ways of not being there, and it fails rather than coming back as a
+ * path a caller might publish onto.
  */
 [[nodiscard]] Result ResolvePath(const std::string& path, std::string& out);
 
@@ -133,10 +145,12 @@ void OpenFile(FILE** file, const std::string& path, const char* mode);
 /**
  * @brief   Create and open a private temporary file with a random name
  * @param   file	Opened stream on success, nullptr on failure
- * @param   path	In: template whose last six characters are "XXXXXX". Out: the path actually created
+ * @param   path	In: template whose last six characters are "XXXXXX". Out: the
+ * path actually created
  * @return	kSuccess on success, kFailure on failure
  *
- * The file is created owner-only and nothing here widens it, so an atomic replace that publishes this temporary
- * over an existing vault can tighten that vault's permissions but never loosen them.
+ * The file is created owner-only and nothing here widens it, so an atomic
+ * replace that publishes this temporary over an existing vault can tighten that
+ * vault's permissions but never loosen them.
  */
 [[nodiscard]] Result OpenTempFile(FILE** file, std::string& path);

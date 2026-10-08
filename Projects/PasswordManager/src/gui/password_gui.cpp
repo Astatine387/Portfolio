@@ -43,7 +43,8 @@ PasswordGUI::PasswordGUI(QWidget* parent) : QWidget(parent) {
 
   /* Connect functions to buttons */
 
-  connect(confirm_btn_, &QPushButton::clicked, this, &PasswordGUI::OnConfirmClicked);
+  connect(confirm_btn_, &QPushButton::clicked, this,
+          &PasswordGUI::OnConfirmClicked);
   connect(back_btn_, &QPushButton::clicked, this, &PasswordGUI::BackRequested);
 }
 

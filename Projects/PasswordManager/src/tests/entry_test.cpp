@@ -43,7 +43,8 @@ TEST(EntryTest, SizeCalculation) {
   entry.acc = acc;
   entry.pw_len = static_cast<uint32_t>(strlen(pw));
 
-  size_t expected = sizeof(uint32_t) + strlen(site) + sizeof(uint32_t) + strlen(acc) + sizeof(uint32_t) + strlen(pw);
+  size_t expected = sizeof(uint32_t) + strlen(site) + sizeof(uint32_t) +
+                    strlen(acc) + sizeof(uint32_t) + strlen(pw);
 
   EXPECT_EQ(entry.Size(), expected);
 }
@@ -95,7 +96,8 @@ TEST(EntryTest, ComparatorEqual) {
 }
 
 /**
- * @brief   Verify entries are stored without duplication in std::set with EntryCmp
+ * @brief   Verify entries are stored without duplication in std::set with
+ * EntryCmp
  */
 TEST(EntryTest, SetInsertion) {
   std::set<Entry, EntryCmp> entry_set;
@@ -180,7 +182,8 @@ TEST(EntryTest, SerializeDeserializeEmpty) {
 }
 
 /**
- * @brief   Verify multiple entries can be serialized sequentially into one buffer
+ * @brief   Verify multiple entries can be serialized sequentially into one
+ * buffer
  */
 TEST(EntryTest, SerializeMultipleEntries) {
   Entry entry0;
@@ -318,19 +321,22 @@ TEST(EntryTest, DeserializationBoundaryCheck) {
 
   /* Buffer truncated before account data */
 
-  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() - 1;
+  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) +
+         src.acc.size() - 1;
 
   EXPECT_EQ(dst.Deserialize(vec.data(), size, 0), 0);
 
   /* Buffer truncated before password length */
 
-  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() + sizeof(uint32_t) - 1;
+  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) +
+         src.acc.size() + sizeof(uint32_t) - 1;
 
   EXPECT_EQ(dst.Deserialize(vec.data(), size, 0), 0);
 
   /* Buffer truncated before password data */
 
-  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) + src.acc.size() + sizeof(uint32_t) + src.pw_len - 1;
+  size = sizeof(uint32_t) + src.site.size() + sizeof(uint32_t) +
+         src.acc.size() + sizeof(uint32_t) + src.pw_len - 1;
 
   EXPECT_EQ(dst.Deserialize(vec.data(), size, 0), 0);
 }
@@ -340,15 +346,18 @@ TEST(EntryTest, DeserializationBoundaryCheck) {
  * ================================================== */
 
 /**
- * @brief   Build a serialized entry buffer with specified field lengths and deserialize
+ * @brief   Build a serialized entry buffer with specified field lengths and
+ * deserialize
  * @param   entry       Entry to deserialize into
  * @param   site_len    Site name length
  * @param   acc_len     Account length
  * @param   pw_len      Password length
  * @return  Number of bytes read on success, 0 on failure
  */
-static size_t BuildAndDeser(Entry& entry, uint32_t site_len, uint32_t acc_len, uint32_t pw_len) {
-  size_t total_size = sizeof(uint32_t) + site_len + sizeof(uint32_t) + acc_len + sizeof(uint32_t) + pw_len;
+static size_t BuildAndDeser(Entry& entry, uint32_t site_len, uint32_t acc_len,
+                            uint32_t pw_len) {
+  size_t total_size = sizeof(uint32_t) + site_len + sizeof(uint32_t) + acc_len +
+                      sizeof(uint32_t) + pw_len;
 
   std::vector<uint8_t> vec(total_size, 'a');
 
@@ -423,7 +432,8 @@ TEST(EntryTest, PwViewInRange) {
 
   ASSERT_TRUE(view.has_value());
 
-  std::span<const uint8_t> pw = view.value();  // NOLINT(bugprone-unchecked-optional-access)
+  std::span<const uint8_t> pw =
+      view.value();  // NOLINT(bugprone-unchecked-optional-access)
 
   EXPECT_EQ(pw.size(), 8u);
   EXPECT_EQ(pw.data(), img.data() + 4);
@@ -462,11 +472,13 @@ TEST(EntryTest, PwViewOffsetPastEnd) {
  * ================================================== */
 
 /**
- * @brief   Verify the smallest entry the validator accepts is exactly kMinEntrySize
+ * @brief   Verify the smallest entry the validator accepts is exactly
+ * kMinEntrySize
  *
- * The smallest entry ValidateEntryFields will accept is one byte in each field. kMinEntrySize is that size, and
- * OpenVault sizes its entry-count check on it. If either side moves without the other, this fails rather than a
- * user's vault.
+ * The smallest entry ValidateEntryFields will accept is one byte in each field.
+ * kMinEntrySize is that size, and OpenVault sizes its entry-count check on it.
+ * If either side moves without the other, this fails rather than a user's
+ * vault.
  */
 TEST(EntryFormat, SmallestAcceptedEntryMatchesKMinEntrySize) {
   Entry entry{ .site = "a", .acc = "b", .pw_len = 1 };

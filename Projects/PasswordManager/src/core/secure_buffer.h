@@ -15,11 +15,13 @@
  * @class   SecureBuffer
  * @brief   Move-only byte buffer held in libsodium-locked memory
  *
- * The bytes come from sodium_malloc, and what stands around them is libsodium's rather than this class's: a
- * guard page on either side of the allocation, and a canary in front of the returned pointer that sodium_free
- * checks when the region is released, aborting the process when it has been overwritten. Nothing here inspects
- * either of them and no member reports on them, so the size and the spans below describe the bytes the caller
- * asked for and nothing beside them.
+ * The bytes come from sodium_malloc, and what stands around them is libsodium's
+ * rather than this class's: a guard page on either side of the allocation, and
+ * a canary in front of the returned pointer that sodium_free checks when the
+ * region is released, aborting the process when it has been overwritten.
+ * Nothing here inspects either of them and no member reports on them, so the
+ * size and the spans below describe the bytes the caller asked for and nothing
+ * beside them.
  */
 class SecureBuffer {
  public:
@@ -33,8 +35,9 @@ class SecureBuffer {
 
   ~SecureBuffer();
 
-  SecureBuffer(const SecureBuffer&) = delete;             // Delete copy constructor
-  SecureBuffer& operator=(const SecureBuffer&) = delete;  // Delete copy assignment operator
+  SecureBuffer(const SecureBuffer&) = delete;  // Delete copy constructor
+  SecureBuffer& operator=(const SecureBuffer&) =
+      delete;  // Delete copy assignment operator
 
   SecureBuffer(SecureBuffer&& other) noexcept;
   SecureBuffer& operator=(SecureBuffer&& other) noexcept;
@@ -71,8 +74,10 @@ class SecureBuffer {
    * @param   len   Length of the subrange in bytes
    * @return  Span over the subrange, or std::nullopt when it does not fit
    */
-  [[nodiscard]] std::optional<std::span<uint8_t>> Subspan(size_t off, size_t len);
-  [[nodiscard]] std::optional<std::span<const uint8_t>> Subspan(size_t off, size_t len) const;
+  [[nodiscard]] std::optional<std::span<uint8_t>> Subspan(size_t off,
+                                                          size_t len);
+  [[nodiscard]] std::optional<std::span<const uint8_t>> Subspan(
+      size_t off, size_t len) const;
 
   /**
    * @brief   Wipe and release the buffer

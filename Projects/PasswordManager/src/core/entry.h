@@ -39,20 +39,25 @@ struct Entry {
   /**
    * @brief   Map password view onto an image span
    * @param   img     Span of the vault image
-   * @return  Span of the password bytes, or std::nullopt when it falls outside the image
+   * @return  Span of the password bytes, or std::nullopt when it falls outside
+   * the image
    */
-  [[nodiscard]] std::optional<std::span<const uint8_t>> PwSpan(std::span<const uint8_t> img) const;
+  [[nodiscard]] std::optional<std::span<const uint8_t>> PwSpan(
+      std::span<const uint8_t> img) const;
 
   /**
    * @brief   Serialize entry to buffer
    * @param   dst     Destination span, must have at least Size() bytes
-   * @param   pw_src  Source of the password bytes, empty when the password is empty
+   * @param   pw_src  Source of the password bytes, empty when the password is
+   * empty
    * @return  Number of bytes written, 0 when the destination is too small
    */
-  [[nodiscard]] size_t Serialize(std::span<uint8_t> dst, std::span<const uint8_t> pw_src) const;
+  [[nodiscard]] size_t Serialize(std::span<uint8_t> dst,
+                                 std::span<const uint8_t> pw_src) const;
 
   /**
-   * @brief   Deserialize an entry, recording the password as a view into the image
+   * @brief   Deserialize an entry, recording the password as a view into the
+   * image
    * @param   src         Source buffer
    * @param   srclen      Remaining bytes available in the source buffer
    * @param   base_off    Absolute offset of src

@@ -153,7 +153,8 @@ class Netlist {
    * @param     delay   Propagation delay in time units
    * @return    Handle of the new gate
    */
-  GateId AddGate(GateType type, std::span<const NetId> inputs, NetId output, Time delay = kDefaultDelay);
+  GateId AddGate(GateType type, std::span<const NetId> inputs, NetId output,
+                 Time delay = kDefaultDelay);
 
   /**
    * @brief     Convenience overload taking a braced list of input nets
@@ -163,7 +164,8 @@ class Netlist {
    * @param     delay   Propagation delay in time units
    * @return    Handle of the new gate
    */
-  GateId AddGate(GateType type, std::initializer_list<NetId> inputs, NetId output, Time delay = kDefaultDelay);
+  GateId AddGate(GateType type, std::initializer_list<NetId> inputs,
+                 NetId output, Time delay = kDefaultDelay);
 
   /**
    * @brief     Add a D flip-flop (D, CLK -> Q)
@@ -173,7 +175,8 @@ class Netlist {
    * @param     delay   Propagation delay in time units
    * @return    Handle of the new flip-flop
    */
-  GateId AddDff(NetId data, NetId clock, NetId output, Time delay = kDefaultDelay);
+  GateId AddDff(NetId data, NetId clock, NetId output,
+                Time delay = kDefaultDelay);
 
   /**
    * @brief     Get the number of nets
@@ -199,7 +202,9 @@ class Netlist {
    * @param     id  Gate handle
    * @return    Reference to the gate
    */
-  [[nodiscard]] const Gate& GetGate(GateId id) const { return gates_[Index(id)]; }
+  [[nodiscard]] const Gate& GetGate(GateId id) const {
+    return gates_[Index(id)];
+  }
 
   /**
    * @brief     Get a read-only view over all nets
@@ -217,13 +222,17 @@ class Netlist {
    * @brief     Get the primary input nets in declaration order
    * @return    Handles of the primary input nets
    */
-  [[nodiscard]] const std::vector<NetId>& PrimaryInputs() const { return primary_inputs_; }
+  [[nodiscard]] const std::vector<NetId>& PrimaryInputs() const {
+    return primary_inputs_;
+  }
 
   /**
    * @brief     Get the primary output nets in declaration order
    * @return    Handles of the primary output nets
    */
-  [[nodiscard]] const std::vector<NetId>& PrimaryOutputs() const { return primary_outputs_; }
+  [[nodiscard]] const std::vector<NetId>& PrimaryOutputs() const {
+    return primary_outputs_;
+  }
 
  private:
   std::vector<Net> nets_;               // All net records, indexed by NetId

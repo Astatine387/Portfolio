@@ -98,12 +98,18 @@ TEST(PasswordTest, SetDataReplace) {
  * that failure, so copying is deleted in favour of SetData(const Password&)
  */
 TEST(PasswordTest, IsMoveOnly) {
-  static_assert(!std::is_copy_constructible_v<Password>, "Password must not be copy constructible");
-  static_assert(!std::is_copy_assignable_v<Password>, "Password must not be copy assignable");
-  static_assert(std::is_move_constructible_v<Password>, "Password must be move constructible");
-  static_assert(std::is_move_assignable_v<Password>, "Password must be move assignable");
-  static_assert(std::is_nothrow_move_constructible_v<Password>, "Password move must be noexcept");
-  static_assert(std::is_nothrow_move_assignable_v<Password>, "Password move must be noexcept");
+  static_assert(!std::is_copy_constructible_v<Password>,
+                "Password must not be copy constructible");
+  static_assert(!std::is_copy_assignable_v<Password>,
+                "Password must not be copy assignable");
+  static_assert(std::is_move_constructible_v<Password>,
+                "Password must be move constructible");
+  static_assert(std::is_move_assignable_v<Password>,
+                "Password must be move assignable");
+  static_assert(std::is_nothrow_move_constructible_v<Password>,
+                "Password move must be noexcept");
+  static_assert(std::is_nothrow_move_assignable_v<Password>,
+                "Password move must be noexcept");
 
   SUCCEED();
 }
@@ -187,11 +193,14 @@ TEST(PasswordTest, MoveAssignment) {
  * ================================================== */
 
 /**
- * @brief   Verify SetData copes with a source that points into the password's own buffer
+ * @brief   Verify SetData copes with a source that points into the password's
+ * own buffer
  *
- * GetData hands out the internal pointer, so passing it straight back is a call this interface allows. Releasing the
- * buffer before copying out of it read an address the process had already returned to the operating system, which left
- * the size in place and the bytes zeroed whenever the allocator handed the same page back.
+ * GetData hands out the internal pointer, so passing it straight back is a call
+ * this interface allows. Releasing the buffer before copying out of it read an
+ * address the process had already returned to the operating system, which left
+ * the size in place and the bytes zeroed whenever the allocator handed the same
+ * page back.
  */
 TEST(PasswordTest, SetDataFromOwnBuffer) {
   Password pw;
@@ -204,7 +213,8 @@ TEST(PasswordTest, SetDataFromOwnBuffer) {
   EXPECT_EQ(pw.GetSize(), 8U);
   EXPECT_STREQ(pw.GetData(), "password");
 
-  /* A source inside the buffer rather than at its start, and a length that shrinks the allocation with it */
+  /* A source inside the buffer rather than at its start, and a length that
+   * shrinks the allocation with it */
 
   EXPECT_EQ(pw.SetData(pw.GetData() + 4, 4), Result::kSuccess);
   EXPECT_EQ(pw.GetSize(), 4U);
@@ -246,8 +256,9 @@ TEST(PasswordTest, SelfMoveAssignment) {
 
   ASSERT_EQ(pw.SetData(data, size), Result::kSuccess);
 
-  /* Through an alias, for the same reason the compiler is the obstacle: a literal pw = std::move(pw) is
-   * diagnosed and would not compile under the warnings this build turns on */
+  /* Through an alias, for the same reason the compiler is the obstacle: a
+   * literal pw = std::move(pw) is diagnosed and would not compile under the
+   * warnings this build turns on */
 
   Password& alias = pw;
 
@@ -271,9 +282,10 @@ TEST(PasswordTest, SetDataNull) {
  * @brief   Verify destructor is called without crash after move
  */
 TEST(PasswordTest, DestructorAfterMove) {
-  /* Allocated by hand so the moved-from object can be destroyed at a chosen point, with the destination
-   * still alive to check afterwards. A local would only be destroyed at the end of the scope, by which
-   * time there is nothing left to assert against. */
+  /* Allocated by hand so the moved-from object can be destroyed at a chosen
+   * point, with the destination still alive to check afterwards. A local would
+   * only be destroyed at the end of the scope, by which time there is nothing
+   * left to assert against. */
 
   Password* pw0 = new Password();
   const char* data = "password";

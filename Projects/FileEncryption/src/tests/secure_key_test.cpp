@@ -39,9 +39,10 @@ static_assert(!std::is_constructible_v<SecureKey, uint8_t*>);
 
 namespace {
 
-/* Small Argon2id parameters keep the derivation tests fast. Well under kMinMemCost, which is allowed
- * because DeriveKey is called directly here: the accepted range is enforced by ValidateHeader, on the
- * parameters a file arrives with, and nothing on this path reads a file. */
+/* Small Argon2id parameters keep the derivation tests fast. Well under
+ * kMinMemCost, which is allowed because DeriveKey is called directly here: the
+ * accepted range is enforced by ValidateHeader, on the parameters a file
+ * arrives with, and nothing on this path reads a file. */
 
 KdfParams FastParams() {
   return KdfParams{ .time_cost = 1, .mem_cost = 8, .parallelism = 1 };
@@ -49,8 +50,10 @@ KdfParams FastParams() {
 
 /* Derive a key, failing the test if derivation unexpectedly fails */
 
-SecureKey Derive(const std::string& pw, const std::array<uint8_t, kSaltSize>& salt) {
-  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt, FastParams());
+SecureKey Derive(const std::string& pw,
+                 const std::array<uint8_t, kSaltSize>& salt) {
+  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt,
+                       FastParams());
   EXPECT_TRUE(key.has_value());
   return std::move(key.value());  // NOLINT(bugprone-unchecked-optional-access)
 }
@@ -61,9 +64,10 @@ std::array<uint8_t, kSaltSize> MakeSalt(uint8_t fill) {
   return salt;
 }
 
-/* Self-move goes through here rather than being written out at the call site. Assigning an object to
- * itself with std::move in plain sight is diagnosed by the compiler, so the two references have to
- * arrive as parameters for the aliasing to be invisible and the code path to be reachable at all. */
+/* Self-move goes through here rather than being written out at the call site.
+ * Assigning an object to itself with std::move in plain sight is diagnosed by
+ * the compiler, so the two references have to arrive as parameters for the
+ * aliasing to be invisible and the code path to be reachable at all. */
 
 void MoveAssign(SecureKey& dst, SecureKey& src) {
   dst = std::move(src);
@@ -81,10 +85,12 @@ void MoveAssign(SecureKey& dst, SecureKey& src) {
 TEST(SecureKeyTest, DeriveSucceeds) {
   std::string pw = "password";
   auto salt = MakeSalt(0x01);
-  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt, FastParams());
+  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt,
+                       FastParams());
 
   ASSERT_TRUE(key.has_value());
-  EXPECT_EQ(key->Bytes().size(), kKeySize);  // NOLINT(bugprone-unchecked-optional-access)
+  // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
+  EXPECT_EQ(key->Bytes().size(), kKeySize);
 }
 
 /**
@@ -124,7 +130,8 @@ TEST(SecureKeyTest, DifferentPasswordDiffersKey) {
 TEST(SecureKeyTest, DeriveEmptyPassword) {
   std::string pw;
   auto salt = MakeSalt(0x01);
-  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt, FastParams());
+  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt,
+                       FastParams());
 
   EXPECT_TRUE(key.has_value());
 }
@@ -138,7 +145,8 @@ TEST(SecureKeyTest, DeriveFailsInvalidParams) {
   KdfParams params = FastParams();
   params.time_cost = 0;  // Argon2id requires a time cost of at least 1
 
-  auto key = DeriveKey(std::span<const char>(pw.data(), pw.size()), salt, params);
+  auto key =
+      DeriveKey(std::span<const char>(pw.data(), pw.size()), salt, params);
 
   EXPECT_FALSE(key.has_value());
 }
@@ -158,13 +166,14 @@ TEST(SecureKeyTest, CommitmentMatchesOwnDerivation) {
 }
 
 /**
- * @brief   Verify one flipped bit anywhere in a commitment is enough to reject it
+ * @brief   Verify one flipped bit anywhere in a commitment is enough to reject
+ * it
  */
 TEST(SecureKeyTest, CommitmentRejectsOneBitChange) {
   SecureKey key = Derive("password", MakeSalt(0x01));
 
-  /* Both ends of the field, because a comparison that stopped short would still accept a change past
-   * wherever it stopped */
+  /* Both ends of the field, because a comparison that stopped short would still
+   * accept a change past wherever it stopped */
 
   const std::array<size_t, 2> positions{ 0, kCommitSize - 1 };
 
@@ -184,8 +193,8 @@ TEST(SecureKeyTest, CommitmentRejectsOneBitChange) {
 /**
  * @brief   Verify two passwords over one salt commit to different values
  *
- * This is the property the header commitment rests on: it is what stops a single file from opening
- * under a second password its author chose.
+ * This is the property the header commitment rests on: it is what stops a
+ * single file from opening under a second password its author chose.
  */
 TEST(SecureKeyTest, DifferentPasswordDiffersCommitment) {
   auto salt = MakeSalt(0x01);
@@ -214,7 +223,8 @@ TEST(SecureKeyTest, MoveTransfersKey) {
 }
 
 /**
- * @brief   Verify move assignment transfers the key and releases the previous one
+ * @brief   Verify move assignment transfers the key and releases the previous
+ * one
  */
 TEST(SecureKeyTest, MoveAssignTransfersKey) {
   SecureKey src = Derive("password", MakeSalt(0x01));
@@ -261,12 +271,14 @@ TEST(SecureKeyTest, SelfMoveAssignKeepsKey) {
 /**
  * @brief   Verify InitCrypto leaves the process unable to write a core dump
  *
- * The Argon2id working buffer is libargon2's own malloc, so it carries none of the per-allocation
- * exclusion sodium_malloc memory gets and would be written out whole. Refusing the dump is the only
- * thing covering it, so the limit that does the refusing is worth asserting on.
+ * The Argon2id working buffer is libargon2's own malloc, so it carries none of
+ * the per-allocation exclusion sodium_malloc memory gets and would be written
+ * out whole. Refusing the dump is the only thing covering it, so the limit that
+ * does the refusing is worth asserting on.
  *
- * Written as a check on the state afterwards rather than on a change, so it holds on a runner whose
- * core limit was already zero before the process started.
+ * Written as a check on the state afterwards rather than on a change, so it
+ * holds on a runner whose core limit was already zero before the process
+ * started.
  */
 TEST(SecureKeyTest, InitCryptoDisablesCoreDumps) {
   InitCrypto();

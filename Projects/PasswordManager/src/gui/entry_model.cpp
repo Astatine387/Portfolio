@@ -11,8 +11,9 @@ EntryModel::EntryModel(QObject* parent) : QAbstractTableModel(parent) {
 }
 
 void EntryModel::SetEntries(const QVector<EntryView>& entries) {
-  /* A reset rather than a diff: the list is rebuilt from the vault after every edit, and a reset is what tells every
-   * view and every selection model above this one that the rows they were holding are gone. */
+  /* A reset rather than a diff: the list is rebuilt from the vault after every
+   * edit, and a reset is what tells every view and every selection model above
+   * this one that the rows they were holding are gone. */
 
   beginResetModel();
 
@@ -61,7 +62,8 @@ QVariant EntryModel::data(const QModelIndex& index, int role) const {
   return {};
 }
 
-QVariant EntryModel::headerData(int section, Qt::Orientation ori, int role) const {
+QVariant EntryModel::headerData(int section, Qt::Orientation ori,
+                                int role) const {
   if (ori != Qt::Horizontal || role != Qt::DisplayRole) {
     return {};
   }

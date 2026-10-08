@@ -15,15 +15,20 @@
 #include "core/logic4.h"
 #include "core/netlist.h"
 
-inline constexpr std::string_view kDefaultModuleName = "top";  // Default module name emitted in $scope
+inline constexpr std::string_view kDefaultModuleName =
+    "top";  // Default module name emitted in $scope
 
-inline constexpr std::string_view kDefaultTimescale = "1ns";  // Default time unit emitted in $timescale
+inline constexpr std::string_view kDefaultTimescale =
+    "1ns";  // Default time unit emitted in $timescale
 
-inline constexpr char kFirstIdCode = '!';  // First printable ASCII character used in a VCD identifier code
+inline constexpr char kFirstIdCode =
+    '!';  // First printable ASCII character used in a VCD identifier code
 
-inline constexpr char kLastIdCode = '~';  // Last printable ASCII character used in a VCD identifier code
+inline constexpr char kLastIdCode =
+    '~';  // Last printable ASCII character used in a VCD identifier code
 
-inline constexpr std::size_t kIdCodeRadix = static_cast<std::size_t>(kLastIdCode - kFirstIdCode) + 1;  // Radix 94
+inline constexpr std::size_t kIdCodeRadix =
+    static_cast<std::size_t>(kLastIdCode - kFirstIdCode) + 1;  // Radix 94
 
 /**
  * @class   VcdWriter
@@ -38,7 +43,8 @@ class VcdWriter {
    * @param     module      Module name emitted in $scope
    * @param     timescale   Time unit emitted in $timescale
    */
-  VcdWriter(const Netlist& netlist, std::ostream& out, std::string_view module = kDefaultModuleName,
+  VcdWriter(const Netlist& netlist, std::ostream& out,
+            std::string_view module = kDefaultModuleName,
             std::string_view timescale = kDefaultTimescale);
 
   VcdWriter(const VcdWriter&) = delete;
@@ -68,14 +74,19 @@ class VcdWriter {
    * @param     net     Net to look up
    * @return    Identifier code of the net
    */
-  [[nodiscard]] std::string_view Code(NetId net) const { return codes_[Index(net)]; }
+  [[nodiscard]] std::string_view Code(NetId net) const {
+    return codes_[Index(net)];
+  }
 
   /**
    * @brief     Read the dumped signal name of a net
    * @param     net     Net to look up
-   * @return    Declared name of the net, or its synthesized name if it is anonymous
+   * @return    Declared name of the net, or its synthesized name if it is
+   * anonymous
    */
-  [[nodiscard]] std::string_view Name(NetId net) const { return names_[Index(net)]; }
+  [[nodiscard]] std::string_view Name(NetId net) const {
+    return names_[Index(net)];
+  }
 
  private:
   /**
@@ -97,6 +108,7 @@ class VcdWriter {
   std::string timescale_;           // time unit for $timescale
   std::vector<std::string> codes_;  // identifier code per NetId
   std::vector<std::string> names_;  // dumped signal name per NetId
-  Time last_time_ = 0;              // simulation time of the last emitted marker
-  bool header_written_ = false;     // whether the header and initial dump were emitted
+  Time last_time_ = 0;  // simulation time of the last emitted marker
+  bool header_written_ =
+      false;  // whether the header and initial dump were emitted
 };

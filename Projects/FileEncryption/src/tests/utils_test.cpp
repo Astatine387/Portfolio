@@ -3,9 +3,10 @@
  * @brief   Unit tests for utility functions
  * @author  Astatine387
  *
- * Several of the fixtures below name the same scratch file, and all of them work in the directory the
- * suite is run from, so two of these cases running at once would be writing over each other. That is
- * what the RUN_SERIAL property in CMakeLists.txt is there to prevent.
+ * Several of the fixtures below name the same scratch file, and all of them
+ * work in the directory the suite is run from, so two of these cases running at
+ * once would be writing over each other. That is what the RUN_SERIAL property
+ * in CMakeLists.txt is there to prevent.
  */
 
 #include <gtest/gtest.h>
@@ -88,8 +89,9 @@ TEST_F(GetFileSizeTest, ArbitSizeFile) {
 /**
  * @brief   Verify GetFileSize refuses a stream that is not on a regular file
  *
- * A character device answers a seek to the end with whatever its driver reports, so a size taken from
- * one would turn a source that cannot be measured into a number the caller trusts.
+ * A character device answers a seek to the end with whatever its driver
+ * reports, so a size taken from one would turn a source that cannot be measured
+ * into a number the caller trusts.
  */
 TEST_F(GetFileSizeTest, RejectsCharacterDevice) {
   OpenFile(&file_, "/dev/null", "rb");
@@ -236,7 +238,8 @@ TEST(RandomTest, GeneratesNonZero) {
 
   EXPECT_EQ(Random(buff.data(), buff.size()), Result::kSuccess);
 
-  const bool all_zero = std::ranges::all_of(buff, [](uint8_t b) { return b == 0; });
+  const bool all_zero =
+      std::ranges::all_of(buff, [](uint8_t b) { return b == 0; });
 
   EXPECT_FALSE(all_zero);
 }
@@ -435,7 +438,8 @@ class DurabilityTest : public ::testing::Test {
 
     ASSERT_NE(file, nullptr);
 
-    EXPECT_EQ(fwrite(text.data(), sizeof(char), text.size(), file), text.size());
+    EXPECT_EQ(fwrite(text.data(), sizeof(char), text.size(), file),
+              text.size());
 
     fclose(file);
   }
@@ -457,7 +461,8 @@ class DurabilityTest : public ::testing::Test {
 
     std::array<char, 128> buff{};
 
-    res.assign(buff.data(), fread(buff.data(), sizeof(char), buff.size(), file));
+    res.assign(buff.data(),
+               fread(buff.data(), sizeof(char), buff.size(), file));
 
     fclose(file);
 
@@ -466,7 +471,8 @@ class DurabilityTest : public ::testing::Test {
 };
 
 /**
- * @brief   Verify a move onto a free path carries the content and drops the source
+ * @brief   Verify a move onto a free path carries the content and drops the
+ * source
  */
 TEST_F(DurabilityTest, MovesOntoFreePath) {
   Create(src_path_, "Hello, world!");
@@ -479,7 +485,8 @@ TEST_F(DurabilityTest, MovesOntoFreePath) {
 }
 
 /**
- * @brief   Verify an occupied destination is refused and both files survive untouched
+ * @brief   Verify an occupied destination is refused and both files survive
+ * untouched
  */
 TEST_F(DurabilityTest, RefusesOccupiedDestination) {
   Create(src_path_, "Hello, world!");
@@ -492,7 +499,8 @@ TEST_F(DurabilityTest, RefusesOccupiedDestination) {
 }
 
 /**
- * @brief   Verify a missing source is refused rather than creating an empty destination
+ * @brief   Verify a missing source is refused rather than creating an empty
+ * destination
  */
 TEST_F(DurabilityTest, RefusesMissingSource) {
   EXPECT_EQ(RenameFile(src_path_, dst_path_), Result::kFailure);
@@ -500,7 +508,8 @@ TEST_F(DurabilityTest, RefusesMissingSource) {
 }
 
 /**
- * @brief   Verify syncing a written file reports success and the bytes are readable after
+ * @brief   Verify syncing a written file reports success and the bytes are
+ * readable after
  */
 TEST_F(DurabilityTest, SyncsFileContents) {
   FILE* file = nullptr;
@@ -527,7 +536,8 @@ TEST_F(DurabilityTest, SyncsParentDirectory) {
 }
 
 /**
- * @brief   Verify syncing reports failure when the parent directory does not exist
+ * @brief   Verify syncing reports failure when the parent directory does not
+ * exist
  */
 TEST_F(DurabilityTest, SyncDirRejectsMissingDirectory) {
   EXPECT_EQ(SyncDir("fake/file.tmp"), Result::kFailure);
@@ -536,7 +546,8 @@ TEST_F(DurabilityTest, SyncDirRejectsMissingDirectory) {
 #ifndef _WIN32
 
 /**
- * @brief   Verify syncing reports failure when the buffered bytes cannot reach the device
+ * @brief   Verify syncing reports failure when the buffered bytes cannot reach
+ * the device
  */
 TEST_F(DurabilityTest, SyncFileRejectsFullDevice) {
   FILE* file = nullptr;
@@ -554,11 +565,13 @@ TEST_F(DurabilityTest, SyncFileRejectsFullDevice) {
 }
 
 /**
- * @brief   Verify syncing reports failure when the descriptor cannot be synced at all
+ * @brief   Verify syncing reports failure when the descriptor cannot be synced
+ * at all
  *
- * The case above fails in the flush; this one fails in the fsync behind it. A character device takes
- * the buffered bytes without complaint and then has nothing to sync them to, so the refusal here can
- * only have come from the second half.
+ * The case above fails in the flush; this one fails in the fsync behind it. A
+ * character device takes the buffered bytes without complaint and then has
+ * nothing to sync them to, so the refusal here can only have come from the
+ * second half.
  */
 TEST_F(DurabilityTest, SyncFileRejectsUnsyncableDescriptor) {
   FILE* file = nullptr;
@@ -576,10 +589,12 @@ TEST_F(DurabilityTest, SyncFileRejectsUnsyncableDescriptor) {
 }
 
 /**
- * @brief   Verify syncing reports failure when the parent directory opens but refuses the sync
+ * @brief   Verify syncing reports failure when the parent directory opens but
+ * refuses the sync
  *
- * SyncDirRejectsMissingDirectory stops at the open. A procfs directory gets past it and refuses the
- * fsync instead, which is the only other way this can fail.
+ * SyncDirRejectsMissingDirectory stops at the open. A procfs directory gets
+ * past it and refuses the fsync instead, which is the only other way this can
+ * fail.
  */
 TEST_F(DurabilityTest, SyncDirRejectsUnsyncableDirectory) {
   constexpr const char* kPseudoPath = "/proc/self/status";

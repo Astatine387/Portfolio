@@ -23,15 +23,16 @@
 
 namespace {
 
-/* Nonce layout of the STREAM construction: zero padding, then the big-endian chunk counter, then the final-chunk flag
- * in the last byte */
+/* Nonce layout of the STREAM construction: zero padding, then the big-endian
+ * chunk counter, then the final-chunk flag in the last byte */
 
 constexpr size_t kCounterOffset = kNonceSize - 1 - sizeof(uint64_t);
 
 constexpr uint8_t kNormalChunkFlag = 0x00;
 constexpr uint8_t kFinalChunkFlag = 0x01;
 
-static_assert(kCounterOffset + sizeof(uint64_t) + 1 == kNonceSize, "Nonce layout does not fill the nonce");
+static_assert(kCounterOffset + sizeof(uint64_t) + 1 == kNonceSize,
+              "Nonce layout does not fill the nonce");
 
 }  // namespace
 
@@ -39,8 +40,9 @@ AesGcm::AesGcm() {
   writer_ = std::thread(&AesGcm::WriterLoop, this);
 }
 
-/* Joining the writer and taking its lock can both throw std::system_error, which a destructor cannot propagate; there
- * would be nothing left to recover at this point either */
+/* Joining the writer and taking its lock can both throw std::system_error,
+ * which a destructor cannot propagate; there would be nothing left to recover
+ * at this point either */
 
 // NOLINTNEXTLINE(bugprone-exception-escape)
 AesGcm::~AesGcm() {
@@ -100,13 +102,16 @@ Result AesGcm::WriteFile(const void* buff, size_t size) {
 }
 
 void AesGcm::WriterLoop() noexcept {
-  /* One chunk is written while the next one is being read and encrypted. Only ever one job is queued, so the producer
-   * owns whichever of the two buffers the writer is not holding. */
+  /* One chunk is written while the next one is being read and encrypted. Only
+   * ever one job is queued, so the producer owns whichever of the two buffers
+   * the writer is not holding. */
 
   UniqueLock lk(write_mtx_);
 
   for (;;) {
-    write_cv_.Wait(lk, [this]() REQUIRES(write_mtx_) { return write_pending_ || writer_stop_; });
+    write_cv_.Wait(lk, [this]() REQUIRES(write_mtx_) {
+      return write_pending_ || writer_stop_;
+    });
 
     /* Exit once a shutdown was requested and no job is left to drain */
 
@@ -144,8 +149,9 @@ void AesGcm::WriterLoop() noexcept {
 Result AesGcm::SubmitWrite(const void* buff, size_t size) {
   UniqueLock lk(write_mtx_);
 
-  /* Waiting here is what holds the pipeline to a single job: once it returns, the buffer handed over on the previous
-   * call is free again, so the caller can rotate back into it */
+  /* Waiting here is what holds the pipeline to a single job: once it returns,
+   * the buffer handed over on the previous call is free again, so the caller
+   * can rotate back into it */
 
   write_cv_.Wait(lk, [this]() REQUIRES(write_mtx_) { return !write_pending_; });
 
@@ -153,8 +159,8 @@ Result AesGcm::SubmitWrite(const void* buff, size_t size) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  /* The buffer is borrowed, not copied, so the caller has to leave it alone until the next SubmitWrite or FlushWrite
-   * returns */
+  /* The buffer is borrowed, not copied, so the caller has to leave it alone
+   * until the next SubmitWrite or FlushWrite returns */
 
   write_buff_ = buff;
   write_size_ = size;
@@ -167,8 +173,8 @@ Result AesGcm::SubmitWrite(const void* buff, size_t size) {
 }
 
 Result AesGcm::FlushWrite() {
-  /* Where a late failure surfaces: a write that failed after its SubmitWrite had already returned is reported nowhere
-   * else */
+  /* Where a late failure surfaces: a write that failed after its SubmitWrite
+   * had already returned is reported nowhere else */
 
   UniqueLock lk(write_mtx_);
 
@@ -182,23 +188,28 @@ void AesGcm::ReportProgress() {
     return;
   }
 
-  /* Encryption refuses a source above kMaxPlaintextSize, but decryption takes whatever size the file on disk has, so
-   * the multiplication is not bounded by that check and would overflow past 92 PB. Multiplying first is exact and is
-   * the form that runs for every size this build produces. The second form only runs past that point, where dropping
-   * the remainder of the divisor moves the result by less than a part in 10^13. Clamping is what makes that divisor
-   * non-zero, since a numerator large enough to reach the second form forces an equally large denominator. */
+  /* Encryption refuses a source above kMaxPlaintextSize, but decryption takes
+   * whatever size the file on disk has, so the multiplication is not bounded by
+   * that check and would overflow past 92 PB. Multiplying first is exact and is
+   * the form that runs for every size this build produces. The second form only
+   * runs past that point, where dropping the remainder of the divisor moves the
+   * result by less than a part in 10^13. Clamping is what makes that divisor
+   * non-zero, since a numerator large enough to reach the second form forces an
+   * equally large denominator. */
 
   int perc = 100;
 
   if (progress_max_ > 0) {
     const int64_t cur = std::min(progress_cur_, progress_max_);
 
-    perc = static_cast<int>(cur <= std::numeric_limits<int64_t>::max() / 100 ? cur * 100 / progress_max_
-                                                                             : cur / (progress_max_ / 100));
+    perc = static_cast<int>(cur <= std::numeric_limits<int64_t>::max() / 100
+                                ? cur * 100 / progress_max_
+                                : cur / (progress_max_ / 100));
   }
 
-  /* A chunk is small enough that most of them do not move the percentage at all, and every report crosses into the GUI
-   * thread, so only a whole percent is worth sending */
+  /* A chunk is small enough that most of them do not move the percentage at
+   * all, and every report crosses into the GUI thread, so only a whole percent
+   * is worth sending */
 
   if (perc == last_perc_) {
     return;
@@ -214,7 +225,8 @@ bool AesGcm::IsCancelled() const {
 }
 
 void AesGcm::ReportError(const char* msg) {
-  /* Serialize the callback so a write-thread error cannot race a read/encrypt-thread error */
+  /* Serialize the callback so a write-thread error cannot race a
+   * read/encrypt-thread error */
 
   UniqueLock lk(error_mtx_);
 
@@ -240,8 +252,9 @@ void AesGcm::ReportError(const char* msg) {
 }
 
 void AesGcm::BuildNonce(uint64_t idx, bool is_last) {
-  /* The counter gives every chunk a nonce of its own, so a reordered or duplicated chunk fails its tag, and the flag
-   * binds where the file ends, so a truncated or extended one fails its tag too */
+  /* The counter gives every chunk a nonce of its own, so a reordered or
+   * duplicated chunk fails its tag, and the flag binds where the file ends, so
+   * a truncated or extended one fails its tag too */
 
   nonce_.fill(0);
 
@@ -251,8 +264,8 @@ void AesGcm::BuildNonce(uint64_t idx, bool is_last) {
 }
 
 void AesGcm::AllocBuffers() {
-  /* Each buffer carries room for a tag past the chunk, so encryption can append the tag in place and a whole chunk
-   * still leaves in one write */
+  /* Each buffer carries room for a tag past the chunk, so encryption can append
+   * the tag in place and a whole chunk still leaves in one write */
 
   for (std::vector<uint8_t>& buff : buff_) {
     if (!buff.empty()) {
@@ -264,7 +277,8 @@ void AesGcm::AllocBuffers() {
 }
 
 Result AesGcm::SetupCtx(CryptoMode mode) {
-  /* One engine can serve more than one operation, so a context left over from the previous one goes first */
+  /* One engine can serve more than one operation, so a context left over from
+   * the previous one goes first */
 
   if (ctx_) {
     EVP_CIPHER_CTX_free(ctx_);
@@ -280,19 +294,23 @@ Result AesGcm::SetupCtx(CryptoMode mode) {
     // LCOV_EXCL_STOP
   }
 
-  /* Three calls rather than one: OpenSSL takes the cipher first, then the nonce length, then the key. Stating the
-   * length explicitly keeps the format independent of whatever the library defaults to. */
+  /* Three calls rather than one: OpenSSL takes the cipher first, then the nonce
+   * length, then the key. Stating the length explicitly keeps the format
+   * independent of whatever the library defaults to. */
 
-  const auto init = mode == CryptoMode::kEncrypt ? &EVP_EncryptInit_ex : &EVP_DecryptInit_ex;
+  const auto init =
+      mode == CryptoMode::kEncrypt ? &EVP_EncryptInit_ex : &EVP_DecryptInit_ex;
 
   if (init(ctx_, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1) {
     // LCOV_EXCL_START
-    ReportError("[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
+    ReportError(
+        "[Crypto] Initialization failed - Cannot set AES-256-GCM algorithm\n");
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
 
-  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN, static_cast<int>(kNonceSize), nullptr) != 1) {
+  if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_SET_IVLEN,
+                          static_cast<int>(kNonceSize), nullptr) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Initialization failed - Cannot set nonce size\n");
     return Result::kFailure;

@@ -28,7 +28,8 @@ int Vault::GetEntryCount() const {
   return static_cast<int>(entry_set_.size());
 }
 
-bool Vault::GetEntryPW(const std::string& site, const std::string& acc, Password& dst) {
+bool Vault::GetEntryPW(const std::string& site, const std::string& acc,
+                       Password& dst) {
   auto it = entry_set_.find(Entry{ .site = site, .acc = acc });
 
   if (it == entry_set_.end()) {
@@ -39,22 +40,26 @@ bool Vault::GetEntryPW(const std::string& site, const std::string& acc, Password
 
   if (!view.has_value()) {
     // LCOV_EXCL_START
-    ReportError("[Data] Access failed - Password view falls outside the image\n");
+    ReportError(
+        "[Data] Access failed - Password view falls outside the image\n");
     return false;
     // LCOV_EXCL_STOP
   }
 
-  const char* pw_ptr = (it->pw_len > 0) ? reinterpret_cast<const char*>(view->data()) : nullptr;
+  const char* pw_ptr =
+      (it->pw_len > 0) ? reinterpret_cast<const char*>(view->data()) : nullptr;
 
   return dst.SetData(pw_ptr, it->pw_len) == Result::kSuccess;
 }
 
 void Vault::Clear() {
   if (file_) {
-    /* Nothing durable rides on this close. The stream is either the vault opened for reading, or a temporary file on
-     * a save path that has already failed, and each of those paths removes the temporary right after this returns.
-     * A save that gets as far as publishing anything has closed its own stream and cleared file_ in SaveVaultWith,
-     * after the sync that put the bytes on disk, so it never reaches here holding one. */
+    /* Nothing durable rides on this close. The stream is either the vault
+     * opened for reading, or a temporary file on a save path that has already
+     * failed, and each of those paths removes the temporary right after this
+     * returns. A save that gets as far as publishing anything has closed its
+     * own stream and cleared file_ in SaveVaultWith, after the sync that put
+     * the bytes on disk, so it never reaches here holding one. */
 
     static_cast<void>(fclose(file_));
     file_ = nullptr;

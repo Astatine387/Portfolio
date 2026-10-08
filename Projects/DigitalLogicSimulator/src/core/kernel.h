@@ -17,9 +17,11 @@
 #include "core/logic4.h"
 #include "core/netlist.h"
 
-inline constexpr Time kNoTimeLimit = std::numeric_limits<Time>::max();  // Sentinel for Kernel
+inline constexpr Time kNoTimeLimit =
+    std::numeric_limits<Time>::max();  // Sentinel for Kernel
 
-inline constexpr std::size_t kDefaultMaxDeltaCycles = 10000;  // Default cap on delta cycles per time step
+inline constexpr std::size_t kDefaultMaxDeltaCycles =
+    10000;  // Default cap on delta cycles per time step
 
 /**
  * @enum    RunStatus
@@ -37,9 +39,11 @@ enum class RunStatus : std::uint8_t {
  */
 struct RunResult {
   RunStatus status = RunStatus::kQuiescent;  // Why the run stopped
-  Time end_time = 0;                         // Simulation time when the run stopped
-  std::uint64_t value_changes = 0;           // Net value changes committed during the run
-  std::vector<NetId> unstable_nets;          // Nets left toggling when kOscillation is reported
+  Time end_time = 0;  // Simulation time when the run stopped
+  std::uint64_t value_changes =
+      0;  // Net value changes committed during the run
+  std::vector<NetId>
+      unstable_nets;  // Nets left toggling when kOscillation is reported
 };
 
 /**
@@ -54,7 +58,8 @@ class Kernel {
    * @param     net     Net whose value changed
    * @param     value   New resolved value of the net
    */
-  using ValueChangeCallback = std::function<void(Time time, NetId net, Logic4 value)>;
+  using ValueChangeCallback =
+      std::function<void(Time time, NetId net, Logic4 value)>;
 
   /**
    * @brief     Construct a kernel
@@ -86,7 +91,9 @@ class Kernel {
    * @param     net     Net to read
    * @return    Current resolved value of the net
    */
-  [[nodiscard]] Logic4 Value(NetId net) const { return net_values_[Index(net)]; }
+  [[nodiscard]] Logic4 Value(NetId net) const {
+    return net_values_[Index(net)];
+  }
 
   /**
    * @brief     Get the current simulation time
@@ -98,7 +105,9 @@ class Kernel {
    * @brief     Set value change callback function
    * @param     vcb     Value change callback
    */
-  void SetValueChangeCallback(ValueChangeCallback vcb) { vcb_ = std::move(vcb); }
+  void SetValueChangeCallback(ValueChangeCallback vcb) {
+    vcb_ = std::move(vcb);
+  }
 
   /**
    * @brief     Set maximum delta cycles before oscillation is reported
@@ -158,13 +167,14 @@ class Kernel {
    */
   void Schedule(NetId net, Logic4 value, Time when);
 
-  const Netlist& netlist_;                                            // netlist under simulation
-  std::vector<Logic4> net_values_;                                    // current value per net, by NetId
-  std::vector<Logic4> driver_values_;                                 // last value each gate drives
-  std::vector<Logic4> prev_clocks_;                                   // last clock seen per gate
-  std::priority_queue<Event, std::vector<Event>, EventLater> queue_;  // pending events
-  std::uint64_t next_seq_ = 0;                                        // next event sequence number
-  Time now_ = 0;                                                      // current simulation time
-  std::size_t max_cycles_ = kDefaultMaxDeltaCycles;                   // oscillation guard
-  ValueChangeCallback vcb_;                                           // change sink (e.g. a VCD writer)
+  const Netlist& netlist_;             // netlist under simulation
+  std::vector<Logic4> net_values_;     // current value per net, by NetId
+  std::vector<Logic4> driver_values_;  // last value each gate drives
+  std::vector<Logic4> prev_clocks_;    // last clock seen per gate
+  std::priority_queue<Event, std::vector<Event>, EventLater>
+      queue_;                   // pending events
+  std::uint64_t next_seq_ = 0;  // next event sequence number
+  Time now_ = 0;                // current simulation time
+  std::size_t max_cycles_ = kDefaultMaxDeltaCycles;  // oscillation guard
+  ValueChangeCallback vcb_;  // change sink (e.g. a VCD writer)
 };

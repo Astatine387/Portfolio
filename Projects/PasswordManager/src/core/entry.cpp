@@ -19,10 +19,12 @@ namespace {
  * @param   need    Bytes the next read wants
  * @return  true when the read fits
  *
- * A subtraction rather than cur + need > srclen. @p need carries a length field taken from the buffer being parsed
- * and so can be as large as UINT32_MAX, which an addition would wrap. Written this way the safety is a property of
- * this check rather than of the field ceilings each caller compares against beside it, so raising a ceiling, or
- * dropping one, cannot quietly put a wrapped sum in front of a read. SecureBuffer::Subspan and Entry::PwSpan bound
+ * A subtraction rather than cur + need > srclen. @p need carries a length field
+ * taken from the buffer being parsed and so can be as large as UINT32_MAX,
+ * which an addition would wrap. Written this way the safety is a property of
+ * this check rather than of the field ceilings each caller compares against
+ * beside it, so raising a ceiling, or dropping one, cannot quietly put a
+ * wrapped sum in front of a read. SecureBuffer::Subspan and Entry::PwSpan bound
  * themselves the same way.
  */
 constexpr bool HasBytes(size_t cur, size_t srclen, size_t need) {
@@ -32,14 +34,16 @@ constexpr bool HasBytes(size_t cur, size_t srclen, size_t need) {
 }  // namespace
 
 size_t Entry::Size() const {
-  return sizeof(uint32_t) + site.size() + sizeof(uint32_t) + acc.size() + sizeof(uint32_t) + pw_len;
+  return sizeof(uint32_t) + site.size() + sizeof(uint32_t) + acc.size() +
+         sizeof(uint32_t) + pw_len;
 }
 
 size_t Entry::PwOffset() const {
   return Size() - pw_len;
 }
 
-std::optional<std::span<const uint8_t>> Entry::PwSpan(std::span<const uint8_t> img) const {
+std::optional<std::span<const uint8_t>> Entry::PwSpan(
+    std::span<const uint8_t> img) const {
   if (pw_off > img.size() || pw_len > img.size() - pw_off) {
     return std::nullopt;
   }
@@ -47,7 +51,8 @@ std::optional<std::span<const uint8_t>> Entry::PwSpan(std::span<const uint8_t> i
   return img.subspan(pw_off, pw_len);
 }
 
-size_t Entry::Serialize(std::span<uint8_t> dst, std::span<const uint8_t> pw_src) const {
+size_t Entry::Serialize(std::span<uint8_t> dst,
+                        std::span<const uint8_t> pw_src) const {
   if (dst.size() < Size()) {
     return 0;
   }

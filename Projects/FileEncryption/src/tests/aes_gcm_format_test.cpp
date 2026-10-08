@@ -19,7 +19,8 @@
 
 /**
  * @class   AesGcmFormatTest
- * @brief   Fixture for the tests that pin the bytes an encrypted file is made of
+ * @brief   Fixture for the tests that pin the bytes an encrypted file is made
+ * of
  */
 class AesGcmFormatTest : public AesGcmTest {};
 
@@ -28,7 +29,8 @@ class AesGcmFormatTest : public AesGcmTest {};
  * ================================================== */
 
 /**
- * @brief   Verify every chunk boundary round-trips and produces the documented file size
+ * @brief   Verify every chunk boundary round-trips and produces the documented
+ * file size
  */
 TEST_F(AesGcmFormatTest, FramingRoundTripsAcrossChunkBoundaries) {
   const std::array<size_t, 9> sizes{ 0,
@@ -63,38 +65,45 @@ TEST_F(AesGcmFormatTest, FramingRoundTripsAcrossChunkBoundaries) {
  * ================================================== */
 
 /**
- * @brief   Verify a fixed input still produces the byte-identical file it produced before
+ * @brief   Verify a fixed input still produces the byte-identical file it
+ * produced before
  *
- * Where kGoldenDigest comes from: this implementation produced it. No specification, reference
- * tool or third party stands behind the value. It was pinned by writing the test with a
- * placeholder digest, running it once, and recording the value the failure reported. That makes
- * it a regression pin, which is a weaker thing than the known-answer vectors in kat_test.cpp,
- * and it has to be read as such.
+ * Where kGoldenDigest comes from: this implementation produced it. No
+ * specification, reference tool or third party stands behind the value. It was
+ * pinned by writing the test with a placeholder digest, running it once, and
+ * recording the value the failure reported. That makes it a regression pin,
+ * which is a weaker thing than the known-answer vectors in kat_test.cpp, and it
+ * has to be read as such.
  *
- * What it proves: the format has not drifted. The header layout, the chunk framing, the nonce
- * derivation and the associated data all feed into these bytes, so altering any of them fails
- * this test at once.
+ * What it proves: the format has not drifted. The header layout, the chunk
+ * framing, the nonce derivation and the associated data all feed into these
+ * bytes, so altering any of them fails this test at once.
  *
- * What it does not prove: that the cryptography is right. An implementation that was wrong when
- * the value was recorded would agree with itself forever. Correctness rests on the NIST CAVP and
- * RFC 9106 vectors in kat_test.cpp, and on the framing and associated data tests beside this one.
+ * What it does not prove: that the cryptography is right. An implementation
+ * that was wrong when the value was recorded would agree with itself forever.
+ * Correctness rests on the NIST CAVP and RFC 9106 vectors in kat_test.cpp, and
+ * on the framing and associated data tests beside this one.
  *
- * When regenerating the value is legitimate: only alongside a deliberate change to the format or
- * to the inputs below. A released format change also means a new magic number, because this format
- * carries no version field. A failure nobody intended is a regression, and re-pinning the digest to
- * make it pass would throw away the only thing this test does.
+ * When regenerating the value is legitimate: only alongside a deliberate change
+ * to the format or to the inputs below. A released format change also means a
+ * new magic number, because this format carries no version field. A failure
+ * nobody intended is a regression, and re-pinning the digest to make it pass
+ * would throw away the only thing this test does.
  *
- * How to check the value without trusting this test: encrypt MakePlain(2 * kChunkSize + 1000)
- * under the password "golden-password", a salt of sixteen 0x42 bytes and MinParams(), then run
- * sha256sum over the resulting file. Going outside also rules out the case where Sha256Hex is
- * broken and merely agrees with a digest that was recorded from the same broken helper.
+ * How to check the value without trusting this test: encrypt MakePlain(2 *
+ * kChunkSize + 1000) under the password "golden-password", a salt of sixteen
+ * 0x42 bytes and MinParams(), then run sha256sum over the resulting file. Going
+ * outside also rules out the case where Sha256Hex is broken and merely agrees
+ * with a digest that was recorded from the same broken helper.
  */
 TEST_F(AesGcmFormatTest, GoldenVectorIsStable) {
-  constexpr std::string_view kGoldenDigest = "c6d73241dd83e8f81485236fe497d059c4a7b677977091295aa17287050dcfad";
+  constexpr std::string_view kGoldenDigest =
+      "c6d73241dd83e8f81485236fe497d059c4a7b677977091295aa17287050dcfad";
   constexpr size_t kGoldenPlainSize = 2 * kChunkSize + 1000;
 
   const auto salt = MakeSalt(0x42);
-  const std::vector<uint8_t> cipher = EncryptBytes(MakePlain(kGoldenPlainSize), salt, "golden-password");
+  const std::vector<uint8_t> cipher =
+      EncryptBytes(MakePlain(kGoldenPlainSize), salt, "golden-password");
 
   ASSERT_EQ(cipher.size(), kHeaderSize + kGoldenPlainSize + 3 * kTagSize);
 
@@ -104,9 +113,12 @@ TEST_F(AesGcmFormatTest, GoldenVectorIsStable) {
     0x01, 0x00, 0x00, 0x00,  // TimeCost = 1, little-endian
     0x00, 0x00, 0x01, 0x00,  // MemCost = 65536, little-endian
     0x01, 0x00, 0x00, 0x00,  // Parallelism = 1, little-endian
-    0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,  // Salt
-    0x38, 0x70, 0x09, 0xA7, 0xC4, 0x83, 0x0E, 0xA1, 0xEA, 0xA2, 0x89, 0x0B, 0xC2, 0xC0, 0x86, 0x55,  // Commitment
-    0x8B, 0xC1, 0x76, 0xB4, 0x08, 0x43, 0x12, 0xC4, 0x31, 0x20, 0x9A, 0x59, 0x9E, 0xCF, 0xD1, 0x8F,
+    0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,
+    0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42, 0x42,  // Salt
+    0x38, 0x70, 0x09, 0xA7, 0xC4, 0x83, 0x0E, 0xA1,
+    0xEA, 0xA2, 0x89, 0x0B, 0xC2, 0xC0, 0x86, 0x55,  // Commitment
+    0x8B, 0xC1, 0x76, 0xB4, 0x08, 0x43, 0x12, 0xC4,
+    0x31, 0x20, 0x9A, 0x59, 0x9E, 0xCF, 0xD1, 0x8F,
   };
 
   EXPECT_EQ(memcmp(cipher.data(), expected_header.data(), kHeaderSize), 0);
@@ -118,15 +130,17 @@ TEST_F(AesGcmFormatTest, GoldenVectorIsStable) {
  * ================================================== */
 
 /**
- * @brief   Verify re-initializing only the nonce matches a context built from scratch
+ * @brief   Verify re-initializing only the nonce matches a context built from
+ * scratch
  *
- * The format is spelled out again here against raw OpenSSL rather than driven through AesGcm, which is
- * the whole point: reusing the engine's own nonce derivation would let a mistake in it agree with
- * itself. What the two halves share is the specification, not the code.
+ * The format is spelled out again here against raw OpenSSL rather than driven
+ * through AesGcm, which is the whole point: reusing the engine's own nonce
+ * derivation would let a mistake in it agree with itself. What the two halves
+ * share is the specification, not the code.
  *
- * What it isolates is the one shortcut the engine takes. Setting up the cipher once and moving only the
- * nonce per chunk has to produce what a context built fresh for each chunk would, or state is leaking
- * from one chunk into the next.
+ * What it isolates is the one shortcut the engine takes. Setting up the cipher
+ * once and moving only the nonce per chunk has to produce what a context built
+ * fresh for each chunk would, or state is leaking from one chunk into the next.
  */
 TEST_F(AesGcmFormatTest, SharedContextMatchesFreshContext) {
   constexpr size_t kChunks = 3;
@@ -150,9 +164,14 @@ TEST_F(AesGcmFormatTest, SharedContextMatchesFreshContext) {
 
   ASSERT_NE(ctx, nullptr);
 
-  ASSERT_EQ(EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr), 1);
-  ASSERT_EQ(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, static_cast<int>(kNonceSize), nullptr), 1);
-  ASSERT_EQ(EVP_EncryptInit_ex(ctx, nullptr, nullptr, key.Bytes().data(), nullptr), 1);
+  ASSERT_EQ(
+      EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr), 1);
+  ASSERT_EQ(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN,
+                                static_cast<int>(kNonceSize), nullptr),
+            1);
+  ASSERT_EQ(
+      EVP_EncryptInit_ex(ctx, nullptr, nullptr, key.Bytes().data(), nullptr),
+      1);
 
   for (size_t i = 0; i < kChunks; i++) {
     std::array<uint8_t, kNonceSize> nonce{};
@@ -165,14 +184,22 @@ TEST_F(AesGcmFormatTest, SharedContextMatchesFreshContext) {
 
     int outlen = 0;
 
-    ASSERT_EQ(EVP_EncryptInit_ex(ctx, nullptr, nullptr, nullptr, nonce.data()), 1);
-    ASSERT_EQ(EVP_EncryptUpdate(ctx, nullptr, &outlen, aad.data(), static_cast<int>(aad.size())), 1);
-    ASSERT_EQ(EVP_EncryptUpdate(ctx, shared[i].data(), &outlen, plain.data(), static_cast<int>(kLen)), 1);
+    ASSERT_EQ(EVP_EncryptInit_ex(ctx, nullptr, nullptr, nullptr, nonce.data()),
+              1);
+    ASSERT_EQ(EVP_EncryptUpdate(ctx, nullptr, &outlen, aad.data(),
+                                static_cast<int>(aad.size())),
+              1);
+    ASSERT_EQ(EVP_EncryptUpdate(ctx, shared[i].data(), &outlen, plain.data(),
+                                static_cast<int>(kLen)),
+              1);
 
     std::array<uint8_t, kBlockSize> final_block{};
 
     ASSERT_EQ(EVP_EncryptFinal_ex(ctx, final_block.data(), &outlen), 1);
-    ASSERT_EQ(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, static_cast<int>(kTagSize), shared[i].data() + kLen), 1);
+    ASSERT_EQ(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG,
+                                  static_cast<int>(kTagSize),
+                                  shared[i].data() + kLen),
+              1);
   }
 
   EVP_CIPHER_CTX_free(ctx);
@@ -194,16 +221,29 @@ TEST_F(AesGcmFormatTest, SharedContextMatchesFreshContext) {
 
     int outlen = 0;
 
-    ASSERT_EQ(EVP_EncryptInit_ex(one, EVP_aes_256_gcm(), nullptr, nullptr, nullptr), 1);
-    ASSERT_EQ(EVP_CIPHER_CTX_ctrl(one, EVP_CTRL_GCM_SET_IVLEN, static_cast<int>(kNonceSize), nullptr), 1);
-    ASSERT_EQ(EVP_EncryptInit_ex(one, nullptr, nullptr, key.Bytes().data(), nonce.data()), 1);
-    ASSERT_EQ(EVP_EncryptUpdate(one, nullptr, &outlen, aad.data(), static_cast<int>(aad.size())), 1);
-    ASSERT_EQ(EVP_EncryptUpdate(one, fresh.data(), &outlen, plain.data(), static_cast<int>(kLen)), 1);
+    ASSERT_EQ(
+        EVP_EncryptInit_ex(one, EVP_aes_256_gcm(), nullptr, nullptr, nullptr),
+        1);
+    ASSERT_EQ(EVP_CIPHER_CTX_ctrl(one, EVP_CTRL_GCM_SET_IVLEN,
+                                  static_cast<int>(kNonceSize), nullptr),
+              1);
+    ASSERT_EQ(EVP_EncryptInit_ex(one, nullptr, nullptr, key.Bytes().data(),
+                                 nonce.data()),
+              1);
+    ASSERT_EQ(EVP_EncryptUpdate(one, nullptr, &outlen, aad.data(),
+                                static_cast<int>(aad.size())),
+              1);
+    ASSERT_EQ(EVP_EncryptUpdate(one, fresh.data(), &outlen, plain.data(),
+                                static_cast<int>(kLen)),
+              1);
 
     std::array<uint8_t, kBlockSize> final_block{};
 
     ASSERT_EQ(EVP_EncryptFinal_ex(one, final_block.data(), &outlen), 1);
-    ASSERT_EQ(EVP_CIPHER_CTX_ctrl(one, EVP_CTRL_GCM_GET_TAG, static_cast<int>(kTagSize), fresh.data() + kLen), 1);
+    ASSERT_EQ(
+        EVP_CIPHER_CTX_ctrl(one, EVP_CTRL_GCM_GET_TAG,
+                            static_cast<int>(kTagSize), fresh.data() + kLen),
+        1);
 
     EVP_CIPHER_CTX_free(one);
 
@@ -216,13 +256,15 @@ TEST_F(AesGcmFormatTest, SharedContextMatchesFreshContext) {
  * ================================================== */
 
 /**
- * @brief   Verify the header is authenticated, by patching a field that changes nothing else
+ * @brief   Verify the header is authenticated, by patching a field that changes
+ * nothing else
  */
 TEST_F(AesGcmFormatTest, HeaderIsAuthenticatedAsAssociatedData) {
-  /* Smaller than the smallest chunk size the format allows, so the file stays a single chunk
-   * for every value byte 4 is patched to. Tying this to kChunkSize instead would break the
-   * test: under a patched chunk_log2 of 12 the file would span sixteen chunks and be refused
-   * for a framing mismatch rather than for the associated data. */
+  /* Smaller than the smallest chunk size the format allows, so the file stays a
+   * single chunk for every value byte 4 is patched to. Tying this to kChunkSize
+   * instead would break the test: under a patched chunk_log2 of 12 the file
+   * would span sixteen chunks and be refused for a framing mismatch rather than
+   * for the associated data. */
 
   constexpr size_t kUnderAnyChunkSize = (size_t{ 1 } << kMinChunkSizeLog2) - 1;
 
@@ -238,7 +280,8 @@ TEST_F(AesGcmFormatTest, HeaderIsAuthenticatedAsAssociatedData) {
       continue;
     }
 
-    SCOPED_TRACE(testing::Message() << "chunk_log2 patched to " << static_cast<int>(log2));
+    SCOPED_TRACE(testing::Message()
+                 << "chunk_log2 patched to " << static_cast<int>(log2));
 
     std::vector<uint8_t> patched = cipher;
 

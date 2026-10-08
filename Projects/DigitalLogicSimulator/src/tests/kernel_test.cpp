@@ -89,7 +89,8 @@ TEST(KernelInit, EveryNetStartsAtX) {
 }
 
 /**
- * @brief   Verify a run with no stimulus settles immediately and changes nothing
+ * @brief   Verify a run with no stimulus settles immediately and changes
+ * nothing
  */
 TEST(KernelInit, NoStimulusIsQuiescent) {
   Netlist net;
@@ -224,7 +225,8 @@ TEST(KernelCombinational, FullAdderTruthTable) {
     const Logic4 expected_cout = ones >= 2 ? k1 : k0;
 
     EXPECT_EQ(kernel.Value(fa.sum), expected_sum) << "input combination " << i;
-    EXPECT_EQ(kernel.Value(fa.cout), expected_cout) << "input combination " << i;
+    EXPECT_EQ(kernel.Value(fa.cout), expected_cout)
+        << "input combination " << i;
     EXPECT_EQ(result.status, RunStatus::kQuiescent);
   }
 }
@@ -384,7 +386,8 @@ TEST(KernelTiming, OutputAppearsAfterDelay) {
 }
 
 /**
- * @brief   Verify a bounded run applies events up to the limit and defers the rest
+ * @brief   Verify a bounded run applies events up to the limit and defers the
+ * rest
  */
 TEST(KernelTiming, RunUntilLeavesLaterEventsPending) {
   using enum Logic4;
@@ -473,8 +476,8 @@ TEST(KernelResolution, ConflictingDriversResolveToX) {
 /**
  * @brief   Verify the delta-cycle cap halts unbounded same-time activity
  *
- * A self-starting combinational oscillation cannot arise from an all-X reset, so this drives a chain of zero-delay
- * buffers deeper than a delta cycle cap.
+ * A self-starting combinational oscillation cannot arise from an all-X reset,
+ * so this drives a chain of zero-delay buffers deeper than a delta cycle cap.
  */
 TEST(KernelOscillation, DeltaCycleCapHalts) {
   Netlist net;
@@ -519,8 +522,9 @@ TEST(KernelObservation, ValueChangeCallbackReportsChanges) {
   std::vector<Change> changes;
   Kernel kernel(net);
 
-  kernel.SetValueChangeCallback(
-      [&](Time when, NetId net_id, Logic4 val) { changes.push_back(Change{ when, net_id, val }); });
+  kernel.SetValueChangeCallback([&](Time when, NetId net_id, Logic4 val) {
+    changes.push_back(Change{ when, net_id, val });
+  });
 
   kernel.Poke(a, k1, 0);
   kernel.Poke(b, k1, 0);
@@ -554,8 +558,9 @@ TEST(KernelObservation, RepeatedRunsAreDeterministic) {
     std::vector<Change> changes;
     Kernel kernel(fa.net);
 
-    kernel.SetValueChangeCallback(
-        [&](Time when, NetId net_id, Logic4 val) { changes.push_back(Change{ when, net_id, val }); });
+    kernel.SetValueChangeCallback([&](Time when, NetId net_id, Logic4 val) {
+      changes.push_back(Change{ when, net_id, val });
+    });
 
     kernel.Poke(fa.a, Logic4::k1, 0);
     kernel.Poke(fa.b, Logic4::k1, 0);

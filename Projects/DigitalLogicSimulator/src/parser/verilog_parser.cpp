@@ -1,6 +1,7 @@
 /**
  * @file    verilog_parser.cpp
- * @brief   Out-of-line definitions for structural, gate-level verilog subset parser
+ * @brief   Out-of-line definitions for structural, gate-level verilog subset
+ * parser
  * @author  Astatine387
  */
 
@@ -61,7 +62,8 @@ struct Token {
  * @return  Whether a character is inter-token whitespace
  */
 [[nodiscard]] constexpr bool IsSpace(char c) {
-  return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v';
+  return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' ||
+         c == '\v';
 }
 
 /**
@@ -163,11 +165,13 @@ struct Token {
  */
 [[nodiscard]] bool IsUnsupportedKeyword(std::string_view word) {
   static constexpr auto kKeywords = std::to_array<std::string_view>({
-      "always",   "initial", "reg",       "assign",  "parameter", "localparam", "generate", "genvar",
-      "function", "task",    "primitive", "specify", "integer",   "real",       "time",     "event",
-      "force",    "release", "fork",      "join",    "case",      "casex",      "casez",    "defparam",
-      "tri",      "wand",    "wor",       "supply0", "supply1",   "posedge",    "negedge",  "if",
-      "else",     "for",     "while",     "repeat",  "forever",
+      "always",   "initial", "reg",      "assign",  "parameter", "localparam",
+      "generate", "genvar",  "function", "task",    "primitive", "specify",
+      "integer",  "real",    "time",     "event",   "force",     "release",
+      "fork",     "join",    "case",     "casex",   "casez",     "defparam",
+      "tri",      "wand",    "wor",      "supply0", "supply1",   "posedge",
+      "negedge",  "if",      "else",     "for",     "while",     "repeat",
+      "forever",
   });
 
   return std::ranges::find(kKeywords, word) != kKeywords.end();
@@ -331,7 +335,8 @@ class Parser {
         bool closed = false;
 
         while (pos_ < src_.size()) {
-          if (src_[pos_] == '*' && pos_ + 1 < src_.size() && src_[pos_ + 1] == '/') {
+          if (src_[pos_] == '*' && pos_ + 1 < src_.size() &&
+              src_[pos_ + 1] == '/') {
             AdvanceChar();
             AdvanceChar();
             closed = true;
@@ -459,7 +464,8 @@ class Parser {
 
     const Token& tok = Peek();
 
-    Fail(ParseStatus::kSyntaxError, tok, "expected " + std::string(msg) + ", found " + Describe(tok));
+    Fail(ParseStatus::kSyntaxError, tok,
+         "expected " + std::string(msg) + ", found " + Describe(tok));
 
     return tok;
   }
@@ -478,7 +484,8 @@ class Parser {
       return true;
     }
 
-    Fail(ParseStatus::kSyntaxError, tok, "expected " + std::string(msg) + ", found " + Describe(tok));
+    Fail(ParseStatus::kSyntaxError, tok,
+         "expected " + std::string(msg) + ", found " + Describe(tok));
 
     return false;
   }
@@ -494,7 +501,8 @@ class Parser {
     }
 
     if (symbols_.contains(name.text)) {
-      Fail(ParseStatus::kDuplicateDeclaration, name, "net '" + std::string(name.text) + "' is declared more than once");
+      Fail(ParseStatus::kDuplicateDeclaration, name,
+           "net '" + std::string(name.text) + "' is declared more than once");
       return;
     }
 
@@ -524,7 +532,8 @@ class Parser {
     const auto it = symbols_.find(name.text);
 
     if (it == symbols_.end()) {
-      Fail(ParseStatus::kUndeclaredNet, name, "net '" + std::string(name.text) + "' is not declared");
+      Fail(ParseStatus::kUndeclaredNet, name,
+           "net '" + std::string(name.text) + "' is not declared");
       return NetId{};
     }
 
@@ -580,7 +589,8 @@ class Parser {
       }
 
       if (Check(TokenKind::kLBracket)) {
-        Fail(ParseStatus::kUnsupportedConstruct, Peek(), "vector ports are not supported (scalar only)");
+        Fail(ParseStatus::kUnsupportedConstruct, Peek(),
+             "vector ports are not supported (scalar only)");
         return;
       }
 
@@ -601,7 +611,8 @@ class Parser {
   }
 
   /**
-   * @brief   Module body: a run of declarations and gate instances up to endmodule
+   * @brief   Module body: a run of declarations and gate instances up to
+   * endmodule
    */
   void ParseItems() {
     for (;;) {
@@ -612,7 +623,8 @@ class Parser {
       const Token tok = Peek();
 
       if (tok.kind == TokenKind::kEof) {
-        Fail(ParseStatus::kSyntaxError, tok, "expected 'endmodule', found end of input");
+        Fail(ParseStatus::kSyntaxError, tok,
+             "expected 'endmodule', found end of input");
         return;
       }
 
@@ -648,7 +660,8 @@ class Parser {
 
         if (IsUnsupportedKeyword(tok.text)) {
           Fail(ParseStatus::kUnsupportedConstruct, tok,
-               "'" + std::string(tok.text) + "' is not supported (structural subset only)");
+               "'" + std::string(tok.text) +
+                   "' is not supported (structural subset only)");
           return;
         }
 
@@ -658,7 +671,8 @@ class Parser {
         return;
       }
 
-      Fail(ParseStatus::kSyntaxError, tok, "expected a declaration or gate, found " + Describe(tok));
+      Fail(ParseStatus::kSyntaxError, tok,
+           "expected a declaration or gate, found " + Describe(tok));
 
       return;
     }
@@ -670,7 +684,8 @@ class Parser {
    */
   void ParseNetDecl(NetKind kind) {
     if (Check(TokenKind::kLBracket)) {
-      Fail(ParseStatus::kUnsupportedConstruct, Peek(), "vector nets are not supported (scalar only)");
+      Fail(ParseStatus::kUnsupportedConstruct, Peek(),
+           "vector nets are not supported (scalar only)");
       return;
     }
 
@@ -751,16 +766,20 @@ class Parser {
       return;
     }
 
-    const std::size_t num_inputs = ports.size() - 1;  // ports has at least one output
-    const bool single_input = (type == GateType::kNot || type == GateType::kBuf);
+    const std::size_t num_inputs =
+        ports.size() - 1;  // ports has at least one output
+    const bool single_input =
+        (type == GateType::kNot || type == GateType::kBuf);
 
     if (single_input && num_inputs != 1) {
-      Fail(ParseStatus::kSyntaxError, word, "'" + std::string(GateName(type)) + "' expects exactly one input");
+      Fail(ParseStatus::kSyntaxError, word,
+           "'" + std::string(GateName(type)) + "' expects exactly one input");
       return;
     }
 
     if (!single_input && num_inputs < 1) {
-      Fail(ParseStatus::kSyntaxError, word, "'" + std::string(GateName(type)) + "' expects at least one input");
+      Fail(ParseStatus::kSyntaxError, word,
+           "'" + std::string(GateName(type)) + "' expects at least one input");
       return;
     }
 
@@ -780,16 +799,18 @@ class Parser {
     }
 
     if (tok.kind == TokenKind::kWord && tok.text == "module") {
-      Fail(ParseStatus::kUnsupportedConstruct, tok, "multiple modules are not supported");
+      Fail(ParseStatus::kUnsupportedConstruct, tok,
+           "multiple modules are not supported");
     }
     else {
-      Fail(ParseStatus::kSyntaxError, tok, "unexpected content after 'endmodule', found " + Describe(tok));
+      Fail(ParseStatus::kSyntaxError, tok,
+           "unexpected content after 'endmodule', found " + Describe(tok));
     }
   }
 
-  Netlist netlist_;                                      // netlist under construction
-  ParseStatus status_ = ParseStatus::kOk;                // failure category
-  ParseError err_;                                       // first error, valid when !ok_
+  Netlist netlist_;                        // netlist under construction
+  ParseStatus status_ = ParseStatus::kOk;  // failure category
+  ParseError err_;                         // first error, valid when !ok_
   std::unordered_map<std::string_view, NetId> symbols_;  // net name -> handle
 
   std::optional<Token> look_;  // one-token lookahead buffer

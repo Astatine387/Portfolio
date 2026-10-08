@@ -30,7 +30,8 @@ const std::array<bool, 32> kDefaultSpcs = {
   //  '      "     ,      <      .      >      /     ?
 };
 
-static_assert(kSpcs.size() == kDefaultSpcs.size(), "Special character table and its default flags must be in sync");
+static_assert(kSpcs.size() == kDefaultSpcs.size(),
+              "Special character table and its default flags must be in sync");
 }  // namespace
 
 EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
@@ -56,8 +57,9 @@ EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
 
   /* Configure input lines */
 
-  /* No setMaxLength on either line. It counts UTF-16 characters rather than the UTF-8 bytes the limits are written
-   * in, and it truncates a paste without saying so, which would store a value the user never typed. OnOKClicked
+  /* No setMaxLength on either line. It counts UTF-16 characters rather than the
+   * UTF-8 bytes the limits are written in, and it truncates a paste without
+   * saying so, which would store a value the user never typed. OnOKClicked
    * refuses anything past kMaxSiteLen or kMaxAccLen bytes instead. */
 
   site_line_->setPlaceholderText("Site");
@@ -81,7 +83,8 @@ EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
     spc_checks_[i] = new QCheckBox(label);
     spc_checks_[i]->setChecked(kDefaultSpcs[i]);
 
-    spc_grid_->addWidget(spc_checks_[i], static_cast<int>(i / 8), static_cast<int>(i % 8));
+    spc_grid_->addWidget(spc_checks_[i], static_cast<int>(i / 8),
+                         static_cast<int>(i % 8));
   }
 
   spc_grid_->setSpacing(5);
@@ -125,15 +128,18 @@ EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
 
   /* Connect functions to buttons */
 
-  connect(check_all_btn_, &QPushButton::clicked, this, &EntryGUI::OnCheckAllClicked);
-  connect(uncheck_all_btn_, &QPushButton::clicked, this, &EntryGUI::OnUncheckAllClicked);
+  connect(check_all_btn_, &QPushButton::clicked, this,
+          &EntryGUI::OnCheckAllClicked);
+  connect(uncheck_all_btn_, &QPushButton::clicked, this,
+          &EntryGUI::OnUncheckAllClicked);
   connect(reset_btn_, &QPushButton::clicked, this, &EntryGUI::OnResetClicked);
   connect(ok_btn_, &QPushButton::clicked, this, &EntryGUI::OnOKClicked);
   connect(cancel_btn_, &QPushButton::clicked, this, &QDialog::reject);
   connect(gen_btn_, &QPushButton::clicked, this, &EntryGUI::OnGenerateClicked);
 
-  connect(len_slider_, &QSlider::valueChanged, this,
-          [this](int val) { len_label_->setText(QString("Length: %1").arg(val)); });
+  connect(len_slider_, &QSlider::valueChanged, this, [this](int val) {
+    len_label_->setText(QString("Length: %1").arg(val));
+  });
 }
 
 void EntryGUI::SetAddMode() {
@@ -146,7 +152,8 @@ void EntryGUI::SetAddMode() {
   input_pw_.Clean();
 }
 
-void EntryGUI::SetEditMode(const QString& site, const QString& acc, const Password& pw) {
+void EntryGUI::SetEditMode(const QString& site, const QString& acc,
+                           const Password& pw) {
   setWindowTitle("Edit Entry");
 
   site_line_->setText(site);
@@ -185,7 +192,8 @@ void EntryGUI::OnOKClicked() {
     return;
   }
 
-  /* Limit by UTF-8 byte size, since the vault stores and validates bytes (not characters) */
+  /* Limit by UTF-8 byte size, since the vault stores and validates bytes (not
+   * characters) */
 
   if (site_line_->text().toUtf8().size() > kMaxSiteLen) {
     err_msg_->setText("Site exceeds maximum size (256 bytes)");
@@ -274,8 +282,10 @@ bool EntryGUI::HasSpecialSelected() const {
   return false;
 }
 
-Result EntryGUI::GenPw(Password& dst, const QVector<bool>& spc_list, int pw_size) {
-  constexpr size_t kPoolMax = 94;  // 62 alphanumeric + up to 32 special characters
+Result EntryGUI::GenPw(Password& dst, const QVector<bool>& spc_list,
+                       int pw_size) {
+  constexpr size_t kPoolMax =
+      94;  // 62 alphanumeric + up to 32 special characters
 
   std::string lower = "abcdefghijklmnopqrstuvwxyz";
   std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -386,7 +396,8 @@ Result EntryGUI::GenPw(Password& dst, const QVector<bool>& spc_list, int pw_size
     return has_lower && has_upper && has_num && has_spc;
   };
 
-  /* Re-generate if the password doesn't have at least one each of four categories */
+  /* Re-generate if the password doesn't have at least one each of four
+   * categories */
 
   do {
     for (int i = 0; i < pw_size; i++) {

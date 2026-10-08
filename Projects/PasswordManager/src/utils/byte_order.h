@@ -3,8 +3,9 @@
  * @brief	Explicit byte order helpers for on-disk integer fields
  * @author	Astatine387
  *
- * Every integer field of a vault file is little-endian, so the format stays the same on a host of either
- * order rather than following whatever the compiler happens to emit.
+ * Every integer field of a vault file is little-endian, so the format stays the
+ * same on a host of either order rather than following whatever the compiler
+ * happens to emit.
  */
 
 #pragma once
@@ -29,6 +30,7 @@ constexpr void StoreLE32(uint8_t* dst, uint32_t val) {
  * @return  Decoded value
  */
 [[nodiscard]] constexpr uint32_t LoadLE32(const uint8_t* src) {
-  return static_cast<uint32_t>(src[0]) | (static_cast<uint32_t>(src[1]) << 8) | (static_cast<uint32_t>(src[2]) << 16) |
+  return static_cast<uint32_t>(src[0]) | (static_cast<uint32_t>(src[1]) << 8) |
+         (static_cast<uint32_t>(src[2]) << 16) |
          (static_cast<uint32_t>(src[3]) << 24);
 }

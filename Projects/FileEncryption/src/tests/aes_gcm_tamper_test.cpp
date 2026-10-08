@@ -28,10 +28,12 @@ class AesGcmTamperTest : public AesGcmTest {
   std::vector<uint8_t> plain_;
   std::vector<uint8_t> cipher_;
 
-  /* Three is the smallest count that gives a first, a middle and a last chunk at once, so the swap case has two
-   * interior chunks to exchange and truncation has a final chunk to remove that is not also the first. Exactly full
-   * matters as much: with a short tail, a cut at a chunk boundary would change the framing as well as the flag, and the
-   * two reasons for the rejection could no longer be told apart. */
+  /* Three is the smallest count that gives a first, a middle and a last chunk
+   * at once, so the swap case has two interior chunks to exchange and
+   * truncation has a final chunk to remove that is not also the first. Exactly
+   * full matters as much: with a short tail, a cut at a chunk boundary would
+   * change the framing as well as the flag, and the two reasons for the
+   * rejection could no longer be told apart. */
 
   static constexpr size_t kChunks = 3;
 
@@ -50,7 +52,8 @@ class AesGcmTamperTest : public AesGcmTest {
    * @param   msg     Description of the mutation
    * @param   bytes   Mutated file image
    */
-  void ExpectRejected(const std::string& msg, const std::vector<uint8_t>& bytes) {
+  void ExpectRejected(const std::string& msg,
+                      const std::vector<uint8_t>& bytes) {
     SCOPED_TRACE(testing::Message() << msg);
 
     std::vector<uint8_t> copy;
@@ -74,7 +77,8 @@ class AesGcmTamperTest : public AesGcmTest {
 };
 
 /**
- * @brief   Verify the file every other case mutates decrypts cleanly when left alone
+ * @brief   Verify the file every other case mutates decrypts cleanly when left
+ * alone
  */
 TEST_F(AesGcmTamperTest, AcceptsTheUntamperedFile) {
   std::vector<uint8_t> copy;
@@ -104,8 +108,10 @@ TEST_F(AesGcmTamperTest, RejectsHeaderBitFlips) {
  */
 TEST_F(AesGcmTamperTest, RejectsCiphertextBitFlips) {
   for (size_t chunk = 0; chunk < kChunks; chunk++) {
-    ExpectFlipRejected("ciphertext of chunk " + std::to_string(chunk), ChunkAt(chunk));
-    ExpectFlipRejected("ciphertext of chunk " + std::to_string(chunk), ChunkAt(chunk) + kChunkSize - 1);
+    ExpectFlipRejected("ciphertext of chunk " + std::to_string(chunk),
+                       ChunkAt(chunk));
+    ExpectFlipRejected("ciphertext of chunk " + std::to_string(chunk),
+                       ChunkAt(chunk) + kChunkSize - 1);
   }
 }
 
@@ -114,13 +120,16 @@ TEST_F(AesGcmTamperTest, RejectsCiphertextBitFlips) {
  */
 TEST_F(AesGcmTamperTest, RejectsTagBitFlips) {
   for (size_t chunk = 0; chunk < kChunks; chunk++) {
-    ExpectFlipRejected("tag of chunk " + std::to_string(chunk), ChunkAt(chunk) + kChunkSize);
-    ExpectFlipRejected("tag of chunk " + std::to_string(chunk), ChunkAt(chunk) + kChunkSize + kTagSize - 1);
+    ExpectFlipRejected("tag of chunk " + std::to_string(chunk),
+                       ChunkAt(chunk) + kChunkSize);
+    ExpectFlipRejected("tag of chunk " + std::to_string(chunk),
+                       ChunkAt(chunk) + kChunkSize + kTagSize - 1);
   }
 }
 
 /**
- * @brief   Verify reordering two chunks is refused, because the counter is part of the nonce
+ * @brief   Verify reordering two chunks is refused, because the counter is part
+ * of the nonce
  */
 TEST_F(AesGcmTamperTest, RejectsSwappedChunks) {
   constexpr size_t kBlock = kChunkSize + kTagSize;
@@ -135,7 +144,8 @@ TEST_F(AesGcmTamperTest, RejectsSwappedChunks) {
 }
 
 /**
- * @brief   Verify dropping the final chunk is refused, because the flag byte moves
+ * @brief   Verify dropping the final chunk is refused, because the flag byte
+ * moves
  */
 TEST_F(AesGcmTamperTest, RejectsTruncationToWholeChunk) {
   std::vector<uint8_t> bytes = cipher_;
@@ -146,7 +156,8 @@ TEST_F(AesGcmTamperTest, RejectsTruncationToWholeChunk) {
 }
 
 /**
- * @brief   Verify a cut inside a chunk is refused rather than underflowing the length
+ * @brief   Verify a cut inside a chunk is refused rather than underflowing the
+ * length
  */
 TEST_F(AesGcmTamperTest, RejectsTruncationInsideChunk) {
   /* Leave a tail too short to hold a tag */
@@ -156,7 +167,8 @@ TEST_F(AesGcmTamperTest, RejectsTruncationInsideChunk) {
 
     bytes.resize(ChunkAt(kChunks - 1) + tail);
 
-    ExpectRejected("truncated to a " + std::to_string(tail) + " byte tail", bytes);
+    ExpectRejected("truncated to a " + std::to_string(tail) + " byte tail",
+                   bytes);
 
     EXPECT_NE(last_error_.find("truncated or corrupted"), std::string::npos);
   }
@@ -168,8 +180,10 @@ TEST_F(AesGcmTamperTest, RejectsTruncationInsideChunk) {
 TEST_F(AesGcmTamperTest, RejectsAppendedChunk) {
   std::vector<uint8_t> bytes = cipher_;
 
-  bytes.insert(bytes.end(), cipher_.begin() + static_cast<ptrdiff_t>(ChunkAt(0)),
-               cipher_.begin() + static_cast<ptrdiff_t>(ChunkAt(0) + kChunkSize + kTagSize));
+  bytes.insert(bytes.end(),
+               cipher_.begin() + static_cast<ptrdiff_t>(ChunkAt(0)),
+               cipher_.begin() +
+                   static_cast<ptrdiff_t>(ChunkAt(0) + kChunkSize + kTagSize));
 
   ExpectRejected("extra valid-looking chunk appended", bytes);
 }
@@ -183,27 +197,32 @@ TEST_F(AesGcmTamperTest, RejectsShortDataRegion) {
 
     bytes.resize(kHeaderSize + region);
 
-    ExpectRejected("data region of " + std::to_string(region) + " bytes", bytes);
+    ExpectRejected("data region of " + std::to_string(region) + " bytes",
+                   bytes);
 
     EXPECT_NE(last_error_.find("too small"), std::string::npos);
   }
 }
 
 /**
- * @brief   Verify a chunk taken from another file under the same password is refused
+ * @brief   Verify a chunk taken from another file under the same password is
+ * refused
  */
 TEST_F(AesGcmTamperTest, RejectsChunkFromAnotherFile) {
   const auto other_salt = MakeSalt(0x5A);
-  const std::vector<uint8_t> other = EncryptBytes(MakePlain(kChunks * kChunkSize), other_salt, "password");
+  const std::vector<uint8_t> other =
+      EncryptBytes(MakePlain(kChunks * kChunkSize), other_salt, "password");
 
-  /* Same length, so the splice below replaces a chunk rather than resizing the file. Without it a rejection could be
-   * down to the framing no longer adding up, which is a different test. */
+  /* Same length, so the splice below replaces a chunk rather than resizing the
+   * file. Without it a rejection could be down to the framing no longer adding
+   * up, which is a different test. */
 
   ASSERT_EQ(other.size(), cipher_.size());
 
   std::vector<uint8_t> bytes = cipher_;
 
-  std::copy_n(other.begin() + static_cast<ptrdiff_t>(ChunkAt(0)), kChunkSize + kTagSize,
+  std::copy_n(other.begin() + static_cast<ptrdiff_t>(ChunkAt(0)),
+              kChunkSize + kTagSize,
               bytes.begin() + static_cast<ptrdiff_t>(ChunkAt(0)));
 
   ExpectRejected("chunk spliced from another file", bytes);
@@ -214,14 +233,19 @@ TEST_F(AesGcmTamperTest, RejectsChunkFromAnotherFile) {
  * ================================================== */
 
 /**
- * @brief   Verify a commitment the key does not match names both of the causes it cannot tell apart
+ * @brief   Verify a commitment the key does not match names both of the causes
+ * it cannot tell apart
  *
- * The engine is handed the right key here, so what the flip breaks is the header's claim about which password the file
- * belongs to. From inside DecryptInit that is indistinguishable from being given the wrong password, which is why the
- * message has to offer both causes: naming only the password would send the owner of a recoverable file away believing
- * they had forgotten it. What it must still not say is that the file is damaged, since no chunk has been read yet.
+ * The engine is handed the right key here, so what the flip breaks is the
+ * header's claim about which password the file belongs to. From inside
+ * DecryptInit that is indistinguishable from being given the wrong password,
+ * which is why the message has to offer both causes: naming only the password
+ * would send the owner of a recoverable file away believing they had forgotten
+ * it. What it must still not say is that the file is damaged, since no chunk
+ * has been read yet.
  */
-TEST_F(AesGcmTamperTest, ReportsWrongPasswordOrModifiedHeaderForCommitmentFlip) {
+TEST_F(AesGcmTamperTest,
+       ReportsWrongPasswordOrModifiedHeaderForCommitmentFlip) {
   std::vector<uint8_t> bytes = cipher_;
 
   bytes[kHeaderSize - 1] ^= 0x01;
@@ -234,10 +258,12 @@ TEST_F(AesGcmTamperTest, ReportsWrongPasswordOrModifiedHeaderForCommitmentFlip) 
 }
 
 /**
- * @brief   Verify damage to a chunk is reported as corruption rather than as a wrong password
+ * @brief   Verify damage to a chunk is reported as corruption rather than as a
+ * wrong password
  *
- * The negative half of each assertion is the point. One message covered both causes before the header carried a
- * commitment, and splitting it in two is only worth anything if neither failure can still be read as the other.
+ * The negative half of each assertion is the point. One message covered both
+ * causes before the header carried a commitment, and splitting it in two is
+ * only worth anything if neither failure can still be read as the other.
  */
 TEST_F(AesGcmTamperTest, ReportsCorruptionForCiphertextAndTagFlips) {
   const std::array<size_t, 2> offsets{ ChunkAt(0), ChunkAt(0) + kChunkSize };
@@ -260,12 +286,14 @@ TEST_F(AesGcmTamperTest, ReportsCorruptionForCiphertextAndTagFlips) {
 
 /**
  * @class   AesGcmWriteOrderTest
- * @brief   Fixture for the tests that watch what reaches the disk before a failure
+ * @brief   Fixture for the tests that watch what reaches the disk before a
+ * failure
  */
 class AesGcmWriteOrderTest : public AesGcmTest {};
 
 /**
- * @brief   Verify nothing past the last good chunk reaches the disk when a chunk fails
+ * @brief   Verify nothing past the last good chunk reaches the disk when a
+ * chunk fails
  */
 TEST_F(AesGcmWriteOrderTest, StopsWritingAtTheFirstBadChunk) {
   constexpr size_t kChunks = 5;
@@ -287,16 +315,20 @@ TEST_F(AesGcmWriteOrderTest, StopsWritingAtTheFirstBadChunk) {
   {
     FilePair files(enc_path_, dec_path_);
 
-    EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt), HeaderOf(files.Src())),
+    EXPECT_EQ(aes.Decrypt(files.Src(), files.Dst(), MakeKey("password", salt),
+                          HeaderOf(files.Src())),
               Result::kFailure);
   }
 
-  /* Chunks 0 to 2 were authenticated before they were written, and nothing beyond them was */
+  /* Chunks 0 to 2 were authenticated before they were written, and nothing
+   * beyond them was */
 
   std::vector<uint8_t> written;
 
   Read(dec_path_, written);
 
   EXPECT_EQ(written.size(), kBad * kChunkSize);
-  EXPECT_EQ(written, std::vector<uint8_t>(plain.begin(), plain.begin() + static_cast<ptrdiff_t>(written.size())));
+  EXPECT_EQ(written, std::vector<uint8_t>(
+                         plain.begin(), plain.begin() + static_cast<ptrdiff_t>(
+                                                            written.size())));
 }

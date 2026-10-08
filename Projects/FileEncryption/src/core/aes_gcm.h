@@ -59,15 +59,19 @@ class AesGcm {
    * @param		src     Source file
    * @param		dst     Destination file
    * @param		key     Key derived from the password and the salt
-   * @param		header  Header of the file, already read and validated by the caller
+   * @param		header  Header of the file, already read and validated by the
+   * caller
    * @return  kSuccess on success, kFailure on failure
    *
-   * The header arrives parsed rather than being read here. A caller has to read it anyway, since the key cannot be
-   * derived without the salt and the parameters it carries, and reading it a second time would mean deriving the key
-   * from one image of an untrusted file and authenticating against another. It is re-validated below all the same:
-   * checking a struct already in memory costs a few comparisons and leaves no window for the file to change in.
+   * The header arrives parsed rather than being read here. A caller has to read
+   * it anyway, since the key cannot be derived without the salt and the
+   * parameters it carries, and reading it a second time would mean deriving the
+   * key from one image of an untrusted file and authenticating against another.
+   * It is re-validated below all the same: checking a struct already in memory
+   * costs a few comparisons and leaves no window for the file to change in.
    */
-  Result Decrypt(FILE* src, FILE* dst, const SecureKey& key, const FileHeader& header);
+  Result Decrypt(FILE* src, FILE* dst, const SecureKey& key,
+                 const FileHeader& header);
 
   /**
    * @brief		Encrypt a file
@@ -76,9 +80,10 @@ class AesGcm {
    * @param		key     Key derived from the password and salt
    * @return  kSuccess on success, kFailure on failure
    *
-   * The salt and the parameters written to the header come from the key rather than from arguments of their own. Passed
-   * separately they could describe a derivation other than the one that produced the key, which would write a file that
-   * authenticates under nothing and reports success doing it.
+   * The salt and the parameters written to the header come from the key rather
+   * than from arguments of their own. Passed separately they could describe a
+   * derivation other than the one that produced the key, which would write a
+   * file that authenticates under nothing and reports success doing it.
    */
   Result Encrypt(FILE* src, FILE* dst, const SecureKey& key);
 
@@ -102,8 +107,9 @@ class AesGcm {
    * @brief		Set error callback function
    * @param		ecb		Error callback function
    *
-   * Guarded, unlike the progress callback below: an error can come from the writer thread as well as from the thread
-   * doing the reading and the crypto, so two of them can arrive at once.
+   * Guarded, unlike the progress callback below: an error can come from the
+   * writer thread as well as from the thread doing the reading and the crypto,
+   * so two of them can arrive at once.
    */
   void SetErrorCallback(ErrorCallback ecb) {
     UniqueLock lk(error_mtx_);
@@ -120,8 +126,8 @@ class AesGcm {
    * @brief		Set the cancellation flag
    * @param		flag	Cancellation flag
    *
-   * Borrowed, not owned. The flag belongs to whoever may raise it and has to outlive the engine, which holds for the
-   * worker that owns both.
+   * Borrowed, not owned. The flag belongs to whoever may raise it and has to
+   * outlive the engine, which holds for the worker that owns both.
    */
   void SetCancelFlag(const std::atomic<bool>* flag) { cancel_ = flag; }
 
@@ -131,37 +137,49 @@ class AesGcm {
   FILE* src_file_ = nullptr;  // Source file
   FILE* dst_file_ = nullptr;  // Destination file
 
-  ErrorCallback ecb_ GUARDED_BY(error_mtx_) = nullptr;  // Error reporting callback function
-  ProgressCallback pcb_ = nullptr;                      // Progress reporting callback function
-  Mutex error_mtx_;  // Serializes error callback calls from the read and write threads
+  ErrorCallback ecb_ GUARDED_BY(error_mtx_) =
+      nullptr;                      // Error reporting callback function
+  ProgressCallback pcb_ = nullptr;  // Progress reporting callback function
+  Mutex error_mtx_;  // Serializes error callback calls from the read and write
+                     // threads
 
   const std::atomic<bool>* cancel_ = nullptr;  // Cancellation flag
 
   int64_t src_size_ = 0;      // Source file size
   int64_t progress_cur_ = 0;  // Current progress
   int64_t progress_max_ = 0;  // Total work for progress reporting
-  int last_perc_ = -1;        // Last reported whole percent, -1 before the first report
+  int last_perc_ =
+      -1;  // Last reported whole percent, -1 before the first report
 
-  size_t chunk_size_ = kChunkSize;                     // Chunk size of the current session
+  size_t chunk_size_ = kChunkSize;  // Chunk size of the current session
   std::array<std::vector<uint8_t>, kBuffNum> buff_{};  // Chunk buffers
-  std::array<uint8_t, kHeaderSize> header_{};          // Serialized header, associated data of every chunk
-  std::array<uint8_t, kNonceSize> nonce_{};            // Nonce of the chunk being processed
+  std::array<uint8_t, kHeaderSize>
+      header_{};  // Serialized header, associated data of every chunk
+  std::array<uint8_t, kNonceSize>
+      nonce_{};  // Nonce of the chunk being processed
 
-  const SecureKey* key_ = nullptr;  // Session key for the current operation (non-owning)
+  const SecureKey* key_ =
+      nullptr;  // Session key for the current operation (non-owning)
 
-  /* The five fields below are one hand-off slot, not a queue: the producer fills it, the writer empties it, and
-   * SubmitWrite blocks until it is free again. That bound is what lets two chunk buffers be enough, since only one of
-   * them can be in the writer's hands at a time. */
+  /* The five fields below are one hand-off slot, not a queue: the producer
+   * fills it, the writer empties it, and SubmitWrite blocks until it is free
+   * again. That bound is what lets two chunk buffers be enough, since only one
+   * of them can be in the writer's hands at a time. */
 
   std::thread writer_;          // Long-lived asynchronous write worker
   Mutex write_mtx_;             // Serializes the write hand-off state
   ConditionVariable write_cv_;  // Signals job-ready and job-done transitions
 
-  const void* write_buff_ GUARDED_BY(write_mtx_) = nullptr;        // Buffer queued for writing
-  size_t write_size_ GUARDED_BY(write_mtx_) = 0;                   // Number of bytes queued for writing
-  bool write_pending_ GUARDED_BY(write_mtx_) = false;              // Whether a write job is queued or in progress
-  bool writer_stop_ GUARDED_BY(write_mtx_) = false;                // Whether the writer thread should exit
-  Result write_result_ GUARDED_BY(write_mtx_) = Result::kSuccess;  // Result of the most recent write
+  const void* write_buff_ GUARDED_BY(write_mtx_) =
+      nullptr;  // Buffer queued for writing
+  size_t write_size_ GUARDED_BY(write_mtx_) =
+      0;  // Number of bytes queued for writing
+  bool write_pending_ GUARDED_BY(write_mtx_) =
+      false;  // Whether a write job is queued or in progress
+  bool writer_stop_ GUARDED_BY(write_mtx_) =
+      false;  // Whether the writer thread should exit
+  Result write_result_ GUARDED_BY(write_mtx_) =
+      Result::kSuccess;  // Result of the most recent write
 
   /* ==================================================
    * I/O helper functions
@@ -190,7 +208,8 @@ class AesGcm {
 
   /**
    * @brief	    Queue a buffer for asynchronous writing
-   * @param	    buff	Source buffer (must stay valid until the next SubmitWrite or FlushWrite)
+   * @param	    buff	Source buffer (must stay valid until the next SubmitWrite
+   * or FlushWrite)
    * @param	    size	Number of bytes to write
    * @return    kSuccess if the previous write succeeded, kFailure otherwise
    */
@@ -206,18 +225,21 @@ class AesGcm {
    * @class   WriterGuard
    * @brief   Drain any in-flight asynchronous write when the scope exits
    *
-   * Every exit from Encrypt and Decrypt goes through it, early returns included. That is what lets the caller close the
-   * destination file the moment the call returns: the writer thread is done with it.
+   * Every exit from Encrypt and Decrypt goes through it, early returns
+   * included. That is what lets the caller close the destination file the
+   * moment the call returns: the writer thread is done with it.
    */
   class WriterGuard {
    public:
     explicit WriterGuard(AesGcm* self) : self_(self) {}
     ~WriterGuard() { self_->FlushWrite(); }
 
-    WriterGuard(const WriterGuard&) = delete;             // Delete copy constructor
-    WriterGuard& operator=(const WriterGuard&) = delete;  // Delete copy assignment operator
-    WriterGuard(WriterGuard&&) = delete;                  // Delete move constructor
-    WriterGuard& operator=(WriterGuard&&) = delete;       // Delete move assignment operator
+    WriterGuard(const WriterGuard&) = delete;  // Delete copy constructor
+    WriterGuard& operator=(const WriterGuard&) =
+        delete;                           // Delete copy assignment operator
+    WriterGuard(WriterGuard&&) = delete;  // Delete move constructor
+    WriterGuard& operator=(WriterGuard&&) =
+        delete;  // Delete move assignment operator
 
    private:
     AesGcm* self_;  // Owner engine whose write is drained on scope exit
@@ -241,10 +263,12 @@ class AesGcm {
 
   /**
    * @brief	    Set the session key on a freshly created context
-   * @param	    mode	kEncrypt for an encryption context, kDecrypt for a decryption context
+   * @param	    mode	kEncrypt for an encryption context, kDecrypt for a
+   * decryption context
    * @return    kSuccess on success, kFailure on failure
    *
-   * The key schedule is computed once here; each chunk only re-initializes the nonce.
+   * The key schedule is computed once here; each chunk only re-initializes the
+   * nonce.
    */
   Result SetupCtx(CryptoMode mode);
 
@@ -293,7 +317,8 @@ class AesGcm {
 
   /**
    * @brief		Encrypt one chunk in place and append its tag
-   * @param		buff      Buffer holding the plaintext, with room for the tag after it
+   * @param		buff      Buffer holding the plaintext, with room for the tag
+   * after it
    * @param		len       Plaintext length in bytes
    * @param		idx       Chunk index
    * @param		is_last   Whether this is the final chunk of the file

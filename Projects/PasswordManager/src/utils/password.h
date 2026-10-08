@@ -26,8 +26,9 @@ class Password {
    */
   ~Password() { Clean(); }
 
-  Password(const Password&) = delete;             // Delete copy constructor
-  Password& operator=(const Password&) = delete;  // Delete copy assignment operator
+  Password(const Password&) = delete;  // Delete copy constructor
+  Password& operator=(const Password&) =
+      delete;  // Delete copy assignment operator
 
   /**
    * @brief     Move constructor
@@ -102,6 +103,7 @@ class Password {
   void Clean();
 
  private:
-  char* data_ = nullptr;  // kMaxMasterPwLen + 1 bytes in sodium_malloc memory, or nullptr when empty
+  char* data_ = nullptr;  // kMaxMasterPwLen + 1 bytes in sodium_malloc memory,
+                          // or nullptr when empty
   size_t size_ = 0;
 };

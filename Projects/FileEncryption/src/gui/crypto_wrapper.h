@@ -16,9 +16,10 @@
  * @class   CryptoWrapper
  * @brief   Qt wrapper class for CryptoWorker
  *
- * The one Qt-aware layer over the worker. CryptoWorker reports through plain callbacks and knows nothing
- * about Qt, which is what lets the core be built and tested without an event loop; this object turns
- * those callbacks into signals and is moved to the worker thread, so the connections to the window
+ * The one Qt-aware layer over the worker. CryptoWorker reports through plain
+ * callbacks and knows nothing about Qt, which is what lets the core be built
+ * and tested without an event loop; this object turns those callbacks into
+ * signals and is moved to the worker thread, so the connections to the window
  * become queued ones.
  */
 class CryptoWrapper : public QObject {
@@ -33,8 +34,8 @@ class CryptoWrapper : public QObject {
    * @param		mode		Encryption/decryption mode
    * @param		cancel		Cancellation flag shared with the caller
    */
-  CryptoWrapper(const QString& src_path, const QString& dst_path, Password&& pw, CryptoMode mode,
-                CryptoWorker::CancelFlag cancel);
+  CryptoWrapper(const QString& src_path, const QString& dst_path, Password&& pw,
+                CryptoMode mode, CryptoWorker::CancelFlag cancel);
 
  signals:
   /**
@@ -55,9 +56,10 @@ class CryptoWrapper : public QObject {
    * @param		status		Message describing what the run is doing now
    * @param		cancellable	Whether cancelling would end the run early
    *
-   * Carries a bool rather than the phase itself. The window has no use for the name of the phase, only
-   * for what it may still offer the user, and a bool crosses a queued connection without asking the
-   * core layer to know what a Qt meta-type is.
+   * Carries a bool rather than the phase itself. The window has no use for the
+   * name of the phase, only for what it may still offer the user, and a bool
+   * crosses a queued connection without asking the core layer to know what a Qt
+   * meta-type is.
    */
   void PhaseChanged(const QString& status, bool cancellable);
 
@@ -68,5 +70,6 @@ class CryptoWrapper : public QObject {
   void Run();
 
  private:
-  CryptoWorker worker_;  // Held by value, so it is destroyed with the wrapper on the worker thread
+  CryptoWorker worker_;  // Held by value, so it is destroyed with the wrapper
+                         // on the worker thread
 };

@@ -29,8 +29,9 @@ class VaultInterface {
    */
   ~VaultInterface() = default;
 
-  VaultInterface(const VaultInterface&) = delete;             // Delete copy constructor
-  VaultInterface& operator=(const VaultInterface&) = delete;  // Delete copy assignment operator
+  VaultInterface(const VaultInterface&) = delete;  // Delete copy constructor
+  VaultInterface& operator=(const VaultInterface&) =
+      delete;  // Delete copy assignment operator
 
   /* ==================================================
    * Vault file functions
@@ -54,8 +55,10 @@ class VaultInterface {
 
   /**
    * @brief		Save the current vault
-   * @param		mode    What to do about a vault file that changed on disk since this session read or wrote it
-   * @return	kSuccess on success, kConflict when the file changed on disk, kError on any other failure
+   * @param		mode    What to do about a vault file that changed on disk since
+   * this session read or wrote it
+   * @return	kSuccess on success, kConflict when the file changed on disk,
+   * kError on any other failure
    */
   SaveResult SaveVault(SaveMode mode = SaveMode::kRefuseChanged);
 
@@ -84,10 +87,13 @@ class VaultInterface {
   /**
    * @brief		Change the master password and re-encrypt vault
    * @param		pw      New password
-   * @param		mode    What to do about a vault file that changed on disk since this session read or wrote it
-   * @return	kSuccess on success, kConflict when the file changed on disk, kError on any other save failure
+   * @param		mode    What to do about a vault file that changed on disk since
+   * this session read or wrote it
+   * @return	kSuccess on success, kConflict when the file changed on disk,
+   * kError on any other save failure
    */
-  SaveResult ChangePW(const Password& pw, SaveMode mode = SaveMode::kRefuseChanged);
+  SaveResult ChangePW(const Password& pw,
+                      SaveMode mode = SaveMode::kRefuseChanged);
 
   /* ==================================================
    * Entry CRUD functions
@@ -100,7 +106,8 @@ class VaultInterface {
    * @param		pw		Password of the new entry
    * @return	kSuccess on success, kFailure on failure
    */
-  Result CreateEntry(const QString& site, const QString& acc, const Password& pw);
+  Result CreateEntry(const QString& site, const QString& acc,
+                     const Password& pw);
 
   /**
    * @brief     Update an entry
@@ -109,11 +116,13 @@ class VaultInterface {
    * @param     new_site    New site name
    * @param     new_acc		New account
    * @param     new_pw		New password
-   * @return	kSuccess on success, kNotFound if the original entry is missing, kDuplicate if the new site/account
-   *          collides with another entry, kError if a new field is out of range or the new image could not be built
+   * @return	kSuccess on success, kNotFound if the original entry is missing,
+   * kDuplicate if the new site/account collides with another entry, kError if a
+   * new field is out of range or the new image could not be built
    */
-  UpdateResult UpdateEntry(const QString& old_site, const QString& old_acc, const QString& new_site,
-                           const QString& new_acc, const Password& new_pw);
+  UpdateResult UpdateEntry(const QString& old_site, const QString& old_acc,
+                           const QString& new_site, const QString& new_acc,
+                           const Password& new_pw);
 
   /**
    * @brief     Delete an entry
@@ -136,7 +145,8 @@ class VaultInterface {
    * @param     pw      Password of the found entry
    * @return    true if entry found, false otherwise
    *
-   * Not const: when the password bytes cannot be read, the vault records the failure as its last error.
+   * Not const: when the password bytes cannot be read, the vault records the
+   * failure as its last error.
    */
   bool GetPW(const QString& site, const QString& acc, Password& pw);
 
@@ -144,9 +154,10 @@ class VaultInterface {
    * @brief     Get the last error message
    * @return	Last error message
    *
-   * Read straight out of the vault rather than cached here off the error callback. A cache is only as current as the
-   * last callback that fired, and a failure the core records without reporting would leave it holding the reason for
-   * some earlier one.
+   * Read straight out of the vault rather than cached here off the error
+   * callback. A cache is only as current as the last callback that fired, and a
+   * failure the core records without reporting would leave it holding the
+   * reason for some earlier one.
    */
   [[nodiscard]] QString GetLastError() const;
 

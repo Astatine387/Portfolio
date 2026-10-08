@@ -41,8 +41,8 @@ struct ParseError {
  */
 struct ParseResult {
   ParseStatus status = ParseStatus::kOk;  // Why parsing stopped
-  Netlist netlist;                        // Constructed IR; empty unless status == kOk
-  ParseError err;                         // Valid unless status == kOk
+  Netlist netlist;  // Constructed IR; empty unless status == kOk
+  ParseError err;   // Valid unless status == kOk
 
   [[nodiscard]] bool Ok() const { return status == ParseStatus::kOk; }
 };

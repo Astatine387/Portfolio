@@ -1,11 +1,12 @@
 /**
  * @file	mutex.h
- * @brief	Thread safety annotated wrappers around the standard locking primitives
+ * @brief	Thread safety annotated wrappers around the standard locking
+ * primitives
  * @author	Astatine387
  *
- * The analysis can only reason about types that carry a capability, and the standard ones carry none.
- * These wrappers exist to attach the annotations and add nothing else, so what they wrap is what the
- * program actually locks on.
+ * The analysis can only reason about types that carry a capability, and the
+ * standard ones carry none. These wrappers exist to attach the annotations and
+ * add nothing else, so what they wrap is what the program actually locks on.
  */
 
 #pragma once
@@ -43,8 +44,9 @@ class CAPABILITY("mutex") Mutex {
    * @brief     Expose the wrapped mutex so a lock can be built on it
    * @return    Reference to the underlying std::mutex
    *
-   * For UniqueLock's constructor, which has to hand std::unique_lock the one type it accepts. Locking
-   * through it would step around the annotations and is what UniqueLock exists to prevent.
+   * For UniqueLock's constructor, which has to hand std::unique_lock the one
+   * type it accepts. Locking through it would step around the annotations and
+   * is what UniqueLock exists to prevent.
    */
   std::mutex& Native() { return mtx_; }
 
@@ -54,7 +56,8 @@ class CAPABILITY("mutex") Mutex {
 
 /**
  * @class   UniqueLock
- * @brief	Scoped lock owning a real std::unique_lock a condition variable can wait on
+ * @brief	Scoped lock owning a real std::unique_lock a condition variable can
+ * wait on
  */
 class SCOPED_CAPABILITY UniqueLock {
  public:
@@ -65,12 +68,14 @@ class SCOPED_CAPABILITY UniqueLock {
   explicit UniqueLock(Mutex& m) ACQUIRE(m) : lk_(m.Native()) {}
 
   /**
-   * @brief     Destructor of UniqueLock, releasing the mutex if it is still held
+   * @brief     Destructor of UniqueLock, releasing the mutex if it is still
+   * held
    */
   ~UniqueLock() RELEASE() = default;
 
-  UniqueLock(const UniqueLock&) = delete;             // Delete copy constructor
-  UniqueLock& operator=(const UniqueLock&) = delete;  // Delete copy assignment operator
+  UniqueLock(const UniqueLock&) = delete;  // Delete copy constructor
+  UniqueLock& operator=(const UniqueLock&) =
+      delete;  // Delete copy assignment operator
 
   /**
    * @brief     Re-acquire the mutex after a manual release
@@ -86,8 +91,9 @@ class SCOPED_CAPABILITY UniqueLock {
    * @brief     Expose the wrapped lock so a condition variable can wait on it
    * @return    Reference to the underlying std::unique_lock
    *
-   * A std::condition_variable releases and re-acquires the lock itself and will only take a real
-   * std::unique_lock, which is the reason this class owns one rather than a plain scoped lock.
+   * A std::condition_variable releases and re-acquires the lock itself and will
+   * only take a real std::unique_lock, which is the reason this class owns one
+   * rather than a plain scoped lock.
    */
   std::unique_lock<std::mutex>& Native() { return lk_; }
 
@@ -102,12 +108,14 @@ class SCOPED_CAPABILITY UniqueLock {
 class ConditionVariable {
  public:
   /**
-   * @brief     Block until the predicate holds, releasing the lock while waiting
+   * @brief     Block until the predicate holds, releasing the lock while
+   * waiting
    * @param     lk  Lock held by the caller
    * @param     p   Predicate, only ever evaluated with the lock held
    *
-   * The analysis cannot see that for itself, so a predicate reading guarded state is annotated
-   * REQUIRES at the call site rather than opting out of the checking.
+   * The analysis cannot see that for itself, so a predicate reading guarded
+   * state is annotated REQUIRES at the call site rather than opting out of the
+   * checking.
    */
   template <typename Pred>
   void Wait(UniqueLock& lk, Pred p) {

@@ -16,7 +16,8 @@
  * ================================================== */
 
 /**
- * @brief   Round-trip a 32-bit value through the little-endian helpers at compile time
+ * @brief   Round-trip a 32-bit value through the little-endian helpers at
+ * compile time
  * @param   val   Value to round-trip
  * @return  Value decoded back out of the buffer
  */
@@ -28,9 +29,10 @@ constexpr uint32_t RoundTripLE32(uint32_t val) {
   return LoadLE32(buff.data());
 }
 
-/* Evaluated by the compiler, so these cover something the runtime cases below cannot: that the helpers
- * stay usable in a constant expression. Losing constexpr would fail the build here rather than quietly
- * moving header field encoding to run time. */
+/* Evaluated by the compiler, so these cover something the runtime cases below
+ * cannot: that the helpers stay usable in a constant expression. Losing
+ * constexpr would fail the build here rather than quietly moving header field
+ * encoding to run time. */
 
 static_assert(RoundTripLE32(0) == 0);
 static_assert(RoundTripLE32(0xDEADBEEFU) == 0xDEADBEEFU);
@@ -64,7 +66,9 @@ TEST(ByteOrderTest, LoadLE32ReadsLittleEndian) {
  * @brief   Verify the 32-bit helpers round-trip every boundary value
  */
 TEST(ByteOrderTest, RoundTrips32BitBoundaries) {
-  const std::array<uint32_t, 7> cases{ 0U, 1U, 0xFFU, 0x100U, 0x80000000U, 0xFFFFFF00U, UINT32_MAX };
+  const std::array<uint32_t, 7> cases{ 0U,        1U,          0xFFU,
+                                       0x100U,    0x80000000U, 0xFFFFFF00U,
+                                       UINT32_MAX };
 
   for (uint32_t value : cases) {
     SCOPED_TRACE(testing::Message() << "value=" << value);
@@ -78,12 +82,14 @@ TEST(ByteOrderTest, RoundTrips32BitBoundaries) {
 }
 
 /**
- * @brief   Verify the store helper writes exactly its field width and nothing beyond it
+ * @brief   Verify the store helper writes exactly its field width and nothing
+ * beyond it
  */
 TEST(ByteOrderTest, StoresStayInsideTheirField) {
   constexpr uint8_t kGuard = 0xCC;
 
-  /* One guard byte on each side of the field, so the size follows the field width */
+  /* One guard byte on each side of the field, so the size follows the field
+   * width */
 
   std::array<uint8_t, sizeof(uint32_t) + 2> buff{};
 

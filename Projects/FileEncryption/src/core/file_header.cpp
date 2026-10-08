@@ -13,8 +13,9 @@
 
 namespace {
 
-/* Each offset is stated relative to the one before it, so a field can only be inserted by moving every
- * field after it, and the assert below refuses a layout that no longer fills the header exactly */
+/* Each offset is stated relative to the one before it, so a field can only be
+ * inserted by moving every field after it, and the assert below refuses a
+ * layout that no longer fills the header exactly */
 
 constexpr size_t kChunkLog2Offset = kMagicSize;            // 4
 constexpr size_t kTimeCostOffset = kChunkLog2Offset + 1;   // 5
@@ -23,13 +24,16 @@ constexpr size_t kParallelismOffset = kMemCostOffset + 4;  // 13
 constexpr size_t kSaltOffset = kParallelismOffset + 4;     // 17
 constexpr size_t kCommitOffset = kSaltOffset + kSaltSize;  // 33
 
-static_assert(kCommitOffset + kCommitSize == kHeaderSize, "Header field offsets do not fill the header");
+static_assert(kCommitOffset + kCommitSize == kHeaderSize,
+              "Header field offsets do not fill the header");
 
 }  // namespace
 
-void SerializeHeader(std::span<uint8_t, kHeaderSize> dst, const FileHeader& header) {
-  /* These bytes are both the header on the disk and the associated data of every chunk, so the layout is
-   * part of the format: moving a field changes what every tag in every existing file covers */
+void SerializeHeader(std::span<uint8_t, kHeaderSize> dst,
+                     const FileHeader& header) {
+  /* These bytes are both the header on the disk and the associated data of
+   * every chunk, so the layout is part of the format: moving a field changes
+   * what every tag in every existing file covers */
 
   std::ranges::copy(kMagic, dst.begin());
 
@@ -68,8 +72,10 @@ HeaderStatus ReadHeader(FILE* file, FileHeader& header) {
   parsed.params.mem_cost = LoadLE32(buff.data() + kMemCostOffset);
   parsed.params.parallelism = LoadLE32(buff.data() + kParallelismOffset);
 
-  std::ranges::copy(std::span(buff).subspan(kSaltOffset, kSaltSize), parsed.salt.begin());
-  std::ranges::copy(std::span(buff).subspan(kCommitOffset, kCommitSize), parsed.commitment.begin());
+  std::ranges::copy(std::span(buff).subspan(kSaltOffset, kSaltSize),
+                    parsed.salt.begin());
+  std::ranges::copy(std::span(buff).subspan(kCommitOffset, kCommitSize),
+                    parsed.commitment.begin());
 
   /* Hand back nothing the caller would still have to range-check */
 
@@ -85,27 +91,33 @@ HeaderStatus ReadHeader(FILE* file, FileHeader& header) {
 }
 
 HeaderStatus ValidateHeader(const FileHeader& header) {
-  /* A header is whatever the file happened to contain, and it is read before the password is ever tried.
-   * chunk_log2 is used as a shift width and sizes both chunk buffers, so an unchecked value is undefined
-   * behaviour before it is an allocation; mem_cost is an Argon2id allocation in KiB, so an unchecked one
-   * lets a crafted file ask for terabytes.
+  /* A header is whatever the file happened to contain, and it is read before
+   * the password is ever tried. chunk_log2 is used as a shift width and sizes
+   * both chunk buffers, so an unchecked value is undefined behaviour before it
+   * is an allocation; mem_cost is an Argon2id allocation in KiB, so an
+   * unchecked one lets a crafted file ask for terabytes.
    *
-   * The commitment is absent from this for a reason: every value of it is structurally valid, and which
-   * one is right is settled by comparing it against a derivation rather than by any range. */
+   * The commitment is absent from this for a reason: every value of it is
+   * structurally valid, and which one is right is settled by comparing it
+   * against a derivation rather than by any range. */
 
-  if (header.chunk_log2 < kMinChunkSizeLog2 || kMaxChunkSizeLog2 < header.chunk_log2) {
+  if (header.chunk_log2 < kMinChunkSizeLog2 ||
+      kMaxChunkSizeLog2 < header.chunk_log2) {
     return HeaderStatus::kBadChunkSize;
   }
 
-  if (header.params.time_cost < kMinTimeCost || kMaxTimeCost < header.params.time_cost) {
+  if (header.params.time_cost < kMinTimeCost ||
+      kMaxTimeCost < header.params.time_cost) {
     return HeaderStatus::kBadParams;
   }
 
-  if (header.params.mem_cost < kMinMemCost || kMaxMemCost < header.params.mem_cost) {
+  if (header.params.mem_cost < kMinMemCost ||
+      kMaxMemCost < header.params.mem_cost) {
     return HeaderStatus::kBadParams;
   }
 
-  if (header.params.parallelism < kMinParallelism || kMaxParallelism < header.params.parallelism) {
+  if (header.params.parallelism < kMinParallelism ||
+      kMaxParallelism < header.params.parallelism) {
     return HeaderStatus::kBadParams;
   }
 
@@ -136,7 +148,8 @@ const char* HeaderErrorMessage(HeaderStatus status) {
       return "[File] Validation failed - Unsupported chunk size\n";
 
     case HeaderStatus::kBadParams:
-      return "[File] Validation failed - Unsupported key derivation parameters\n";
+      return "[File] Validation failed - Unsupported key derivation "
+             "parameters\n";
 
     case HeaderStatus::kOk:
       break;

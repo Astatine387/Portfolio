@@ -115,10 +115,11 @@ class FileExistsTest : public ::testing::Test {
     RemoveFile(path_);
 
 #ifndef _WIN32
-    /* The search bit is put back here rather than at the end of the case that removes it, because a case that fails
-     * an assertion never reaches its own cleanup and the rmdir below would fail behind it. Every path below is cleaned
-     * unconditionally: a case that never created one simply fails to remove it, which is what the discarded return
-     * values are. */
+    /* The search bit is put back here rather than at the end of the case that
+     * removes it, because a case that fails an assertion never reaches its own
+     * cleanup and the rmdir below would fail behind it. Every path below is
+     * cleaned unconditionally: a case that never created one simply fails to
+     * remove it, which is what the discarded return values are. */
 
     static_cast<void>(chmod(dir_.c_str(), 0700));
 
@@ -176,19 +177,23 @@ TEST_F(FileExistsTest, AfterDeletion) {
 
 #ifndef _WIN32
 
-/* The four cases below pin the contract rather than the implementation: false is reserved for a path that is known to
- * hold nothing, and everything else, a path the file system will not answer about included, counts as taken. Every
- * caller asks in order to refuse, so an answer that cannot be established has to come back as the refusing one.
+/* The four cases below pin the contract rather than the implementation: false
+ * is reserved for a path that is known to hold nothing, and everything else, a
+ * path the file system will not answer about included, counts as taken. Every
+ * caller asks in order to refuse, so an answer that cannot be established has
+ * to come back as the refusing one.
  *
- * Three of them reach the file system errors that a lookup can fail with while the name may still be in use, and the
- * fourth is the one kind of failed lookup that does mean the name is free. POSIX-only: none of them can be provoked
- * the same way through the Win32 path. */
+ * Three of them reach the file system errors that a lookup can fail with while
+ * the name may still be in use, and the fourth is the one kind of failed lookup
+ * that does mean the name is free. POSIX-only: none of them can be provoked the
+ * same way through the Win32 path. */
 
 /**
  * @brief   Verify a path whose lookup loops reports as taken
  *
- * Two links pointing at each other resolve to nothing, and the lookup gives up with ELOOP rather than reaching either
- * an answer or an absence. Something is there under both names; what cannot be reached is the file at the end.
+ * Two links pointing at each other resolve to nothing, and the lookup gives up
+ * with ELOOP rather than reaching either an answer or an absence. Something is
+ * there under both names; what cannot be reached is the file at the end.
  */
 TEST_F(FileExistsTest, SymlinkLoop) {
   RemoveFile(loop_a_);  // The symlinks below need free names
@@ -203,8 +208,9 @@ TEST_F(FileExistsTest, SymlinkLoop) {
 /**
  * @brief   Verify a name too long for the file system reports as taken
  *
- * NAME_MAX is 255 on the file systems this runs on, so the lookup is refused with ENAMETOOLONG before anything is
- * examined. Nothing is created here, the name being one that cannot be created.
+ * NAME_MAX is 255 on the file systems this runs on, so the lookup is refused
+ * with ENAMETOOLONG before anything is examined. Nothing is created here, the
+ * name being one that cannot be created.
  */
 TEST_F(FileExistsTest, NameTooLong) {
   const std::string name(300, 'a');
@@ -215,17 +221,20 @@ TEST_F(FileExistsTest, NameTooLong) {
 /**
  * @brief   Verify a file whose directory refuses a lookup reports as taken
  *
- * The file is there and the caller may not look at it, which is the case this rule exists for: a directory the user
- * cannot search is the likeliest way for a real vault to become unexaminable, and reporting it free would invite a
+ * The file is there and the caller may not look at it, which is the case this
+ * rule exists for: a directory the user cannot search is the likeliest way for
+ * a real vault to become unexaminable, and reporting it free would invite a
  * publish onto a file nobody could read first.
  */
 TEST_F(FileExistsTest, UnsearchableDirectory) {
   if (geteuid() == 0) {
-    GTEST_SKIP() << "Running as root, which is exempt from the directory permissions this case relies on";
+    GTEST_SKIP() << "Running as root, which is exempt from the directory "
+                    "permissions this case relies on";
   }
 
-  /* Pre-clean, because a run that failed inside this case left the directory behind. TearDown restores the search
-   * bit first, so what may be sitting here is a plain 0700 directory with the file still in it. */
+  /* Pre-clean, because a run that failed inside this case left the directory
+   * behind. TearDown restores the search bit first, so what may be sitting here
+   * is a plain 0700 directory with the file still in it. */
 
   RemoveFile(inside_);
 
@@ -239,7 +248,8 @@ TEST_F(FileExistsTest, UnsearchableDirectory) {
   ASSERT_NE(file, nullptr);
   fclose(file);
 
-  /* 0600 leaves the directory readable but not searchable, so a name inside it cannot be resolved at all */
+  /* 0600 leaves the directory readable but not searchable, so a name inside it
+   * cannot be resolved at all */
 
   ASSERT_EQ(chmod(dir_.c_str(), 0600), 0);
 
@@ -249,9 +259,11 @@ TEST_F(FileExistsTest, UnsearchableDirectory) {
 /**
  * @brief   Verify a dangling symbolic link reports as free
  *
- * The other side of the rule, and the one case where a failed lookup is an answer rather than the absence of one:
- * the link resolves, to nothing, so the name holds no file. VaultFileTest.NewVaultRefusesDanglingSymlink rests on
- * this, the refusal there coming from the create-only publish rather than from this check.
+ * The other side of the rule, and the one case where a failed lookup is an
+ * answer rather than the absence of one: the link resolves, to nothing, so the
+ * name holds no file. VaultFileTest.NewVaultRefusesDanglingSymlink rests on
+ * this, the refusal there coming from the create-only publish rather than from
+ * this check.
  */
 TEST_F(FileExistsTest, DanglingSymlink) {
   RemoveFile(dangling_);  // The symlink below needs a free name
@@ -336,7 +348,8 @@ TEST(RandomTest, GeneratesNonZero) {
 
   EXPECT_EQ(Random(buff.data(), buff.size()), Result::kSuccess);
 
-  const bool all_zero = std::ranges::all_of(buff, [](uint8_t b) { return b == 0; });
+  const bool all_zero =
+      std::ranges::all_of(buff, [](uint8_t b) { return b == 0; });
 
   EXPECT_FALSE(all_zero);
 }
@@ -615,7 +628,8 @@ class RenameNoReplaceTest : public ::testing::Test {
 
     ASSERT_NE(file, nullptr);
 
-    EXPECT_EQ(fwrite(text.data(), sizeof(char), text.size(), file), text.size());
+    EXPECT_EQ(fwrite(text.data(), sizeof(char), text.size(), file),
+              text.size());
 
     fclose(file);
   }
@@ -637,7 +651,8 @@ class RenameNoReplaceTest : public ::testing::Test {
 
     std::array<char, 128> buff{};
 
-    res.assign(buff.data(), fread(buff.data(), sizeof(char), buff.size(), file));
+    res.assign(buff.data(),
+               fread(buff.data(), sizeof(char), buff.size(), file));
 
     fclose(file);
 
@@ -646,7 +661,8 @@ class RenameNoReplaceTest : public ::testing::Test {
 };
 
 /**
- * @brief   Verify a move onto a free path takes the name and carries the content
+ * @brief   Verify a move onto a free path takes the name and carries the
+ * content
  */
 TEST_F(RenameNoReplaceTest, MovesOntoFreePath) {
   ASSERT_NO_FATAL_FAILURE(Create(src_path_, "Hello, world!"));
@@ -659,7 +675,8 @@ TEST_F(RenameNoReplaceTest, MovesOntoFreePath) {
 }
 
 /**
- * @brief   Verify an occupied destination is refused and both files survive byte for byte
+ * @brief   Verify an occupied destination is refused and both files survive
+ * byte for byte
  */
 TEST_F(RenameNoReplaceTest, RefusesOccupiedDestination) {
   ASSERT_NO_FATAL_FAILURE(Create(src_path_, "Hello, world!"));
@@ -672,7 +689,8 @@ TEST_F(RenameNoReplaceTest, RefusesOccupiedDestination) {
 }
 
 /**
- * @brief   Verify a missing source is refused rather than creating an empty destination
+ * @brief   Verify a missing source is refused rather than creating an empty
+ * destination
  */
 TEST_F(RenameNoReplaceTest, RefusesMissingSource) {
   EXPECT_EQ(RenameFileNoReplace(src_path_, dst_path_), RenameStatus::kFailure);
@@ -765,8 +783,9 @@ class OpenTempFileTest : public ::testing::Test {
   /**
    * @brief   Clean up temporary files after each test
    *
-   * A call that succeeded rewrote path_ to the name it created, so removing path_ removes the file wherever the
-   * placeholder happened to land. A call that failed left path_ on its template, which names nothing.
+   * A call that succeeded rewrote path_ to the name it created, so removing
+   * path_ removes the file wherever the placeholder happened to land. A call
+   * that failed left path_ on its template, which names nothing.
    */
   void TearDown() override {
     if (file_) {
@@ -780,7 +799,8 @@ class OpenTempFileTest : public ::testing::Test {
 };
 
 /**
- * @brief   Verify a valid template is replaced by the name of the file that was created
+ * @brief   Verify a valid template is replaced by the name of the file that was
+ * created
  */
 TEST_F(OpenTempFileTest, ValidTemplate) {
   const std::string tmp = path_;
@@ -788,8 +808,9 @@ TEST_F(OpenTempFileTest, ValidTemplate) {
   ASSERT_EQ(OpenTempFile(&file_, path_), Result::kSuccess);
   ASSERT_NE(file_, nullptr);
 
-  /* The six placeholder characters are replaced where they stand, so the name that comes back is as long as the
-   * template and shares its prefix, but is no longer the template itself */
+  /* The six placeholder characters are replaced where they stand, so the name
+   * that comes back is as long as the template and shares its prefix, but is no
+   * longer the template itself */
 
   EXPECT_EQ(path_.size(), tmp.size());
   EXPECT_TRUE(path_.starts_with("test_temp."));
@@ -813,8 +834,9 @@ TEST_F(OpenTempFileTest, ShortTemplate) {
 /**
  * @brief   Verify a template that does not end in the placeholder fails
  *
- * mkstemp refuses such a template outright. The Windows implementation makes no such demand, since it overwrites
- * the last six characters whatever they are, so only the POSIX side can be held to this.
+ * mkstemp refuses such a template outright. The Windows implementation makes no
+ * such demand, since it overwrites the last six characters whatever they are,
+ * so only the POSIX side can be held to this.
  */
 TEST_F(OpenTempFileTest, TemplateWithoutPlaceholder) {
   path_ = "test_temp.suffix";
@@ -827,8 +849,8 @@ TEST_F(OpenTempFileTest, TemplateWithoutPlaceholder) {
 /**
  * @brief   Verify the descriptor behind the returned stream is closed on exec
  *
- * The vault is written through this stream, so a descriptor that outlived an exec would hand the half-written file
- * to whatever the program spawned.
+ * The vault is written through this stream, so a descriptor that outlived an
+ * exec would hand the half-written file to whatever the program spawned.
  */
 TEST_F(OpenTempFileTest, SetsCloseOnExec) {
   ASSERT_EQ(OpenTempFile(&file_, path_), Result::kSuccess);
@@ -841,12 +863,14 @@ TEST_F(OpenTempFileTest, SetsCloseOnExec) {
 }
 
 /**
- * @brief   Verify a permissive file already sitting at the destination does not widen the temporary
+ * @brief   Verify a permissive file already sitting at the destination does not
+ * widen the temporary
  *
- * Nothing about the destination widens the temporary, whatever mode that destination carries, so a vault left
- * readable by everybody does not pass those bits on to the temporary that replaces it. Only the bits that must never
- * appear are asserted, because the umask in force is free to clear owner bits as well and an exact 0600 would fail
- * on a developer who sets one.
+ * Nothing about the destination widens the temporary, whatever mode that
+ * destination carries, so a vault left readable by everybody does not pass
+ * those bits on to the temporary that replaces it. Only the bits that must
+ * never appear are asserted, because the umask in force is free to clear owner
+ * bits as well and an exact 0600 would fail on a developer who sets one.
  */
 TEST_F(OpenTempFileTest, IgnoresPermissiveDestination) {
   FILE* dst = nullptr;
@@ -874,12 +898,15 @@ TEST_F(OpenTempFileTest, IgnoresPermissiveDestination) {
 #ifdef _WIN32
 
 /**
- * @brief   Verify the created file is reachable by the account that created it and by nobody else
+ * @brief   Verify the created file is reachable by the account that created it
+ * and by nobody else
  *
- * Asked for no security attributes, CreateFileW gives the new file a default security descriptor whose DACL is
- * whatever the directory offers; what OpenTempFile passes instead is a protected DACL holding one ACE for the token
- * user. The stream is closed before the check because that handle is opened with no sharing at all, and reading the
- * security of a path means opening it a second time.
+ * Asked for no security attributes, CreateFileW gives the new file a default
+ * security descriptor whose DACL is whatever the directory offers; what
+ * OpenTempFile passes instead is a protected DACL holding one ACE for the token
+ * user. The stream is closed before the check because that handle is opened
+ * with no sharing at all, and reading the security of a path means opening it a
+ * second time.
  */
 TEST_F(OpenTempFileTest, CreatesOwnerOnlyFile) {
   ASSERT_EQ(OpenTempFile(&file_, path_), Result::kSuccess);
@@ -892,12 +919,15 @@ TEST_F(OpenTempFileTest, CreatesOwnerOnlyFile) {
 }
 
 /**
- * @brief   Verify an inheritable ACE on the directory does not reach the file created inside it
+ * @brief   Verify an inheritable ACE on the directory does not reach the file
+ * created inside it
  *
- * This is the regression test for the default security descriptor. A directory that offers Everyone an inheritable
- * full-access ACE is what a vault kept in a shared folder sits in, and a file created there without a descriptor of
- * its own comes out carrying that ACE, readable by every account on the machine. The descriptor OpenTempFile
- * supplies is explicit and protected, so the directory contributes nothing to it.
+ * This is the regression test for the default security descriptor. A directory
+ * that offers Everyone an inheritable full-access ACE is what a vault kept in a
+ * shared folder sits in, and a file created there without a descriptor of its
+ * own comes out carrying that ACE, readable by every account on the machine.
+ * The descriptor OpenTempFile supplies is explicit and protected, so the
+ * directory contributes nothing to it.
  */
 TEST_F(OpenTempFileTest, IgnoresInheritableDirectoryAces) {
   const std::string dir = "temp_inherit_dir";

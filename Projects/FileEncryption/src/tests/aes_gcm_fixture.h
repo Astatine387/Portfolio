@@ -36,9 +36,10 @@ class AesGcmTest : public ::testing::Test {
  protected:
   std::string last_error_;
 
-  /* Fixed names in the working directory, shared by every case built on this fixture. Two cases running at once would
-   * be writing over each other's files, which is why the tests are registered RUN_SERIAL in CMakeLists.txt. Giving a
-   * case a scratch file of its own means naming it here. */
+  /* Fixed names in the working directory, shared by every case built on this
+   * fixture. Two cases running at once would be writing over each other's
+   * files, which is why the tests are registered RUN_SERIAL in CMakeLists.txt.
+   * Giving a case a scratch file of its own means naming it here. */
 
   std::string src_path_ = "test_src.tmp";
   std::string enc_path_ = "test_enc.tmp";
@@ -56,12 +57,15 @@ class AesGcmTest : public ::testing::Test {
   /**
    * @brief   The cheapest Argon2id parameters this build accepts
    *
-   * Deriving at the shipped parameters would cost half a gigabyte and four passes for every key, and none of these
-   * tests is about the derivation. They still sit inside the accepted range, so a file written with them is one the
+   * Deriving at the shipped parameters would cost half a gigabyte and four
+   * passes for every key, and none of these tests is about the derivation. They
+   * still sit inside the accepted range, so a file written with them is one the
    * program would read.
    */
   static KdfParams MinParams() {
-    return KdfParams{ .time_cost = kMinTimeCost, .mem_cost = kMinMemCost, .parallelism = kMinParallelism };
+    return KdfParams{ .time_cost = kMinTimeCost,
+                      .mem_cost = kMinMemCost,
+                      .parallelism = kMinParallelism };
   }
 
   /**
@@ -83,13 +87,16 @@ class AesGcmTest : public ::testing::Test {
   }
 
   /**
-   * @brief   Derive a key from a password and salt, reusing an earlier derivation
+   * @brief   Derive a key from a password and salt, reusing an earlier
+   * derivation
    *
-   * Argon2id is deliberately slow, and the suite asks for the same handful of keys over and over, so the cache is the
-   * difference between a fast run and a slow one. It lives to the end of the process on purpose: a key is a pure
+   * Argon2id is deliberately slow, and the suite asks for the same handful of
+   * keys over and over, so the cache is the difference between a fast run and a
+   * slow one. It lives to the end of the process on purpose: a key is a pure
    * function of the password, the salt and the parameters.
    */
-  static const SecureKey& MakeKey(const char* pw, const std::array<uint8_t, kSaltSize>& salt) {
+  static const SecureKey& MakeKey(const char* pw,
+                                  const std::array<uint8_t, kSaltSize>& salt) {
     using CacheKey = std::pair<std::string, std::array<uint8_t, kSaltSize>>;
 
     static std::map<CacheKey, SecureKey> cache;
@@ -98,7 +105,8 @@ class AesGcmTest : public ::testing::Test {
     auto it = cache.find(entry);
 
     if (it == cache.end()) {
-      auto key = DeriveKey(std::span<const char>(pw, std::strlen(pw)), salt, MinParams());
+      auto key = DeriveKey(std::span<const char>(pw, std::strlen(pw)), salt,
+                           MinParams());
 
       // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
       it = cache.emplace(std::move(entry), std::move(key.value())).first;
@@ -112,8 +120,9 @@ class AesGcmTest : public ::testing::Test {
    * @param   file    Stream to read from; ReadHeader rewinds it first
    * @return  The parsed header
    *
-   * The engine does not read a header of its own, so a test that calls Decrypt directly has to hand it one the way
-   * CryptoWorker does. This is that step, kept in one place.
+   * The engine does not read a header of its own, so a test that calls Decrypt
+   * directly has to hand it one the way CryptoWorker does. This is that step,
+   * kept in one place.
    */
   static FileHeader HeaderOf(FILE* file) {
     FileHeader header;
@@ -129,7 +138,8 @@ class AesGcmTest : public ::testing::Test {
    * @param   data    File data
    * @param   size    File size
    */
-  void Create(const std::string& path, std::vector<uint8_t>& data, size_t size) {
+  void Create(const std::string& path, std::vector<uint8_t>& data,
+              size_t size) {
     FILE* file = nullptr;
 
     OpenFile(&file, path, "wb");
@@ -155,7 +165,8 @@ class AesGcmTest : public ::testing::Test {
      * @param   dst         Destination file path
      * @param   dst_mode    Mode the destination file is opened with
      */
-    FilePair(const std::string& src, const std::string& dst, const char* dst_mode = "wb+") {
+    FilePair(const std::string& src, const std::string& dst,
+             const char* dst_mode = "wb+") {
       OpenFile(&src_, src, "rb");
       OpenFile(&dst_, dst, dst_mode);
     }
@@ -170,10 +181,12 @@ class AesGcmTest : public ::testing::Test {
       }
     }
 
-    FilePair(const FilePair&) = delete;             // Delete copy constructor
-    FilePair& operator=(const FilePair&) = delete;  // Delete copy assignment operator
-    FilePair(FilePair&&) = delete;                  // Delete move constructor
-    FilePair& operator=(FilePair&&) = delete;       // Delete move assignment operator
+    FilePair(const FilePair&) = delete;  // Delete copy constructor
+    FilePair& operator=(const FilePair&) =
+        delete;                     // Delete copy assignment operator
+    FilePair(FilePair&&) = delete;  // Delete move constructor
+    FilePair& operator=(FilePair&&) =
+        delete;  // Delete move assignment operator
 
     [[nodiscard]] FILE* Src() const { return src_; }
     [[nodiscard]] FILE* Dst() const { return dst_; }
@@ -183,36 +196,48 @@ class AesGcmTest : public ::testing::Test {
     FILE* dst_ = nullptr;  // Destination stream
   };
 
-  /* Deterministic plaintext pattern: byte i is the top byte of the 32-bit product i * kPatternMixer. Both the shift and
-   * the multiplier are load-bearing, and the assertions below hold a replacement of either to what the tests need.
+  /* Deterministic plaintext pattern: byte i is the top byte of the 32-bit
+   * product i * kPatternMixer. Both the shift and the multiplier are
+   * load-bearing, and the assertions below hold a replacement of either to what
+   * the tests need.
    *
-   * Why the top byte. Carries in a product only travel upward, so the low m bits of i * k depend on nothing but the low
-   * m bits of i. Slicing a lower byte out therefore repeats on a short cycle however good the multiplier is: byte 0
-   * repeats every 256 indices and byte 1 every 65536, the latter being exactly one chunk. Only the top byte depends on
-   * every bit of the index, which is what gives the pattern a period no file here can reach.
+   * Why the top byte. Carries in a product only travel upward, so the low m
+   * bits of i * k depend on nothing but the low m bits of i. Slicing a lower
+   * byte out therefore repeats on a short cycle however good the multiplier is:
+   * byte 0 repeats every 256 indices and byte 1 every 65536, the latter being
+   * exactly one chunk. Only the top byte depends on every bit of the index,
+   * which is what gives the pattern a period no file here can reach.
    *
-   * Why this multiplier. 0x9E3779B1 is the nearest prime to 2^32 divided by the golden ratio, the constant Knuth gives
-   * for multiplicative hashing. The golden ratio is the hardest number to approximate by a fraction, so no bit window
-   * of the product resonates with a stride, and the pattern keeps working for any chunk size in the accepted range
-   * rather than for one. It must also be odd, which makes i -> i * kPatternMixer one-to-one over 32 bits. Being prime
-   * is incidental.
+   * Why this multiplier. 0x9E3779B1 is the nearest prime to 2^32 divided by the
+   * golden ratio, the constant Knuth gives for multiplicative hashing. The
+   * golden ratio is the hardest number to approximate by a fraction, so no bit
+   * window of the product resonates with a stride, and the pattern keeps
+   * working for any chunk size in the accepted range rather than for one. It
+   * must also be odd, which makes i -> i * kPatternMixer one-to-one over 32
+   * bits. Being prime is incidental.
    *
-   * What breaks without them. Every chunk would carry byte-identical plaintext, and a round trip could no longer tell a
-   * reordered or misplaced chunk from an intact one. Oddness alone does not suffice: 2^24 + 1 is odd, yet stepping one
-   * chunk with it moves only bits the shift throws away.
+   * What breaks without them. Every chunk would carry byte-identical plaintext,
+   * and a round trip could no longer tell a reordered or misplaced chunk from
+   * an intact one. Oddness alone does not suffice: 2^24 + 1 is odd, yet
+   * stepping one chunk with it moves only bits the shift throws away.
    */
   static constexpr uint32_t kPatternMixer = 2654435761U;
   static constexpr uint32_t kPatternShift = 24;
 
-  static_assert(kPatternMixer % 2 == 1, "Plaintext pattern multiplier must be odd");
-  static_assert(kPatternShift + 8 == 32, "Only the top byte of the product depends on every bit of the index");
-  static_assert((kPatternMixer * static_cast<uint32_t>(kChunkSize) >> kPatternShift) != 0,
+  static_assert(kPatternMixer % 2 == 1,
+                "Plaintext pattern multiplier must be odd");
+  static_assert(
+      kPatternShift + 8 == 32,
+      "Only the top byte of the product depends on every bit of the index");
+  static_assert((kPatternMixer * static_cast<uint32_t>(kChunkSize) >>
+                 kPatternShift) != 0,
                 "Plaintext pattern must differ between one chunk and the next");
 
   /**
    * @brief   Build a deterministic plaintext of a given size
    * @param   size    Number of bytes
-   * @return  Buffer filled with a position-dependent pattern that does not repeat
+   * @return  Buffer filled with a position-dependent pattern that does not
+   * repeat
    */
   static std::vector<uint8_t> MakePlain(size_t size) {
     std::vector<uint8_t> plain(size);
@@ -238,7 +263,9 @@ class AesGcmTest : public ::testing::Test {
     std::array<uint8_t, kDigestSize> md{};
     unsigned int len = 0;
 
-    EXPECT_EQ(EVP_Digest(bytes.data(), bytes.size(), md.data(), &len, EVP_sha256(), nullptr), 1);
+    EXPECT_EQ(EVP_Digest(bytes.data(), bytes.size(), md.data(), &len,
+                         EVP_sha256(), nullptr),
+              1);
 
     std::string hex;
 
@@ -263,7 +290,8 @@ class AesGcmTest : public ::testing::Test {
     ASSERT_NE(file, nullptr);
 
     if (!bytes.empty()) {
-      EXPECT_EQ(fwrite(bytes.data(), sizeof(uint8_t), bytes.size(), file), bytes.size());
+      EXPECT_EQ(fwrite(bytes.data(), sizeof(uint8_t), bytes.size(), file),
+                bytes.size());
     }
 
     fclose(file);
@@ -276,7 +304,8 @@ class AesGcmTest : public ::testing::Test {
    * @param   pw      Password the key is derived from
    * @return  Bytes of the encrypted file
    */
-  std::vector<uint8_t> EncryptBytes(const std::vector<uint8_t>& plain, const std::array<uint8_t, kSaltSize>& salt,
+  std::vector<uint8_t> EncryptBytes(const std::vector<uint8_t>& plain,
+                                    const std::array<uint8_t, kSaltSize>& salt,
                                     const char* pw) {
     AesGcm aes;
     std::vector<uint8_t> cipher;
@@ -286,7 +315,8 @@ class AesGcmTest : public ::testing::Test {
     {
       FilePair files(src_path_, enc_path_);
 
-      EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey(pw, salt)), Result::kSuccess);
+      EXPECT_EQ(aes.Encrypt(files.Src(), files.Dst(), MakeKey(pw, salt)),
+                Result::kSuccess);
     }
 
     Read(enc_path_, cipher);
@@ -302,8 +332,10 @@ class AesGcmTest : public ::testing::Test {
    * @param   pw        Password the key is derived from
    * @return  Outcome   reported by the engine
    */
-  Result DecryptBytes(const std::vector<uint8_t>& cipher, std::vector<uint8_t>& plain,
-                      const std::array<uint8_t, kSaltSize>& salt, const char* pw) {
+  Result DecryptBytes(const std::vector<uint8_t>& cipher,
+                      std::vector<uint8_t>& plain,
+                      const std::array<uint8_t, kSaltSize>& salt,
+                      const char* pw) {
     AesGcm aes;
 
     Store(enc_path_, cipher);
@@ -318,9 +350,10 @@ class AesGcmTest : public ::testing::Test {
     {
       FilePair files(enc_path_, dec_path_);
 
-      /* Reading and rejecting the header is the caller's job now, so this helper takes it on and reports through the
-       * same sink the engine uses. A header refused here never reaches the engine at all, which is what CryptoWorker
-       * has always done on the real path. */
+      /* Reading and rejecting the header is the caller's job now, so this
+       * helper takes it on and reports through the same sink the engine uses. A
+       * header refused here never reaches the engine at all, which is what
+       * CryptoWorker has always done on the real path. */
 
       FileHeader header;
 
@@ -348,7 +381,9 @@ class AesGcmTest : public ::testing::Test {
    * @param   index   Chunk index, starting at zero
    * @return  Byte offset of the chunk's first ciphertext byte
    */
-  static size_t ChunkAt(size_t index) { return kHeaderSize + index * (kChunkSize + kTagSize); }
+  static size_t ChunkAt(size_t index) {
+    return kHeaderSize + index * (kChunkSize + kTagSize);
+  }
 
   /**
    * @brief   Read file into buffer

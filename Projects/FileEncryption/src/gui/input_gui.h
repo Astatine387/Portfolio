@@ -23,13 +23,15 @@
  * @struct     CryptoRequest
  * @brief      Container for user input parameters
  *
- * Carries the password itself rather than a handle to it, so what leaves the input field is what reaches
- * the receiver. Qt hands a signal argument over as a const reference, so the receiver copies out of it
- * into locked memory of its own rather than moving.
+ * Carries the password itself rather than a handle to it, so what leaves the
+ * input field is what reaches the receiver. Qt hands a signal argument over as
+ * a const reference, so the receiver copies out of it into locked memory of its
+ * own rather than moving.
  *
- * The mode keeps the shape ModeButton::GetMode hands back rather than being unwrapped on the way in.
- * Encrypt and decrypt do opposite things to a file, so there is no direction to fall back on, and every
- * receiver has to answer "not chosen" by refusing to start rather than by picking one.
+ * The mode keeps the shape ModeButton::GetMode hands back rather than being
+ * unwrapped on the way in. Encrypt and decrypt do opposite things to a file, so
+ * there is no direction to fall back on, and every receiver has to answer "not
+ * chosen" by refusing to start rather than by picking one.
  */
 struct CryptoRequest {
   std::optional<CryptoMode> mode;
@@ -63,8 +65,8 @@ class InputGUI : public QWidget {
    * @brief   Signal when start button clicked
    * @param   input   User inputs
    *
-   * Sender and receiver both live on the GUI thread, so the slot runs before the request it was handed
-   * goes out of scope.
+   * Sender and receiver both live on the GUI thread, so the slot runs before
+   * the request it was handed goes out of scope.
    */
   void StartRequested(const CryptoRequest& input);
 

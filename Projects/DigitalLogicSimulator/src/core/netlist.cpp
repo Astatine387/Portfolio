@@ -37,7 +37,8 @@ NetId Netlist::AddWire(std::string_view name) {
   return id;
 }
 
-GateId Netlist::AddGate(GateType type, std::span<const NetId> inputs, NetId output, Time delay) {
+GateId Netlist::AddGate(GateType type, std::span<const NetId> inputs,
+                        NetId output, Time delay) {
   const GateId id = MakeGateId(gates_.size());
 
   gates_.push_back(Gate{
@@ -58,8 +59,10 @@ GateId Netlist::AddGate(GateType type, std::span<const NetId> inputs, NetId outp
   return id;
 }
 
-GateId Netlist::AddGate(GateType type, std::initializer_list<NetId> inputs, NetId output, Time delay) {
-  return AddGate(type, std::span<const NetId>(inputs.begin(), inputs.size()), output, delay);
+GateId Netlist::AddGate(GateType type, std::initializer_list<NetId> inputs,
+                        NetId output, Time delay) {
+  return AddGate(type, std::span<const NetId>(inputs.begin(), inputs.size()),
+                 output, delay);
 }
 
 GateId Netlist::AddDff(NetId data, NetId clock, NetId output, Time delay) {

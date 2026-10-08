@@ -589,7 +589,8 @@ TEST(VcdWriterEndToEnd, RecordsFullAdderRun) {
   VcdWriter vcd(net, out, "full_adder");
 
   vcd.WriteHeader();
-  kernel.SetValueChangeCallback([&vcd](Time t, NetId n, Logic4 v) { vcd.OnValueChange(t, n, v); });
+  kernel.SetValueChangeCallback(
+      [&vcd](Time t, NetId n, Logic4 v) { vcd.OnValueChange(t, n, v); });
 
   kernel.Poke(a, k1, 0);
   kernel.Poke(b, k1, 0);

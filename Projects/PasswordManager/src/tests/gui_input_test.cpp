@@ -23,9 +23,11 @@
 #include "utils/password.h"
 
 namespace {
-constexpr qsizetype kOversizedLen = 300;  // Characters past every field limit, but only once counted in bytes
+constexpr qsizetype kOversizedLen =
+    300;  // Characters past every field limit, but only once counted in bytes
 
-constexpr char16_t kHangul = 0xD55C;  // U+D55C, three bytes of UTF-8 against one UTF-16 character
+constexpr char16_t kHangul =
+    0xD55C;  // U+D55C, three bytes of UTF-8 against one UTF-16 character
 
 /**
  * @brief   Find an input line under a widget by its placeholder text
@@ -80,8 +82,9 @@ bool HasMessage(const QWidget& parent, const QString& text) {
  * PWLineEdit Test
  * ================================================== */
 
-/* A paste goes through QLineEdit::insert, and insert is where a maximum length would cut one short, so the tests
- * below paste by calling it rather than by going through a clipboard the CI machine does not have. */
+/* A paste goes through QLineEdit::insert, and insert is where a maximum length
+ * would cut one short, so the tests below paste by calling it rather than by
+ * going through a clipboard the CI machine does not have. */
 
 /**
  * @brief   Verify a paste past the limit is refused rather than cut down to it
@@ -123,8 +126,10 @@ TEST(PWLineEditTest, PasteAtLimitIsKept) {
  * @brief   Verify the limit is counted in UTF-8 bytes rather than in characters
  */
 TEST(PWLineEditTest, LimitIsCountedInBytes) {
-  constexpr qsizetype kUtf8Len = 3;                           // Bytes U+D55C takes in UTF-8
-  constexpr qsizetype kFitting = kMaxMasterPwLen / kUtf8Len;  // 255 bytes, the most whole characters that fit
+  constexpr qsizetype kUtf8Len = 3;  // Bytes U+D55C takes in UTF-8
+  constexpr qsizetype kFitting =
+      kMaxMasterPwLen /
+      kUtf8Len;  // 255 bytes, the most whole characters that fit
 
   PWLineEdit widget;
   QLineEdit* line = FindLine(widget, "Password");
@@ -138,7 +143,8 @@ TEST(PWLineEditTest, LimitIsCountedInBytes) {
   ASSERT_EQ(widget.Extract(fits), Result::kSuccess);
   EXPECT_EQ(fits.GetSize(), static_cast<size_t>(kFitting * kUtf8Len));
 
-  /* Extract clears the field whatever it returned, so the next paste starts from an empty line */
+  /* Extract clears the field whatever it returned, so the next paste starts
+   * from an empty line */
 
   line->insert(QString(kFitting + 1, QChar(kHangul)));
 
@@ -153,7 +159,8 @@ TEST(PWLineEditTest, LimitIsCountedInBytes) {
  * ================================================== */
 
 /**
- * @brief   Verify a site past the limit is refused rather than stored cut down to it
+ * @brief   Verify a site past the limit is refused rather than stored cut down
+ * to it
  */
 TEST(EntryGUITest, OversizedSiteIsRefused) {
   EntryGUI dialog;
@@ -179,7 +186,8 @@ TEST(EntryGUITest, OversizedSiteIsRefused) {
 }
 
 /**
- * @brief   Verify an account past the limit is refused rather than stored cut down to it
+ * @brief   Verify an account past the limit is refused rather than stored cut
+ * down to it
  */
 TEST(EntryGUITest, OversizedAccountIsRefused) {
   EntryGUI dialog;
@@ -205,7 +213,8 @@ TEST(EntryGUITest, OversizedAccountIsRefused) {
 }
 
 /**
- * @brief   Verify a password past the limit is refused rather than stored cut down to it
+ * @brief   Verify a password past the limit is refused rather than stored cut
+ * down to it
  */
 TEST(EntryGUITest, OversizedPasswordIsRefused) {
   EntryGUI dialog;
@@ -230,13 +239,15 @@ TEST(EntryGUITest, OversizedPasswordIsRefused) {
 }
 
 /**
- * @brief   Run the suite against the offscreen platform, since neither CI nor test discovery has a display
+ * @brief   Run the suite against the offscreen platform, since neither CI nor
+ * test discovery has a display
  * @param   argc    Argument count
  * @param   argv    Argument values
  * @return  0 when every test passed
  */
 int main(int argc, char** argv) {
-  /* gtest_discover_tests runs this binary at build time, where a display is even less likely than it is under CI */
+  /* gtest_discover_tests runs this binary at build time, where a display is
+   * even less likely than it is under CI */
 
   if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
     qputenv("QT_QPA_PLATFORM", "offscreen");

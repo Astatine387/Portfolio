@@ -19,10 +19,11 @@
  * @class   EntryModel
  * @brief   Read-only table model holding the site and account of every entry
  *
- * The rows are the vault's entries in the order the vault hands them over, and each row keeps the EntryView it was
- * built from. Whatever acts on a row asks the model for that view rather than reading the text back out of the cells,
- * so the identity an operation is carried out under is the one the vault gave, not a round trip through what the
- * table happened to display.
+ * The rows are the vault's entries in the order the vault hands them over, and
+ * each row keeps the EntryView it was built from. Whatever acts on a row asks
+ * the model for that view rather than reading the text back out of the cells,
+ * so the identity an operation is carried out under is the one the vault gave,
+ * not a round trip through what the table happened to display.
  */
 class EntryModel : public QAbstractTableModel {
   Q_OBJECT
@@ -55,8 +56,8 @@ class EntryModel : public QAbstractTableModel {
    * @param   index   Index into this model
    * @return  Pointer to the entry, or nullptr when the index does not name one
    *
-   * The pointer is valid until the next SetEntries call, which is long enough for the caller to copy the fields out
-   * of it and no longer.
+   * The pointer is valid until the next SetEntries call, which is long enough
+   * for the caller to copy the fields out of it and no longer.
    */
   [[nodiscard]] const EntryView* EntryAt(const QModelIndex& index) const;
 
@@ -64,10 +65,14 @@ class EntryModel : public QAbstractTableModel {
    * QAbstractTableModel interface
    * ================================================== */
 
-  [[nodiscard]] int rowCount(const QModelIndex& parent = QModelIndex()) const override;
-  [[nodiscard]] int columnCount(const QModelIndex& parent = QModelIndex()) const override;
-  [[nodiscard]] QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
-  [[nodiscard]] QVariant headerData(int section, Qt::Orientation ori, int role = Qt::DisplayRole) const override;
+  [[nodiscard]] int rowCount(
+      const QModelIndex& parent = QModelIndex()) const override;
+  [[nodiscard]] int columnCount(
+      const QModelIndex& parent = QModelIndex()) const override;
+  [[nodiscard]] QVariant data(const QModelIndex& index,
+                              int role = Qt::DisplayRole) const override;
+  [[nodiscard]] QVariant headerData(int section, Qt::Orientation ori,
+                                    int role = Qt::DisplayRole) const override;
 
  private:
   QVector<EntryView> entries_;

@@ -28,10 +28,12 @@ class ModeButton : public QWidget {
 
   /**
    * @brief   Get the currently selected mode
-   * @return  CryptoMode::kEncrypt or kDecrypt, or std::nullopt if neither is selected
+   * @return  CryptoMode::kEncrypt or kDecrypt, or std::nullopt if neither is
+   * selected
    *
-   * Neither button starts selected, so "nothing chosen yet" is a state the caller has to handle rather
-   * than a default that would quietly pick one of the two on the user's behalf.
+   * Neither button starts selected, so "nothing chosen yet" is a state the
+   * caller has to handle rather than a default that would quietly pick one of
+   * the two on the user's behalf.
    */
   std::optional<CryptoMode> GetMode();
 
