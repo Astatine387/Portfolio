@@ -1,7 +1,7 @@
 /**
- * @file	password.cpp
- * @brief	Implementation of Password class
- * @author	Astatine387
+ * @file    password.cpp
+ * @brief   Implementation of Password class
+ * @author  Astatine387
  */
 
 #include "utils/password.h"
@@ -25,9 +25,6 @@ size_t Password::GetSize() const {
 }
 
 Result Password::SetData(const Password& pw) {
-  /* Self-assignment would wipe the source in Clean() before there is anything
-   * left to copy from */
-
   if (this == &pw) {
     return Result::kSuccess;
   }
@@ -43,21 +40,11 @@ Result Password::SetData(const char* str, size_t len) {
 
   InitCrypto();
 
-  /* sodium_malloc locks the pages against the swap file and wipes them on
-   * release. The extra byte is the terminator, which lets the buffer be handed
-   * to a C interface without a copy.
-   *
-   * The new buffer is filled before the old one is released. @p str is allowed
-   * to point into data_ itself, since GetData hands that pointer out, and
-   * releasing first would leave the copy below reading an address this process
-   * no longer owns. */
-
   auto* fresh = static_cast<char*>(sodium_malloc(len + 1));
 
   if (fresh == nullptr) {
-    // LCOV_EXCL_START  secure allocation failed
-    Clean();  // Whatever was held is gone either way, which is what the caller
-              // is told on kFailure
+    // LCOV_EXCL_START
+    Clean();
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
@@ -76,7 +63,7 @@ Result Password::SetData(const char* str, size_t len) {
 
 void Password::Clean() {
   if (data_ != nullptr) {
-    sodium_free(data_);  // sodium_free zeroes the buffer before releasing it
+    sodium_free(data_);  // sodium_free wipes the buffer before releasing it
     data_ = nullptr;
   }
 

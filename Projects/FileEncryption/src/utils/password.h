@@ -1,7 +1,7 @@
 /**
- * @file	password.h
- * @brief	RAII class that securely handles password
- * @author	Astatine387
+ * @file    password.h
+ * @brief   RAII class that securely handles password
+ * @author  Astatine387
  */
 
 #pragma once
@@ -11,109 +11,99 @@
 #include "common/constants.h"
 
 /**
- * @class   Password
  * @brief   RAII class that securely handles password
- *
- * The bytes live in sodium_malloc memory, which is locked against the swap file
- * and wiped on release, so the lifetime of this object is the lifetime of the
- * password in memory. Callers that are finished with one assign an empty
- * Password over it rather than waiting for the scope to end.
  */
 class Password {
  public:
   /**
-   * @brief     Default constructor of Password class
+   * @brief   Constructor of Password class
+   *
+   * Using default constructor.
    */
   Password() = default;
 
   /**
-   * @brief     Destructor, securely wipes password data
+   * @brief   Destructor of Password class
+   *
+   * Securely wipes password data.
    */
   ~Password() { Clean(); }
 
-  /* Copying is refused rather than defaulted: it would put a second copy of the
-   * password in locked memory, and SetData below is the one way to ask for
-   * that, where the cost is visible at the call site and the allocation can be
-   * reported as having failed */
-
-  Password(const Password&) = delete;  // Delete copy constructor
-  Password& operator=(const Password&) =
-      delete;  // Delete copy assignment operator
+  Password(const Password&) = delete;             // Delete copy constructor
+  Password& operator=(const Password&) = delete;  // Delete copy assignment
 
   /**
-   * @brief     Move constructor
-   * @param     other   Source password to move from
+   * @brief   Move constructor
+   * @param   src   Password to move from
    *
-   * The source is left holding nothing, so exactly one object is ever in a
-   * position to wipe the buffer.
+   * The password data of the source is wiped after move, so that only one
+   * object at a time holds the password data.
    */
-  Password(Password&& other) noexcept : size_(other.size_), data_(other.data_) {
-    other.data_ = nullptr;
-    other.size_ = 0;
+  Password(Password&& src) noexcept : size_(src.size_), data_(src.data_) {
+    src.data_ = nullptr;
+    src.size_ = 0;
   }
 
   /**
-   * @brief     Move assignment operator
-   * @param     other   Source password to move from
+   * @brief   Move assignment
+   * @param   src   Password to move from
+   *
+   * The password data of the source is wiped after move, so that only one
+   * object at a time holds the password data.
    */
-  Password& operator=(Password&& other) noexcept {
-    if (this != &other) {
+  Password& operator=(Password&& src) noexcept {
+    if (this != &src) {
       Clean();
 
-      data_ = other.data_;
-      size_ = other.size_;
+      data_ = src.data_;
+      size_ = src.size_;
 
-      other.data_ = nullptr;
-      other.size_ = 0;
+      src.data_ = nullptr;
+      src.size_ = 0;
     }
 
     return *this;
   }
 
   /**
-   * @brief     Check whether the password is empty
-   * @return    true if empty
+   * @brief   Check whether the password is empty
+   * @return  true if empty, false if not empty
    */
   [[nodiscard]] bool IsEmpty() const;
 
   /**
-   * @brief     Get password data
-   * @return    Password data
+   * @brief   Get password data
+   * @return  Password data
    */
   [[nodiscard]] const char* GetData() const;
 
   /**
-   * @brief     Get password size
-   * @return    Password size
+   * @brief   Get password size
+   * @return  Password size
    */
   [[nodiscard]] size_t GetSize() const;
 
   /**
-   * @brief     Set password data
-   * @param     pw  Source
-   * @return    kSuccess on success, kFailure when secure allocation fails
+   * @brief   Set password data from another Password
+   * @param   pw  Source
+   * @return  kSuccess on success, kFailure when secure allocation fails
    */
   [[nodiscard]] Result SetData(const Password& pw);
 
   /**
-   * @brief     Set password data
-   * @param     str     Source
-   * @param     len     Password length
-   * @return    kSuccess on success, kFailure when secure allocation fails
-   *
-   * Locked pages come out of a capped pool, so failing to get one is an
-   * ordinary outcome here rather than an exceptional one, and the result is
-   * worth checking on every call.
+   * @brief   Set password data from C string
+   * @param   str   Source
+   * @param   len   Password length
+   * @return  kSuccess on success, kFailure on failure
    */
   [[nodiscard]] Result SetData(const char* str, size_t len);
 
  private:
   size_t size_ = 0;
-  char* data_ = nullptr;  // size_ + 1 bytes in sodium_malloc memory, or nullptr
-                          // when empty
+  char* data_ = nullptr;
 
   /**
-   * @brief     Securely wipe password data
+   * @brief   Wipe password data
    */
   void Clean();
 };

@@ -1,10 +1,7 @@
 ﻿/**
- * @file	aes_gcm.cpp
- * @brief	Implementation of basic functions of AesGcm class
- * @author	Astatine387
- *
- * Contents:
- *	- Implementation of destructor and helper functions of AesGcm class
+ * @file    aes_gcm.cpp
+ * @brief   Implementation of basic functions of AesGcm class
+ * @author  Astatine387
  */
 
 #include "core/aes_gcm.h"
@@ -23,8 +20,7 @@
 
 namespace {
 
-/* Nonce layout of the STREAM construction: zero padding, then the big-endian
- * chunk counter, then the final-chunk flag in the last byte */
+/* Nonce layout: zero padding, big-endian chunk counter, and final-chunk flag */
 
 constexpr size_t kCounterOffset = kNonceSize - 1 - sizeof(uint64_t);
 
@@ -40,24 +36,26 @@ AesGcm::AesGcm() {
   writer_ = std::thread(&AesGcm::WriterLoop, this);
 }
 
-/* Joining the writer and taking its lock can both throw std::system_error,
- * which a destructor cannot propagate; there would be nothing left to recover
- * at this point either */
-
 // NOLINTNEXTLINE(bugprone-exception-escape)
 AesGcm::~AesGcm() {
-  /* Stop the writer thread, draining any ongoing write first */
+  /* Acquire the lock and poll the stop flag for the writer thread */
 
   {
     UniqueLock lk(write_mtx_);
     writer_stop_ = true;
   }
 
+  /* Wake the writer thread */
+
   write_cv_.NotifyOne();
+
+  /* Wait until the writer thread finishes any remaining job */
 
   if (writer_.joinable()) {
     writer_.join();
   }
+
+  /* Wipe the buffers */
 
   for (std::vector<uint8_t>& buff : buff_) {
     if (!buff.empty()) {
@@ -66,6 +64,8 @@ AesGcm::~AesGcm() {
   }
 
   sodium_memzero(nonce_.data(), nonce_.size());
+
+  /* Release the context */
 
   if (ctx_) {
     EVP_CIPHER_CTX_free(ctx_);
@@ -102,27 +102,29 @@ Result AesGcm::WriteFile(const void* buff, size_t size) {
 }
 
 void AesGcm::WriterLoop() noexcept {
-  /* One chunk is written while the next one is being read and encrypted. Only
-   * ever one job is queued, so the producer owns whichever of the two buffers
-   * the writer is not holding. */
+  /* Acquire the lock */
 
   UniqueLock lk(write_mtx_);
 
   for (;;) {
+    /* Sleep until a job is queued or a quit is requested */
+
     write_cv_.Wait(lk, [this]() REQUIRES(write_mtx_) {
       return write_pending_ || writer_stop_;
     });
 
-    /* Exit once a shutdown was requested and no job is left to drain */
+    /* Stop once a quit is requested and no job is left */
 
     if (writer_stop_ && !write_pending_) {
       break;
     }
 
+    /* Get buffer address and size */
+
     const void* buff = write_buff_;
     size_t size = write_size_;
 
-    /* Write outside the lock so the producer can keep reading and encrypting */
+    /* Release the lock and write */
 
     lk.Unlock();
 
@@ -135,11 +137,15 @@ void AesGcm::WriterLoop() noexcept {
       res = Result::kFailure;
     }
 
+    /* Acquire the lock again and record the result */
+
     lk.Lock();
 
     if (res != Result::kSuccess) {
       write_result_ = res;  // Sticky: never mask a failure with a later success
     }
+
+    /* Wake the producer thread */
 
     write_pending_ = false;
     write_cv_.NotifyOne();
@@ -147,11 +153,11 @@ void AesGcm::WriterLoop() noexcept {
 }
 
 Result AesGcm::SubmitWrite(const void* buff, size_t size) {
+  /* Acquire the lock */
+
   UniqueLock lk(write_mtx_);
 
-  /* Waiting here is what holds the pipeline to a single job: once it returns,
-   * the buffer handed over on the previous call is free again, so the caller
-   * can rotate back into it */
+  /* Wait until the ongoing write finishes */
 
   write_cv_.Wait(lk, [this]() REQUIRES(write_mtx_) { return !write_pending_; });
 
@@ -159,12 +165,13 @@ Result AesGcm::SubmitWrite(const void* buff, size_t size) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  /* The buffer is borrowed, not copied, so the caller has to leave it alone
-   * until the next SubmitWrite or FlushWrite returns */
+  /* Fill the slots */
 
   write_buff_ = buff;
   write_size_ = size;
   write_pending_ = true;
+
+  /* Release the lock and wake the writer thread */
 
   lk.Unlock();
   write_cv_.NotifyOne();
@@ -173,10 +180,11 @@ Result AesGcm::SubmitWrite(const void* buff, size_t size) {
 }
 
 Result AesGcm::FlushWrite() {
-  /* Where a late failure surfaces: a write that failed after its SubmitWrite
-   * had already returned is reported nowhere else */
+  /* Acquire the lock */
 
   UniqueLock lk(write_mtx_);
+
+  /* Wait until the ongoing write finishes */
 
   write_cv_.Wait(lk, [this]() REQUIRES(write_mtx_) { return !write_pending_; });
 
@@ -188,15 +196,6 @@ void AesGcm::ReportProgress() {
     return;
   }
 
-  /* Encryption refuses a source above kMaxPlaintextSize, but decryption takes
-   * whatever size the file on disk has, so the multiplication is not bounded by
-   * that check and would overflow past 92 PB. Multiplying first is exact and is
-   * the form that runs for every size this build produces. The second form only
-   * runs past that point, where dropping the remainder of the divisor moves the
-   * result by less than a part in 10^13. Clamping is what makes that divisor
-   * non-zero, since a numerator large enough to reach the second form forces an
-   * equally large denominator. */
-
   int perc = 100;
 
   if (progress_max_ > 0) {
@@ -207,9 +206,7 @@ void AesGcm::ReportProgress() {
                                 : cur / (progress_max_ / 100));
   }
 
-  /* A chunk is small enough that most of them do not move the percentage at
-   * all, and every report crosses into the GUI thread, so only a whole percent
-   * is worth sending */
+  /* Report only the percent changes */
 
   if (perc == last_perc_) {
     return;
@@ -225,14 +222,15 @@ bool AesGcm::IsCancelled() const {
 }
 
 void AesGcm::ReportError(const char* msg) {
-  /* Serialize the callback so a write-thread error cannot race a
-   * read/encrypt-thread error */
+  /* Acquire the lock */
 
   UniqueLock lk(error_mtx_);
 
   if (!ecb_) {
     return;
   }
+
+  /* Assemble the error message */
 
   std::string res;
   unsigned long code;
@@ -248,25 +246,18 @@ void AesGcm::ReportError(const char* msg) {
     res += '\n';
   }
 
+  /* Report error */
+
   ecb_(res.c_str());
 }
 
 void AesGcm::BuildNonce(uint64_t idx, bool is_last) {
-  /* The counter gives every chunk a nonce of its own, so a reordered or
-   * duplicated chunk fails its tag, and the flag binds where the file ends, so
-   * a truncated or extended one fails its tag too */
-
   nonce_.fill(0);
-
   StoreBE64(nonce_.data() + kCounterOffset, idx);
-
   nonce_[kNonceSize - 1] = is_last ? kFinalChunkFlag : kNormalChunkFlag;
 }
 
 void AesGcm::AllocBuffers() {
-  /* Each buffer carries room for a tag past the chunk, so encryption can append
-   * the tag in place and a whole chunk still leaves in one write */
-
   for (std::vector<uint8_t>& buff : buff_) {
     if (!buff.empty()) {
       sodium_memzero(buff.data(), buff.size());
@@ -277,9 +268,6 @@ void AesGcm::AllocBuffers() {
 }
 
 Result AesGcm::SetupCtx(CryptoMode mode) {
-  /* One engine can serve more than one operation, so a context left over from
-   * the previous one goes first */
-
   if (ctx_) {
     EVP_CIPHER_CTX_free(ctx_);
     ctx_ = nullptr;
@@ -293,10 +281,6 @@ Result AesGcm::SetupCtx(CryptoMode mode) {
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
-
-  /* Three calls rather than one: OpenSSL takes the cipher first, then the nonce
-   * length, then the key. Stating the length explicitly keeps the format
-   * independent of whatever the library defaults to. */
 
   const auto init =
       mode == CryptoMode::kEncrypt ? &EVP_EncryptInit_ex : &EVP_DecryptInit_ex;

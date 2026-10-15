@@ -1,7 +1,7 @@
 /**
- * @file	platform_win32.cpp
- * @brief	Implementation of utility functions for Windows
- * @author	Astatine387
+ * @file    platform_win32.cpp
+ * @brief   Implementation of utility functions for Windows
+ * @author  Astatine387
  */
 
 #include <windows.h>

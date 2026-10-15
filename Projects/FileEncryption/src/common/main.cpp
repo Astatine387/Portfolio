@@ -1,7 +1,7 @@
 /**
- * @file	main.cpp
- * @brief	Entry point of the application
- * @author	Astatine387
+ * @file    main.cpp
+ * @brief   Application entry point
+ * @author  Astatine387
  */
 
 #include <QApplication>
@@ -17,24 +17,21 @@ int ShowGUI(int argc, char** argv) {
   QApplication app(argc, argv);
   MainGUI gui;
 
-  /* Scaling the size Qt already resolved, rather than setting one outright, so
-   * the platform's own font setting still decides what the scale is applied to
-   */
+  /* Configure GUI font size */
 
   QFont font;
   font.setPointSizeF(font.pointSizeF() * kFontScale);
   QApplication::setFont(font);
 
+  /* Configure GUI window size */
+
   QSize qsize(300, 150);
   gui.resize(qsize);
 
-  /* availableGeometry rather than the full screen, so a taskbar or panel is
-   * excluded and the window is centred in the space actually free. The offset
-   * lifts it above the true centre, where a window this short otherwise reads
-   * as sitting low. */
+  /* Locate GUI in the center */
 
-  QScreen* screen = QGuiApplication::primaryScreen();
-  QRect rect = screen->availableGeometry();
+  QScreen* screen = QGuiApplication::primaryScreen();  // Use OS primary display
+  QRect rect = screen->availableGeometry();  // Exclude the reserved area
 
   int x = (rect.width() - gui.width()) / 2;
   int y = (rect.height() - gui.height()) / 2 - 50;
@@ -46,9 +43,6 @@ int ShowGUI(int argc, char** argv) {
 }
 
 int main(int argc, char** argv) {
-  /* The limit it raises is process-wide and best effort, so it is settled once
-   * here rather than from whichever secure allocation happens to come first */
-
   InitCrypto();
 
   return ShowGUI(argc, argv);

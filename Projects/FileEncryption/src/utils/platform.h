@@ -1,12 +1,7 @@
 /**
- * @file	platform.h
- * @brief	Declaration of utility functions
- * @author	Astatine387
- *
- * One set of declarations, two implementations: platform_linux.cpp and
- * platform_win32.cpp, chosen by CMake. Everything the program does to a file
- * goes through here, so the two builds differ in those two files and nowhere
- * else.
+ * @file    platform.h
+ * @brief   Declaration of utility functions
+ * @author  Astatine387
  */
 
 #pragma once

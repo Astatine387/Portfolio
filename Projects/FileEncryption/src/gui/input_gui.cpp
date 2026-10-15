@@ -1,7 +1,7 @@
 /**
- * @file	input_gui.cpp
- * @brief	Implementation of InputGUI class
- * @author	Astatine387
+ * @file    input_gui.cpp
+ * @brief   Implementation of InputGUI class
+ * @author  Astatine387
  */
 
 #include "gui/input_gui.h"
@@ -18,7 +18,7 @@ InputGUI::InputGUI(QWidget* parent) : QWidget(parent) {
   hbox_ = new QHBoxLayout;
   vbox_ = new QVBoxLayout;
 
-  /* Set placeholder text that indicates each field */
+  /* Set placeholder text that describes each field */
 
   src_line_->setPlaceholderText("Source File");
   dst_line_->setPlaceholderText("Destination File");
@@ -31,7 +31,7 @@ InputGUI::InputGUI(QWidget* parent) : QWidget(parent) {
   hbox_->setSpacing(10);
   hbox_->setContentsMargins(0, 0, 0, 0);
 
-  /* Configure main layout */
+  /* Configure layout */
 
   vbox_->addWidget(mode_btn_);
   vbox_->addWidget(src_line_);
@@ -44,7 +44,7 @@ InputGUI::InputGUI(QWidget* parent) : QWidget(parent) {
 
   setLayout(vbox_);
 
-  /* Connect encryption/decryption start function to button */
+  /* Connect start function to button */
 
   connect(start_btn_, &QPushButton::clicked, this, &InputGUI::OnStartClicked);
 }
@@ -54,9 +54,6 @@ void InputGUI::SetErrMsg(const QString& msg) {
 }
 
 void InputGUI::OnStartClicked() {
-  /* The cheap checks come first, so a missing mode or path is reported without
-   * the password having been touched at all */
-
   auto mode = mode_btn_->GetMode();
 
   if (!mode.has_value()) {
@@ -74,11 +71,9 @@ void InputGUI::OnStartClicked() {
     return;
   }
 
-  Password tmp;
+  /* Extract copies to text into locked memory and empties the field,  */
 
-  /* Extract copies the text into locked memory and empties the field, and the
-   * local is moved into the request below, so no widget holds the password once
-   * this call returns */
+  Password tmp;
 
   if (pw_line_->Extract(tmp) == Result::kFailure) {
     err_msg_->setText("Cannot allocate secure memory for the password");

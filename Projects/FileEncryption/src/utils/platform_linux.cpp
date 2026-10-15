@@ -1,7 +1,7 @@
 /**
- * @file	platform_linux.cpp
- * @brief	Implementation of utility functions for Linux
- * @author	Astatine387
+ * @file    platform_linux.cpp
+ * @brief   Implementation of utility functions for Linux
+ * @author  Astatine387
  */
 
 #include <fcntl.h>

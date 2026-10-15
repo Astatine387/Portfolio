@@ -1,7 +1,7 @@
 /**
- * @file	crypto_worker.h
- * @brief	Worker class for asynchronous encryption/decryption
- * @author	Astatine387
+ * @file    crypto_worker.h
+ * @brief   Worker class for asynchronous encryption/decryption
+ * @author  Astatine387
  */
 
 #pragma once
@@ -16,13 +16,12 @@
 #include "utils/password.h"
 
 /**
- * @class	CryptoWorker
- * @brief	Worker class for asynchronous encryption/decryption
+ * @brief   Worker class for asynchronous encryption/decryption
  */
 class CryptoWorker {
  public:
   /**
-   * @brief	Cancellation flag shared with whoever may request a cancel
+   * @brief   Cancellation flag shared with whoever may request a cancel
    *
    * Shared rather than owned so that the canceller and the worker can be let go
    * of in either order: the flag outlives both, and neither has to know whether
@@ -31,13 +30,12 @@ class CryptoWorker {
   using CancelFlag = std::shared_ptr<std::atomic<bool>>;
 
   /**
-   * @brief	Constructor for CryptoWorker class
-   * @param     src_path    Source file path
-   * @param     dst_path    Destination file path
-   * @param     pw          Password
-   * @param     mode        Encryption/decryption mode
-   * @param     cancel      Shared cancellation flag, or nullptr to own a
-   * private one
+   * @brief   Constructor for CryptoWorker class
+   * @param   src_path  Source file path
+   * @param   dst_path  Destination file path
+   * @param   pw        Password
+   * @param   mode      Encryption/decryption mode
+   * @param   cancel    Shared cancellation flag, nullptr to own a private one
    *
    * A private flag when the caller supplies none, so polling always has
    * something to read whether or not anyone is in a position to raise it.
@@ -51,36 +49,33 @@ class CryptoWorker {
         cancel_(cancel ? std::move(cancel)
                        : std::make_shared<std::atomic<bool>>(false)) {}
 
-  CryptoWorker(const CryptoWorker&) = delete;  // Delete copy constructor
-  CryptoWorker& operator=(const CryptoWorker&) =
-      delete;                             // Delete copy assignment operator
-  CryptoWorker(CryptoWorker&&) = delete;  // Delete move constructor
-  CryptoWorker& operator=(CryptoWorker&&) =
-      delete;  // Delete move assignment operator
+  CryptoWorker(const CryptoWorker&) = delete;
+  CryptoWorker& operator=(const CryptoWorker&) = delete;
+  CryptoWorker(CryptoWorker&&) = delete;
+  CryptoWorker& operator=(CryptoWorker&&) = delete;
 
   /**
-   * @brief		Callback function for progress reporting
-   * @param     perc    Progress percentage
-   * @param     status  Status message
+   * @brief   Callback function for progress reporting
+   * @param   perc    Progress percentage
+   * @param   status  Status message
    */
   using ProgressCallback =
       std::function<void(int perc, const std::string& status)>;
 
   /**
-   * @brief		Callback function for job finished
-   * @param		msg             Result message
+   * @brief   Callback function for job finished
+   * @param   msg   Result message
    */
   using FinishedCallback = std::function<void(const std::string& msg)>;
 
   /**
-   * @brief		Callback function for entering a new phase
-   * @param     phase   Phase the run has entered
-   * @param     status  Message describing what the run is doing now
+   * @brief   Callback function for entering a new phase
+   * @param   phase   Phase the run has entered
+   * @param   status  Message describing what the run is doing now
    *
    * Separate from the progress callback because a phase says what a percentage
-   * cannot: two of the three phases have no percentage to report and no
-   * cancellation to offer, and saying so is what keeps a long pause from
-   * reading as a hang.
+   * cannot: phase 1 and 3 have no percentage to report and no cancellation to
+   * offer, and showing it keeps a long pause from reading as a hang.
    */
   using PhaseCallback =
       std::function<void(WorkPhase phase, const std::string& status)>;
@@ -93,7 +88,7 @@ class CryptoWorker {
   void RequestCancel();
 
   /**
-   * @brief   Perform encryption/decryption
+   * @brief   Perform encryption or decryption
    *
    * Runs the whole file to completion on the calling thread. Cancellation is
    * only looked at between chunks, so a call already under way cannot be made
@@ -102,20 +97,20 @@ class CryptoWorker {
   void Work();
 
   /**
-   * @brief		Set progress callback function
-   * @param		pcb		Progress callback function
+   * @brief   Set progress callback function
+   * @param   pcb   Progress callback function
    */
   void SetProgressCallback(ProgressCallback pcb) { pcb_ = std::move(pcb); }
 
   /**
-   * @brief		Set finished callback function
-   * @param		fcb		Finished callback function
+   * @brief   Set finished callback function
+   * @param   fcb   Finished callback function
    */
   void SetFinishedCallback(FinishedCallback fcb) { fcb_ = std::move(fcb); }
 
   /**
-   * @brief		Set phase callback function
-   * @param		phcb	Phase callback function
+   * @brief   Set phase callback function
+   * @param   phcb  Phase callback function
    */
   void SetPhaseCallback(PhaseCallback phcb) { phcb_ = std::move(phcb); }
 
@@ -127,11 +122,6 @@ class CryptoWorker {
   ProgressCallback pcb_;
   FinishedCallback fcb_;
   PhaseCallback phcb_;
-
-  /* Filled by the engine's error callback and read once the pass is over, so
-   * the line that explains a failure outlives the call that produced it and can
-   * be put in front of the summary */
-
   std::string err_;
 
   /**

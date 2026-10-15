@@ -1,7 +1,7 @@
 /**
- * @file	crypto_worker.cpp
- * @brief	Implementation of CryptoWorker class
- * @author	Astatine387
+ * @file    crypto_worker.cpp
+ * @brief   Implementation of CryptoWorker class
+ * @author  Astatine387
  */
 
 #include "core/crypto_worker.h"
@@ -24,10 +24,6 @@ constexpr std::string_view kPartSuffix = ".tmp";
 }  // namespace
 
 void CryptoWorker::RequestCancel() {
-  /* Relaxed is enough: the flag publishes no data, and the engine only reads it
-   * between chunks, so the one thing that matters is that the store eventually
-   * becomes visible */
-
   cancel_->store(true, std::memory_order_relaxed);
 }
 
@@ -40,28 +36,22 @@ void CryptoWorker::ReportPhase(WorkPhase phase, const std::string& status) {
 }
 
 void CryptoWorker::Work() {
-  auto aes_ptr = std::make_unique<AesGcm>();
-  AesGcm& aes = *aes_ptr;
+  AesGcm aes;
   Result res;
   FILE* src_file = nullptr;
   FILE* dst_file = nullptr;
   std::string msg;
   bool should_delete = false;
 
-  /* Everything is written to a sibling of the destination and moved into place
-   * at the end, so a run that dies halfway leaves a .tmp file rather than a
-   * half-written destination. A sibling because RenameFile cannot cross a
-   * filesystem.
-   */
+  /* Write to a temporary file and move into destination at the end */
 
   std::string tmp_path = dst_path_;
 
   tmp_path += kPartSuffix;
 
-  /* Source first, so a bad source path costs nothing and leaves nothing behind
-   * to clean up. It goes through OpenSourceFile rather than a plain open, so a
-   * directory, a symbolic link or a pseudo fileis refused here instead of being
-   * read as an empty source further down. */
+  /* Use OpenSourceFile rather than a plain open so that a directory, a symbolic
+   * link, or a pseudo fileis are refused instead of being read as an empty
+   * source */
 
   if (OpenSourceFile(&src_file, src_path_) == Result::kFailure) {
     if (fcb_) {
@@ -88,80 +78,50 @@ void CryptoWorker::Work() {
     return;
   }
 
-  /* Derive the session key. Encryption picks a fresh salt and keeps the default
-   * parameters; decryption has to take both from the header, since they are
-   * what the file was written with. */
+  /* Read the file header */
 
   FileHeader header;
   std::optional<SecureKey> key;
   std::string reason;
 
-  /* The refusals that cost nothing come first, ahead of the one that cannot be
-   * taken back. A size lookup is two seeks, and on the decryption path the
-   * header read is a page the derivation needed anyway; Argon2id behind them is
-   * minutes of memory-hard work in a phase that offers no way out, and on that
-   * same path it is the attacker's own header that says how many. A source that
-   * was never going to be processed must not be able to buy any of it. */
-
   const int64_t src_size = GetFileSize(src_file);
 
   if (src_size == -1) {
-    // LCOV_EXCL_START  unreachable: OpenSourceFile has already refused
-    // everything that is not a regular file
+    // LCOV_EXCL_START
     reason = "[File] Size check failed - Cannot read source file size\n";
     // LCOV_EXCL_STOP
   }
   else if (mode_ == CryptoMode::kEncrypt && src_size > kMaxPlaintextSize) {
-    // LCOV_EXCL_START  unreachable: no test writes a source of 4 PiB
+    // LCOV_EXCL_START
     reason =
         "[File] Size check failed - Source file exceeds the supported "
         "maximum\n";
     // LCOV_EXCL_STOP
   }
   else if (mode_ == CryptoMode::kDecrypt) {
-    /* The only place the file's header is read. What comes back derives the key
-     * and is handed to the engine unchanged, so the bytes the key came from and
-     * the bytes authenticated as associated data are the same bytes rather than
-     * two reads of a file that is free to change in between. */
-
     const HeaderStatus status = ReadHeader(src_file, header);
 
     if (status != HeaderStatus::kOk) {
       reason = HeaderErrorMessage(status);
     }
     else if (std::cmp_less(src_size, kMinSize)) {
-      /* Behind the parse rather than in front of it. A file too short to hold a
-       * header fails to parse, and what it is refused for should be that rather
-       * than its length, which is the order the messages have always come in.
-       */
-
       reason =
           "[File] Validation failed - File is too small to be an encrypted "
           "file\n";
     }
   }
 
-  if (reason.empty()) {
-    /* Argon2id holds this thread for as long as the parameters ask for and
-     * offers no way back out, so the phase is announced before it starts rather
-     * than after it ends. On the decryption path those parameters came out of
-     * the file, which is what makes the wait worth naming. */
+  /* Derive the session key */
 
+  if (reason.empty()) {
     ReportPhase(WorkPhase::kDerivingKey, "Deriving key from password...\n");
 
     if (mode_ == CryptoMode::kEncrypt) {
       const KdfParams params;
       std::array<uint8_t, kSaltSize> salt{};
 
-      /* Its own message rather than the generic one below: Argon2id has not run
-       * yet, so a file that could not be given a salt is not a file whose
-       * derivation failed. Falling through would be worse than either, since
-       * the array is value-initialized, so the file would be encrypted under an
-       * all-zero salt and reported a success. */
-
       if (Random(salt.data(), kSaltSize) == Result::kFailure) {
-        // LCOV_EXCL_START  unreachable: the platform RNG fails only where the
-        // system cannot supply entropy at all
+        // LCOV_EXCL_START
         reason =
             "[Crypto] Salt generation failed - Cannot obtain random bytes\n";
         // LCOV_EXCL_STOP
@@ -177,9 +137,7 @@ void CryptoWorker::Work() {
     }
   }
 
-  /* Derivation is over either way, so let the password go here: assigning over
-   * it frees the secure buffer, which wipes it, well before the long crypto
-   * pass begins */
+  /* Free and wipe the password buffer */
 
   pw_ = Password();
 
@@ -223,15 +181,10 @@ void CryptoWorker::Work() {
     pcb_(perc, status);
   });
 
-  /* Encrypt or decrypt */
+  /* Do encrypt or decrypt */
 
   const std::string verb =
       mode_ == CryptoMode::kEncrypt ? "Encryption" : "Decryption";
-
-  /* The one phase the flag can stop, and the one with a percentage to report.
-   * It is announced before the first chunk so that cancelling is offered before
-   * there is anything to cancel, and both reports leave this thread in this
-   * order. */
 
   ReportPhase(WorkPhase::kProcessing, mode_ == CryptoMode::kEncrypt
                                           ? "Encrypting...\n"
@@ -246,9 +199,7 @@ void CryptoWorker::Work() {
 
   static_cast<void>(fclose(src_file));
 
-  /* The result is examined before the cancellation flag. A cancel that arrives
-   * after the work is already done must not throw away a complete and valid
-   * output. */
+  /* Examine the result before the cancellation flag */
 
   if (res == Result::kFailure) {
     should_delete = true;
@@ -256,47 +207,28 @@ void CryptoWorker::Work() {
     msg = IsCancelled() ? verb + " cancelled\n" : err_ + verb + " failed\n";
   }
   else {
-    /* Past the point where cancelling could mean anything: the ciphertext is
-     * complete and only has to be made durable. The progress callback has
-     * already reported 100%, while fsync on a slow device is where the run
-     * spends its last visible seconds, so the phase is what keeps that pause
-     * from reading as a freeze at the end of the bar. */
-
     ReportPhase(WorkPhase::kFinishing, "Flushing to disk, please wait...\n");
 
     if (SyncFile(dst_file) == Result::kFailure) {
       // LCOV_EXCL_START
       should_delete = true;
-
       msg = "[File] Sync failed - Cannot flush the destination to disk\n" +
             verb + " failed\n";
       // LCOV_EXCL_STOP
     }
   }
 
-  /* Checked even after SyncFile, because a write error the file system deferred
-   * is allowed to surface at the last operation on the stream rather than at
-   * the one that caused it, and on NFS or a driver that reports late that is
-   * this close. Ignoring it would let the rename below publish a destination
-   * the disk never took.
-   *
-   * A message already set is left alone: should_delete is true here only
-   * because a cancel, the crypto pass or the sync got there first, and that is
-   * the failure worth reading. A close error on top of it is the same lost
-   * output reported twice, in the less useful of the two ways. */
-
   if (fclose(dst_file) != 0 && !should_delete) {
     // LCOV_EXCL_START
     should_delete = true;
-
     msg =
         "[File] Close failed - Cannot complete the write to the destination\n" +
         verb + " failed\n";
     // LCOV_EXCL_STOP
   }
 
-  /* Publish only once the bytes are on the disk, so success is never reported
-   * for data that a power loss could still take away */
+  /* Atomic write, don't report success while a power loss can still take the
+   * data away */
 
   if (should_delete) {
     RemoveFile(tmp_path);
@@ -310,9 +242,6 @@ void CryptoWorker::Work() {
         verb + " failed\n";
   }
   else if (SyncDir(dst_path_) == Result::kFailure) {
-    /* The data is already at the destination, only its durability is in doubt
-     */
-
     msg = "[File] Sync failed - Cannot flush the destination directory\n" +
           verb + " completed\n";  // LCOV_EXCL_LINE
   }

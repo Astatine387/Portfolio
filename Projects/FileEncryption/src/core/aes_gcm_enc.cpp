@@ -1,7 +1,7 @@
 /**
- * @file	aes_gcm_enc.cpp
- * @brief	Implementation of encryption function of AES_GCM class
- * @author	Astatine387
+ * @file    aes_gcm_enc.cpp
+ * @brief   Implementation of encryption function of AES_GCM class
+ * @author  Astatine387
  */
 
 #include <algorithm>
@@ -19,8 +19,7 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key) {
   last_perc_ = -1;
   key_ = &key;
 
-  /* Drain any write left over from a previous (possibly aborted) run, then arm
-   * a clean result */
+  /* Wait until the ongoing write from a previous run finishes */
 
   FlushWrite();
 
@@ -29,14 +28,17 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key) {
     write_result_ = Result::kSuccess;
   }
 
-  /* Drain the writer on every exit path so the caller can safely close the
-   * destination file */
+  /* Drain any ongoing asynchronous write when the scope exits */
 
   WriterGuard writer_guard(this);
+
+  /* Write the header, prepare the context and buffers */
 
   if (EncryptInit() == Result::kFailure) {
     return Result::kFailure;
   }
+
+  /* Encrypt and write the file */
 
   if (EncryptLoop() == Result::kFailure) {
     return Result::kFailure;
@@ -46,6 +48,8 @@ Result AesGcm::Encrypt(FILE* src, FILE* dst, const SecureKey& key) {
 }
 
 Result AesGcm::EncryptInit() {
+  /* Check file size */
+
   src_size_ = GetFileSize(src_file_);
 
   if (src_size_ == -1) {
@@ -54,14 +58,6 @@ Result AesGcm::EncryptInit() {
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
-
-  /* Refused before a context, a buffer or a header exists, and the caller
-   * refuses it earlier still: CryptoWorker::Work looks the size up before it
-   * derives a key, so a source that cannot be encrypted within the bound really
-   * does cost nothing beyond that lookup, rather than costing a full Argon2id
-   * pass first. Kept here as well, for a caller that drives the engine without
-   * going through the worker. See kMaxPlaintextSize for where the bound comes
-   * from and why decryption does not carry it. */
 
   if (src_size_ > kMaxPlaintextSize) {
     // LCOV_EXCL_START
@@ -72,42 +68,29 @@ Result AesGcm::EncryptInit() {
     // LCOV_EXCL_STOP
   }
 
-  /* Progress is reported over plaintext bytes; the file is read exactly once */
-
   progress_max_ = src_size_;
 
-  /* Describe the file, then keep the serialized bytes as the associated data of
-   * every chunk */
+  /* Create file header */
 
   FileHeader header;
 
   header.chunk_log2 = kChunkSizeLog2;
-
-  /* Salt, parameters and commitment all come off the key, so the header cannot
-   * end up describing a derivation other than the one that produced the key the
-   * file is encrypted under. A caller has no way to supply a salt of its own
-   * here, which is the point: the file that would result is one no password can
-   * ever open, and every step of writing it would still report success. */
-
   header.params = key_->Params();
   std::ranges::copy(key_->Salt(), header.salt.begin());
-
-  /* The commitment is what a later decryption compares its own derivation
-   * against, so it is recorded here and nowhere else. It is written in the
-   * clear and needs no protection of its own: the header is the associated data
-   * of every chunk, so an attacker who edits it invalidates the whole file. */
-
   std::ranges::copy(key_->Commitment(), header.commitment.begin());
-
   chunk_size_ = size_t{ 1 } << header.chunk_log2;
 
   SerializeHeader(header_, header);
 
   AllocBuffers();
 
+  /* Create a context and set the session key */
+
   if (SetupCtx(CryptoMode::kEncrypt) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
+
+  /* Write the header */
 
   if (WriteFile(header_.data(), header_.size()) == Result::kFailure) {
     return Result::kFailure;  // LCOV_EXCL_LINE
@@ -120,9 +103,6 @@ Result AesGcm::EncryptLoop() {
   int64_t rem = src_size_;
   uint64_t idx = 0;
   size_t cur = 0;
-
-  /* A file always holds at least one chunk, so an empty plaintext still
-   * produces a tag */
 
   for (;;) {
     const bool is_last = std::cmp_less_equal(rem, chunk_size_);
@@ -137,14 +117,9 @@ Result AesGcm::EncryptLoop() {
       return Result::kFailure;  // LCOV_EXCL_LINE
     }
 
-    /* Ciphertext and tag are contiguous, so a chunk leaves as a single write */
-
     if (SubmitWrite(buff_[cur].data(), len + kTagSize) == Result::kFailure) {
       return Result::kFailure;
     }
-
-    /* The writer still holds the buffer just submitted, so the next chunk goes
-     * into the other one */
 
     cur = 1 - cur;
 
@@ -172,12 +147,7 @@ Result AesGcm::EncryptLoop() {
     idx++;
   }
 
-  /* The size was taken once, before the first chunk, and the loop stopped at
-   * it. A source that grew in between, or one that reported a size it does not
-   * have, leaves bytes past that point that no chunk covers, and every step so
-   * far would still have reported success. Reading one more byte is what turns
-   * that into a failure instead of a silently truncated copy. A source that
-   * shrank needs nothing here, since the short read fails on its own. */
+  /* Fails if the source file size has been increased during encryption */
 
   uint8_t extra = 0;
 
@@ -186,8 +156,7 @@ Result AesGcm::EncryptLoop() {
     return Result::kFailure;
   }
 
-  /* The loop leaves one chunk still in flight, and a failure on that last write
-   * is reported here */
+  /* Wait for the ongoing write to finish */
 
   if (FlushWrite() == Result::kFailure) {
     return Result::kFailure;
@@ -200,10 +169,6 @@ Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx,
                             bool is_last) {
   BuildNonce(idx, is_last);
 
-  /* Cipher and key stay as SetupCtx left them and only the nonce moves, so the
-   * key schedule is computed once for the whole file rather than once per chunk
-   */
-
   if (EVP_EncryptInit_ex(ctx_, nullptr, nullptr, nullptr, nonce_.data()) != 1) {
     // LCOV_EXCL_START
     ReportError("[Crypto] Encryption failed - Cannot set chunk nonce\n");
@@ -212,11 +177,6 @@ Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx,
   }
 
   int outlen = 0;
-
-  /* Passing a null output buffer feeds the header in as associated data. It
-   * carries the salt, the Argon2id parameters and the chunk size, so binding it
-   * to every chunk means an edited header cannot decrypt anywhere in the file
-   * rather than only at the front. */
 
   if (EVP_EncryptUpdate(ctx_, nullptr, &outlen, header_.data(),
                         static_cast<int>(header_.size())) != 1) {
@@ -248,10 +208,6 @@ Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx,
     }
   }
 
-  /* GCM is a counter mode, so there is no partial block held back and this call
-   * emits no bytes. It runs only to close the chunk, which is what makes the
-   * tag available below. */
-
   std::array<uint8_t, kBlockSize> final_block{};
   int final_len = 0;
 
@@ -261,9 +217,6 @@ Result AesGcm::EncryptChunk(uint8_t* buff, size_t len, uint64_t idx,
     return Result::kFailure;
     // LCOV_EXCL_STOP
   }
-
-  /* The tag lands at buff + len, in the room AllocBuffers reserved past the
-   * chunk */
 
   if (EVP_CIPHER_CTX_ctrl(ctx_, EVP_CTRL_GCM_GET_TAG,
                           static_cast<int>(kTagSize), buff + len) != 1) {

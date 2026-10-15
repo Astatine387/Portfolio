@@ -11,8 +11,8 @@ UseTab: Never
 # Maximum 80 characters per line
 ColumnLimit: 80
 
-# Leave comments as they are written, so the limit above governs code only
-ReflowComments: Never
+# Wrap comments to the limit above as well
+ReflowComments: Always
 
 # Left alignment for pointers and references
 DerivePointerAlignment: false

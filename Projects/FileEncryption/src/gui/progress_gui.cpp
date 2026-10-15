@@ -1,7 +1,7 @@
 /**
- * @file	progress_gui.cpp
- * @brief	Implementation of ProgressGUI class
- * @author	Astatine387
+ * @file    progress_gui.cpp
+ * @brief   Implementation of ProgressGUI class
+ * @author  Astatine387
  */
 
 #include "gui/progress_gui.h"
@@ -21,10 +21,7 @@ ProgressGUI::ProgressGUI(QWidget* parent) : QWidget(parent) {
   prg_bar_->setRange(0, 100);
   prg_bar_->setValue(0);
 
-  /* A run opens with a key derivation that cannot be interrupted, so the button
-   * starts dead and only the phase that polls the flag hands it over. A button
-   * that does nothing when pressed is worse than one that is visibly
-   * unavailable. */
+  /* Disable the cancel button until a key derivation ends */
 
   cancel_btn_->setEnabled(false);
 
@@ -78,10 +75,6 @@ void ProgressGUI::ShowResult(const QString& msg) {
 }
 
 void ProgressGUI::ShowBusy(const QString& msg) {
-  /* An empty range is Qt's indeterminate bar: the worker only stops between
-   * chunks, so there is nothing left to report a percentage for, and cancelling
-   * again would change nothing */
-
   prg_label_->setText(msg);
   prg_bar_->setRange(0, 0);
   cancel_btn_->setEnabled(false);

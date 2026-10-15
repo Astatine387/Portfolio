@@ -1,11 +1,7 @@
 /**
- * @file	aes_gcm.h
- * @brief	AES-256-GCM file encryption/decryption engine
- * @author	Astatine387
- *
- * Contents:
- *	- Definition of AES_GCM class
- *	- Implementation of callback setting functions
+ * @file    aes_gcm.h
+ * @brief   AES-256-GCM file encryption engine
+ * @author  Astatine387
  */
 
 #pragma once
@@ -26,8 +22,7 @@
 #include "utils/thread_annotations.h"
 
 /**
- * @class	AesGcm
- * @brief	AES-256-GCM file encryption/decryption engine
+ * @brief   AES-256-GCM file encryption/decryption engine
  */
 class AesGcm {
  public:
@@ -45,10 +40,10 @@ class AesGcm {
    */
   ~AesGcm();
 
-  AesGcm(const AesGcm&) = delete;             // Delete copy constructor
-  AesGcm& operator=(const AesGcm&) = delete;  // Delete copy assignment operator
-  AesGcm(AesGcm&&) = delete;                  // Delete move constructor
-  AesGcm& operator=(AesGcm&&) = delete;       // Delete move assignment operator
+  AesGcm(const AesGcm&) = delete;
+  AesGcm& operator=(const AesGcm&) = delete;
+  AesGcm(AesGcm&&) = delete;
+  AesGcm& operator=(AesGcm&&) = delete;
 
   /* ==================================================
    * Interface functions
@@ -59,16 +54,8 @@ class AesGcm {
    * @param		src     Source file
    * @param		dst     Destination file
    * @param		key     Key derived from the password and the salt
-   * @param		header  Header of the file, already read and validated by the
-   * caller
+   * @param		header  File header
    * @return  kSuccess on success, kFailure on failure
-   *
-   * The header arrives parsed rather than being read here. A caller has to read
-   * it anyway, since the key cannot be derived without the salt and the
-   * parameters it carries, and reading it a second time would mean deriving the
-   * key from one image of an untrusted file and authenticating against another.
-   * It is re-validated below all the same: checking a struct already in memory
-   * costs a few comparisons and leaves no window for the file to change in.
    */
   Result Decrypt(FILE* src, FILE* dst, const SecureKey& key,
                  const FileHeader& header);
@@ -79,11 +66,6 @@ class AesGcm {
    * @param		dst     Destination file
    * @param		key     Key derived from the password and salt
    * @return  kSuccess on success, kFailure on failure
-   *
-   * The salt and the parameters written to the header come from the key rather
-   * than from arguments of their own. Passed separately they could describe a
-   * derivation other than the one that produced the key, which would write a
-   * file that authenticates under nothing and reports success doing it.
    */
   Result Encrypt(FILE* src, FILE* dst, const SecureKey& key);
 
@@ -107,9 +89,7 @@ class AesGcm {
    * @brief		Set error callback function
    * @param		ecb		Error callback function
    *
-   * Guarded, unlike the progress callback below: an error can come from the
-   * writer thread as well as from the thread doing the reading and the crypto,
-   * so two of them can arrive at once.
+   * Guarded, because two errors may arrive at once from two threads
    */
   void SetErrorCallback(ErrorCallback ecb) {
     UniqueLock lk(error_mtx_);
@@ -125,9 +105,6 @@ class AesGcm {
   /**
    * @brief		Set the cancellation flag
    * @param		flag	Cancellation flag
-   *
-   * Borrowed, not owned. The flag belongs to whoever may raise it and has to
-   * outlive the engine, which holds for the worker that owns both.
    */
   void SetCancelFlag(const std::atomic<bool>* flag) { cancel_ = flag; }
 
@@ -137,109 +114,110 @@ class AesGcm {
   FILE* src_file_ = nullptr;  // Source file
   FILE* dst_file_ = nullptr;  // Destination file
 
-  ErrorCallback ecb_ GUARDED_BY(error_mtx_) =
-      nullptr;                      // Error reporting callback function
-  ProgressCallback pcb_ = nullptr;  // Progress reporting callback function
-  Mutex error_mtx_;  // Serializes error callback calls from the read and write
-                     // threads
+  // Error reporting callback
+  ErrorCallback ecb_ GUARDED_BY(error_mtx_) = nullptr;
+
+  // Progress reporting callback
+  ProgressCallback pcb_ = nullptr;
+
+  // Mutex for error reporting callbacks
+  Mutex error_mtx_;
 
   const std::atomic<bool>* cancel_ = nullptr;  // Cancellation flag
 
   int64_t src_size_ = 0;      // Source file size
-  int64_t progress_cur_ = 0;  // Current progress
-  int64_t progress_max_ = 0;  // Total work for progress reporting
-  int last_perc_ =
-      -1;  // Last reported whole percent, -1 before the first report
+  int64_t progress_cur_ = 0;  // Current processed bytes
+  int64_t progress_max_ = 0;  // Total bytes to be processed
+  int last_perc_ = -1;  // Last reported percent, -1 before the first report
 
-  size_t chunk_size_ = kChunkSize;  // Chunk size of the current session
-  std::array<std::vector<uint8_t>, kBuffNum> buff_{};  // Chunk buffers
-  std::array<uint8_t, kHeaderSize>
-      header_{};  // Serialized header, associated data of every chunk
-  std::array<uint8_t, kNonceSize>
-      nonce_{};  // Nonce of the chunk being processed
+  // Chunk size of the current session
+  size_t chunk_size_ = kChunkSize;
 
-  const SecureKey* key_ =
-      nullptr;  // Session key for the current operation (non-owning)
+  // Chunk buffers
+  std::array<std::vector<uint8_t>, kBuffNum> buff_{};
 
-  /* The five fields below are one hand-off slot, not a queue: the producer
-   * fills it, the writer empties it, and SubmitWrite blocks until it is free
-   * again. That bound is what lets two chunk buffers be enough, since only one
-   * of them can be in the writer's hands at a time. */
+  // File header of the current session
+  std::array<uint8_t, kHeaderSize> header_{};
 
-  std::thread writer_;          // Long-lived asynchronous write worker
-  Mutex write_mtx_;             // Serializes the write hand-off state
+  // Nonce of the current chunk
+  std::array<uint8_t, kNonceSize> nonce_{};
+
+  const SecureKey* key_ = nullptr;  // Session key for the current operation
+
+  /* ==================================================
+   * Hand-off slots between the threads
+   * ================================================== */
+
+  std::thread writer_;          // Asynchronous write thread
+  Mutex write_mtx_;             // Mutex for write hand-off
   ConditionVariable write_cv_;  // Signals job-ready and job-done transitions
 
-  const void* write_buff_ GUARDED_BY(write_mtx_) =
-      nullptr;  // Buffer queued for writing
-  size_t write_size_ GUARDED_BY(write_mtx_) =
-      0;  // Number of bytes queued for writing
-  bool write_pending_ GUARDED_BY(write_mtx_) =
-      false;  // Whether a write job is queued or in progress
-  bool writer_stop_ GUARDED_BY(write_mtx_) =
-      false;  // Whether the writer thread should exit
-  Result write_result_ GUARDED_BY(write_mtx_) =
-      Result::kSuccess;  // Result of the most recent write
+  // Buffer queued for writing
+  const void* write_buff_ GUARDED_BY(write_mtx_) = nullptr;
+
+  // Number of bytes queued for writing
+  size_t write_size_ GUARDED_BY(write_mtx_) = 0;
+
+  // Whether a write job is queued or in progress
+  bool write_pending_ GUARDED_BY(write_mtx_) = false;
+
+  // Whether the writer thread should exit
+  bool writer_stop_ GUARDED_BY(write_mtx_) = false;
+
+  // Result of the most recent write
+  Result write_result_ GUARDED_BY(write_mtx_) = Result::kSuccess;
 
   /* ==================================================
    * I/O helper functions
    * ================================================== */
 
   /**
-   * @brief	    Read data from source file into buffer
-   * @param	    buff	Destination buffer
-   * @param	    size	Number of bytes to read
-   * @return	kSuccess on success, kFailure on failure
+   * @brief   Read data from source file into buffer
+   * @param   buff  Destination buffer
+   * @param   size  Number of bytes to read
+   * @return  kSuccess on success, kFailure on failure
    */
   Result ReadFile(void* buff, size_t size);
 
   /**
-   * @brief	    Write data from buffer to destination file
-   * @param	    buff	Source buffer
-   * @param	    size	Number of bytes to write
-   * @return    kSuccess on success, kFailure on failure
+   * @brief   Write data from buffer to destination file
+   * @param   buff  Source buffer
+   * @param   size  Number of bytes to write
+   * @return  kSuccess on success, kFailure on failure
    */
   Result WriteFile(const void* buff, size_t size);
 
   /**
-   * @brief	    Body of the persistent asynchronous write thread
+   * @brief   Body of the asynchronous write thread
    */
   void WriterLoop() noexcept;
 
   /**
-   * @brief	    Queue a buffer for asynchronous writing
-   * @param	    buff	Source buffer (must stay valid until the next SubmitWrite
-   * or FlushWrite)
-   * @param	    size	Number of bytes to write
-   * @return    kSuccess if the previous write succeeded, kFailure otherwise
+   * @brief   Queue a buffer for asynchronous writing
+   * @param   buff  Source buffer
+   * @param   size  Number of bytes to write
+   * @return  kSuccess if the previous write succeeded, kFailure otherwise
    */
   Result SubmitWrite(const void* buff, size_t size);
 
   /**
-   * @brief	    Wait for the in-flight write to finish
-   * @return    kSuccess if every write so far succeeded, kFailure otherwise
+   * @brief   Wait for the ongoing write to finish
+   * @return  kSuccess if every write so far succeeded, kFailure otherwise
    */
   Result FlushWrite();
 
   /**
-   * @class   WriterGuard
-   * @brief   Drain any in-flight asynchronous write when the scope exits
-   *
-   * Every exit from Encrypt and Decrypt goes through it, early returns
-   * included. That is what lets the caller close the destination file the
-   * moment the call returns: the writer thread is done with it.
+   * @brief   Drain any ongoing asynchronous write when the scope exits
    */
   class WriterGuard {
    public:
     explicit WriterGuard(AesGcm* self) : self_(self) {}
     ~WriterGuard() { self_->FlushWrite(); }
 
-    WriterGuard(const WriterGuard&) = delete;  // Delete copy constructor
-    WriterGuard& operator=(const WriterGuard&) =
-        delete;                           // Delete copy assignment operator
-    WriterGuard(WriterGuard&&) = delete;  // Delete move constructor
-    WriterGuard& operator=(WriterGuard&&) =
-        delete;  // Delete move assignment operator
+    WriterGuard(const WriterGuard&) = delete;
+    WriterGuard& operator=(const WriterGuard&) = delete;
+    WriterGuard(WriterGuard&&) = delete;
+    WriterGuard& operator=(WriterGuard&&) = delete;
 
    private:
     AesGcm* self_;  // Owner engine whose write is drained on scope exit
@@ -250,25 +228,23 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief	    Build the nonce of one chunk
-   * @param	    idx       Chunk index
-   * @param	    is_last   Whether this is the final chunk
+   * @brief   Build the nonce of one chunk
+   * @param   idx       Chunk index
+   * @param   is_last   Last-chunk flag
    */
   void BuildNonce(uint64_t idx, bool is_last);
 
   /**
-   * @brief	    Size chunk buffers for the current session
+   * @brief   Size chunk buffers for the current session
    */
   void AllocBuffers();
 
   /**
-   * @brief	    Set the session key on a freshly created context
-   * @param	    mode	kEncrypt for an encryption context, kDecrypt for a
-   * decryption context
-   * @return    kSuccess on success, kFailure on failure
+   * @brief   Create a fresh context and set the session key
+   * @param   mode  Either encryption or decryption
+   * @return  kSuccess on success, kFailure on failure
    *
-   * The key schedule is computed once here; each chunk only re-initializes the
-   * nonce.
+   * The key schedule is computed only once here.
    */
   Result SetupCtx(CryptoMode mode);
 
@@ -277,24 +253,24 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief   Check the header handed in, then prepare the context and buffers
-   * @param   header  Header of the file being decrypted
+   * @brief   Check the header, prepare the context and buffers
+   * @param   header  Header read from the source file
    * @return  kSuccess on success, kFailure on failure
    */
   Result DecryptInit(const FileHeader& header);
 
   /**
-   * @brief   Verify and write every chunk of the file in a single pass
+   * @brief   Verify and write every chunk of the file
    * @return	kSuccess on success, kFailure on failure or cancellation
    */
   Result DecryptLoop();
 
   /**
-   * @brief	    Verify one chunk and decrypt it in place
-   * @param	    buff      Buffer holding the ciphertext followed by its tag
-   * @param	    len       Ciphertext length in bytes, tag excluded
-   * @param	    idx       Chunk index
-   * @param	    is_last   Whether this is the final chunk of the file
+   * @brief   Verify one chunk and decrypt it in place
+   * @param   buff      Buffer holding the ciphertext followed by its tag
+   * @param   len       Ciphertext length in bytes, tag excluded
+   * @param   idx       Chunk index
+   * @param   is_last   Whether this is the final chunk of the file
    * @return	kSuccess when the tag verifies, kFailure otherwise
    */
   Result DecryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_last);
@@ -304,25 +280,24 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief		Write the header, then prepare the context and buffers
-   * @return	kSuccess on success, kFailure on failure
+   * @brief   Write the header, prepare the context and buffers
+   * @return  kSuccess on success, kFailure on failure
    */
   Result EncryptInit();
 
   /**
-   * @brief		Encrypt and write every chunk of the file in a single pass
-   * @return	kSuccess on success, kFailure on failure or cancellation
+   * @brief   Encrypt and write the file
+   * @return  kSuccess on success, kFailure on failure or cancellation
    */
   Result EncryptLoop();
 
   /**
-   * @brief		Encrypt one chunk in place and append its tag
-   * @param		buff      Buffer holding the plaintext, with room for the tag
-   * after it
+   * @brief   Encrypt one chunk in place and append its tag
+   * @param   buff      Buffer holding the plaintext, with room for the tag
    * @param		len       Plaintext length in bytes
    * @param		idx       Chunk index
    * @param		is_last   Whether this is the final chunk of the file
-   * @return	kSuccess on success, kFailure on failure
+   * @return  kSuccess on success, kFailure on failure
    */
   Result EncryptChunk(uint8_t* buff, size_t len, uint64_t idx, bool is_last);
 
@@ -331,7 +306,7 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief		Report current progress via callback
+   * @brief   Report current progress via callback
    */
   void ReportProgress();
 
