@@ -148,7 +148,7 @@ class AesGcm {
    * Hand-off slots between the threads
    * ================================================== */
 
-  std::thread writer_;          // Asynchronous write thread
+  std::thread consumer_;        // Asynchronous consumer thread
   Mutex write_mtx_;             // Mutex for write hand-off
   ConditionVariable write_cv_;  // Signals job-ready and job-done transitions
 
@@ -161,8 +161,8 @@ class AesGcm {
   // Whether a write job is queued or in progress
   bool write_pending_ GUARDED_BY(write_mtx_) = false;
 
-  // Whether the writer thread should exit
-  bool writer_stop_ GUARDED_BY(write_mtx_) = false;
+  // Whether the consumer thread should exit
+  bool consumer_stop_ GUARDED_BY(write_mtx_) = false;
 
   // Result of the most recent write
   Result write_result_ GUARDED_BY(write_mtx_) = Result::kSuccess;
@@ -188,9 +188,9 @@ class AesGcm {
   Result WriteFile(const void* buff, size_t size);
 
   /**
-   * @brief   Body of the asynchronous write thread
+   * @brief   Body of the asynchronous consumer thread
    */
-  void WriterLoop() noexcept;
+  void ConsumerLoop() noexcept;
 
   /**
    * @brief   Queue a buffer for asynchronous writing
@@ -209,15 +209,15 @@ class AesGcm {
   /**
    * @brief   Drain any ongoing asynchronous write when the scope exits
    */
-  class WriterGuard {
+  class ConsumerGuard {
    public:
-    explicit WriterGuard(AesGcm* self) : self_(self) {}
-    ~WriterGuard() { self_->FlushWrite(); }
+    explicit ConsumerGuard(AesGcm* self) : self_(self) {}
+    ~ConsumerGuard() { self_->FlushWrite(); }
 
-    WriterGuard(const WriterGuard&) = delete;
-    WriterGuard& operator=(const WriterGuard&) = delete;
-    WriterGuard(WriterGuard&&) = delete;
-    WriterGuard& operator=(WriterGuard&&) = delete;
+    ConsumerGuard(const ConsumerGuard&) = delete;
+    ConsumerGuard& operator=(const ConsumerGuard&) = delete;
+    ConsumerGuard(ConsumerGuard&&) = delete;
+    ConsumerGuard& operator=(ConsumerGuard&&) = delete;
 
    private:
     AesGcm* self_;  // Owner engine whose write is drained on scope exit

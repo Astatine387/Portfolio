@@ -33,26 +33,26 @@ static_assert(kCounterOffset + sizeof(uint64_t) + 1 == kNonceSize,
 }  // namespace
 
 AesGcm::AesGcm() {
-  writer_ = std::thread(&AesGcm::WriterLoop, this);
+  consumer_ = std::thread(&AesGcm::ConsumerLoop, this);
 }
 
 // NOLINTNEXTLINE(bugprone-exception-escape)
 AesGcm::~AesGcm() {
-  /* Acquire the lock and poll the stop flag for the writer thread */
+  /* Acquire the lock and poll the stop flag for the consumer thread */
 
   {
     UniqueLock lk(write_mtx_);
-    writer_stop_ = true;
+    consumer_stop_ = true;
   }
 
-  /* Wake the writer thread */
+  /* Wake the consumer thread */
 
   write_cv_.NotifyOne();
 
-  /* Wait until the writer thread finishes any remaining job */
+  /* Wait until the consumer thread finishes any remaining job */
 
-  if (writer_.joinable()) {
-    writer_.join();
+  if (consumer_.joinable()) {
+    consumer_.join();
   }
 
   /* Wipe the buffers */
@@ -101,7 +101,7 @@ Result AesGcm::WriteFile(const void* buff, size_t size) {
   return Result::kSuccess;
 }
 
-void AesGcm::WriterLoop() noexcept {
+void AesGcm::ConsumerLoop() noexcept {
   /* Acquire the lock */
 
   UniqueLock lk(write_mtx_);
@@ -110,12 +110,12 @@ void AesGcm::WriterLoop() noexcept {
     /* Sleep until a job is queued or a quit is requested */
 
     write_cv_.Wait(lk, [this]() REQUIRES(write_mtx_) {
-      return write_pending_ || writer_stop_;
+      return write_pending_ || consumer_stop_;
     });
 
     /* Stop once a quit is requested and no job is left */
 
-    if (writer_stop_ && !write_pending_) {
+    if (consumer_stop_ && !write_pending_) {
       break;
     }
 
@@ -171,7 +171,7 @@ Result AesGcm::SubmitWrite(const void* buff, size_t size) {
   write_size_ = size;
   write_pending_ = true;
 
-  /* Release the lock and wake the writer thread */
+  /* Release the lock and wake the consumer thread */
 
   lk.Unlock();
   write_cv_.NotifyOne();

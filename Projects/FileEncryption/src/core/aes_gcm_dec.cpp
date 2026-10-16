@@ -30,7 +30,7 @@ Result AesGcm::Decrypt(FILE* src, FILE* dst, const SecureKey& key,
 
   /* Drain any ongoing asynchronous write when the scope exits */
 
-  WriterGuard writer_guard(this);
+  ConsumerGuard consumer_guard(this);
 
   /* Check the header, prepare the context and buffers */
 

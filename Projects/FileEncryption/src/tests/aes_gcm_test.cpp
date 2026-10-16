@@ -327,7 +327,7 @@ TEST_F(AesGcmTest, CancelDuringEncryption) {
  * A drained cancellation leaves a whole number of chunks, each matching the
  * plaintext; a write still in flight at close time would leave a short or torn
  * tail instead. These are necessary conditions, not a proof. What catches a
- * missing drain directly is ThreadSanitizer, which reports the writer thread
+ * missing drain directly is ThreadSanitizer, which reports the consumer thread
  * racing the caller's close.
  */
 TEST_F(AesGcmTest, CancelDuringDecryption) {
@@ -371,7 +371,7 @@ TEST_F(AesGcmTest, CancelDuringDecryption) {
  * ================================================== */
 
 /**
- * @brief   Verify a write failure raised on the writer thread stops the
+ * @brief   Verify a write failure raised on the consumer thread stops the
  * producer at once
  */
 TEST_F(AesGcmTest, WriteFailureStopsTheProducer) {
@@ -406,7 +406,7 @@ TEST_F(AesGcmTest, WriteFailureStopsTheProducer) {
 }
 
 /**
- * @brief   Verify a thrown error callback doesn't escape the noexcept writer
+ * @brief   Verify a thrown error callback doesn't escape the noexcept consumer
  * thread
  */
 TEST_F(AesGcmTest, ThrowingErrorCallbackDoesNotTerminate) {
@@ -419,7 +419,7 @@ TEST_F(AesGcmTest, ThrowingErrorCallbackDoesNotTerminate) {
   Store(dec_path_, MakePlain(1));
 
   /* A write failure drives ReportError, and the callback throws out of the
-   * writer thread */
+   * consumer thread */
 
   aes.SetErrorCallback([&](const char*) {
     calls++;

@@ -18,7 +18,7 @@
  *  - BenchRawEvpChunked        The same crypto over a cache-resident buffer.
  * Its gap to the line above is the cache, not the pipeline.
  *  - BenchPipelineEncryptSync  The pipeline with the write done on the calling
- * thread, so the report can state what the writer thread is actually worth.
+ * thread, so the report can state what the consumer thread is actually worth.
  */
 
 #include <benchmark/benchmark.h>
@@ -736,7 +736,7 @@ bool EncryptSync(FILE* src, FILE* dst, const SecureKey& key) {
  * @brief   End-to-end encryption throughput with the write done synchronously
  * @param   state   Benchmark state
  *
- * The counterfactual for the writer thread. On tmpfs a write is a memcpy and
+ * The counterfactual for the consumer thread. On tmpfs a write is a memcpy and
  * there is little to overlap, so the gain here is small and can even be
  * negative once the per-chunk hand-off is paid for; on a real block device it
  * is the whole reason the thread exists. Run the suite on both before claiming
