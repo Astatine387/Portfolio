@@ -50,8 +50,8 @@ void CryptoWorker::Work() {
   tmp_path += kPartSuffix;
 
   /* Use OpenSourceFile rather than a plain open so that a directory, a symbolic
-   * link, or a pseudo fileis are refused instead of being read as an empty
-   * source */
+   * link, or a pseudo file is refused instead of being read as an empty source
+   */
 
   if (OpenSourceFile(&src_file, src_path_) == Result::kFailure) {
     if (fcb_) {
