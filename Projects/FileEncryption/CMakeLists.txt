@@ -328,7 +328,6 @@ if(NOT WIN32)
         target_link_libraries(FileEncryption-bench PRIVATE
             FileEncryption-core
             benchmark::benchmark
-            benchmark::benchmark_main
             project_warnings_strict
         )
     endif()

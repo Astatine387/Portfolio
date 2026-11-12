@@ -104,7 +104,7 @@ void CryptoWorker::Work() {
     if (status != HeaderStatus::kOk) {
       reason = HeaderErrorMessage(status);
     }
-    else if (std::cmp_less(src_size, kMinSize)) {
+    else if (std::cmp_less(src_size, kMinEncryptedSize)) {
       reason =
           "[File] Validation failed - File is too small to be an encrypted "
           "file\n";

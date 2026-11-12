@@ -59,7 +59,7 @@ Result AesGcm::DecryptInit(const FileHeader& header) {
     // LCOV_EXCL_STOP
   }
 
-  if (std::cmp_less(src_size_, kMinSize)) {
+  if (std::cmp_less(src_size_, kMinEncryptedSize)) {
     ReportError(
         "[File] Validation failed - File is too small to be an encrypted "
         "file\n");

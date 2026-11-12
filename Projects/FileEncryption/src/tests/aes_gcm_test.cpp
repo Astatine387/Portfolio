@@ -126,9 +126,9 @@ TEST_F(AesGcmTest, DecryptRejectsUndersizedFile) {
 
   std::vector<uint8_t> bytes = EncryptBytes(MakePlain(0), salt, "password");
 
-  ASSERT_EQ(bytes.size(), kMinSize);
+  ASSERT_EQ(bytes.size(), kMinEncryptedSize);
 
-  bytes.resize(kMinSize - 1);
+  bytes.resize(kMinEncryptedSize - 1);
 
   std::vector<uint8_t> copy;
 
@@ -144,8 +144,8 @@ TEST_F(AesGcmTest, DecryptRejectsForeignFile) {
 
   std::vector<uint8_t> copy;
 
-  EXPECT_EQ(DecryptBytes(std::vector<uint8_t>(kMinSize, 0x00), copy, salt,
-                         "password"),
+  EXPECT_EQ(DecryptBytes(std::vector<uint8_t>(kMinEncryptedSize, 0x00), copy,
+                         salt, "password"),
             Result::kFailure);
   EXPECT_NE(last_error_.find("Not a FileEncryption file"), std::string::npos);
 }

@@ -1,24 +1,7 @@
 ﻿/**
  * @file    benchmark.cpp
- * @brief   AES-256-GCM pipeline throughput, its floor and ceiling controls, and
- * Argon2id key derivation
+ * @brief   AES-256-GCM pipeline and Argon2id key derivation benchmark
  * @author  Astatine387
- *
- * A pipeline that moves 256 MiB through the file system cannot be compared
- * against a loop that reuses one 64 KiB buffer: the second one keeps its whole
- * working set in the cache and never reaches main memory, so the difference
- * between them is mostly the cost of the data being somewhere else. The
- * controls here bracket the pipeline instead of racing it against work it does
- * not do.
- *
- *  - BenchFileCopy             The same reads and writes with no crypto.
- * Nothing can beat this.
- *  - BenchRawEvpStreaming      The same crypto over a buffer too large for the
- * cache.
- *  - BenchRawEvpChunked        The same crypto over a cache-resident buffer.
- * Its gap to the line above is the cache, not the pipeline.
- *  - BenchPipelineEncryptSync  The pipeline with the write done on the calling
- * thread, so the report can state what the consumer thread is actually worth.
  */
 
 #include <benchmark/benchmark.h>
@@ -47,7 +30,6 @@ namespace {
 
 constexpr int64_t kBenchSize = 256LL * 1024 * 1024;
 constexpr int64_t kSpeedChunk = 16LL * 1024;
-
 constexpr int64_t kPipeChunk = static_cast<int64_t>(kChunkSize);
 
 constexpr std::string_view kBenchPw = "benchmark-password";
@@ -59,7 +41,7 @@ constexpr std::string_view kOutName = "out.tmp";
 
 /**
  * @brief   Build a scratch file path under FE_BENCH_DIR
- * @param   name    File name
+ * @param   name  File name
  * @return  Full path to the scratch file
  */
 std::string BenchPath(std::string_view name) {
@@ -74,8 +56,8 @@ std::string BenchPath(std::string_view name) {
 }
 
 /**
- * @brief   Derive the shared session key and hand out a view of it
- * @return  Pointer to the shared key on success, nullptr on failure
+ * @brief   Derive the shared session key
+ * @return  Pointer to the key on success, nullptr on failure
  */
 const SecureKey* SharedKey() {
   static const std::optional<SecureKey> key = DeriveKey(
@@ -86,15 +68,15 @@ const SecureKey* SharedKey() {
 
 /**
  * @brief   Fill a file with cryptographically secure random bytes
- * @param   path    Destination path
- * @param   size    File size in bytes
- * @return  true on success
+ * @param   path  Destination path
+ * @param   size  File size in bytes
+ * @return  kSuccess on success, kFailure on failure
  */
-bool WriteRandomFile(const std::string& path, int64_t size) {
+Result WriteRandomFile(const std::string& path, int64_t size) {
   std::vector<uint8_t> data(static_cast<size_t>(size));
 
   if (Random(data.data(), data.size()) == Result::kFailure) {
-    return false;
+    return Result::kFailure;
   }
 
   FILE* file = nullptr;
@@ -102,7 +84,7 @@ bool WriteRandomFile(const std::string& path, int64_t size) {
   OpenFile(&file, path, "wb");
 
   if (file == nullptr) {
-    return false;
+    return Result::kFailure;
   }
 
   const bool res =
@@ -110,15 +92,19 @@ bool WriteRandomFile(const std::string& path, int64_t size) {
 
   fclose(file);
 
-  return res;
+  if (!res) {
+    return Result::kFailure;
+  }
+
+  return Result::kSuccess;
 }
 
 /**
  * @brief   Encrypt the plaintext scratch file
- * @param   key     Session key
- * @return  true on success
+ * @param   key   Session key
+ * @return  kSuccess on success, kFailure on failure
  */
-bool BuildCipherFile(const SecureKey& key) {
+Result BuildCipherFile(const SecureKey& key) {
   auto aes = std::make_unique<AesGcm>();
 
   FILE* src = nullptr;
@@ -127,10 +113,10 @@ bool BuildCipherFile(const SecureKey& key) {
   OpenFile(&src, BenchPath(kPlainName), "rb");
   OpenFile(&dst, BenchPath(kCipherName), "wb+");
 
-  bool res = src != nullptr && dst != nullptr;
+  Result res = Result::kFailure;
 
-  if (res) {
-    res = aes->Encrypt(src, dst, key) == Result::kSuccess;
+  if (src != nullptr && dst != nullptr) {
+    res = aes->Encrypt(src, dst, key);
   }
 
   if (src != nullptr) {
@@ -145,7 +131,6 @@ bool BuildCipherFile(const SecureKey& key) {
 }
 
 /**
- * @class   ScratchCleaner
  * @brief   Removes the scratch files when the process exits
  */
 class ScratchCleaner {
@@ -155,7 +140,6 @@ class ScratchCleaner {
         cipher_(BenchPath(kCipherName)),
         out_(BenchPath(kOutName)) {}
 
-  // Paths are built in the constructor; nothing here allocates.
   // NOLINTNEXTLINE(bugprone-exception-escape)
   ~ScratchCleaner() {
     RemoveFile(plain_);
@@ -163,12 +147,10 @@ class ScratchCleaner {
     RemoveFile(out_);
   }
 
-  ScratchCleaner(const ScratchCleaner&) = delete;  // Delete copy constructor
-  ScratchCleaner& operator=(const ScratchCleaner&) =
-      delete;                                 // Delete copy assignment operator
-  ScratchCleaner(ScratchCleaner&&) = delete;  // Delete move constructor
-  ScratchCleaner& operator=(ScratchCleaner&&) =
-      delete;  // Delete move assignment operator
+  ScratchCleaner(const ScratchCleaner&) = delete;
+  ScratchCleaner& operator=(const ScratchCleaner&) = delete;
+  ScratchCleaner(ScratchCleaner&&) = delete;
+  ScratchCleaner& operator=(ScratchCleaner&&) = delete;
 
  private:
   std::string plain_;   // Plaintext scratch file
@@ -178,20 +160,21 @@ class ScratchCleaner {
 
 /**
  * @brief   Create the scratch files
- * @return  true when the scratch files are ready
+ * @return  kSuccess when the scratch files are ready, kFailure otherwise
  */
-bool CreateScratch() {
-  static const bool ready = []() {
+Result CreateScratch() {
+  static const Result ready = []() {
     static const ScratchCleaner cleaner;
 
     const SecureKey* key = SharedKey();
 
     if (key == nullptr) {
-      return false;
+      return Result::kFailure;
     }
 
-    if (!WriteRandomFile(BenchPath(kPlainName), kBenchSize)) {
-      return false;
+    if (WriteRandomFile(BenchPath(kPlainName), kBenchSize) ==
+        Result::kFailure) {
+      return Result::kFailure;
     }
 
     return BuildCipherFile(*key);
@@ -201,7 +184,7 @@ bool CreateScratch() {
 }
 
 /**
- * @brief   Raw OpenSSL AES-256-GCM streaming throughput, no file I/O
+ * @brief   Raw OpenSSL AES-256-GCM throughput without file I/O
  * @param   state   Benchmark state, range(0) is the chunk size in bytes
  */
 void BenchRawEvpEncrypt(benchmark::State& state) {
@@ -276,8 +259,7 @@ void BenchRawEvpEncrypt(benchmark::State& state) {
 }
 
 /**
- * @brief   Raw OpenSSL AES-256-GCM throughput in the chunked layout this format
- * uses
+ * @brief   Raw OpenSSL AES-256-GCM throughput
  * @param   state   Benchmark state
  */
 void BenchRawEvpChunked(benchmark::State& state) {
@@ -365,11 +347,11 @@ void BenchRawEvpChunked(benchmark::State& state) {
 }
 
 /**
- * @brief   End-to-end encryption throughput through the real AesGcm pipeline
+ * @brief   End-to-end encryption throughput using AesGcm pipeline
  * @param   state   Benchmark state
  */
 void BenchPipelineEncrypt(benchmark::State& state) {
-  if (!CreateScratch()) {
+  if (CreateScratch() == Result::kFailure) {
     state.SkipWithError("Cannot prepare scratch files");
     return;
   }
@@ -419,11 +401,11 @@ void BenchPipelineEncrypt(benchmark::State& state) {
 }
 
 /**
- * @brief   End-to-end decryption throughput through the real AesGcm pipeline
+ * @brief   End-to-end decryption throughput using AesGcm pipeline
  * @param   state   Benchmark state
  */
 void BenchPipelineDecrypt(benchmark::State& state) {
-  if (!CreateScratch()) {
+  if (CreateScratch() == Result::kFailure) {
     state.SkipWithError("Cannot prepare scratch files");
     return;
   }
@@ -448,10 +430,6 @@ void BenchPipelineDecrypt(benchmark::State& state) {
 
     OpenFile(&src, src_path, "rb");
     OpenFile(&dst, dst_path, "wb+");
-
-    /* The header is read here rather than inside the engine, the same way
-     * CryptoWorker reads it. It is 65 bytes once per iteration against 256 MiB
-     * of payload, so it does not move the number. */
 
     FileHeader header;
 
@@ -480,22 +458,11 @@ void BenchPipelineDecrypt(benchmark::State& state) {
 }
 
 /**
- * @brief   File I/O floor: the bytes an encryption pass moves, with no crypto
- * at all
+ * @brief   File I/O floor
  * @param   state   Benchmark state
- *
- * The control the headline ratio is taken against. It reads the same file in
- * the same chunk size through the same stdio calls and writes the result back,
- * so it measures the part of the work that exists because this is a file tool
- * rather than because of anything in AesGcm. A pipeline can only approach this
- * line, never pass it, which is what makes "pipeline / floor" an efficiency and
- * "pipeline / in-memory crypto" merely a description of the workload.
- *
- * It moves one tag per chunk less than a real pass does, 64 KiB over the whole
- * 256 MiB, or 0.02%.
  */
 void BenchFileCopy(benchmark::State& state) {
-  if (!CreateScratch()) {
+  if (CreateScratch() == Result::kFailure) {
     state.SkipWithError("Cannot prepare scratch files");
     return;
   }
@@ -545,15 +512,6 @@ void BenchFileCopy(benchmark::State& state) {
 /**
  * @brief   Raw OpenSSL AES-256-GCM over a working set too large for the cache
  * @param   state   Benchmark state
- *
- * Identical per-chunk work to BenchRawEvpChunked, spread over a 256 MiB buffer
- * encrypted in place rather than one 64 KiB pair of buffers reused 4096 times.
- * Every chunk is fetched from main memory and written back, which is what
- * happens to a chunk that came from a file.
- *
- * Comparing the two says how much of the pipeline's apparent shortfall was
- * never about the pipeline: whatever BenchRawEvpChunked gains over this line,
- * it gains by not touching memory.
  */
 void BenchRawEvpStreaming(benchmark::State& state) {
   const SecureKey* key = SharedKey();
@@ -564,10 +522,6 @@ void BenchRawEvpStreaming(benchmark::State& state) {
   }
 
   const int64_t rounds = kBenchSize / static_cast<int64_t>(kChunkSize);
-
-  /* Value-initialized, so every page is touched here and no page fault lands
-   * inside the measurement. The contents do not matter: AES-NI takes the same
-   * time whatever the bytes are. */
 
   std::vector<uint8_t> buff(static_cast<size_t>(kBenchSize));
 
@@ -639,25 +593,13 @@ void BenchRawEvpStreaming(benchmark::State& state) {
 }
 
 /**
- * @brief   Encrypt a file the way the pipeline does, writing on the calling
- * thread
+ * @brief   Encrypt a file the way the pipeline does
  * @param   src   Source file
  * @param   dst   Destination file
  * @param   key   Session key
- * @return  true on success
- *
- * A deliberate duplicate of AesGcm::EncryptLoop with SubmitWrite replaced by a
- * plain fwrite, and the only reason to keep a duplicate around: everything else
- * is the same work in the same order, so the difference between this and the
- * real pipeline is the whole of the asynchronous write and nothing else. The
- * output is byte for byte what AesGcm would have produced.
+ * @return  kSuccess on success, kFailure on failure
  */
-bool EncryptSync(FILE* src, FILE* dst, const SecureKey& key) {
-  /* Built off the key for the same reason EncryptInit is: the control only
-   * measures the write strategy if everything else, the associated data
-   * included, is identical to what the pipeline would emit. The commitment is
-   * part of that header and so part of every tag. */
-
+Result EncryptSync(FILE* src, FILE* dst, const SecureKey& key) {
   FileHeader header;
 
   header.params = key.Params();
@@ -669,13 +611,13 @@ bool EncryptSync(FILE* src, FILE* dst, const SecureKey& key) {
   SerializeHeader(aad, header);
 
   if (fwrite(aad.data(), sizeof(uint8_t), aad.size(), dst) != aad.size()) {
-    return false;
+    return Result::kFailure;
   }
 
   EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
 
   if (ctx == nullptr) {
-    return false;
+    return Result::kFailure;
   }
 
   bool res = EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr,
@@ -686,9 +628,6 @@ bool EncryptSync(FILE* src, FILE* dst, const SecureKey& key) {
                                 nullptr) == 1;
 
   const int64_t rounds = kBenchSize / static_cast<int64_t>(kChunkSize);
-
-  /* Room for the tag past the chunk, so a chunk still leaves in a single write
-   */
 
   std::vector<uint8_t> buff(kChunkSize + kTagSize);
 
@@ -718,9 +657,6 @@ bool EncryptSync(FILE* src, FILE* dst, const SecureKey& key) {
                                 buff.data() + kChunkSize) == 1;
     }
 
-    /* The whole point of the control: the next chunk is not read until this
-     * write has returned */
-
     if (res) {
       res =
           fwrite(buff.data(), sizeof(uint8_t), buff.size(), dst) == buff.size();
@@ -729,21 +665,19 @@ bool EncryptSync(FILE* src, FILE* dst, const SecureKey& key) {
 
   EVP_CIPHER_CTX_free(ctx);
 
-  return res;
+  if (!res) {
+    return Result::kFailure;
+  }
+
+  return Result::kSuccess;
 }
 
 /**
- * @brief   End-to-end encryption throughput with the write done synchronously
+ * @brief   End-to-end encryption throughput with synchronous write
  * @param   state   Benchmark state
- *
- * The counterfactual for the consumer thread. On tmpfs a write is a memcpy and
- * there is little to overlap, so the gain here is small and can even be
- * negative once the per-chunk hand-off is paid for; on a real block device it
- * is the whole reason the thread exists. Run the suite on both before claiming
- * a number.
  */
 void BenchPipelineEncryptSync(benchmark::State& state) {
-  if (!CreateScratch()) {
+  if (CreateScratch() == Result::kFailure) {
     state.SkipWithError("Cannot prepare scratch files");
     return;
   }
@@ -770,7 +704,7 @@ void BenchPipelineEncryptSync(benchmark::State& state) {
     bool res = src != nullptr && dst != nullptr;
 
     if (res) {
-      res = EncryptSync(src, dst, *key);
+      res = EncryptSync(src, dst, *key) == Result::kSuccess;
     }
 
     if (src != nullptr) {
@@ -829,10 +763,6 @@ BENCHMARK(BenchFileCopy)->Unit(benchmark::kMillisecond);
 BENCHMARK(BenchPipelineEncrypt)->Unit(benchmark::kMillisecond);
 BENCHMARK(BenchPipelineEncryptSync)->Unit(benchmark::kMillisecond);
 BENCHMARK(BenchPipelineDecrypt)->Unit(benchmark::kMillisecond);
-
-/* Few iterations per repetition: at 512 MiB of memory cost a single derivation
- * already dominates, and the spread is better captured by
- * --benchmark_repetitions than by averaging inside one repetition. */
 
 BENCHMARK(BenchArgon2id)->Unit(benchmark::kMillisecond)->Iterations(3);
 

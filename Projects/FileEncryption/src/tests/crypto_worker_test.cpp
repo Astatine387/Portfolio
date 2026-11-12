@@ -226,10 +226,10 @@ class CryptoWorkerTest : public ::testing::Test {
    * @param   params  Argon2id parameters to record in the header
    *
    * kHeaderSize bytes exactly, which parses as a header and is still below
-   * kMinSize, so it is the shortest file that reaches the size check rather
-   * than being turned away by the parse. Assembled by hand rather than by
-   * truncating a real encryption, so the fixture costs no derivation of its own
-   * and is free to record parameters nobody would want to run.
+   * kMinEncryptedSize, so it is the shortest file that reaches the size check
+   * rather than being turned away by the parse. Assembled by hand rather than
+   * by truncating a real encryption, so the fixture costs no derivation of its
+   * own and is free to record parameters nobody would want to run.
    */
   void MakeHeaderOnlyFile(const KdfParams& params) {
     FILE* file = nullptr;
@@ -422,7 +422,7 @@ TEST_F(CryptoWorkerTest, TooShortSourceIsRejected) {
  * number
  */
 TEST_F(CryptoWorkerTest, ForeignSourceIsRejected) {
-  Create(src_path_, std::vector<uint8_t>(kMinSize, 'a'));
+  Create(src_path_, std::vector<uint8_t>(kMinEncryptedSize, 'a'));
 
   const std::string msg =
       RunWorker(src_path_, dec_path_, "password", CryptoMode::kDecrypt);
