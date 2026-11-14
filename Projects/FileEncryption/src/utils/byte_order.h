@@ -1,7 +1,7 @@
 /**
- * @file	byte_order.h
- * @brief	Explicit byte order helpers for on-disk integer fields
- * @author	Astatine387
+ * @file    byte_order.h
+ * @brief   Explicit byte order helpers for on-disk integer fields
+ * @author  Astatine387
  *
  * Two orders coexist on purpose: the header stores its integer fields
  * little-endian, while the chunk counter inside the nonce is big-endian, the
@@ -15,7 +15,7 @@
 /**
  * @brief   Store a 32-bit value in little-endian order
  * @param   dst   Destination buffer, at least 4 bytes
- * @param   val     Value to store
+ * @param   val   Value to store
  */
 constexpr void StoreLE32(uint8_t* dst, uint32_t val) {
   dst[0] = static_cast<uint8_t>(val & 0xFFU);
@@ -38,7 +38,7 @@ constexpr void StoreLE32(uint8_t* dst, uint32_t val) {
 /**
  * @brief   Store a 64-bit value in big-endian order
  * @param   dst   Destination buffer, at least 8 bytes
- * @param   val     Value to store
+ * @param   val   Value to store
  */
 constexpr void StoreBE64(uint8_t* dst, uint64_t val) {
   dst[0] = static_cast<uint8_t>((val >> 56) & 0xFFU);

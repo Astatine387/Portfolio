@@ -18,11 +18,12 @@
 
 namespace {
 
+/**
+ * @brief   Convert std::string file path to std::filesystem::path
+ * @param   path  file path, in std::string
+ * @return  file path, in std::filesystem::path
+ */
 std::filesystem::path ToPath(const std::string& path) {
-  /* Going through u8string makes std::filesystem read the bytes as UTF-8. A
-   * plain char string would be decoded with the active code page instead,
-   * mangling every non-ASCII file name. */
-
   return std::filesystem::path(std::u8string(
       reinterpret_cast<const char8_t*>(path.data()), path.size()));
 }
@@ -35,37 +36,32 @@ bool FileExists(const std::string& path) {
 }
 
 int64_t GetFileSize(FILE* file) {
-  /* A size is only meaningful for a regular file, so a stream on a console, a
-   * pipe or a device is a failure here rather than a number. The type comes
-   * from the descriptor, which is what makes this hold for a stream that
-   * reached here without going through OpenSourceFile. */
-
   struct _stat64 st = {};
+
+  /* Fails if it isn't a regular file */
 
   if (_fstat64(_fileno(file), &st) != 0 || (st.st_mode & _S_IFMT) != _S_IFREG) {
     return -1;
   }
 
-  /* Measuring moves the position, so it is put back at the start and the caller
-   * can read from there */
+  /* Get the file size */
 
   if (_fseeki64(file, 0, SEEK_END)) {
-    return -1;  // LCOV_EXCL_LINE  a regular file is always seekable
+    return -1;  // LCOV_EXCL_LINE
   }
 
-  int64_t size = _ftelli64(file);
+  int64_t res = _ftelli64(file);
+
+  /* Reset the cursor */
 
   if (_fseeki64(file, 0, SEEK_SET)) {
     return -1;  // LCOV_EXCL_LINE
   }
 
-  return size;
+  return res;
 }
 
 Result Random(uint8_t* dst, size_t size) {
-  /* Unlike getrandom on the Linux side, this fills the whole buffer or fails,
-   * so there is no loop */
-
   if (BCryptGenRandom(nullptr, dst, static_cast<ULONG>(size),
                       BCRYPT_USE_SYSTEM_PREFERRED_RNG)) {
     return Result::kFailure;  // LCOV_EXCL_LINE
@@ -88,11 +84,6 @@ Result RenameFile(const std::string& src, const std::string& dst) {
   std::filesystem::path src_path = ToPath(src);
   std::filesystem::path dst_path = ToPath(dst);
 
-  /* MOVEFILE_REPLACE_EXISTING is deliberately absent, so the move fails instead
-   * of overwriting an existing destination. MOVEFILE_WRITE_THROUGH returns only
-   * once the new directory entry is on the disk, which is what lets SyncDir
-   * here be a plain open. */
-
   if (!MoveFileExW(src_path.c_str(), dst_path.c_str(),
                    MOVEFILE_WRITE_THROUGH)) {
     return Result::kFailure;
@@ -102,13 +93,13 @@ Result RenameFile(const std::string& src, const std::string& dst) {
 }
 
 Result SyncFile(FILE* file) {
-  /* Two layers of buffering: fflush pushes the stdio buffer down to the
-   * operating system, and FlushFileBuffers below pushes the system's cache onto
-   * the disk */
+  /* Push the stdio buffer into the kernel */
 
   if (fflush(file)) {
     return Result::kFailure;
   }
+
+  /* Get file handle */
 
   const intptr_t ptr = _get_osfhandle(_fileno(file));
 
@@ -118,6 +109,8 @@ Result SyncFile(FILE* file) {
   if (handle == INVALID_HANDLE_VALUE) {
     return Result::kFailure;
   }
+
+  /* Push the kernel's page cache onto the disk */
 
   if (!FlushFileBuffers(handle)) {
     return Result::kFailure;
@@ -138,10 +131,6 @@ Result SyncDir(const std::string& path) {
     return Result::kFailure;
   }
 
-  /* Windows has no directory fsync. MOVEFILE_WRITE_THROUGH in RenameFile
-   * already puts the directory entry on the disk, so opening the directory is
-   * the only step that can fail here. */
-
   CloseHandle(handle);
 
   return Result::kSuccess;
@@ -159,9 +148,6 @@ void OpenFile(FILE** file, const std::string& path, const char* mode) {
   std::filesystem::path fs_path = ToPath(path);
   std::wstring wmode;
 
-  /* Widening one byte at a time is only correct for ASCII, which is all a stdio
-   * mode string ever is */
-
   for (const char* p = mode; *p; ++p) {
     wmode += static_cast<wchar_t>(*p);
   }
@@ -174,13 +160,6 @@ Result OpenSourceFile(FILE** file, const std::string& path) {
 
   std::filesystem::path fs_path = ToPath(path);
 
-  /* FILE_FLAG_OPEN_REPARSE_POINT opens a reparse point instead of following it,
-   * matching O_NOFOLLOW on the Linux side, so a symbolic link or a junction
-   * arrives here as itself and is rejected below rather than silently read
-   * through. Sharing reads but not writes keeps a file another process is still
-   * writing from being taken as a source, which is what stops its size from
-   * moving under the reader. */
-
   HANDLE handle = CreateFileW(
       fs_path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
       FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
@@ -190,11 +169,6 @@ Result OpenSourceFile(FILE** file, const std::string& path) {
   }
 
   BY_HANDLE_FILE_INFORMATION info = {};
-
-  /* Asking the handle rather than the path, so what was opened is what is
-   * judged and the answer cannot change in between. FILE_TYPE_DISK is the part
-   * that rules out a console or a named pipe, which the attributes alone would
-   * not. */
 
   if (!GetFileInformationByHandle(handle, &info) ||
       (info.dwFileAttributes &
@@ -214,9 +188,6 @@ Result OpenSourceFile(FILE** file, const std::string& path) {
     // LCOV_EXCL_STOP
   }
 
-  /* The descriptor owns the handle from here, so closing it is what closes the
-   * handle */
-
   *file = _fdopen(fd, "rb");
 
   if (*file == nullptr) {
@@ -233,11 +204,6 @@ Result OpenNewFile(FILE** file, const std::string& path) {
   *file = nullptr;
 
   std::filesystem::path fs_path = ToPath(path);
-
-  /* CREATE_NEW refuses a path that is already taken and
-   * FILE_FLAG_OPEN_REPARSE_POINT opens a reparse point instead of following it,
-   * together matching O_EXCL | O_NOFOLLOW on the Linux side. The zero share
-   * mode keeps other processes out of the file while it is being written. */
 
   HANDLE handle = CreateFileW(
       fs_path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW,
