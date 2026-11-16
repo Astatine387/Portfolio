@@ -339,18 +339,18 @@ std::string Vault::ReplaceTarget(const std::string& path) const {
   return path;
 }
 
-SaveResult Vault::CheckTarget(const std::string& path,
-                              const std::string& dst, SaveMode mode) {
+SaveResult Vault::CheckTarget(const std::string& path, const std::string& dst,
+                              SaveMode mode) {
   if (mode == SaveMode::kRefuseChanged) {
     ack_.reset();
   }
 
   const FileState state = ReadFileState(dst);
 
-  const bool changed = (mark_.has_value() && mark_->path == path)
-                           ? (dst != mark_->real_path || !state.has_iv ||
-                              state.iv != mark_->iv)
-                           : state.exists;
+  const bool changed =
+      (mark_.has_value() && mark_->path == path)
+          ? (dst != mark_->real_path || !state.has_iv || state.iv != mark_->iv)
+          : state.exists;
 
   if (!changed) {
     return SaveResult::kSuccess;
