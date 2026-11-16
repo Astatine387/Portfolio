@@ -1,7 +1,7 @@
 /**
- * @file	main_gui.cpp
- * @brief	Implementation of MainGUI class
- * @author	Astatine387
+ * @file    main_gui.cpp
+ * @brief   Implementation of MainGUI class
+ * @author  Astatine387
  */
 
 #include "gui/main_gui.h"
@@ -18,17 +18,9 @@
 namespace {
 
 /**
- * @brief   State ahead of a message that the publish it reports replaced
- * another program's changes
- * @param   msg   Message the same publish would have shown had nothing else
- * touched the file
+ * @brief   State ahead of a message that the publish overwrote another change
+ * @param   msg   Message the same publish will show
  * @return  That message with the overwrite stated in front of it
- *
- * Joined the way a warning is joined to what it qualifies, so the two read as
- * one line. It goes in front rather than behind because the message it
- * qualifies may itself be the core's warning, which ends in a newline and has
- * nothing that can follow it, and because replacing somebody else's work is the
- * larger of the two things to say.
  */
 QString NoteOverwrite(const QString& msg) {
   return "Overwrote changes made elsewhere. " + msg;
@@ -102,8 +94,7 @@ void MainGUI::OnVaultSelected(VaultAction action, const QString& path) {
 void MainGUI::OnLoginRequested(const LoginRequest& req) {
   Result res;
 
-  /* Create or open the vault, deriving the session key from the master password
-   */
+  /* Create or open the vault with the master password */
 
   if (req.action == VaultAction::kCreate) {
     res = vault_.NewVault(req.path, req.pw);
@@ -190,16 +181,13 @@ void MainGUI::OnDeleteRequested(const QString& site, const QString& acc) {
   box.setIcon(QMessageBox::Warning);
   box.setWindowTitle("Delete Entry");
 
-  /* Plain text because the site and the account are the user's own, and the
-   * default format would read tags in them as markup. One arg() call with both,
-   * so a "%2" in the site is not replaced with the account. */
+  /* Plain text and one arg() call, so neither field is read as markup or %n */
 
   box.setTextFormat(Qt::PlainText);
   box.setText(QString("Delete the entry for %1 (%2)?").arg(site, acc));
   box.setInformativeText("This cannot be undone once the vault is saved.");
 
-  /* Cancel is the default and the escape button both, so Enter, Escape and the
-   * title bar all keep the entry */
+  /* Cancel is the default and the escape button */
 
   const QPushButton* del =
       box.addButton("Delete", QMessageBox::DestructiveRole);
@@ -307,10 +295,7 @@ void MainGUI::OnCloseRequested() {
 
   vault_.CloseVault();
 
-  /* The widgets are built once and outlive every session, so what the session
-   * left in them goes with it. SetAddMode empties the edit dialog's site,
-   * account and password lines, and the entry it was editing stops being a
-   * thing this screen remembers. */
+  /* Clear what this session left in the widgets */
 
   list_gui_->Clear();
   entry_gui_->SetAddMode();
@@ -330,10 +315,7 @@ void MainGUI::OnChangePWRequested() {
 
     change_pw_gui_->GetInput(cur_pw, new_pw);
 
-    /* The busy state wraps the change itself and nothing else. A conflict
-     * prompt is asked between two of these calls, and a wait cursor left
-     * standing over a dialog tells the user to wait for something that is
-     * waiting for them. */
+    /* Busy only around the change itself, never over a conflict prompt */
 
     const SaveResult outcome =
         SaveWithConflictPrompt([this, &new_pw](SaveMode mode) {
@@ -370,8 +352,7 @@ void MainGUI::OnChangePWRequested() {
 }
 
 void MainGUI::closeEvent(QCloseEvent* event) {
-  /* Asked before anything is torn down, so a cancelled close leaves the
-   * clipboard countdown running as it was */
+  /* Ask before tearing anything down */
 
   if (!ConfirmDiscard()) {
     event->ignore();
@@ -392,8 +373,7 @@ bool MainGUI::ConfirmDiscard() {
     return true;
   }
 
-  /* Save is the default so that Enter keeps the changes; Escape and the title
-   * bar close map to Cancel */
+  /* Save is the default; Escape and the title bar map to Cancel */
 
   const QMessageBox::StandardButton choice = QMessageBox::warning(
       this, "Unsaved Changes",
@@ -406,10 +386,7 @@ bool MainGUI::ConfirmDiscard() {
     const SaveResult outcome = SaveWithConflictPrompt(
         [this](SaveMode mode) { return vault_.SaveVault(mode); });
 
-    /* Refusing to overwrite is an answer rather than a failure, but it leaves
-     * the changes exactly where a failure does: unsaved, and not to be dropped.
-     * So the close is called off either way, and the two differ only in what
-     * the line says about why. */
+    /* A refused overwrite leaves the changes unsaved, so the close is off */
 
     if (outcome == SaveResult::kError) {
       list_gui_->SetErrMsg(vault_.GetLastError());
@@ -465,10 +442,7 @@ bool MainGUI::ConfirmOverwrite() {
       "including a master password change if one was "
       "made there. This cannot be undone.");
 
-  /* Added rather than taken from the standard set, so the destructive answer
-   * says what it does and is marked as destructive. Cancel is the default and
-   * the escape button both, which is what keeps Enter and Escape - the two keys
-   * a dialog gets dismissed with without being read - off the overwrite. */
+  /* A named destructive button; Cancel is the default and the escape button */
 
   const QPushButton* overwrite =
       box.addButton("Overwrite", QMessageBox::DestructiveRole);

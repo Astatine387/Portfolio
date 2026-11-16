@@ -101,7 +101,7 @@ const char* ExpectedMessage(size_t off) {
     return "Unsupported key derivation parameters";
   }
 
-  return "Incorrect master password";
+  return "Incorrect master password, or the vault header has been modified";
 }
 
 }  // namespace
@@ -605,6 +605,60 @@ TEST_F(VaultFileTest, OpenNonExistent) {
   EXPECT_EQ(vault_.OpenVault("nonexistent.vault", MakePW("asdf1234")),
             Result::kFailure);
 }
+
+#ifndef _WIN32
+
+/**
+ * @brief   Verify opening a directory in place of a vault fails as not being a
+ * file
+ *
+ * A directory opens for reading on Linux, so what refuses it is the type check
+ * the open makes, rather than whatever length its file system would report for
+ * it.
+ */
+TEST_F(VaultFileTest, OpenDirectoryFails) {
+  const std::string dir = "dir.vault";
+
+  ASSERT_EQ(mkdir(dir.c_str(), 0700), 0);
+
+  vault_.CloseVault();
+
+  EXPECT_EQ(vault_.OpenVault(dir, MakePW("password")), Result::kFailure);
+  EXPECT_NE(vault_.GetLastError().find("not an ordinary file"),
+            std::string::npos);
+
+  EXPECT_EQ(rmdir(dir.c_str()), 0);
+}
+
+/**
+ * @brief   Verify opening a named pipe in place of a vault fails at once rather
+ * than waiting for a writer
+ *
+ * The open runs on the thread that drives the window, so a pipe that was waited
+ * on would freeze it for as long as nothing wrote to the pipe. The alarm turns
+ * a regression into a failure of this case rather than a hung suite.
+ */
+TEST_F(VaultFileTest, OpenNamedPipeFails) {
+  const std::string fifo = "fifo.vault";
+
+  ASSERT_EQ(mkfifo(fifo.c_str(), 0600), 0);
+
+  vault_.CloseVault();
+
+  static_cast<void>(alarm(10));
+
+  const Result res = vault_.OpenVault(fifo, MakePW("password"));
+
+  static_cast<void>(alarm(0));
+
+  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_NE(vault_.GetLastError().find("not an ordinary file"),
+            std::string::npos);
+
+  EXPECT_EQ(RemoveFile(fifo), Result::kSuccess);
+}
+
+#endif /* !_WIN32 */
 
 /**
  * @brief   Verify opening a file with invalid magic number fails
@@ -2393,6 +2447,34 @@ TEST_F(VaultFileTest, SaveRefusesSymlinkLoop) {
   EXPECT_EQ(RemoveFile(loop), Result::kSuccess);
 }
 
+/**
+ * @brief   Verify a save onto a path that now holds a named pipe is refused at
+ * once
+ *
+ * The last look a save takes at the file it is about to replace opens it for
+ * reading, and a pipe waited on there would freeze the window in the middle of
+ * a save. Refused instead, it is a file this session never read, which is a
+ * changed file like any other. The alarm turns a regression into a failure of
+ * this case rather than a hung suite.
+ */
+TEST_F(VaultFileTest, SaveRefusesNamedPipe) {
+  ASSERT_EQ(vault_.CreateEntry("Google", "user@google.com", MakePW("password")),
+            Result::kSuccess);
+
+  ASSERT_EQ(RemoveFile(path_), Result::kSuccess);
+  ASSERT_EQ(mkfifo(path_.c_str(), 0600), 0);
+
+  static_cast<void>(alarm(10));
+
+  const SaveResult res = vault_.SaveVault(path_);
+
+  static_cast<void>(alarm(0));
+
+  EXPECT_EQ(res, SaveResult::kConflict);
+  EXPECT_NE(vault_.GetLastError().find("changed on disk"), std::string::npos);
+  EXPECT_TRUE(vault_.IsDirty());
+}
+
 #endif /* !_WIN32 */
 
 /* ==================================================
@@ -2433,7 +2515,8 @@ INSTANTIATE_TEST_SUITE_P(EveryHeaderByte, VaultHeaderTamperTest,
  * about the ones inside it. An edit from one legal value to another survives
  * validation and derives a different key, so what refuses it is the commitment,
  * and the vault reports it the way it reports any other derivation that does
- * not match: as a wrong password.
+ * not match: as a wrong password or an edited header, which the commitment
+ * cannot tell apart.
  */
 TEST_F(VaultFileTest, OpenRejectsInRangeKdfParamTamper) {
   const std::array<KdfParams, 3> cases{
@@ -2460,7 +2543,8 @@ TEST_F(VaultFileTest, OpenRejectsInRangeKdfParamTamper) {
     ASSERT_NO_FATAL_FAILURE(PatchHeaderParams(params));
 
     EXPECT_EQ(Reload(), Result::kFailure);
-    EXPECT_NE(vault_.GetLastError().find("Incorrect master password"),
+    EXPECT_NE(vault_.GetLastError().find("Incorrect master password, or the "
+                                         "vault header has been modified"),
               std::string::npos);
   }
 }
@@ -2554,7 +2638,9 @@ TEST_F(VaultFileTest, WrongPasswordAndCorruptionDiffer) {
 
   const std::string corrupted = vault_.GetLastError();
 
-  EXPECT_NE(wrong_pw.find("Incorrect master password"), std::string::npos);
+  EXPECT_NE(wrong_pw.find("Incorrect master password, or the vault header has "
+                          "been modified"),
+            std::string::npos);
   EXPECT_NE(corrupted.find("Vault file is corrupted"), std::string::npos);
   EXPECT_NE(wrong_pw, corrupted);
 }

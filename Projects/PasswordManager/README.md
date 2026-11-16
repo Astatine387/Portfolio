@@ -11,7 +11,7 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 * AES-256-GCM for vault encryption and integrity check
 * Argon2id for key derivation from master password
 * Qt6 graphical user interface
-* Vault is never written to disk in plaintext; unverified plaintext exists only in locked memory
+* Vault is never written to disk in plaintext; unverified plaintext exists only in `sodium_malloc` memory
 * Random password generator with customizable length and special characters
 * Automatic clipboard clear after 30 seconds of password copy
 * Search and filter entries by keyword
@@ -44,13 +44,14 @@ GUI encrypted password file manager using AES-256-GCM and Argon2id, and Qt6.
 * Copied passwords are excluded from OS clipboard history and cloud clipboard sync
 * Constant time password comparison
 * GCM tag provides integrity check
-* Key commitment stored in the header separates a wrong master password from a damaged vault, which a GCM tag cannot do on its own
-* The whole plaintext header is the associated data of the vault, so an edit to it fails the tag
+* Key commitment stored in the header separates a wrong master password from damage past the header, which a GCM tag cannot do on its own
+* The whole header is the associated data of the vault, so an edit to it fails the tag
 * Newly and randomly generated initial vector for each session, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * Password generator guarantees at least one each of uppercase, lowercase, digit, and special character
-* RAII pattern ensures memory wipe for sensitive data, using `sodium_free` and `sodium_memzero`
+* RAII ties every secret to a scope, so releasing it is what wipes it; see 3-3-1 for the allocations this covers and the ones it does not
 * Range check for key derivation parameters before Argon2id runs
-* Sensitive data is held in `sodium_malloc` memory, which provides guard pages and lock against swap
+* Passwords, the derived key and the decrypted vault image are held in `sodium_malloc` memory: guard pages, a wipe on release, and a best-effort lock against swap
+* Core dumps are refused process-wide: `RLIMIT_CORE = 0` on POSIX, `PR_SET_DUMPABLE = 0` on Linux release builds, `SEM_NOGPFAULTERRORBOX` on Windows
 * Vault files are created reachable by their owner alone: mode 0600 on Linux, a protected DACL holding one ACE for the process token user on Windows
 * Vault files are re-encrypted with new initial vector for each save or master password change
 
@@ -106,12 +107,6 @@ Header (65 Bytes) | IV (12 Bytes) | Encrypted Data | Tag (16 Bytes)
 | 13     | 4    | Parallelism | uint32 little-endian                     |
 | 17     | 16   | Salt        | raw bytes                                |
 | 33     | 32   | Commitment  | raw bytes, second half of the derivation |
-
-The two properties this buys are separate and worth keeping separate.
-
-The **key commitment** says which master password a vault belongs to. AES-GCM is not key-committing, so a tag that fails cannot distinguish a wrong password from a damaged file, and this program used to report both as one sentence. The commitment is the second half of the same Argon2id derivation that produces the key, so it costs no additional derivation, and it is compared before anything is decrypted: a mismatch is reported as a wrong password, and any failure after it as a corrupted vault.
-
-The **associated data** says that these bytes have not been edited since the vault was written. The salt and the parameters were already bound to the ciphertext by the derivation they feed, and the magic number is checked before it is used; what the associated data adds is the commitment, which nothing else protects, and every field the format may grow later. It does not make the header trustworthy before it is used — see the limitation noted in 3-3.
 
 Vault files written before this format are not supported. Their magic number is recognised so they can be reported as old rather than as foreign.
 
@@ -182,6 +177,21 @@ src
 * On Windows backup and security software cannot read a vault
 * Text in Qt widget may stay in unlocked heap after the widget is cleared
 
+### 3-3-1. Memory Protection
+
+| Data                    | Guard pages | Swap lock   | Core dump                     | Wipe                                       |
+| ----------------------- | ----------- | ----------- | ----------------------------- | ------------------------------------------ |
+| Passwords               | Yes         | Best effort | Excluded, and none is written | On release, by `sodium_free`               |
+| Derived key             | Yes         | Best effort | Excluded, and none is written | On release, by `sodium_free`               |
+| Decrypted vault image   | Yes         | Best effort | Excluded, and none is written | On release, by `sodium_free`               |
+| Argon2id working buffer | No          | No          | Not excluded, none is written | At the end of the derivation, by libargon2 |
+| Site and account names  | No          | No          | Not excluded, none is written | No                                         |
+| Text in Qt widgets      | No          | No          | Not excluded, none is written | Cleared, not wiped                         |
+
+Passwords are the master password and an entry password copied out of the image to be edited or put on the clipboard, each in a `Password` buffer of its own. The image holds every entry password for as long as the vault is open, and site and account names are kept beside it in ordinary strings.
+
+**What the "best effort" means:** `sodium_malloc` asks the operating system to keep its pages out of the swap file, and that request is capped by `RLIMIT_MEMLOCK` on Linux, by the process working-set minimum on Windows. `InitCrypto` raises the soft limit to the hard limit and bumps the working-set minimum, but neither can move a cap an unprivileged process is not permitted to move. Once the cap is reached the lock fails and the allocation still succeeds, so a password or the image can end up in unlocked pages with nothing in the program able to tell. Guard pages and the wipe on release are unaffected and always apply.
+
 # 4. Build and Usage
 ## 4-1. Prerequisites
 
@@ -214,9 +224,7 @@ cmake --build build --config Release
 ```
 Replace `CMAKE_PREFIX_PATH` with your Qt installation path.
 
-**Windows** (package for distribution): the install rules gather the executable,
-every non-Qt DLL it imports and the MSVC runtime into one folder, and
-`windeployqt` adds Qt on top:
+**Windows** (package for distribution):
 ```cmd
 cd Projects\PasswordManager
 
@@ -224,14 +232,6 @@ cmake --install build --config Release --prefix deploy
 
 windeployqt --no-translations --no-system-d3d-compiler --no-opengl-sw deploy\PasswordManager.exe
 ```
-The DLL set is read from the executable's own import table rather than from a
-list, so a newly added dependency is packaged without this command changing.
-The MSVC runtime is included, which is what lets the folder run on a machine
-that has no Visual Studio installed.
-
-CI packages the release zip exactly this way and fails the build if anything in
-the folder imports a DLL the folder does not carry, so an incomplete package
-cannot be released (`.github/scripts/deploy_windows.ps1`).
 
 **Linux** (system packages):
 ```bash
@@ -244,8 +244,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-**Linux** (vcpkg): libsodium must be linked dynamically, so an overlay triplet
-is supplied in `triplets/`:
+**Linux** (vcpkg):
 ```bash
 cd Projects/PasswordManager
 
@@ -260,12 +259,15 @@ cmake --build build
 
 **Build Options:** 
 
-| Option     | Default | Description                                   |
-| ---------- | ------- | --------------------------------------------- |
-| `COVERAGE` | `OFF`   | Coverage instrumentation (GCC/Clang)          |
-| `SANITIZE` | `OFF`   | AddressSanitizer + UndefinedBehaviorSanitizer |
+| Option               | Default | Description                                   |
+| -------------------- | ------- | --------------------------------------------- |
+| `WARNINGS_AS_ERRORS` | `OFF`   | Treat compiler warnings as errors             |
+| `COVERAGE`           | `OFF`   | Coverage instrumentation (GCC/Clang)          |
+| `SANITIZE`           | `OFF`   | AddressSanitizer + UndefinedBehaviorSanitizer |
 
-Either option works with any build type. CI builds coverage as `Debug` and the sanitizers as `RelWithDebInfo`:
+`WARNINGS_AS_ERRORS` is off by default so that a new compiler's warnings do not break a local build; CI turns it on for every configuration it builds.
+
+None of these require a particular build type. CI builds coverage as `Debug` and the sanitizers as `RelWithDebInfo`:
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSANITIZE=ON
 cmake --build build
@@ -306,7 +308,7 @@ cmake --build build
 | Vault    | `vault_entry_test.cpp` | Entry CRUD Operation, Duplication Check, Existence Check, Conflict Check, Field Validation, Accessor, Master Password Verification, Unsaved Change Tracking                                         |
 | Vault    | `vault_file_test.cpp`  | Vault Creation, Opening, Validation, Header Parameters, Header Tampering, Save, Password Change, Unsaved Change Tracking, Concurrent Modification Detection, Acknowledged Overwrite, Error Handling |
 
-**Note:** GUI files are left out of the coverage report, as are error messages for external libraries and system calls. The input length limits are an exception: `gui_input_test.cpp` drives the widgets headlessly on Qt's offscreen platform, so a limit that stopped refusing an oversized value is caught by the suite rather than by a reader of the GUI sources.
+**Note:** The GUI and the application entry point (`main.cpp`) are left out of the coverage report, as are error messages for external libraries and system calls. The input length limits are an exception: `gui_input_test.cpp` drives the widgets headlessly on Qt's offscreen platform, so a limit that stopped refusing an oversized value is caught by the suite rather than by a reader of the GUI sources.
 
 ## 5-2. Running Tests
 
@@ -324,16 +326,16 @@ ctest --test-dir build --output-on-failure
 
 ## 5-3. Continuous Integration
 
-| Check                        | Windows     | Linux     |
-| ---------------------------- | ----------- | --------- |
-| Build                        | ✅ MSVC 2022 | ✅ GCC 11+ |
-| Unit Tests                   | ✅           | ✅         |
-| Deploy Package Check         | ✅           | -         |
-| Format Check (clang-format)  | -           | ✅         |
-| Static Analysis (cppcheck)   | -           | ✅         |
-| Static Analysis (clang-tidy) | -           | ✅         |
-| Coverage Report              | -           | ✅ Codecov |
-| AddressSanitizer (ASan)      | -           | ✅         |
+| Check                        | Windows      | Linux               |
+| ---------------------------- | ------------ | ------------------- |
+| Build                        | ✅ MSVC 2026 | ✅ GCC 13, Clang 18 |
+| Unit Tests                   | ✅           | ✅                  |
+| Deploy Package Check         | ✅           | -                   |
+| Format Check (clang-format)  | -            | ✅                  |
+| Static Analysis (cppcheck)   | -            | ✅                  |
+| Static Analysis (clang-tidy) | -            | ✅ Clang 18         |
+| Coverage Report              | -            | ✅ Codecov          |
+| AddressSanitizer (ASan)      | -            | ✅                  |
 
 # 6. License
 
@@ -343,3 +345,4 @@ ctest --test-dir build --output-on-failure
 	- Argon2 (CC0/Apache 2.0)
 	- Qt (LGPL v3)
 	- Google Test (BSD 3-Clause)
+	- libsodium (ISC)

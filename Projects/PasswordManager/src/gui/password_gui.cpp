@@ -1,7 +1,7 @@
 /**
- * @file	password_gui.cpp
- * @brief	Implementation of PasswordGUI class
- * @author	Astatine387
+ * @file    password_gui.cpp
+ * @brief   Implementation of PasswordGUI class
+ * @author  Astatine387
  */
 
 #include "gui/password_gui.h"

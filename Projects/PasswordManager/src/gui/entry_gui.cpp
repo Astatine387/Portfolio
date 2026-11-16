@@ -1,7 +1,7 @@
 /**
- * @file	entry_gui.cpp
- * @brief	Implementation of EntryGUI class
- * @author	Astatine387
+ * @file    entry_gui.cpp
+ * @brief   Implementation of EntryGUI class
+ * @author  Astatine387
  */
 
 #include "gui/entry_gui.h"
@@ -56,11 +56,6 @@ EntryGUI::EntryGUI(QWidget* parent) : QDialog(parent) {
   vbox_ = new QVBoxLayout;
 
   /* Configure input lines */
-
-  /* No setMaxLength on either line. It counts UTF-16 characters rather than the
-   * UTF-8 bytes the limits are written in, and it truncates a paste without
-   * saying so, which would store a value the user never typed. OnOKClicked
-   * refuses anything past kMaxSiteLen or kMaxAccLen bytes instead. */
 
   site_line_->setPlaceholderText("Site");
   acc_line_->setPlaceholderText("Account");

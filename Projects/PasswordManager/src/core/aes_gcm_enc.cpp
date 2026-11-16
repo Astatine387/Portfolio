@@ -1,7 +1,7 @@
 /**
- * @file	aes_gcm_enc.cpp
- * @brief	Implementation of encryption functions of AesGcm class
- * @author	Astatine387
+ * @file    aes_gcm_enc.cpp
+ * @brief   Implementation of encryption functions of AesGcm class
+ * @author  Astatine387
  */
 
 #include <cstring>
@@ -12,11 +12,7 @@
 
 Result AesGcm::Encrypt(const uint8_t* src, uint8_t* dst, size_t size,
                        const SecureKey& key, std::span<const uint8_t> aad) {
-  /* The destination is written at every size, an empty plaintext included,
-   * since the IV and the tag go into it regardless. The source is read only
-   * when there is a plaintext to read, so a caller holding the .data() of an
-   * empty container may hand that over null rather than having to invent a
-   * pointer for zero bytes. */
+  /* Check the buffers, the source only when there is a plaintext to read */
 
   if (dst == nullptr) {
     ReportError(
@@ -32,9 +28,7 @@ Result AesGcm::Encrypt(const uint8_t* src, uint8_t* dst, size_t size,
     return Result::kFailure;
   }
 
-  /* Generate a new IV for every encryption. It goes to the file in the clear
-   * and carries no secret, so an ordinary local is where it belongs and there
-   * is nothing here to wipe. */
+  /* Generate a new IV */
 
   std::array<uint8_t, kIVSize> iv{};
 
@@ -45,19 +39,15 @@ Result AesGcm::Encrypt(const uint8_t* src, uint8_t* dst, size_t size,
     // LCOV_EXCL_STOP
   }
 
-  /* The context carries the expanded key. It is created here and released on
-   * the way out of this function, whichever of the returns below is taken. */
+  /* Create a context, released on every return below */
 
   const CtxPtr ctx = MakeEncryptCtx(key, iv, aad);
 
   if (!ctx) {
-    return Result::kFailure;  // LCOV_EXCL_LINE; MakeEncryptCtx reported the
-                              // error
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  /* Write the fresh IV. The header ahead of it belongs to the caller, which has
-   * already written it and passed those same bytes in as the associated data.
-   */
+  /* Write the IV, then the ciphertext and the tag behind it */
 
   memcpy(dst, iv.data(), kIVSize);
 
@@ -117,11 +107,7 @@ AesGcm::CtxPtr AesGcm::MakeEncryptCtx(const SecureKey& key,
     // LCOV_EXCL_STOP
   }
 
-  /* Authenticate the associated data before any plaintext reaches the context.
-   * A null output buffer is what makes EVP_EncryptUpdate feed bytes in as
-   * associated data rather than encrypt them, and GCM requires all of it ahead
-   * of the first ciphertext byte: fed later it would silently produce a
-   * different tag instead of an error. */
+  /* Authenticate the associated data, ahead of any plaintext */
 
   int out_len = 0;
 
@@ -142,8 +128,7 @@ Result AesGcm::EncryptBuff(EVP_CIPHER_CTX* ctx, const uint8_t* src,
                            uint8_t* dst, size_t size) {
   int out_len;
 
-  /* constants.h asserts that kMaxSize leaves no image longer than the int
-   * length this call takes */
+  /* constants.h asserts that the largest image fits the int length here */
 
   if (EVP_EncryptUpdate(ctx, dst, &out_len, src, static_cast<int>(size)) != 1) {
     // LCOV_EXCL_START

@@ -1,7 +1,7 @@
 /**
- * @file	aes_gcm.cpp
- * @brief	Implementation of basic functions of AesGcm class
- * @author	Astatine387
+ * @file    aes_gcm.cpp
+ * @brief   Implementation of basic functions of AesGcm class
+ * @author  Astatine387
  */
 
 #include "core/aes_gcm.h"
@@ -14,6 +14,8 @@ void AesGcm::ReportError(const char* msg) {
   if (!ecb_) {
     return;
   }
+
+  /* Assemble the error message */
 
   std::string res;
   unsigned long code;
@@ -28,6 +30,8 @@ void AesGcm::ReportError(const char* msg) {
     res += err_str.data();
     res += '\n';
   }
+
+  /* Report error */
 
   ecb_(res.c_str());
 }

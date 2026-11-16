@@ -1,7 +1,7 @@
 /**
- * @file	aes_gcm_dec.cpp
- * @brief	Implementation of decryption functions of AesGcm class
- * @author	Astatine387
+ * @file    aes_gcm_dec.cpp
+ * @brief   Implementation of decryption functions of AesGcm class
+ * @author  Astatine387
  */
 
 #include <algorithm>
@@ -11,12 +11,7 @@
 
 Result AesGcm::Decrypt(const uint8_t* src, uint8_t* dst, size_t size,
                        const SecureKey& key, std::span<const uint8_t> aad) {
-  /* Everything below reads the buffer at offsets it takes on trust. The tag is
-   * lifted from src + size - kTagSize, and that subtraction is size_t
-   * arithmetic, so a size under kTagSize wraps instead of going negative and
-   * the read lands nowhere near the allocation. Vault::OpenVault refuses a file
-   * below kMinSize long before one reaches here, but that is a check in another
-   * class on another path, and this one is public and called directly. */
+  /* Check the buffers before the tag offset is taken from size */
 
   if (src == nullptr) {
     ReportError(
@@ -32,9 +27,7 @@ Result AesGcm::Decrypt(const uint8_t* src, uint8_t* dst, size_t size,
     return Result::kFailure;
   }
 
-  /* A buffer of exactly the framing carries no plaintext, and that is the shape
-   * an empty vault decrypts through, so a null destination is refused only when
-   * there would be something to write to it */
+  /* A null destination is refused only when there is a plaintext to write */
 
   if (dst == nullptr && size > kIVSize + kTagSize) {
     ReportError(
@@ -43,11 +36,7 @@ Result AesGcm::Decrypt(const uint8_t* src, uint8_t* dst, size_t size,
     return Result::kFailure;
   }
 
-  /* Read the IV and the tag out of the buffer the caller handed over. The
-   * header, salt included, was already consumed by the caller to derive the
-   * session key, so the buffer starts at the IV and ends on the tag. Neither is
-   * a secret, since both go to the file in the clear, so both live in ordinary
-   * locals. */
+  /* Read the IV and the tag */
 
   std::array<uint8_t, kIVSize> iv{};
   std::array<uint8_t, kTagSize> tag{};
@@ -55,14 +44,12 @@ Result AesGcm::Decrypt(const uint8_t* src, uint8_t* dst, size_t size,
   memcpy(iv.data(), src, kIVSize);
   memcpy(tag.data(), src + size - kTagSize, kTagSize);
 
-  /* The context carries the expanded key. It is created here and released on
-   * the way out of this function, whichever of the returns below is taken. */
+  /* Create a context, released on every return below */
 
   const CtxPtr ctx = MakeDecryptCtx(key, iv, tag, aad);
 
   if (!ctx) {
-    return Result::kFailure;  // LCOV_EXCL_LINE; MakeDecryptCtx reported the
-                              // error
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
   /* Decrypt the ciphertext in chunks */
@@ -87,8 +74,7 @@ Result AesGcm::Decrypt(const uint8_t* src, uint8_t* dst, size_t size,
     rem -= chunk_size;
   }
 
-  /* The return value is computed before ctx is destroyed, so the tag is still
-   * verified against a live context */
+  /* Verify the tag while the context is still alive */
 
   return DecryptFinal(ctx.get());
 }
@@ -133,9 +119,7 @@ AesGcm::CtxPtr AesGcm::MakeDecryptCtx(const SecureKey& key,
     // LCOV_EXCL_STOP
   }
 
-  /* EVP_CTRL_GCM_SET_TAG takes a void* and copies the bytes into the context.
-   * They go in through a mutable copy rather than a cast that throws away the
-   * constness of the caller's buffer. */
+  /* Set the tag through a mutable copy rather than a const_cast */
 
   std::array<uint8_t, kTagSize> tag_copy{};
 
@@ -149,9 +133,7 @@ AesGcm::CtxPtr AesGcm::MakeDecryptCtx(const SecureKey& key,
     // LCOV_EXCL_STOP
   }
 
-  /* Feed the associated data in the same position encryption did, ahead of any
-   * ciphertext, so the tag being verified covers the same bytes in the same
-   * order */
+  /* Authenticate the associated data, ahead of any ciphertext */
 
   int out_len = 0;
 

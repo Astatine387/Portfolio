@@ -1,7 +1,7 @@
 /**
- * @file	entry_interface.h
- * @brief	Entry Interface between GUI and core layers
- * @author	Astatine387
+ * @file    entry_interface.h
+ * @brief   Entry Interface between GUI and core layers
+ * @author  Astatine387
  */
 
 #pragma once
@@ -11,8 +11,7 @@
 #include "utils/password.h"
 
 /**
- * @struct	EntryView
- * @brief	Entry interface for data read
+ * @brief   Entry interface for data read
  */
 struct EntryView {
   QString site;
@@ -20,8 +19,7 @@ struct EntryView {
 };
 
 /**
- * @struct	EntryInput
- * @brief	Entry interface for data input
+ * @brief   Entry interface for data input
  */
 struct EntryInput {
   QString site;

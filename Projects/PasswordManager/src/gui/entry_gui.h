@@ -1,7 +1,7 @@
 /**
- * @file	entry_gui.h
- * @brief	Password entry add & edit window
- * @author	Astatine387
+ * @file    entry_gui.h
+ * @brief   Password entry add & edit window
+ * @author  Astatine387
  */
 
 #pragma once
@@ -25,75 +25,66 @@
 #include "utils/password.h"
 
 /**
- * @class	EntryGUI
- * @brief	Dialog for adding and editing password entries
+ * @brief   Dialog for adding and editing password entries
  */
 class EntryGUI : public QDialog {
   Q_OBJECT
 
  public:
   /**
-   * @brief	Constructor of EntryGUI class
-   * @param	parent	Parent widget
+   * @brief   Constructor of EntryGUI class
+   * @param   parent  Parent widget
    */
   explicit EntryGUI(QWidget* parent = nullptr);
 
   /**
-   * @brief	Set dialog to add mode
+   * @brief   Set dialog to add mode
    */
   void SetAddMode();
 
   /**
-   * @brief	Set dialog to edit mode with existing data
-   * @param	site	Current site name
-   * @param	acc		Current account
-   * @param	pw		Current password
+   * @brief   Set dialog to edit mode with existing data
+   * @param   site  Current site name
+   * @param   acc   Current account
+   * @param   pw    Current password
    */
   void SetEditMode(const QString& site, const QString& acc, const Password& pw);
 
   /**
-   * @brief	Get the entry input from the dialog
-   * @return	Entry input parameters
+   * @brief   Get the entry input from the dialog
+   * @return  Entry input parameters
    */
   EntryInput GetInput();
 
   /**
-   * @brief	Clear the password field, then close the dialog the way QDialog
-   * would
-   * @param	r	Result code to hand back to exec()
-   *
-   * Every way out of the dialog - Ok, Cancel, Escape, the title bar - ends up
-   * here, and the dialog is built once and lives as long as the application, so
-   * this is the one place that keeps an entry's password from sitting in the
-   * widget after the dialog is gone. Only the password field: GetInput() reads
-   * the site and account lines after exec() has returned, and clearing those
-   * would take the input with them.
+   * @brief   Clear the password field and close the dialog
+   * @param   r   Result code to hand back to exec()
    */
   void done(int r) override;
 
  private slots:
   /**
-   * @brief	Validate input and accept dialog
+   * @brief   Validate input and accept dialog
    */
   void OnOKClicked();
 
   /**
-   * @brief	Validate special character selection and emit generate request
+   * @brief   Validate special character selection and emit generate request
    */
   void OnGenerateClicked();
 
   /**
-   * @brief	Check all special character checkboxes
+   * @brief   Check all special character checkboxes
    */
   void OnCheckAllClicked();
 
   /**
-   * @brief	Uncheck all special character checkboxes
+   * @brief   Uncheck all special character checkboxes
    */
   void OnUncheckAllClicked();
 
   /**
-   * @brief	Reset special character checkboxes to default
+   * @brief   Reset special character checkboxes to default
    */
   void OnResetClicked();
 
@@ -120,25 +111,27 @@ class EntryGUI : public QDialog {
   Password input_pw_;  // Validated password handed to GetInput
 
   /**
-   * @brief     Get the special character selection list
-   * @return	Special character selection list
+   * @brief   Get the special character selection list
+   * @return  Special character selection list
    */
   QVector<bool> GetSpecialsList();
 
   /**
-   * @brief	    Check if at least one special character is selected
-   * @return	true if at least one is checked
+   * @brief   Check if at least one special character is selected
+   * @return  true if at least one is checked
    */
   [[nodiscard]] bool HasSpecialSelected() const;
 
   /**
-   * @brief	    Generate a random password including at least one each of
-   * uppercase, lowercase, number, and special character
+   * @brief   Generate a random password
    *
-   * @param     dst		    Destination password
-   * @param     spc_list    List of specials to be used
-   * @param     pw_size	    Destination password size
-   * @return	            kSuccess on success, kFailure on failure
+   * @param   dst       Destination password
+   * @param   spc_list  List of specials to be used
+   * @param   pw_size   Destination password size
+   * @return  kSuccess on success, kFailure on failure
+   *
+   * Includes at least one each of uppercase, lowercase, number, and special
+   * character
    */
   Result GenPw(Password& dst, const QVector<bool>& spc_list, int pw_size);
 };

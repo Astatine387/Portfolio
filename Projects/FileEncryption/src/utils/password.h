@@ -36,7 +36,7 @@ class Password {
    * @brief   Move constructor
    * @param   src   Password to move from
    *
-   * The password data of the source is wiped after move, so that only one
+   * The buffer moves over and the source is left empty, so that only one
    * object at a time holds the password data.
    */
   Password(Password&& src) noexcept : size_(src.size_), data_(src.data_) {
@@ -48,8 +48,9 @@ class Password {
    * @brief   Move assignment
    * @param   src   Password to move from
    *
-   * The password data of the source is wiped after move, so that only one
-   * object at a time holds the password data.
+   * The current password is wiped first, then the buffer moves over and the
+   * source is left empty, so that only one object at a time holds the password
+   * data.
    */
   Password& operator=(Password&& src) noexcept {
     if (this != &src) {

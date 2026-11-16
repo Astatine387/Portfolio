@@ -1,7 +1,7 @@
 /**
- * @file	vault_interface.h
- * @brief	Vault interface between GUI and core layers
- * @author	Astatine387
+ * @file    vault_interface.h
+ * @brief   Vault interface between GUI and core layers
+ * @author  Astatine387
  */
 
 #pragma once
@@ -20,12 +20,12 @@ class VaultInterface {
    * ================================================== */
 
   /**
-   * @brief	Constructor of VaultInterface class
+   * @brief   Constructor of VaultInterface class
    */
   VaultInterface() = default;
 
   /**
-   * @brief	Destructor of VaultInterface class
+   * @brief   Destructor of VaultInterface class
    */
   ~VaultInterface() = default;
 
@@ -39,37 +39,36 @@ class VaultInterface {
 
   /**
    * @brief		Create an empty new vault
-   * @param		path    Vault file path
-   * @param		pw      Master password
+   * @param		path  Vault file path
+   * @param		pw    Master password
    * @return	kSuccess on success, kFailure on failure
    */
   Result NewVault(const QString& path, const Password& pw);
 
   /**
    * @brief		Open a vault and read its data
-   * @param		path	Vault file path
-   * @param		pw      Master password
+   * @param		path  Vault file path
+   * @param		pw    Master password
    * @return	kSuccess on success, kFailure on failure
    */
   Result OpenVault(const QString& path, const Password& pw);
 
   /**
-   * @brief		Save the current vault
-   * @param		mode    What to do about a vault file that changed on disk since
-   * this session read or wrote it
-   * @return	kSuccess on success, kConflict when the file changed on disk,
-   * kError on any other failure
+   * @brief   Save the current vault
+   * @param		mode  What will be done about a vault file that changed on disk
+   * @return  kSuccess on success, kConflict when the file changed on disk,
+   * kError on other failures
    */
   SaveResult SaveVault(SaveMode mode = SaveMode::kRefuseChanged);
 
   /**
-   * @brief	Close the vault and wipe all data
+   * @brief   Close the vault and wipe all data
    */
   void CloseVault();
 
   /**
-   * @brief		Check whether the vault has changes that have not been saved
-   * @return	true if closing now would lose changes
+   * @brief   Check whether the vault has changes that have not been saved
+   * @return  true if closing now would lose changes
    */
   [[nodiscard]] bool IsDirty() const;
 
@@ -86,11 +85,10 @@ class VaultInterface {
 
   /**
    * @brief		Change the master password and re-encrypt vault
-   * @param		pw      New password
-   * @param		mode    What to do about a vault file that changed on disk since
-   * this session read or wrote it
+   * @param		pw    New password
+   * @param		mode  What will be done about a vault file that changed on disk
    * @return	kSuccess on success, kConflict when the file changed on disk,
-   * kError on any other save failure
+   * kError on other failures
    */
   SaveResult ChangePW(const Password& pw,
                       SaveMode mode = SaveMode::kRefuseChanged);
@@ -110,13 +108,13 @@ class VaultInterface {
                      const Password& pw);
 
   /**
-   * @brief     Update an entry
-   * @param     old_site    Site name of the target entry
-   * @param     old_acc		Account of the target entry
-   * @param     new_site    New site name
-   * @param     new_acc		New account
-   * @param     new_pw		New password
-   * @return	kSuccess on success, kNotFound if the original entry is missing,
+   * @brief   Update an entry
+   * @param   old_site  Site name of the target entry
+   * @param   old_acc   Account of the target entry
+   * @param   new_site  New site name
+   * @param   new_acc   New account
+   * @param   new_pw    New password
+   * @return  kSuccess on success, kNotFound if the original entry is missing,
    * kDuplicate if the new site/account collides with another entry, kError if a
    * new field is out of range or the new image could not be built
    */
@@ -125,45 +123,37 @@ class VaultInterface {
                            const Password& new_pw);
 
   /**
-   * @brief     Delete an entry
-   * @param     site	Site name of the target entry
-   * @param     acc		Account of the target entry
-   * @return    kSuccess on success, kFailure on failure
+   * @brief   Delete an entry
+   * @param   site  Site name of the target entry
+   * @param   acc   Account of the target entry
+   * @return  kSuccess on success, kFailure on failure
    */
   Result DeleteEntry(const QString& site, const QString& acc);
 
   /**
-   * @brief	Copy the entry set into GUI view structs
-   * @return	Site and account of every entry, in entry set order
+   * @brief   Copy the entry set into GUI view structs
+   * @return  Site and account of every entry, in entry set order
    */
   [[nodiscard]] QVector<EntryView> GetEntries() const;
 
   /**
-   * @brief     Get the password of an entry
-   * @param     site    Site name
-   * @param     acc     Account
-   * @param     pw      Password of the found entry
-   * @return    true if entry found, false otherwise
-   *
-   * Not const: when the password bytes cannot be read, the vault records the
-   * failure as its last error.
+   * @brief   Get the password of an entry
+   * @param   site  Site name
+   * @param   acc   Account
+   * @param   pw    Password of the found entry
+   * @return  true if entry found, false otherwise
    */
   bool GetPW(const QString& site, const QString& acc, Password& pw);
 
   /**
-   * @brief     Get the last error message
-   * @return	Last error message
-   *
-   * Read straight out of the vault rather than cached here off the error
-   * callback. A cache is only as current as the last callback that fired, and a
-   * failure the core records without reporting would leave it holding the
-   * reason for some earlier one.
+   * @brief   Get the last error message
+   * @return  Last error message
    */
   [[nodiscard]] QString GetLastError() const;
 
   /**
-   * @brief     Get the warning left by the last successful operation
-   * @return	Warning message, empty when there is none
+   * @brief   Get the warning left by the last successful operation
+   * @return  Warning message, empty when there is none
    */
   [[nodiscard]] QString GetLastWarning() const;
 

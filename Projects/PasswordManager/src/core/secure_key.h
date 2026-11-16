@@ -1,7 +1,7 @@
 /**
- * @file	secure_key.h
- * @brief	Move-only AES key and key commitment held in libsodium-locked memory
- * @author	Astatine387
+ * @file    secure_key.h
+ * @brief   Move-only AES key held in libsodium-locked memory
+ * @author  Astatine387
  */
 
 #pragma once
@@ -15,8 +15,7 @@
 #include "common/constants.h"
 
 /**
- * @struct	KdfParams
- * @brief	Argon2id key-derivation parameters
+ * @brief   Argon2id key-derivation parameters
  */
 struct KdfParams {
   uint32_t time_cost = kTimeCost;
@@ -25,106 +24,79 @@ struct KdfParams {
 };
 
 /**
- * @brief	Initialize libsodium, best-effort raise the memory-lock limit and
+ * @brief   Initialize libsodium, best-effort raise the memory-lock limit and
  * refuse core dumps
  *
- * Idempotent and thread-safe to call more than once
- *
- * Must run before any secure allocation or key derivation
+ * Must run before any secure allocation or key derivation. Idempotent and safe
+ * to call multiple times.
  */
 void InitCrypto();
 
 class SecureKey;
 
 /**
- * @brief	Derive a key from a password and salt using Argon2id
- * @param	pw		Password bytes
- * @param	salt	Key-derivation salt
- * @param	params	Argon2id parameters
- * @return	A SecureKey on success, std::nullopt on failure
+ * @brief   Derive a key from a password and salt using Argon2id
+ * @param   pw      Password bytes
+ * @param   salt    Key-derivation salt
+ * @param   params  Argon2id parameters
+ * @return  A SecureKey on success, std::nullopt on failure
  *
- * The returned key carries the salt and parameters it was derived under, so
- * whatever writes a header describes the derivation that actually produced the
- * key rather than one supplied beside it.
+ * The only way to obtain a SecureKey
  */
 [[nodiscard]] std::optional<SecureKey> DeriveKey(
     std::span<const char> pw, std::span<const uint8_t, kSaltSize> salt,
     const KdfParams& params = {});
 
 /**
- * @class	SecureKey
- * @brief	32-byte AES key and its key commitment, held in libsodium-locked
- * memory
+ * @brief   32-byte AES key and its key commitment
  */
 class SecureKey {
  public:
   ~SecureKey();
 
-  SecureKey(const SecureKey&) = delete;  // Delete copy constructor
-  SecureKey& operator=(const SecureKey&) =
-      delete;  // Delete copy assignment operator
+  /* Move-only, and a moved-from key is left holding nothing */
 
+  SecureKey(const SecureKey&) = delete;
+  SecureKey& operator=(const SecureKey&) = delete;
   SecureKey(SecureKey&& other) noexcept;
   SecureKey& operator=(SecureKey&& other) noexcept;
 
   /**
-   * @brief	Expose the key bytes to the crypto layer
-   * @return	View over the first kKeySize bytes of the kDerivedSize-byte
-   * derivation
+   * @brief   Expose the key bytes to the crypto layer
+   * @return  View over the first kKeySize bytes of the derivation
    */
   [[nodiscard]] std::span<const uint8_t, kKeySize> Bytes() const;
 
   /**
-   * @brief	Expose the key commitment to the header layer
-   * @return	View over the last kCommitSize bytes of the kDerivedSize-byte
-   * derivation
-   *
-   * Public, and meant to be: it is written to the plaintext vault header, where
-   * the AEAD already covers it because the whole header is the associated data
-   * of the vault. It is not key material, and it reveals nothing about the half
-   * of the derivation that is.
+   * @brief   Expose the key commitment to the header layer
+   * @return  View over the last kCommitSize bytes of the derivation
    */
   [[nodiscard]] std::span<const uint8_t, kCommitSize> Commitment() const;
 
   /**
-   * @brief	Expose the salt this key was derived from
-   * @return	View over the salt the derivation consumed
-   *
-   * Carried by the key rather than passed alongside it. A header describes the
-   * derivation a vault was written under, so letting a caller supply that
-   * description separately would let it describe a derivation other than the
-   * one that produced the key the vault is encrypted with. The two are one
-   * value here, and a mismatch has nowhere left to come from.
+   * @brief   Expose the salt this key was derived from
+   * @return  View over the salt this key was derived from
    */
   [[nodiscard]] std::span<const uint8_t, kSaltSize> Salt() const;
 
   /**
-   * @brief	Expose the Argon2id parameters this key was derived with
-   * @return	Parameters the derivation ran at
+   * @brief   Expose the Argon2id parameters this key was derived with
+   * @return  Parameters this key was derived with
    */
   [[nodiscard]] const KdfParams& Params() const;
 
   /**
-   * @brief	Constant-time comparison against a stored key commitment
-   * @param	expected	Commitment read from a vault header
-   * @return	true if the commitment is the one this derivation produced
+   * @brief   Constant-time comparison against a stored key commitment
+   * @param   other  Commitment read from a file header
+   * @return  true if the commitments are equal
    */
   [[nodiscard]] bool CommitmentMatches(
-      std::span<const uint8_t, kCommitSize> expected) const;
+      std::span<const uint8_t, kCommitSize> other) const;
 
   /**
-   * @brief	Constant-time comparison with another key
-   * @param	other	Key to compare against
-   * @return	true if the keys are equal
-   *
-   * Test-only: no production path compares two keys any more, since a vault is
-   * opened, and a master password verified, by checking one derivation against
-   * a stored commitment rather than against a second derivation. It stays on
-   * the public surface because the derived bytes are otherwise unobservable
-   * from outside the class, and the tests covering derivation determinism and
-   * move semantics have to assert on them. A raw accessor would answer the same
-   * question by handing out the key itself, which is what this class exists to
-   * prevent, so the comparison is exposed and the bytes are not.
+   * @brief   Constant-time comparison with another key, for test only
+   * @param   other   Key to compare against
+   * @return  true if the keys are equal
    */
   [[nodiscard]] bool ConstantTimeEquals(const SecureKey& other) const;
 
@@ -136,7 +108,7 @@ class SecureKey {
   SecureKey(uint8_t* data, std::span<const uint8_t, kSaltSize> salt,
             const KdfParams& params);
 
-  uint8_t* data_ = nullptr;  // kDerivedSize bytes in sodium_malloc memory
-  std::array<uint8_t, kSaltSize> salt_{};  // Salt this derivation consumed
-  KdfParams params_;                       // Parameters this derivation ran at
+  uint8_t* data_ = nullptr;
+  std::array<uint8_t, kSaltSize> salt_{};
+  KdfParams params_;
 };

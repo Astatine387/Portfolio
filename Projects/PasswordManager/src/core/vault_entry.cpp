@@ -1,7 +1,7 @@
 /**
- * @file	vault_entry.cpp
- * @brief	Implementation of entry management functions of Vault class
- * @author	Astatine387
+ * @file    vault_entry.cpp
+ * @brief   Implementation of entry management functions of Vault class
+ * @author  Astatine387
  */
 
 #include <cstddef>
@@ -16,16 +16,9 @@
 
 namespace {
 
-/* The messages state their ceiling outright, the way the dialog's already do. A
- * constant moved without the figure beside it moving too would leave the text
- * quietly wrong, so the figure is asserted rather than trusted. */
-
 static_assert(
     kMaxSiteLen == 256 && kMaxAccLen == 256 && kMaxEntryPwLen == 256,
     "A field ceiling moved away from the 256 bytes these messages state");
-
-/* Same for the vault ceiling, which CommitImage below states in figures;
- * vault_file.cpp carries its own for the two refusals it words the same way */
 
 static_assert(
     kMaxSize == 4000LL * 1024,
@@ -33,17 +26,10 @@ static_assert(
 
 /**
  * @brief   Check entry fields against what the on-disk format accepts
- * @param   site    Site name of the entry
- * @param   acc     Account of the entry
- * @param   pw      Password of the entry
- * @return  Reason the fields were refused, or nullptr when every one of them
- * fits
- *
- * Entry::Deserialize refuses a site or account past its ceiling and a password
- * past kMaxEntryPwLen, so an image built out of longer fields is one the parser
- * that wrote it cannot read back. The check stands here rather than in
- * EntryGUI::OnOKClicked, so the format's own invariant does not rest on a
- * dialog the tests do not reach and a second entry point would not go through.
+ * @param   site  Site name of the entry
+ * @param   acc   Account of the entry
+ * @param   pw    Password of the entry
+ * @return  Reason the fields were refused, or nullptr when every fields fit
  */
 const char* ValidateEntryFields(const std::string& site, const std::string& acc,
                                 const Password& pw) {
@@ -65,21 +51,9 @@ const char* ValidateEntryFields(const std::string& site, const std::string& acc,
            "bytes)\n";
   }
 
-  /* kMinEntrySize assumes each of the three fields carries at least one byte,
-   * and OpenVault sizes its entry-count check on that figure. This is where the
-   * assumption is made true: without it a vault this build writes is one this
-   * build refuses to open. */
-
   if (pw.IsEmpty()) {
     return "[Entry] Validation failed - Password is empty\n";
   }
-
-  /* Password refuses more than kMaxMasterPwLen, so it cannot carry more than
-   * kMaxEntryPwLen while the static_assert in constants.h holds; kept because
-   * that assert binds the two ceilings in one direction only, and a
-   * kMaxEntryPwLen set below kMaxMasterPwLen would make this the one check
-   * standing between a long password and a vault that cannot read itself back
-   */
 
   if (pw.GetSize() > static_cast<size_t>(kMaxEntryPwLen)) {
     return "[Entry] Validation failed - Password exceeds maximum size (256 "
@@ -92,7 +66,7 @@ const char* ValidateEntryFields(const std::string& site, const std::string& acc,
 }  // namespace
 
 std::optional<size_t> Vault::SerializeVault(
-    SecureBuffer& dst, size_t cur, std::set<Entry, EntryCmp>& out_entries,
+    SecureBuffer& dst, size_t cur, std::set<Entry, EntryCmp>& out,
     const std::set<Entry, EntryCmp>::const_iterator& skip) {
   for (auto it = entry_set_.begin(); it != entry_set_.end(); it++) {
     if (it == skip) {
@@ -114,9 +88,9 @@ std::optional<size_t> Vault::SerializeVault(
 
     /* Carve the destination subrange for this entry (bounds-checked) */
 
-    auto out = dst.Subspan(cur, it->Size());
+    auto out_img = dst.Subspan(cur, it->Size());
 
-    if (!out.has_value()) {
+    if (!out_img.has_value()) {
       // LCOV_EXCL_START
       ReportError(
           "[Data] Serialization failed - Destination image too small\n");
@@ -124,21 +98,18 @@ std::optional<size_t> Vault::SerializeVault(
       // LCOV_EXCL_STOP
     }
 
-    size_t written = it->Serialize(*out, *pw_src);
+    size_t written = it->Serialize(*out_img, *pw_src);
 
     if (written == 0) {
-      return std::nullopt;  // LCOV_EXCL_LINE; the two checks above are exactly
-                            // Serialize's own refusals
+      return std::nullopt;  // LCOV_EXCL_LINE
     }
 
-    /* Record where the bytes landed in dst, on a copy. The live entry still
-     * describes img_, and it goes on doing so whether or not this rebuild is
-     * ever installed. */
+    /* Record where the bytes landed in dst, on a copy */
 
     Entry rewritten = *it;
 
     rewritten.pw_off = cur + rewritten.PwOffset();
-    out_entries.insert(std::move(rewritten));
+    out.insert(std::move(rewritten));
 
     cur += written;
   }
@@ -148,18 +119,6 @@ std::optional<size_t> Vault::SerializeVault(
 
 Result Vault::CommitImage(SecureBuffer&& img,
                           std::set<Entry, EntryCmp>&& entries) {
-  /* The ceiling is read here rather than in each operation that rebuilds an
-   * image. This is the only place img_ is written while a vault is open, so an
-   * operation added later cannot walk around the check by forgetting it, which
-   * is what a copy of it standing in CreateEntry and UpdateEntry would have
-   * invited.
-   *
-   * Refusing at the entry that does not fit, rather than at the save that will
-   * not go through, is the point. A user is told which entry the vault has no
-   * room for instead of being left holding a session whose only route out is
-   * deleting entries it would not name. The check SaveVaultWith makes is a
-   * backstop behind this one. */
-
   if (img.Size() > static_cast<size_t>(kMaxImageSize)) {
     ReportError(
         "[Data] Commit failed - Vault would exceed maximum size (4,000 KiB)\n");
@@ -167,11 +126,7 @@ Result Vault::CommitImage(SecureBuffer&& img,
   }
 
   if (VerifyImage(img, entries, ImageOrigin::kSession) == Result::kFailure) {
-    /* Unreachable from the CRUD paths as they stand, and the reason to keep it
-     * is that it is what makes them safe to get wrong: a rebuild that does not
-     * describe itself correctly is dropped here rather than installed */
-
-    return Result::kFailure;  // LCOV_EXCL_LINE; VerifyImage reported the error
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
   img_ = std::move(img);
@@ -195,26 +150,21 @@ Result Vault::CreateEntry(const std::string& site, const std::string& acc,
     return Result::kFailure;
   }
 
-  Entry entry{ .site = site,
-               .acc = acc,
-               .pw_len = static_cast<uint32_t>(pw.GetSize()) };
+  Entry new_entry{ .site = site,
+                   .acc = acc,
+                   .pw_len = static_cast<uint32_t>(pw.GetSize()) };
 
-  /* Build a candidate image containing the existing entries plus the new one.
-   * Nothing below touches img_ or entry_set_; every return before CommitImage
-   * leaves the session exactly as it was found. */
+  /* Build a candidate image containing the existing entries plus the new one */
 
-  size_t total = kCountSize + entry.Size();
+  size_t total = kCountSize + new_entry.Size();
 
-  for (const auto& e : entry_set_) {
-    total += e.Size();
+  for (const auto& entry : entry_set_) {
+    total += entry.Size();
   }
 
   SecureBuffer buff(total);
 
   if (!buff.Valid()) {
-    /* sodium_malloc refusing the allocation; still checked because Data() would
-     * otherwise be a null pointer written through on the next line */
-
     // LCOV_EXCL_START
     ReportError("[Memory] Allocation failed - Cannot allocate vault image\n");
     return Result::kFailure;
@@ -230,13 +180,12 @@ Result Vault::CreateEntry(const std::string& site, const std::string& acc,
   auto cur = SerializeVault(buff, kCountSize, candidate, entry_set_.end());
 
   if (!cur.has_value()) {
-    return Result::kFailure;  // LCOV_EXCL_LINE; SerializeVault reported the
-                              // error
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
   /* Append the new entry at the end of the candidate image (bounds-checked) */
 
-  auto out = buff.Subspan(*cur, entry.Size());
+  auto out = buff.Subspan(*cur, new_entry.Size());
 
   if (!out.has_value()) {
     // LCOV_EXCL_START
@@ -247,19 +196,18 @@ Result Vault::CreateEntry(const std::string& site, const std::string& acc,
 
   std::span<const uint8_t> pw_src;
 
-  if (entry.pw_len > 0) {
+  if (new_entry.pw_len > 0) {
     pw_src = std::span<const uint8_t>(
-        reinterpret_cast<const uint8_t*>(pw.GetData()), entry.pw_len);
+        reinterpret_cast<const uint8_t*>(pw.GetData()), new_entry.pw_len);
   }
 
-  entry.pw_off = *cur + entry.PwOffset();
+  new_entry.pw_off = *cur + new_entry.PwOffset();
 
-  if (entry.Serialize(*out, pw_src) == 0) {
-    return Result::kFailure;  // LCOV_EXCL_LINE; the Subspan check above is
-                              // Serialize's own size refusal
+  if (new_entry.Serialize(*out, pw_src) == 0) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  candidate.insert(std::move(entry));
+  candidate.insert(std::move(new_entry));
 
   return CommitImage(std::move(buff), std::move(candidate));
 }
@@ -294,18 +242,14 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site,
     return UpdateResult::kDuplicate;
   }
 
-  Entry entry{ .site = new_site,
-               .acc = new_acc,
-               .pw_len = static_cast<uint32_t>(new_pw.GetSize()) };
+  Entry new_entry{ .site = new_site,
+                   .acc = new_acc,
+                   .pw_len = static_cast<uint32_t>(new_pw.GetSize()) };
 
-  /* Build a candidate image with the old entry replaced by the updated one.
-   * old_it stays valid throughout, since the set it points into is only read
-   * from here on. */
+  size_t total = kCountSize + new_entry.Size();
 
-  size_t total = kCountSize + entry.Size();
-
-  for (const auto& e : entry_set_) {
-    total += e.Size();
+  for (const auto& entry : entry_set_) {
+    total += entry.Size();
   }
 
   total -= old_it->Size();
@@ -313,9 +257,6 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site,
   SecureBuffer buff(total);
 
   if (!buff.Valid()) {
-    /* sodium_malloc refusing the allocation; still checked because Data() would
-     * otherwise be a null pointer written through on the next line */
-
     // LCOV_EXCL_START
     ReportError("[Memory] Allocation failed - Cannot allocate vault image\n");
     return UpdateResult::kError;
@@ -331,14 +272,12 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site,
   auto cur = SerializeVault(buff, kCountSize, candidate, old_it);
 
   if (!cur.has_value()) {
-    return UpdateResult::kError;  // LCOV_EXCL_LINE; SerializeVault reported the
-                                  // error
+    return UpdateResult::kError;  // LCOV_EXCL_LINE
   }
 
-  /* Append the updated entry at the end of the candidate image (bounds-checked)
-   */
+  /* Append the new entry at the end of the candidate image (bounds-checked) */
 
-  auto out = buff.Subspan(*cur, entry.Size());
+  auto out = buff.Subspan(*cur, new_entry.Size());
 
   if (!out.has_value()) {
     // LCOV_EXCL_START
@@ -349,28 +288,21 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site,
 
   std::span<const uint8_t> pw_src;
 
-  if (entry.pw_len > 0) {
+  if (new_entry.pw_len > 0) {
     pw_src = std::span<const uint8_t>(
-        reinterpret_cast<const uint8_t*>(new_pw.GetData()), entry.pw_len);
+        reinterpret_cast<const uint8_t*>(new_pw.GetData()), new_entry.pw_len);
   }
 
-  entry.pw_off = *cur + entry.PwOffset();
+  new_entry.pw_off = *cur + new_entry.PwOffset();
 
-  if (entry.Serialize(*out, pw_src) == 0) {
-    return UpdateResult::kError;  // LCOV_EXCL_LINE; the Subspan check above is
-                                  // Serialize's own size refusal
+  if (new_entry.Serialize(*out, pw_src) == 0) {
+    return UpdateResult::kError;  // LCOV_EXCL_LINE
   }
 
-  candidate.insert(std::move(entry));
-
-  /* The old entry was never inserted into the candidate set, so installing it
-   * is the whole of the replacement. The failure below is reachable: an update
-   * that grows an entry can be the one that carries the image past
-   * kMaxImageSize. */
+  candidate.insert(std::move(new_entry));
 
   if (CommitImage(std::move(buff), std::move(candidate)) == Result::kFailure) {
-    return UpdateResult::kError;  // CommitImage reported the error and
-                                  // installed nothing
+    return UpdateResult::kError;
   }
 
   return UpdateResult::kSuccess;
@@ -388,8 +320,8 @@ Result Vault::DeleteEntry(const std::string& site, const std::string& acc) {
 
   size_t total = kCountSize;
 
-  for (const auto& e : entry_set_) {
-    total += e.Size();
+  for (const auto& entry : entry_set_) {
+    total += entry.Size();
   }
 
   total -= it->Size();
@@ -397,9 +329,6 @@ Result Vault::DeleteEntry(const std::string& site, const std::string& acc) {
   SecureBuffer nimg(total);
 
   if (!nimg.Valid()) {
-    /* sodium_malloc refusing the allocation; still checked because Data() would
-     * otherwise be a null pointer written through on the next line */
-
     // LCOV_EXCL_START
     ReportError("[Memory] Allocation failed - Cannot allocate vault image\n");
     return Result::kFailure;
@@ -413,12 +342,10 @@ Result Vault::DeleteEntry(const std::string& site, const std::string& acc) {
   std::set<Entry, EntryCmp> candidate;
 
   if (!SerializeVault(nimg, kCountSize, candidate, it).has_value()) {
-    return Result::kFailure;  // LCOV_EXCL_LINE; SerializeVault reported the
-                              // error
+    return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  /* Skipping the target is the deletion: the candidate set is built without it
-   * rather than erased from */
+  /* Skipping the target is the deletion: build the candidate set without it */
 
   return CommitImage(std::move(nimg), std::move(candidate));
 }

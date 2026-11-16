@@ -1,7 +1,7 @@
 /**
- * @file	pw_line_edit.cpp
- * @brief	Implementation of PWLineEdit class
- * @author	Astatine387
+ * @file    pw_line_edit.cpp
+ * @brief   Implementation of PWLineEdit class
+ * @author  Astatine387
  */
 
 #include "gui/pw_line_edit.h"
@@ -15,12 +15,7 @@ PWLineEdit::PWLineEdit(QWidget* parent) : QWidget(parent) {
   mask_btn_ = new QPushButton("See");
   pw_line_ = new QLineEdit;
 
-  /* Configure input line */
-
-  /* No setMaxLength here. It counts UTF-16 characters rather than the UTF-8
-   * bytes the limit is written in, and it truncates a paste without saying so,
-   * which would derive a key from a password the user never typed. Extract
-   * refuses anything past kMaxMasterPwLen bytes instead. */
+  /* Configure input line, without setMaxLength: Extract limits the bytes */
 
   pw_line_->setPlaceholderText("Password");
   pw_line_->setEchoMode(QLineEdit::Password);
@@ -60,20 +55,13 @@ Result PWLineEdit::Extract(Password& pw) {
 }
 
 void PWLineEdit::Clear() {
-  /* setText rather than clear(): QLineEdit::clear() leaves what it removed in
-   * the widget's undo history, so an undo afterwards puts the password back in
-   * the field. setText drops that history along with the text. */
+  /* setText rather than clear(), which keeps the text in the undo history */
 
   pw_line_->setText(QString());
 }
 
 void PWLineEdit::SetPassword(const Password& pw) {
-  /* Cleared first, whatever is being set. SetEditMode hands this whatever the
-   * dialog was last showing, so without the clear an empty password would leave
-   * the previous entry's password sitting in the field for OK to write onto
-   * this one. Clearing here rather than at the call sites is what makes the
-   * function correct for every caller instead of for the ones that remember to
-   * clear. */
+  /* Clear first, so an empty password does not leave the previous one */
 
   Clear();
 

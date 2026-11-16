@@ -1,7 +1,7 @@
 /**
- * @file	change_pw_gui.h
- * @brief	Master password change GUI
- * @author	Astatine387
+ * @file    change_pw_gui.h
+ * @brief   Master password change GUI
+ * @author  Astatine387
  */
 
 #pragma once
@@ -18,34 +18,33 @@
 #include "utils/password.h"
 
 /**
- * @class	ChangePWGUI
- * @brief	Dialog for changing the master password
+ * @brief   Dialog for changing the master password
  */
 class ChangePWGUI : public QDialog {
   Q_OBJECT
 
  public:
   /**
-   * @brief	Constructor of ChangePWGUI class
-   * @param	parent	Parent widget
+   * @brief   Constructor of ChangePWGUI class
+   * @param   parent  Parent widget
    */
   explicit ChangePWGUI(QWidget* parent = nullptr);
 
   /**
-   * @brief		Get the change password input from the dialog
-   * @cur_pw	Current password will be extracted here
-   * @new_pw	New password will be extracted here
+   * @brief   Get the change password input from the dialog
+   * @cur_pw  Current password will be extracted here
+   * @new_pw  New password will be extracted here
    */
   void GetInput(Password& cur_pw, Password& new_pw);
 
   /**
-   * @brief	Reset all input fields
+   * @brief   Reset all input fields
    */
   void Reset();
 
   /**
-   * @brief	Display error message
-   * @param	msg		Error message string
+   * @brief   Display error message
+   * @param   msg   Error message string
    */
   void SetErrMsg(const QString& msg);
 
@@ -54,21 +53,21 @@ class ChangePWGUI : public QDialog {
    * ================================================== */
 
   /**
-   * @brief	Callback function for verifying current password
-   * @param	cur_pw	Current password to verify
-   * @return	true if password is correct
+   * @brief   Callback function for verifying current password
+   * @param   cur_pw  Current password to verify
+   * @return  true if password is correct
    */
   using VerifyCallback = std::function<bool(const Password& cur_pw)>;
 
   /**
-   * @brief	Set verify callback function
-   * @param	vcb		Verify callback function
+   * @brief   Set   verify callback function
+   * @param   vcb   Verify callback function
    */
   void SetVerifyCb(VerifyCallback vcb);
 
  private slots:
   /**
-   * @brief	Validate input and accept dialog
+   * @brief   Validate input and accept dialog
    */
   void OnOKClicked();
 

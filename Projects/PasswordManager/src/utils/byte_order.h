@@ -1,7 +1,7 @@
 /**
- * @file	byte_order.h
- * @brief	Explicit byte order helpers for on-disk integer fields
- * @author	Astatine387
+ * @file    byte_order.h
+ * @brief   Explicit byte order helpers for on-disk integer fields
+ * @author  Astatine387
  *
  * Every integer field of a vault file is little-endian, so the format stays the
  * same on a host of either order rather than following whatever the compiler
@@ -15,7 +15,7 @@
 /**
  * @brief   Store a 32-bit value in little-endian order
  * @param   dst   Destination buffer, at least 4 bytes
- * @param   val     Value to store
+ * @param   val   Value to store
  */
 constexpr void StoreLE32(uint8_t* dst, uint32_t val) {
   dst[0] = static_cast<uint8_t>(val & 0xFFU);

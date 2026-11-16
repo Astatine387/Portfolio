@@ -1,7 +1,7 @@
 /**
- * @file	secure_buffer.cpp
- * @brief	Implementation of SecureBuffer class
- * @author	Astatine387
+ * @file    secure_buffer.cpp
+ * @brief   Implementation of SecureBuffer class
+ * @author  Astatine387
  */
 
 #include "core/secure_buffer.h"
@@ -86,7 +86,7 @@ std::optional<std::span<const uint8_t>> SecureBuffer::Subspan(
 
 void SecureBuffer::Reset() {
   if (data_ != nullptr) {
-    sodium_free(data_);  // sodium_free zeroes the buffer before releasing it
+    sodium_free(data_);
     data_ = nullptr;
   }
 

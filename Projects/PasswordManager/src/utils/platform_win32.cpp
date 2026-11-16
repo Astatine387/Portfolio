@@ -1,7 +1,7 @@
 /**
- * @file	platform_win32.cpp
- * @brief	Implementation of utility functions for Windows
- * @author	Astatine387
+ * @file    platform_win32.cpp
+ * @brief   Implementation of utility functions for Windows
+ * @author  Astatine387
  */
 
 #include <windows.h>
@@ -10,6 +10,8 @@
 #include <fcntl.h>
 #include <io.h>
 #include <sddl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include <array>
 #include <filesystem>
@@ -21,37 +23,33 @@
 
 namespace {
 
+/**
+ * @brief   Convert std::string file path to std::filesystem::path
+ * @param   path  file path, in std::string
+ * @return  file path, in std::filesystem::path
+ */
 std::filesystem::path ToPath(const std::string& path) {
   return std::filesystem::path(std::u8string(
       reinterpret_cast<const char8_t*>(path.data()), path.size()));
 }
 
+/**
+ * @brief   Check whether an error code means the name was already taken
+ * @param   err   Error code from GetLastError
+ * @return  true if the name was taken
+ */
 bool CheckNameCollision(DWORD err) {
   return err == ERROR_FILE_EXISTS || err == ERROR_ALREADY_EXISTS;
 }
 
 /**
- * @struct  LocalGuard
  * @brief   Releases memory the security APIs allocated on the local heap
- *
- * Both the SID string and the security descriptor below are handed back as
- * LocalAlloc memory that the caller owns, and LocalFree is what releases either
- * of them. An empty type rather than a function pointer, so that the pointers
- * wrapping it are the size of the pointer they hold.
- *
- * The Windows permission tests carry a copy of this deleter in win32_dacl.h
- * rather than reaching for this one, which they cannot: the anonymous namespace
- * is what keeps it local to this file. Sharing it would mean either a Win32
- * type in platform.h, with windows.h following it into every translation unit
- * that includes that header, or a public header of its own for three lines. The
- * copy is deliberate.
  */
 struct LocalGuard {
   void operator()(void* mem) const noexcept { LocalFree(mem); }
 };
 
 /**
- * @struct  HandleGuard
  * @brief   Closes a kernel handle
  */
 struct HandleGuard {
@@ -61,11 +59,6 @@ struct HandleGuard {
 /**
  * @brief   Owning handles for the three allocations an owner-only security
  * descriptor is built out of
- *
- * Declared so that every way out of the build below releases what it has
- * reached, without each early return having to know which of the three are live
- * at that point. HANDLE is a void pointer, which is why a token shares the
- * pointee type with a descriptor and differs only in how it is closed.
  */
 using SdPtr = std::unique_ptr<void, LocalGuard>;
 using SidPtr = std::unique_ptr<wchar_t, LocalGuard>;
@@ -74,20 +67,8 @@ using TokenPtr = std::unique_ptr<void, HandleGuard>;
 /**
  * @brief   Build a security descriptor that grants the account this process
  * runs as everything, and nobody else anything
- * @param   sd	Receives the descriptor on success, left as it was on failure
+ * @param   sd  Receives the descriptor on success, left as it was on failure
  * @return  kSuccess on success, kFailure on failure
- *
- * CreateFileW with no security attributes gives the new file a default security
- * descriptor, and the DACL of that one is whatever the parent directory offers
- * for inheritance. A vault written into a directory other accounts can read
- * would be readable by them, so the descriptor a temporary is created under is
- * built here rather than left to the directory it happens to be created in.
- *
- * The SID is read from the process token and spelled into the ACE as itself,
- * not through the CO (creator owner) or OW (owner rights) aliases. Those
- * resolve against whoever the owner of the file turns out to be, which is a
- * question about the file; what has to be named here is the account that is
- * about to write a vault.
  */
 Result MakeOwnerOnlyDescriptor(SdPtr& sd) {
   HANDLE raw_token = nullptr;
@@ -98,11 +79,7 @@ Result MakeOwnerOnlyDescriptor(SdPtr& sd) {
 
   const TokenPtr token(raw_token);
 
-  /* A TokenUser answer is a TOKEN_USER followed by the variable-length SID its
-   * member points at, so its length is not a constant and has to be asked for.
-   * The sizing call is the one that fails and reports the length, so a sizing
-   * call that succeeds, or one that asks for less than the fixed part alone, is
-   * not an answer at all. */
+  /* Ask for the size of the TokenUser answer first */
 
   DWORD len = 0;
 
@@ -111,9 +88,7 @@ Result MakeOwnerOnlyDescriptor(SdPtr& sd) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  /* The buffer comes from operator new, which is aligned for every type of
-   * fundamental alignment, so reading a TOKEN_USER back out of these bytes is
-   * as aligned as that type asks to be */
+  /* operator new aligns the buffer for reading a TOKEN_USER out of it */
 
   std::vector<uint8_t> buff(len);
 
@@ -131,11 +106,7 @@ Result MakeOwnerOnlyDescriptor(SdPtr& sd) {
 
   const SidPtr sid(raw_sid);
 
-  /* D: opens the DACL, P protects it, and the single ACE allows FA to that one
-   * SID and carries no inheritance flags of its own. An explicit DACL already
-   * keeps the parent directory from contributing at creation time; what P adds
-   * is that a later change to the directory's own ACL cannot propagate into
-   * this file either. */
+  /* Protected DACL with one ACE granting full access to that SID alone */
 
   const std::wstring sddl = std::wstring(L"D:P(A;;FA;;;") + sid.get() + L")";
 
@@ -154,28 +125,33 @@ Result MakeOwnerOnlyDescriptor(SdPtr& sd) {
 }  // namespace
 
 int64_t GetFileSize(FILE* file) {
-  if (_fseeki64(file, 0, SEEK_END)) {
+  struct _stat64 st = {};
+
+  /* Fails if it isn't a regular file */
+
+  if (_fstat64(_fileno(file), &st) != 0 || (st.st_mode & _S_IFMT) != _S_IFREG) {
     return -1;
   }
 
-  int64_t size = _ftelli64(file);
+  /* Get the file size */
+
+  if (_fseeki64(file, 0, SEEK_END)) {
+    return -1;  // LCOV_EXCL_LINE
+  }
+
+  int64_t res = _ftelli64(file);
+
+  /* Reset the cursor */
 
   if (_fseeki64(file, 0, SEEK_SET)) {
-    return -1;
+    return -1;  // LCOV_EXCL_LINE
   }
 
-  return size;
+  return res;
 }
 
 bool FileExists(const std::string& path) {
   std::error_code ec;
-
-  /* status with an error_code rather than exists, and the type compared rather
-   * than read as a bool. The throwing overloads report a lookup that failed for
-   * any reason other than absence by throwing, which this build has no way to
-   * catch, and exists with an error_code answers false there, which is the one
-   * answer a caller must not be given. A type of none is what such a failure
-   * leaves, and only not_found means the path is free. */
 
   return std::filesystem::status(ToPath(path), ec).type() !=
          std::filesystem::file_type::not_found;
@@ -217,12 +193,7 @@ RenameStatus RenameFileNoReplace(const std::string& src,
   std::filesystem::path src_path = ToPath(src);
   std::filesystem::path dst_path = ToPath(dst);
 
-  /* MOVEFILE_REPLACE_EXISTING is deliberately absent, so the move fails instead
-   * of overwriting an existing destination. That refusal is the whole point:
-   * the move itself decides whether the name was free, so nothing can appear at
-   * the destination between a separate existence test and the move that follows
-   * it. MOVEFILE_WRITE_THROUGH is kept, so a published vault reaches the disk
-   * as durably as a replacing save does. */
+  /* No MOVEFILE_REPLACE_EXISTING, so the move fails on a taken name */
 
   if (!MoveFileExW(src_path.c_str(), dst_path.c_str(),
                    MOVEFILE_WRITE_THROUGH)) {
@@ -236,11 +207,6 @@ RenameStatus RenameFileNoReplace(const std::string& src,
 Result ResolvePath(const std::string& path, std::string& out) {
   std::error_code ec;
 
-  /* canonical rather than a read of the link's own target, because a target may
-   * be another link and may be relative to the directory the link sits in. The
-   * error_code overload is the one that reports a path that does not resolve as
-   * a failure instead of throwing, which this build has no way to catch. */
-
   const std::filesystem::path real =
       std::filesystem::canonical(ToPath(path), ec);
 
@@ -248,9 +214,7 @@ Result ResolvePath(const std::string& path, std::string& out) {
     return Result::kFailure;
   }
 
-  /* u8string rather than string, which would narrow the wide path through the
-   * ANSI code page and lose whatever it cannot spell. Every path the core holds
-   * is UTF-8, which is what ToPath reads on the way in. */
+  /* u8string rather than string, which would narrow through the code page */
 
   const std::u8string text = real.u8string();
 
@@ -260,9 +224,13 @@ Result ResolvePath(const std::string& path, std::string& out) {
 }
 
 Result SyncFile(FILE* file) {
+  /* Push the stdio buffer into the kernel */
+
   if (fflush(file)) {
     return Result::kFailure;
   }
+
+  /* Get file handle */
 
   const intptr_t ptr = _get_osfhandle(_fileno(file));
 
@@ -273,6 +241,8 @@ Result SyncFile(FILE* file) {
     return Result::kFailure;
   }
 
+  /* Push the kernel's page cache onto the disk */
+
   if (!FlushFileBuffers(handle)) {
     return Result::kFailure;
   }
@@ -280,9 +250,20 @@ Result SyncFile(FILE* file) {
   return Result::kSuccess;
 }
 
-Result SyncDir([[maybe_unused]] const std::string& path) {
-  /* Windows has no directory-fsync; rename durability is handled by
-   * MOVEFILE_WRITE_THROUGH in RenameFile and RenameFileNoReplace */
+Result SyncDir(const std::string& path) {
+  std::filesystem::path dir = ToPath(path).parent_path();
+
+  HANDLE handle =
+      CreateFileW(dir.empty() ? L"." : dir.c_str(), GENERIC_READ,
+                  FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                  nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+
+  if (handle == INVALID_HANDLE_VALUE) {
+    return Result::kFailure;
+  }
+
+  CloseHandle(handle);
+
   return Result::kSuccess;
 }
 
@@ -295,6 +276,46 @@ void OpenFile(FILE** file, const std::string& path, const char* mode) {
   }
 
   _wfopen_s(file, fs_path.c_str(), wmode.c_str());
+}
+
+Result OpenRegularFile(FILE** file, const std::string& path) {
+  *file = nullptr;
+
+  std::filesystem::path fs_path = ToPath(path);
+
+  HANDLE handle =
+      CreateFileW(fs_path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                  OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+
+  if (handle == INVALID_HANDLE_VALUE) {
+    return Result::kFailure;
+  }
+
+  BY_HANDLE_FILE_INFORMATION info = {};
+
+  if (!GetFileInformationByHandle(handle, &info) ||
+      (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 ||
+      GetFileType(handle) != FILE_TYPE_DISK) {
+    CloseHandle(handle);
+    return Result::kFailure;
+  }
+
+  const int fd = _open_osfhandle(reinterpret_cast<intptr_t>(handle),
+                                 _O_RDONLY | _O_BINARY);
+
+  if (fd == -1) {
+    CloseHandle(handle);
+    return Result::kFailure;
+  }
+
+  *file = _fdopen(fd, "rb");
+
+  if (*file == nullptr) {
+    _close(fd);
+    return Result::kFailure;
+  }
+
+  return Result::kSuccess;
 }
 
 Result OpenTempFile(FILE** file, std::string& path) {
@@ -310,12 +331,7 @@ Result OpenTempFile(FILE** file, std::string& path) {
 
   const size_t suffix_pos = path.size() - kSuffixLen;
 
-  /* Build the descriptor before any name is tried. It describes the account
-   * this process runs as rather than the file, so one descriptor serves every
-   * attempt; and a failure to build it is a failure of the whole call, taken
-   * before a file exists. Falling back to no security attributes would create
-   * the file with the permissions of whatever directory it sits in, which is
-   * exactly what this function promises not to do. */
+  /* Build the owner-only descriptor once, before any name is tried */
 
   SdPtr sd;
 

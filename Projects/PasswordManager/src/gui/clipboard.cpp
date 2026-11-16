@@ -1,7 +1,7 @@
 /**
- * @file	clipboard.cpp
- * @brief	Implementation of clipboard helper functions
- * @author	Astatine387
+ * @file    clipboard.cpp
+ * @brief   Implementation of clipboard helper functions
+ * @author  Astatine387
  */
 
 #include "gui/clipboard.h"

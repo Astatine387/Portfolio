@@ -16,21 +16,13 @@
 #include "gui/entry_interface.h"
 
 /**
- * @class   EntryModel
  * @brief   Read-only table model holding the site and account of every entry
- *
- * The rows are the vault's entries in the order the vault hands them over, and
- * each row keeps the EntryView it was built from. Whatever acts on a row asks
- * the model for that view rather than reading the text back out of the cells,
- * so the identity an operation is carried out under is the one the vault gave,
- * not a round trip through what the table happened to display.
  */
 class EntryModel : public QAbstractTableModel {
   Q_OBJECT
 
  public:
   /**
-   * @enum    Column
    * @brief   Columns of the table, in the order they are shown
    */
   enum Column : std::uint8_t {

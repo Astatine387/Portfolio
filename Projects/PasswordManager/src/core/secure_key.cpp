@@ -1,7 +1,7 @@
 /**
- * @file	secure_key.cpp
- * @brief	Implementation of SecureKey and key derivation
- * @author	Astatine387
+ * @file    secure_key.cpp
+ * @brief   Implementation of SecureKey and key derivation
+ * @author  Astatine387
  */
 
 #include "core/secure_key.h"
@@ -24,24 +24,21 @@
 
 namespace {
 
-std::once_flag g_init_flag;
+std::once_flag g_init_flag;  // Whether DoInit() has run
 
+/**
+ * @brief   Initialize libsodium, best-effort raise the memory-lock limit, and
+ * refuse core dumps
+ */
 void DoInit() {
+  /* Initialize libsodium */
+
   if (sodium_init() < 0) {
-    return;  // LCOV_EXCL_LINE  libsodium unavailable; secure allocations fail
-             // loudly later
+    return;  // LCOV_EXCL_LINE
   }
 
 #ifdef _WIN32
-  /* Best-effort: raise the working-set minimum so locked pages are permitted.
-   * VirtualLock, which is what libsodium locks with here, charges against the
-   * process minimum working set rather than against a limit of its own, so the
-   * room asked for is the same room kMaxSize was sized against: kLockBudget
-   * covers the installed image, the candidate one entry larger that an edit
-   * builds beside it, and the reserve for the keys and Password buffers locked
-   * alongside both. Bumping by less would put the ceiling constants.h asserts
-   * against out of reach on Windows alone, and the shortfall would show up the
-   * same way it does on Linux, which is not at all. */
+  /* Raise the working set minimum by the locking budget */
 
   SIZE_T min_ws = 0;
   SIZE_T max_ws = 0;
@@ -52,69 +49,26 @@ void DoInit() {
     SetProcessWorkingSetSize(proc, min_ws + kBump, max_ws + kBump);
   }
 
-  /* Keep an unhandled exception from reaching the default Windows Error
-   * Reporting path, which is where a dump of this process, Argon2id working
-   * buffer and all, would be written. SEM_FAILCRITICALERRORS comes along
-   * because the same handler serves both dialogs and neither is useful in a
-   * program with no one watching it.
-   *
-   * Best effort in the same sense as the working set above, and worth being
-   * plain about: WER LocalDumps configured by an administrator collects through
-   * a route this flag does not sit on, so the dump is still taken there.
-   * Nothing an unprivileged process can call turns that off. */
+  /* Refuse core dump on crash */
 
   SetErrorMode(SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
 #else
-  /* Best-effort: raise the RLIMIT_MEMLOCK soft limit to the hard limit */
+  /* Raise the memory-lock soft limit to the hard limit */
 
-  rlimit rl{};
+  rlimit mem_limit = {};
 
-  if (getrlimit(RLIMIT_MEMLOCK, &rl) == 0) {
-    rl.rlim_cur = rl.rlim_max;
-    setrlimit(RLIMIT_MEMLOCK, &rl);
+  if (getrlimit(RLIMIT_MEMLOCK, &mem_limit) == 0) {
+    mem_limit.rlim_cur = mem_limit.rlim_max;
+    setrlimit(RLIMIT_MEMLOCK, &mem_limit);
   }
 
-  /* Refuse core dumps, in every build. sodium_malloc keeps the master password,
-   * the session key and the decrypted vault image out of one already, since
-   * sodium_mlock asks for MADV_DONTDUMP, but Argon2id's working buffer comes
-   * from libargon2's own malloc and lands in the dump whole. That buffer is not
-   * a discardable intermediate: each lane's first two blocks come from H0,
-   * every later block follows from those two, and the tag is the XOR of each
-   * lane's last block, so whoever reads the buffer out of a dump recomputes the
-   * session key without ever seeing the master password. This process is a GUI
-   * that stays open for as long as the vault does, so the window in which a
-   * crash could spill those 512 MiB is the whole session rather than one
-   * derivation. The hard limit goes down with the soft one so that nothing
-   * later in the process can put it back.
-   *
-   * The result is dropped rather than acted on. A limit that will not move is
-   * not a reason to refuse to run, the same as with RLIMIT_MEMLOCK above, and
-   * DoInit runs before there is anywhere to report it to. The dumpable flag
-   * below is a separate mechanism and is set whether this call succeeded or
-   * not. */
+  /* Refuse core dumps */
 
-  rlimit no_core = {};
+  rlimit core_limit = {};
 
-  static_cast<void>(setrlimit(RLIMIT_CORE, &no_core));
+  static_cast<void>(setrlimit(RLIMIT_CORE, &core_limit));
 
 #if defined(__linux__) && defined(NDEBUG)
-  /* A second, independent layer. RLIMIT_CORE bounds the core file the kernel is
-   * willing to write, while the dumpable flag decides whether a dump is
-   * produced for this process at all, so it holds whatever core_pattern happens
-   * to name. It also closes the other way the Argon2id buffer walks out: a
-   * process that is not dumpable cannot be attached with PTRACE_ATTACH by the
-   * same uid, and its /proc entry becomes root's, so the buffer cannot be read
-   * out of the live process either.
-   *
-   * That last property is why this is held to NDEBUG: with the flag cleared,
-   * gdb and CLion cannot attach to a running PasswordManager. NDEBUG is the
-   * whole condition, so this is active in Release and in RelWithDebInfo, which
-   * is what the sanitizer job builds, and inactive in Debug, which is what a
-   * local debugging session and the coverage job build.
-   *
-   * Dropped for the same reason as the limit above: best effort, and a kernel
-   * that refuses is not a reason to refuse to run. */
-
   static_cast<void>(prctl(PR_SET_DUMPABLE, 0, 0, 0, 0));
 #endif
 #endif
@@ -123,6 +77,8 @@ void DoInit() {
 }  // namespace
 
 void InitCrypto() {
+  /* Make DoInit() idempotent and safe to call multiple times */
+
   std::call_once(g_init_flag, DoInit);
 }
 
@@ -149,10 +105,6 @@ SecureKey& SecureKey::operator=(SecureKey&& other) noexcept {
     if (data_ != nullptr) {
       sodium_free(data_);
     }
-
-    /* The salt and the parameters move with the bytes they produced. A key that
-     * arrived with one derivation's material and another's description of it
-     * would be written into a header that does not open it. */
 
     data_ = other.data_;
     salt_ = other.salt_;
@@ -181,18 +133,19 @@ const KdfParams& SecureKey::Params() const {
 }
 
 bool SecureKey::CommitmentMatches(
-    std::span<const uint8_t, kCommitSize> expected) const {
-  /* sodium_memcmp rather than memcmp, for the same reason ConstantTimeEquals
-   * uses it: memcmp stops at the first differing byte, and how long it takes to
-   * do so tells an observer how much of a guessed password was right. The
-   * commitment is public, but the time taken to reject one is not, and this
-   * comparison runs once per password attempt, which is exactly where a guess
-   * would be timed. */
+    std::span<const uint8_t, kCommitSize> other) const {
+  /* sodium_memcmp rather than memcmp: memcmp stops at the first differing byte,
+   * and how long it takes to do so tells an observer how much of a guessed key
+   * was right */
 
-  return sodium_memcmp(data_ + kKeySize, expected.data(), kCommitSize) == 0;
+  return sodium_memcmp(data_ + kKeySize, other.data(), kCommitSize) == 0;
 }
 
 bool SecureKey::ConstantTimeEquals(const SecureKey& other) const {
+  /* sodium_memcmp rather than memcmp: memcmp stops at the first differing byte,
+   * and how long it takes to do so tells an observer how much of a guessed key
+   * was right */
+
   return sodium_memcmp(data_, other.data_, kKeySize) == 0;
 }
 
@@ -201,19 +154,13 @@ std::optional<SecureKey> DeriveKey(std::span<const char> pw,
                                    const KdfParams& params) {
   InitCrypto();
 
+  /* Argon2id writes into locked, self-wiping memory */
+
   auto* key = static_cast<uint8_t*>(sodium_malloc(kDerivedSize));
 
   if (key == nullptr) {
     return std::nullopt;  // LCOV_EXCL_LINE
   }
-
-  /* One derivation of kDerivedSize bytes rather than two of kKeySize. What
-   * Argon2id charges is set by the time, memory and parallelism parameters, so
-   * asking for the commitment alongside the key costs the extra bytes of output
-   * and nothing else: the memory-hard work that dominates a derivation runs
-   * once. The output length is part of what Argon2id hashes, so the key half is
-   * not the value a kKeySize derivation would produce. The length is a ceiling
-   * rather than a preference, which is why constants.h asserts the bound. */
 
   if (argon2id_hash_raw(params.time_cost, params.mem_cost, params.parallelism,
                         pw.data(), pw.size(), salt.data(), salt.size(), key,

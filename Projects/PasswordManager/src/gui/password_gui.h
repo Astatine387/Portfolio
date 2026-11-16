@@ -1,7 +1,7 @@
 /**
- * @file	password_gui.h
- * @brief	Password input window for vault authentication
- * @author	Astatine387
+ * @file    password_gui.h
+ * @brief   Password input window for vault authentication
+ * @author  Astatine387
  */
 
 #pragma once
@@ -18,8 +18,7 @@
 #include "utils/password.h"
 
 /**
- * @struct	LoginRequest
- * @brief	Container for login input parameters
+ * @brief   Container for login input parameters
  */
 struct LoginRequest {
   VaultAction action;
@@ -28,47 +27,46 @@ struct LoginRequest {
 };
 
 /**
- * @class	PasswordGUI
- * @brief	Password input window for vault authentication
+ * @brief   Password input window for vault authentication
  */
 class PasswordGUI : public QWidget {
   Q_OBJECT
 
  public:
   /**
-   * @brief	Constructor of PasswordGUI class
-   * @param	parent	Parent widget
+   * @brief   Constructor of PasswordGUI class
+   * @param   parent  Parent widget
    */
   explicit PasswordGUI(QWidget* parent = nullptr);
 
   /**
-   * @brief	Set vault mode and path from LoginGUI
-   * @param	action	Vault action (kCreate or kOpen)
-   * @param	path	Vault file path
+   * @brief   Set vault mode and path from LoginGUI
+   * @param   action  Vault action (kCreate or kOpen)
+   * @param   path    Vault file path
    */
   void SetVaultInfo(VaultAction action, const QString& path);
 
   /**
-   * @brief	Display error message
-   * @param	msg		Error message string
+   * @brief   Display error message
+   * @param   msg   Error message string
    */
   void SetErrMsg(const QString& msg);
 
  signals:
   /**
-   * @brief	Signal when login is confirmed
-   * @param	req	Login input parameters
+   * @brief   Signal when login is confirmed
+   * @param   req   Login input parameters
    */
   void LoginRequested(const LoginRequest& req);
 
   /**
-   * @brief	Signal when back button is clicked
+   * @brief   Signal when back button is clicked
    */
   void BackRequested();
 
  private slots:
   /**
-   * @brief	Validate input and emit login request
+   * @brief   Validate input and emit login request
    */
   void OnConfirmClicked();
 

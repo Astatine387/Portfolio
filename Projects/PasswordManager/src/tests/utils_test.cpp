@@ -88,6 +88,27 @@ TEST_F(GetFileSizeTest, ArbitSizeFile) {
   EXPECT_EQ(GetFileSize(file_), 1000);
 }
 
+#ifndef _WIN32
+
+/**
+ * @brief   Verify GetFileSize refuses a stream that is not on a regular file
+ *
+ * A character device answers a seek to the end with whatever its driver
+ * reports, so a size taken from one would turn a stream that cannot be measured
+ * into a number the caller trusts.
+ */
+TEST_F(GetFileSizeTest, RejectsCharacterDevice) {
+  OpenFile(&file_, "/dev/null", "rb");
+
+  if (file_ == nullptr) {
+    GTEST_SKIP() << "/dev/null is not available";
+  }
+
+  EXPECT_EQ(GetFileSize(file_), -1);
+}
+
+#endif /* !_WIN32 */
+
 /* ==================================================
  * FileExists Test
  * ================================================== */
@@ -333,6 +354,175 @@ TEST_F(OpenFileTest, OpenExisting) {
 
   EXPECT_NE(file_, nullptr);
 }
+
+/* ==================================================
+ * OpenRegularFile Test
+ * ================================================== */
+
+/**
+ * @class   OpenRegularFileTest
+ * @brief   Test class for OpenRegularFile function
+ */
+class OpenRegularFileTest : public ::testing::Test {
+ protected:
+  FILE* file_ = nullptr;
+  std::string path_ = "test.tmp";
+  std::string link_ = "test_link.tmp";
+  std::string fifo_ = "test.fifo";
+
+  /**
+   * @brief   Clean up temporary files after each test
+   */
+  void TearDown() override {
+    if (file_) {
+      fclose(file_);
+      file_ = nullptr;
+    }
+
+    RemoveFile(path_);
+    RemoveFile(link_);
+    RemoveFile(fifo_);
+  }
+
+  /**
+   * @brief   Create a plain file holding a short text
+   */
+  void Create() {
+    FILE* file = nullptr;
+
+    OpenFile(&file, path_, "wb");
+
+    ASSERT_NE(file, nullptr);
+
+    EXPECT_EQ(fwrite("Hello, world!", sizeof(char), 13, file), 13U);
+
+    fclose(file);
+  }
+
+  /**
+   * @brief   Read what is left in the opened stream
+   * @return  Bytes read, as text
+   */
+  std::string ReadAll() {
+    std::array<char, 32> buff{};
+
+    const size_t len = fread(buff.data(), sizeof(char), buff.size(), file_);
+
+    return { buff.data(), len };
+  }
+};
+
+/**
+ * @brief   Verify a regular file opens and reads back through the returned
+ * stream
+ */
+TEST_F(OpenRegularFileTest, ReadsRegularFile) {
+  Create();
+
+  ASSERT_EQ(OpenRegularFile(&file_, path_), Result::kSuccess);
+  ASSERT_NE(file_, nullptr);
+
+  EXPECT_EQ(ReadAll(), "Hello, world!");
+}
+
+/**
+ * @brief   Verify a path that leads nowhere fails and leaves no stream behind
+ */
+TEST_F(OpenRegularFileTest, RefusesMissingFile) {
+  EXPECT_EQ(OpenRegularFile(&file_, "fake.tmp"), Result::kFailure);
+  EXPECT_EQ(file_, nullptr);
+}
+
+/**
+ * @brief   Verify a directory is refused rather than opened for reading
+ */
+TEST_F(OpenRegularFileTest, RefusesDirectory) {
+  EXPECT_EQ(OpenRegularFile(&file_, "."), Result::kFailure);
+  EXPECT_EQ(file_, nullptr);
+}
+
+#ifndef _WIN32
+
+/**
+ * @brief   Verify a named pipe is refused at once rather than waited on
+ *
+ * The case the non-blocking open exists for. Nothing ever opens this pipe for
+ * writing, so an open that waited for a writer would never return. The alarm
+ * turns that into a failure of this case rather than a suite that hangs, since
+ * SIGALRM ends the process by default.
+ */
+TEST_F(OpenRegularFileTest, RefusesNamedPipe) {
+  ASSERT_EQ(mkfifo(fifo_.c_str(), 0600), 0);
+
+  static_cast<void>(alarm(10));
+
+  const Result res = OpenRegularFile(&file_, fifo_);
+
+  static_cast<void>(alarm(0));
+
+  EXPECT_EQ(res, Result::kFailure);
+  EXPECT_EQ(file_, nullptr);
+}
+
+/**
+ * @brief   Verify a character device is refused
+ */
+TEST_F(OpenRegularFileTest, RefusesCharacterDevice) {
+  EXPECT_EQ(OpenRegularFile(&file_, "/dev/null"), Result::kFailure);
+  EXPECT_EQ(file_, nullptr);
+}
+
+/**
+ * @brief   Verify a symbolic link to a regular file is read through
+ *
+ * Where this differs from FileEncryption's OpenSourceFile: a vault kept behind
+ * a link is opened through it, as fopen opened it.
+ */
+TEST_F(OpenRegularFileTest, FollowsSymlink) {
+  Create();
+
+  ASSERT_EQ(symlink(path_.c_str(), link_.c_str()), 0);
+
+  ASSERT_EQ(OpenRegularFile(&file_, link_), Result::kSuccess);
+  ASSERT_NE(file_, nullptr);
+
+  EXPECT_EQ(ReadAll(), "Hello, world!");
+}
+
+/**
+ * @brief   Verify the stream handed back no longer carries O_NONBLOCK
+ *
+ * The flag is only there to get past the open of a named pipe, so stdio is
+ * not left to inherit it.
+ */
+TEST_F(OpenRegularFileTest, ClearsNonBlocking) {
+  Create();
+
+  ASSERT_EQ(OpenRegularFile(&file_, path_), Result::kSuccess);
+  ASSERT_NE(file_, nullptr);
+
+  const int flags = fcntl(fileno(file_), F_GETFL);
+
+  ASSERT_NE(flags, -1);
+  EXPECT_EQ(flags & O_NONBLOCK, 0);
+}
+
+/**
+ * @brief   Verify the descriptor is closed across exec
+ */
+TEST_F(OpenRegularFileTest, SetsCloseOnExec) {
+  Create();
+
+  ASSERT_EQ(OpenRegularFile(&file_, path_), Result::kSuccess);
+  ASSERT_NE(file_, nullptr);
+
+  const int flags = fcntl(fileno(file_), F_GETFD);
+
+  ASSERT_NE(flags, -1);
+  EXPECT_NE(flags & FD_CLOEXEC, 0);
+}
+
+#endif /* !_WIN32 */
 
 /* ==================================================
  * Random Test
@@ -744,6 +934,47 @@ TEST_F(SyncFileTest, SyncFile) {
   EXPECT_EQ(SyncFile(file_), Result::kSuccess);
 }
 
+#ifndef _WIN32
+
+/**
+ * @brief   Verify SyncFile reports failure when the buffered bytes cannot reach
+ * the device
+ */
+TEST_F(SyncFileTest, RejectsFullDevice) {
+  OpenFile(&file_, "/dev/full", "wb");
+
+  if (file_ == nullptr) {
+    GTEST_SKIP() << "/dev/full is not available";
+  }
+
+  Write();
+
+  EXPECT_EQ(SyncFile(file_), Result::kFailure);
+}
+
+/**
+ * @brief   Verify SyncFile reports failure when the descriptor cannot be synced
+ * at all
+ *
+ * The case above fails in the flush; this one fails in the fsync behind it. A
+ * character device takes the buffered bytes without complaint and then has
+ * nothing to sync them to, so the refusal here can only have come from the
+ * second half.
+ */
+TEST_F(SyncFileTest, RejectsUnsyncableDescriptor) {
+  OpenFile(&file_, "/dev/null", "wb");
+
+  if (file_ == nullptr) {
+    GTEST_SKIP() << "/dev/null is not available";
+  }
+
+  Write();
+
+  EXPECT_EQ(SyncFile(file_), Result::kFailure);
+}
+
+#endif /* !_WIN32 */
+
 /* ==================================================
  * SyncDir Test
  * ================================================== */
@@ -755,16 +986,12 @@ TEST(SyncDirTest, CurrentDirectory) {
   EXPECT_EQ(SyncDir("test.tmp"), Result::kSuccess);
 }
 
-#ifndef _WIN32
-
 /**
  * @brief   Verify SyncDir fails when the parent directory cannot be opened
  */
 TEST(SyncDirTest, OpenFailure) {
   EXPECT_EQ(SyncDir("no_such_dir/test.tmp"), Result::kFailure);
 }
-
-#endif /* !_WIN32 */
 
 /* ==================================================
  * OpenTempFile Test

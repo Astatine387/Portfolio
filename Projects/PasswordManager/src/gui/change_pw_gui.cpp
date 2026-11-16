@@ -1,7 +1,7 @@
 /**
- * @file	change_pw_gui.cpp
- * @brief	Implementation of ChangePWGUI class
- * @author	Astatine387
+ * @file    change_pw_gui.cpp
+ * @brief   Implementation of ChangePWGUI class
+ * @author  Astatine387
  */
 
 #include "gui/change_pw_gui.h"

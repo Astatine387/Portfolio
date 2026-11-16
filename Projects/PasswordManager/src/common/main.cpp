@@ -1,7 +1,7 @@
 ﻿/**
- * @file	main.cpp
- * @brief	Entry point of the application
- * @author	Astatine387
+ * @file    main.cpp
+ * @brief   Application entry point
+ * @author  Astatine387
  */
 
 #include <QApplication>
@@ -17,21 +17,21 @@ int ShowGUI(int argc, char** argv) {
   QApplication app(argc, argv);
   MainGUI gui;
 
-  /* Configure font size */
+  /* Configure GUI font size */
 
   QFont font;
   font.setPointSizeF(font.pointSizeF() * kFontScale);
   QApplication::setFont(font);
 
-  /* Configure window size */
+  /* Configure GUI window size */
 
   QSize qsize(300, 150);
   gui.resize(qsize);
 
-  /* Configure window position */
+  /* Locate GUI in the center */
 
-  QScreen* screen = QGuiApplication::primaryScreen();
-  QRect rect = screen->availableGeometry();
+  QScreen* screen = QGuiApplication::primaryScreen();  // Use OS primary display
+  QRect rect = screen->availableGeometry();  // Exclude the reserved area
 
   int x = (rect.width() - gui.width()) / 2;
   int y = (rect.height() - gui.height()) / 2 - 50;

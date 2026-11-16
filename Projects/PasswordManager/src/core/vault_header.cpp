@@ -1,7 +1,7 @@
 /**
- * @file	vault_header.cpp
- * @brief	Implementation of the plaintext vault header
- * @author	Astatine387
+ * @file    vault_header.cpp
+ * @brief   Implementation of the plaintext vault header
+ * @author  Astatine387
  */
 
 #include "core/vault_header.h"
@@ -11,10 +11,6 @@
 #include "utils/byte_order.h"
 
 namespace {
-
-/* Each offset is stated relative to the one before it, so a field can only be
- * inserted by moving every field after it, and the assert below refuses a
- * layout that no longer fills the header exactly */
 
 constexpr size_t kVersionOffset = kMagicSize;                             // 4
 constexpr size_t kTimeCostOffset = kVersionOffset + kVersionSize;         // 5
@@ -30,10 +26,6 @@ static_assert(kCommitOffset + kCommitSize == kHeaderSize,
 
 void SerializeHeader(std::span<uint8_t, kHeaderSize> dst,
                      const VaultHeader& header) {
-  /* These bytes are both the header on the disk and the associated data of the
-   * GCM pass over the vault, so the layout is part of the format: moving a
-   * field changes what the tag of every existing vault covers */
-
   StoreLE32(dst.data(), kMagicNum);
 
   dst[kVersionOffset] = kFormatVersion;
@@ -50,11 +42,6 @@ HeaderStatus ParseHeader(std::span<const uint8_t> src, VaultHeader& header) {
   if (src.size() < kHeaderSize) {
     return HeaderStatus::kTooSmall;
   }
-
-  /* Check whether the file was written by this program, and say so plainly when
-   * it was written by the build before the commitment existed: that vault is
-   * readable in principle but not by this format, which is a different thing to
-   * tell a user than a file that was never a vault */
 
   const uint32_t magic = LoadLE32(src.data());
 
@@ -94,16 +81,6 @@ HeaderStatus ParseHeader(std::span<const uint8_t> src, VaultHeader& header) {
 }
 
 HeaderStatus ValidateHeader(const VaultHeader& header) {
-  /* A header is whatever the file happened to contain, and it is read before
-   * the password is ever tried. mem_cost is an Argon2id allocation in KiB and
-   * the other two multiply the work done over it, so these bounds are the only
-   * thing standing between a crafted vault and the cost it asks this machine to
-   * pay before any tag is checked.
-   *
-   * The commitment is absent from this for a reason: every value of it is
-   * structurally valid, and which one is right is settled by comparing it
-   * against a derivation rather than by any range. */
-
   if (header.params.time_cost < kMinTimeCost ||
       kMaxTimeCost < header.params.time_cost) {
     return HeaderStatus::kBadParams;

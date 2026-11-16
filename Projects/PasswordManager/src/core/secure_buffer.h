@@ -1,7 +1,7 @@
 /**
- * @file	secure_buffer.h
- * @brief	Move-only byte buffer held in libsodium-locked memory
- * @author	Astatine387
+ * @file    secure_buffer.h
+ * @brief   Move-only byte buffer held in libsodium-locked memory
+ * @author  Astatine387
  */
 
 #pragma once
@@ -12,16 +12,7 @@
 #include <span>
 
 /**
- * @class   SecureBuffer
  * @brief   Move-only byte buffer held in libsodium-locked memory
- *
- * The bytes come from sodium_malloc, and what stands around them is libsodium's
- * rather than this class's: a guard page on either side of the allocation, and
- * a canary in front of the returned pointer that sodium_free checks when the
- * region is released, aborting the process when it has been overwritten.
- * Nothing here inspects either of them and no member reports on them, so the
- * size and the spans below describe the bytes the caller asked for and nothing
- * beside them.
  */
 class SecureBuffer {
  public:
@@ -29,22 +20,20 @@ class SecureBuffer {
 
   /**
    * @brief   Allocate a locked buffer of the given size
-   * @param   size  Buffer size in bytes (0 for an empty buffer)
+   * @param   size  Buffer size in bytes
    */
   explicit SecureBuffer(size_t size);
 
   ~SecureBuffer();
 
-  SecureBuffer(const SecureBuffer&) = delete;  // Delete copy constructor
-  SecureBuffer& operator=(const SecureBuffer&) =
-      delete;  // Delete copy assignment operator
-
+  SecureBuffer(const SecureBuffer&) = delete;
+  SecureBuffer& operator=(const SecureBuffer&) = delete;
   SecureBuffer(SecureBuffer&& other) noexcept;
   SecureBuffer& operator=(SecureBuffer&& other) noexcept;
 
   /**
    * @brief   Return whether the allocation succeeded
-   * @return  True if empty or successfully allocated
+   * @return  True if empty or allocation success
    */
   [[nodiscard]] bool Valid() const;
 
@@ -63,15 +52,15 @@ class SecureBuffer {
 
   /**
    * @brief   Access the buffer bytes as a span
-   * @return  Span over the buffer (empty when the buffer is empty)
+   * @return  Span over the buffer
    */
   [[nodiscard]] std::span<uint8_t> Span();
   [[nodiscard]] std::span<const uint8_t> Span() const;
 
   /**
    * @brief   Access a bounds-checked subrange of the buffer
-   * @param   off   Offset of the subrange in bytes
-   * @param   len   Length of the subrange in bytes
+   * @param   off   Subrange offset in bytes
+   * @param   len   Subrange length in bytes
    * @return  Span over the subrange, or std::nullopt when it does not fit
    */
   [[nodiscard]] std::optional<std::span<uint8_t>> Subspan(size_t off,

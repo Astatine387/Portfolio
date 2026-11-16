@@ -1,7 +1,7 @@
 /**
- * @file	vault_interface.cpp
- * @brief	implementation of VaultInterface class
- * @author	Astatine387
+ * @file    vault_interface.cpp
+ * @brief   implementation of VaultInterface class
+ * @author  Astatine387
  */
 
 #include "gui/vault_interface.h"

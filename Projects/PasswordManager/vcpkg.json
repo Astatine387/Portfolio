@@ -6,7 +6,6 @@
     "openssl",
     "argon2",
     "libsodium",
-    "gtest",
-    "benchmark"
+    "gtest"
   ]
 }

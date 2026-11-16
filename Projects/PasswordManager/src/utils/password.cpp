@@ -1,7 +1,7 @@
 /**
- * @file	password.cpp
- * @brief	Implementation of Password class
- * @author	Astatine387
+ * @file    password.cpp
+ * @brief   Implementation of Password class
+ * @author  Astatine387
  */
 
 #include "utils/password.h"
@@ -61,12 +61,6 @@ Result Password::SetData(const char* str, size_t len) {
     return Result::kSuccess;
   }
 
-  /* The new buffer is filled before the old one is released. @p str may point
-   * into data_ itself, since GetData hands that pointer out, and releasing
-   * first would leave the copy below reading an address this process no longer
-   * owns. Building the replacement first is also what leaves the current value
-   * untouched when the allocation is refused. */
-
   InitCrypto();
 
   auto* fresh = static_cast<char*>(sodium_malloc(kMaxMasterPwLen + 1));
@@ -88,7 +82,7 @@ Result Password::SetData(const char* str, size_t len) {
 
 void Password::Clean() {
   if (data_ != nullptr) {
-    sodium_free(data_);  // sodium_free zeroes the region before releasing it
+    sodium_free(data_);  // sodium_free wipes the buffer before releasing it
     data_ = nullptr;
   }
 

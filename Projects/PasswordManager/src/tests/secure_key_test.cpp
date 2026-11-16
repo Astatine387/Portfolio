@@ -19,6 +19,10 @@
 
 #include "common/constants.h"
 
+#ifndef _WIN32
+#include <sys/resource.h>
+#endif
+
 /* ==================================================
  * Type Property Tests
  * ================================================== */
@@ -268,3 +272,61 @@ TEST(SecureKeyTest, MoveAssignmentTransfersSaltAndParams) {
   EXPECT_TRUE(dst.CommitmentMatches(ref.Commitment()));
   EXPECT_TRUE(std::ranges::equal(dst.Salt(), salt));
 }
+
+/**
+ * @brief   Verify move assignment onto a moved-from key succeeds
+ */
+TEST(SecureKeyTest, MoveAssignOntoMovedFrom) {
+  auto salt = MakeSalt(0x01);
+  SecureKey src = Derive("password", salt);
+  SecureKey ref = std::move(src);  // src no longer owns a key
+  SecureKey tmp = Derive("password", salt);
+
+  src = std::move(tmp);
+
+  EXPECT_TRUE(src.ConstantTimeEquals(ref));
+}
+
+/**
+ * @brief   Verify self move assignment leaves the key intact
+ */
+TEST(SecureKeyTest, SelfMoveAssignKeepsKey) {
+  auto salt = MakeSalt(0x01);
+  SecureKey key = Derive("password", salt);
+  SecureKey ref = Derive("password", salt);
+
+  SecureKey& alias = key;
+
+  key = std::move(alias);
+
+  EXPECT_TRUE(key.ConstantTimeEquals(ref));
+}
+
+/* ==================================================
+ * Process Hardening Test
+ * ================================================== */
+
+#ifndef _WIN32
+
+/**
+ * @brief   Verify InitCrypto leaves the process unable to write a core dump
+ *
+ * The Argon2id working buffer is libargon2's own malloc, so it carries none of
+ * the per-allocation exclusion sodium_malloc memory gets and would be written
+ * out whole. Refusing the dump is the only thing covering it, so the limit that
+ * does the refusing is worth asserting on.
+ *
+ * Written as a check on the state afterwards rather than on a change, so it
+ * holds on a runner whose core limit was already zero before the process
+ * started.
+ */
+TEST(SecureKeyTest, InitCryptoDisablesCoreDumps) {
+  InitCrypto();
+
+  rlimit rl = {};
+
+  ASSERT_EQ(getrlimit(RLIMIT_CORE, &rl), 0);
+  EXPECT_EQ(rl.rlim_cur, 0U);
+}
+
+#endif /* !_WIN32 */

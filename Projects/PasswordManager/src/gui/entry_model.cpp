@@ -11,10 +11,6 @@ EntryModel::EntryModel(QObject* parent) : QAbstractTableModel(parent) {
 }
 
 void EntryModel::SetEntries(const QVector<EntryView>& entries) {
-  /* A reset rather than a diff: the list is rebuilt from the vault after every
-   * edit, and a reset is what tells every view and every selection model above
-   * this one that the rows they were holding are gone. */
-
   beginResetModel();
 
   entries_ = entries;

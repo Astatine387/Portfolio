@@ -1,7 +1,7 @@
 /**
- * @file	aes_gcm.h
- * @brief	AES-GCM encryption/decryption engine
- * @author	Astatine387
+ * @file    aes_gcm.h
+ * @brief   AES-GCM encryption/decryption engine
+ * @author  Astatine387
  */
 
 #pragma once
@@ -18,13 +18,7 @@
 #include "core/secure_key.h"
 
 /**
- * @class	AesGcm
- * @brief	AES-256-GCM engine
- *
- * Everything one operation needs — the cipher context, the initial vector, the
- * tag, the key and the buffers — belongs to that operation and dies with it.
- * Only the error callback outlives a call, because it is what the owner
- * installs once and expects to stay installed.
+ * @brief   AES-256-GCM buffer encryption/decryption engine
  */
 class AesGcm {
  public:
@@ -33,78 +27,53 @@ class AesGcm {
    * ================================================== */
 
   /**
-   * @brief   Default constructor of AesGcm class
+   * @brief   Default constructor of AesGcm
    */
   AesGcm() = default;
 
   /**
-   * @brief   Destructor of AesGcm class
+   * @brief   Destructor of AesGcm
    */
   ~AesGcm() = default;
 
-  AesGcm(const AesGcm&) = delete;             // Delete copy constructor
-  AesGcm& operator=(const AesGcm&) = delete;  // Delete copy assignment operator
-  AesGcm(AesGcm&&) = delete;                  // Delete move constructor
-  AesGcm& operator=(AesGcm&&) = delete;       // Delete move assignment operator
+  AesGcm(const AesGcm&) = delete;
+  AesGcm& operator=(const AesGcm&) = delete;
+  AesGcm(AesGcm&&) = delete;
+  AesGcm& operator=(AesGcm&&) = delete;
 
   /* ==================================================
    * Interface functions
    * ================================================== */
 
   /**
-   * @brief		Decrypt a buffer
-   * @param		src		Source buffer, laid out as [iv][ciphertext][tag]
-   * @param		dst		Destination buffer
-   * @param		size	Source buffer size
-   * @param		key		Session key
-   * @param		aad		Associated data, authenticated but neither read from nor
-   * written to @p src
+   * @brief   Decrypt a buffer
+   * @param   src   Source buffer, laid out as [iv][ciphertext][tag]
+   * @param   dst   Destination buffer
+   * @param   size  Source buffer size
+   * @param   key   Session key
+   * @param   aad   Associated data, byte-for-byte what encryption was given
    * @return  kSuccess on success, kFailure on failure
    *
-   * The call is refused with kFailure, before either buffer is touched, when @p
-   * src is null, when @p size is under kIVSize + kTagSize, or when @p dst is
-   * null while @p size leaves a plaintext to write. The size is not a
-   * formality: the tag is read from @p src + @p size - kTagSize, and that
-   * subtraction wraps rather than going negative. A @p size of exactly kIVSize
-   * + kTagSize describes an empty plaintext and is accepted, @p dst null along
-   * with it.
-   *
-   * AES-GCM cannot authenticate the ciphertext until the whole message has been
-   * processed. On kFailure @p dst holds unverified plaintext. The caller owns
-   * that buffer and must wipe it before doing anything else with it.
-   *
-   * @p aad has to be byte-for-byte what encryption was given or the tag fails.
-   * The caller is expected to hand over a view into the very buffer the header
-   * was read into, rather than a header it rebuilt from parsed fields, so that
-   * the bytes on the disk and the bytes under the tag cannot drift apart.
-   *
-   * @p key is borrowed for the duration of the call and nothing derived from it
-   * survives the return.
+   * Fails without touching either buffer when @p src is null, @p size is under
+   * kIVSize + kTagSize, or @p dst is null while there is a plaintext to write.
+   * On kFailure @p dst may hold unverified plaintext, which the caller must
+   * wipe. Nothing derived from @p key outlives the call.
    */
   Result Decrypt(const uint8_t* src, uint8_t* dst, size_t size,
                  const SecureKey& key, std::span<const uint8_t> aad);
 
   /**
-   * @brief		Encrypt a buffer
-   * @param		src   Source buffer
-   * @param		dst   Destination buffer, laid out as [iv][ciphertext][tag]
-   * @param		size  Source buffer size
-   * @param		key   Session key
-   * @param		aad   Associated data, authenticated but not copied into @p dst
+   * @brief   Encrypt a buffer
+   * @param   src   Source buffer
+   * @param   dst   Destination buffer, laid out as [iv][ciphertext][tag]
+   * @param   size  Source buffer size
+   * @param   key   Session key
+   * @param   aad   Associated data, authenticated but not copied into @p dst
    * @return  kSuccess on success, kFailure on failure
    *
-   * The call is refused with kFailure, before either buffer is touched, when @p
-   * dst is null, which is refused at every @p size because the IV and the tag
-   * are written even for an empty plaintext, or when @p src is null while
-   * @p size is not zero. A @p size of zero is accepted, @p src null along with
-   * it.
-   *
-   * The header is not this class's business: it neither writes the salt nor
-   * knows what the bytes it authenticates mean, and @p dst begins at the IV.
-   * Whoever owns the header writes it and passes the same bytes here.
-   *
-   * @p key is borrowed for the duration of the call and nothing derived from it
-   * survives the return.
+   * Fails without touching either buffer when @p dst is null, or when @p src is
+   * null while @p size is not zero. Nothing derived from @p key outlives the
+   * call.
    */
   Result Encrypt(const uint8_t* src, uint8_t* dst, size_t size,
                  const SecureKey& key, std::span<const uint8_t> aad);
@@ -127,13 +96,8 @@ class AesGcm {
 
  private:
   /**
-   * @struct  CtxGuard
    * @brief   Releases a cipher context, and with it the expanded key OpenSSL
    * keeps inside one
-   *
-   * EVP_CIPHER_CTX_free cleanses the cipher data before releasing it, so this
-   * is both the release and the wipe. An empty type rather than a function
-   * pointer, so that a CtxPtr is the size of the pointer it wraps.
    */
   struct CtxGuard {
     void operator()(EVP_CIPHER_CTX* ctx) const noexcept {
@@ -142,10 +106,7 @@ class AesGcm {
   };
 
   /**
-   * @brief	Owning handle for the cipher context of one operation
-   *
-   * Declared where the operation is, never as a member, so that the expanded
-   * key cannot outlive the call whichever way that call returns.
+   * @brief   Owning handle for the cipher context of one operation
    */
   using CtxPtr = std::unique_ptr<EVP_CIPHER_CTX, CtxGuard>;
 
@@ -235,7 +196,7 @@ class AesGcm {
 
   /**
    * @brief   Report error via callback
-   * @param   msg Error message string
+   * @param   msg   Error message string
    */
   void ReportError(const char* msg);
 };

@@ -42,12 +42,12 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 ## 2-2. Security Considerations
 
 * Every byte written to disk has been authenticated first, and the source is read exactly once
-* The plaintext header is authenticated as associated data of every chunk, so editing it is detected
+* The header is authenticated as associated data of every chunk, so editing it is detected
 * Chunk order, truncation and extension are detected, because the nonce carries the chunk counter and a final-chunk flag
-* AES-GCM is not key-committing, so a crafted file can be made to authenticate under multiple chosen passwords; the header carries a commitment derived beside the key, and comparing it is what ties a file to one password. A mismatch does not say which side is at fault: a wrong password and a commitment edited by an attacker are the same observation, so the failure is reported as either one
+* Key commitment derived beside the key to prevent a crafted file authenticated under multiple chosen passwords
 * Newly and randomly generated salt for each file, using OS-provided CSPRNG (`BCryptGenRandom`/`getrandom`)
 * The password and the derived key are held in `sodium_malloc` memory: guard pages, a wipe on release, and a best-effort lock against swap
-* Core dumps are refused process-wide, because Argon2id's working buffer is a key equivalent that libargon2 allocates outside the locked memory: `RLIMIT_CORE = 0` on POSIX, `PR_SET_DUMPABLE = 0` on Linux release builds, `SEM_NOGPFAULTERRORBOX` on Windows
+* Core dumps are refused process-wide: `RLIMIT_CORE = 0` on POSIX, `PR_SET_DUMPABLE = 0` on Linux release builds, `SEM_NOGPFAULTERRORBOX` on Windows
 * RAII ties every secret to a scope, so releasing it is what wipes it; see 3-3-1 for the allocations this covers and the ones it does not
 * Range check for the chunk size and the key derivation parameters before anything is allocated or Argon2id runs
 * Output is written to a temporary file, fsynced, then moved into place, so a partial or unverified file never appears at the destination
@@ -95,8 +95,6 @@ Header (65 Bytes) │ Chunk 0 │ Chunk 1 │ ... │ Chunk N-1
 | 17     | 16   | Salt          | raw bytes                                |
 | 33     | 32   | Commitment    | raw bytes, second half of the derivation |
 
-The commitment is compared before any chunk is read, so a wrong password is refused without a single tag being checked. It is public and needs no protection of its own, since the header it sits in is the associated data of every chunk.
-
 ### 3-1-2. Chunk
 
 ```
@@ -111,7 +109,7 @@ Chunk_i = Ciphertext_i (L_i bytes) ‖ Tag_i (16 Bytes)
 
 ### 3-1-3. Nonce
 
-12 bytes, not stored in the file, instead derived from the chunk counter and the final-chunk flag, which the file size decides
+12 bytes, not stored in the file, instead derived from the chunk counter and the final-chunk flag decided by the file size
 
 ```
 nonce[0..2]  = 0x00 padding
@@ -172,11 +170,7 @@ src
 | Argon2id working buffer | No          | No          | Not excluded, none is written | At the end of the derivation, by libargon2 |
 | Chunk buffers           | No          | No          | Not excluded, none is written | In the destructor, by `sodium_memzero`     |
 
-What the "best effort" means: `sodium_malloc` asks the operating system to keep its pages out of the swap file, and that request is capped: by `RLIMIT_MEMLOCK` on Linux, by the process working-set minimum on Windows. `InitCrypto` raises the soft limit to the hard limit and bumps the working-set minimum, but neither can move a cap an unprivileged process is not permitted to move. Once the cap is reached the lock fails and the allocation still succeeds, so a password can end up in unlocked pages with nothing in the program able to tell. Guard pages and the wipe on release are unaffected and always apply.
-
-The core dump column has two halves. "None is written" is process-wide: `InitCrypto` puts `RLIMIT_CORE` at zero, soft and hard, so no crash of this program writes a core file at all; Linux release builds also clear the dumpable flag with `PR_SET_DUMPABLE`, which takes the process out of reach of same-uid `ptrace` on top of that, and Windows suppresses the crash handler with `SEM_NOGPFAULTERRORBOX`. "Excluded" is the separate, per-allocation guarantee, and only `sodium_malloc` memory has it: `sodium_mlock` marks its pages `MADV_DONTDUMP` on Linux, so the password and the derived key stay out of a dump even if one is taken anyway.
-
-That gap is the remaining limitation, and it matters most for the Argon2id working buffer. libargon2 takes it from plain `malloc`, so nothing marks it, and it is not a discardable intermediate: every block in a lane follows deterministically from the two the lane starts with, and the tag is the XOR of each lane's last block, so the buffer alone is enough to recompute the key without the password. Refusing the dump is all that covers it, which means any route that produces one regardless, such as WER LocalDumps configured by an administrator, captures 512 MiB of key-equivalent memory whole.
+**What the "best effort" means:** `sodium_malloc` asks the operating system to keep its pages out of the swap file, and that request is capped by `RLIMIT_MEMLOCK` on Linux, by the process working-set minimum on Windows. `InitCrypto` raises the soft limit to the hard limit and bumps the working-set minimum, but neither can move a cap an unprivileged process is not permitted to move. Once the cap is reached the lock fails and the allocation still succeeds, so a password can end up in unlocked pages with nothing in the program able to tell. Guard pages and the wipe on release are unaffected and always apply.
 
 # 4. Build and Usage
 ## 4-1. Prerequisites
@@ -213,9 +207,7 @@ cmake --build build --config Release
 ```
 * Replace `CMAKE_PREFIX_PATH` with your Qt installation path.
 
-**Windows** (package for distribution): the install rules gather the executable,
-every non-Qt DLL it imports and the MSVC runtime into one folder, and
-`windeployqt` adds Qt on top:
+**Windows** (package for distribution):
 ```cmd
 cd Projects\FileEncryption
 
@@ -223,14 +215,6 @@ cmake --install build --config Release --prefix deploy
 
 windeployqt --no-translations --no-system-d3d-compiler --no-opengl-sw deploy\FileEncryption.exe
 ```
-The DLL set is read from the executable's own import table rather than from a
-list, so a newly added dependency is packaged without this command changing.
-The MSVC runtime is included, which is what lets the folder run on a machine
-that has no Visual Studio installed.
-
-CI packages the release zip exactly this way and fails the build if anything in
-the folder imports a DLL the folder does not carry, so an incomplete package
-cannot be released (`.github/scripts/deploy_windows.ps1`).
 
 **Linux** (system packages):
 ```bash
@@ -243,8 +227,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-**Linux** (vcpkg): libsodium must be linked dynamically, so an overlay triplet
-is supplied in `triplets/`:
+**Linux** (vcpkg):
 ```bash
 cd Projects/FileEncryption
 
