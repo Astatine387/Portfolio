@@ -66,7 +66,7 @@ const char* ValidateEntryFields(const std::string& site, const std::string& acc,
 }  // namespace
 
 std::optional<size_t> Vault::SerializeVault(
-    SecureBuffer& dst, size_t cur, std::set<Entry, EntryCmp>& out,
+    SecureBuffer& src, size_t cur, std::set<Entry, EntryCmp>& dst,
     const std::set<Entry, EntryCmp>::const_iterator& skip) {
   for (auto it = entry_set_.begin(); it != entry_set_.end(); it++) {
     if (it == skip) {
@@ -75,9 +75,9 @@ std::optional<size_t> Vault::SerializeVault(
 
     /* Read the password bytes out of the current image (bounds-checked) */
 
-    auto pw_src = it->PwSpan(img_.Span());
+    auto pw = it->PwSpan(img_.Span());
 
-    if (!pw_src.has_value()) {
+    if (!pw.has_value()) {
       // LCOV_EXCL_START
       ReportError(
           "[Data] Serialization failed - Password view falls outside the "
@@ -88,9 +88,9 @@ std::optional<size_t> Vault::SerializeVault(
 
     /* Carve the destination subrange for this entry (bounds-checked) */
 
-    auto out_img = dst.Subspan(cur, it->Size());
+    auto img = src.Subspan(cur, it->Size());
 
-    if (!out_img.has_value()) {
+    if (!img.has_value()) {
       // LCOV_EXCL_START
       ReportError(
           "[Data] Serialization failed - Destination image too small\n");
@@ -98,7 +98,7 @@ std::optional<size_t> Vault::SerializeVault(
       // LCOV_EXCL_STOP
     }
 
-    size_t written = it->Serialize(*out_img, *pw_src);
+    size_t written = it->Serialize(*img, *pw);
 
     if (written == 0) {
       return std::nullopt;  // LCOV_EXCL_LINE
@@ -109,7 +109,7 @@ std::optional<size_t> Vault::SerializeVault(
     Entry rewritten = *it;
 
     rewritten.pw_off = cur + rewritten.PwOffset();
-    out.insert(std::move(rewritten));
+    dst.insert(std::move(rewritten));
 
     cur += written;
   }
@@ -175,9 +175,9 @@ Result Vault::CreateEntry(const std::string& site, const std::string& acc,
 
   StoreLE32(buff.Data(), entry_cnt);
 
-  std::set<Entry, EntryCmp> candidate;
+  std::set<Entry, EntryCmp> tmp;
 
-  auto cur = SerializeVault(buff, kCountSize, candidate, entry_set_.end());
+  auto cur = SerializeVault(buff, kCountSize, tmp, entry_set_.end());
 
   if (!cur.has_value()) {
     return Result::kFailure;  // LCOV_EXCL_LINE
@@ -207,9 +207,9 @@ Result Vault::CreateEntry(const std::string& site, const std::string& acc,
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
-  candidate.insert(std::move(new_entry));
+  tmp.insert(std::move(new_entry));
 
-  return CommitImage(std::move(buff), std::move(candidate));
+  return CommitImage(std::move(buff), std::move(tmp));
 }
 
 UpdateResult Vault::UpdateEntry(const std::string& old_site,
@@ -267,9 +267,9 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site,
 
   StoreLE32(buff.Data(), entry_cnt);
 
-  std::set<Entry, EntryCmp> candidate;
+  std::set<Entry, EntryCmp> tmp;
 
-  auto cur = SerializeVault(buff, kCountSize, candidate, old_it);
+  auto cur = SerializeVault(buff, kCountSize, tmp, old_it);
 
   if (!cur.has_value()) {
     return UpdateResult::kError;  // LCOV_EXCL_LINE
@@ -299,9 +299,9 @@ UpdateResult Vault::UpdateEntry(const std::string& old_site,
     return UpdateResult::kError;  // LCOV_EXCL_LINE
   }
 
-  candidate.insert(std::move(new_entry));
+  tmp.insert(std::move(new_entry));
 
-  if (CommitImage(std::move(buff), std::move(candidate)) == Result::kFailure) {
+  if (CommitImage(std::move(buff), std::move(tmp)) == Result::kFailure) {
     return UpdateResult::kError;
   }
 
@@ -339,15 +339,15 @@ Result Vault::DeleteEntry(const std::string& site, const std::string& acc) {
 
   StoreLE32(nimg.Data(), entry_cnt);
 
-  std::set<Entry, EntryCmp> candidate;
+  std::set<Entry, EntryCmp> tmp;
 
-  if (!SerializeVault(nimg, kCountSize, candidate, it).has_value()) {
+  if (!SerializeVault(nimg, kCountSize, tmp, it).has_value()) {
     return Result::kFailure;  // LCOV_EXCL_LINE
   }
 
   /* Skipping the target is the deletion: build the candidate set without it */
 
-  return CommitImage(std::move(nimg), std::move(candidate));
+  return CommitImage(std::move(nimg), std::move(tmp));
 }
 
 Result Vault::VerifyImage(const SecureBuffer& img,

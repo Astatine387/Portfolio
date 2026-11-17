@@ -279,8 +279,8 @@ class Vault {
 
   ErrorCallback ecb_ = nullptr;
 
-  std::vector<uint8_t> src_buff_;
-  std::vector<uint8_t> dst_buff_;
+  std::vector<uint8_t> src_buff_;  // Encrypted vault read from disk
+  std::vector<uint8_t> dst_buff_;  // Encrypted vault to be written to disk
   FILE* file_ = nullptr;
   int64_t src_size_ = 0;
   int64_t dst_size_ = 0;
@@ -347,14 +347,14 @@ class Vault {
 
   /**
    * @brief   Serialize entries and record their offsets in it
-   * @param   dst   Destination image buffer
+   * @param   src   Source image buffer
    * @param   cur   Current write cursor
-   * @param   out   Entry set the rewritten entries are inserted into
+   * @param   dst   Destination entry set
    * @param   skip  Entry to skip
    * @return  New write cursor, or std::nullopt when a span check fails
    */
   std::optional<size_t> SerializeVault(
-      SecureBuffer& dst, size_t cur, std::set<Entry, EntryCmp>& out,
+      SecureBuffer& src, size_t cur, std::set<Entry, EntryCmp>& dst,
       const std::set<Entry, EntryCmp>::const_iterator& skip);
 
   /**
