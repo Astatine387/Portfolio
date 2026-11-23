@@ -38,8 +38,8 @@ Result Vault::NewVault(const std::string& path, const Password& pw) {
 
   /* Derive the session key */
 
-  key_ =
-      DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()), salt_, kdf_);
+  key_ = DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()), salt_,
+                   kdf_params_);
 
   if (!key_.has_value()) {
     // LCOV_EXCL_START
@@ -153,12 +153,12 @@ Result Vault::OpenVault(const std::string& path, const Password& pw) {
   }
 
   salt_ = header.salt;
-  kdf_ = header.params;
+  kdf_params_ = header.params;
 
   /* Derive the session key under the derivation the header describes */
 
-  key_ =
-      DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()), salt_, kdf_);
+  key_ = DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()), salt_,
+                   kdf_params_);
 
   if (!key_.has_value()) {
     // LCOV_EXCL_START
@@ -527,8 +527,8 @@ bool Vault::VerifyPW(const Password& pw) const {
     return false;
   }
 
-  auto cand =
-      DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()), salt_, kdf_);
+  auto cand = DeriveKey(std::span<const char>(pw.GetData(), pw.GetSize()),
+                        salt_, kdf_params_);
 
   if (!cand.has_value()) {
     return false;  // LCOV_EXCL_LINE
@@ -586,7 +586,7 @@ SaveResult Vault::ChangePW(const Password& pw, const std::string& path,
 
   key_ = std::move(new_key);
   salt_ = new_salt;
-  kdf_ = new_kdf;
+  kdf_params_ = new_kdf;
 
   return SaveResult::kSuccess;
 }

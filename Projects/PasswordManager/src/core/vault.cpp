@@ -76,7 +76,7 @@ void Vault::Reset() {
   entry_set_.clear();
   img_.Reset();
   key_.reset();
-  kdf_ = KdfParams{};
+  kdf_params_ = KdfParams{};
   sodium_memzero(salt_.data(), salt_.size());
   dirty_ = false;
   mark_.reset();

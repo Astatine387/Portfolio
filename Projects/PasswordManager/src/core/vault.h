@@ -268,8 +268,8 @@ class Vault {
   AesGcm aes_;
   std::optional<SecureKey> key_;
   std::array<uint8_t, kSaltSize> salt_{};
-  KdfParams kdf_;
-  SecureBuffer img_;
+  KdfParams kdf_params_;
+  SecureBuffer img_;  // Decrypted vault image
   bool dirty_ = false;
   std::optional<FileMark> mark_;
   std::optional<Conflict> ack_;
@@ -338,7 +338,7 @@ class Vault {
    * @brief   Decide whether a publish onto a file may go ahead
    * @param   path  Publish path
    * @param   dst   Destination file
-   * @param   mode  What will do about a vault file that changed on disk
+   * @param   mode  What will be done about a vault file that changed on disk
    * @return  kSuccess on success, kConflict when the file changed on disk,
    * kError on other failures
    */
