@@ -14,6 +14,10 @@
 #include <unistd.h>
 #endif
 
+#ifdef _WIN32
+#include "tests/win32_dacl.h"
+#endif
+
 #include "utils/platform.h"
 
 /* ==================================================
@@ -30,6 +34,10 @@ class OpenNewFileTest : public ::testing::Test {
   std::string path0_ = "test0.tmp";
   std::string path1_ = "test1.tmp";
 
+#ifdef _WIN32
+  std::string dir_ = "test_inherit_dir";
+#endif
+
   /**
    * @brief   Clean up temporary files and links after each test
    */
@@ -41,6 +49,14 @@ class OpenNewFileTest : public ::testing::Test {
 
     RemoveFile(path0_);
     RemoveFile(path1_);
+
+#ifdef _WIN32
+    /* Last, since a case may have put path0_ inside it. Removed here rather
+     * than at the end of that case, which a failed assertion never reaches,
+     * and a directory left behind would fail the next run's create */
+
+    static_cast<void>(RemoveDirectoryW(ToWidePath(dir_).c_str()));
+#endif
   }
 
   /**
@@ -274,3 +290,53 @@ TEST_F(OpenNewFileTest, RefusesFifo) {
 }
 
 #endif  // !_WIN32
+
+#ifdef _WIN32
+
+/**
+ * @brief   Verify the created file is reachable by the account that created it
+ * and by nobody else
+ *
+ * Asked for no security attributes, CreateFileW gives the new file a default
+ * security descriptor whose DACL is whatever the directory offers; what
+ * OpenNewFile passes instead is a protected DACL holding one ACE for the token
+ * user. The stream is closed before the check because that handle is opened
+ * with no sharing at all, and reading the security of a path means opening it a
+ * second time.
+ */
+TEST_F(OpenNewFileTest, CreatesOwnerOnlyFile) {
+  ASSERT_EQ(OpenNewFile(&file_, path0_), Result::kSuccess);
+  ASSERT_NE(file_, nullptr);
+
+  fclose(file_);
+  file_ = nullptr;
+
+  EXPECT_TRUE(CheckOwnerOnlyDacl(path0_));
+}
+
+/**
+ * @brief   Verify an inheritable ACE on the directory does not reach the file
+ * created inside it
+ *
+ * This is the regression test for the default security descriptor. A directory
+ * that offers Everyone an inheritable full-access ACE is what an output written
+ * into a shared folder sits in, and a file created there without a descriptor
+ * of its own comes out carrying that ACE, readable by every account on the
+ * machine. The descriptor OpenNewFile supplies is explicit and protected, so
+ * the directory contributes nothing to it.
+ */
+TEST_F(OpenNewFileTest, IgnoresInheritableDirectoryAces) {
+  ASSERT_TRUE(MakeWorldAccessibleDir(dir_));
+
+  path0_ = dir_ + "/child.tmp";
+
+  ASSERT_EQ(OpenNewFile(&file_, path0_), Result::kSuccess);
+  ASSERT_NE(file_, nullptr);
+
+  fclose(file_);
+  file_ = nullptr;
+
+  EXPECT_TRUE(CheckOwnerOnlyDacl(path0_));
+}
+
+#endif  // _WIN32

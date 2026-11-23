@@ -284,6 +284,7 @@ set(TEST_SOURCES
 
 set(TEST_HEADERS
     src/tests/aes_gcm_fixture.h
+    src/tests/win32_dacl.h
 )
 
 add_executable(FileEncryption-tests ${TEST_SOURCES} ${TEST_HEADERS})

@@ -94,5 +94,7 @@ void OpenFile(FILE** file, const std::string& path, const char* mode);
  * @param   file  Opened stream on success, nullptr on failure
  * @param   path  File path
  * @return  kSuccess on success, kFailure on failure
+ *
+ * The file is created owner-only
  */
 [[nodiscard]] Result OpenNewFile(FILE** file, const std::string& path);

@@ -52,6 +52,7 @@ Password-based GUI file encryption/decryption tool using AES-256-GCM and Argon2i
 * Range check for the chunk size and the key derivation parameters before anything is allocated or Argon2id runs
 * Output is written to a temporary file, fsynced, then moved into place, so a partial or unverified file never appears at the destination
 * The destination is never overwritten: the move fails if the path is taken
+* Output files are created reachable by their owner alone: mode 0600 on Linux, a protected DACL holding one ACE for the process token user on Windows
 
 # 3. Specifications
 
@@ -142,6 +143,7 @@ src
 │   └── pw_line_edit.h/cpp    # Password input widget
 ├── tests
 │   ├── aes_gcm_fixture.h     # Shared fixture for the AesGcm test files
+│   ├── win32_dacl.h          # Shared Windows DACL helpers for the permission tests
 │   └── *_test.cpp            # One file per module, listed in 5-1
 └── utils
     ├── byte_order.h          # Explicit little/big-endian helpers for on-disk fields

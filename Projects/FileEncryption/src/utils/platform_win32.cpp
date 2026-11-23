@@ -9,10 +9,13 @@
 #include <bcrypt.h>
 #include <fcntl.h>
 #include <io.h>
+#include <sddl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 #include <filesystem>
+#include <memory>
+#include <vector>
 
 #include "utils/platform.h"
 
@@ -26,6 +29,86 @@ namespace {
 std::filesystem::path ToPath(const std::string& path) {
   return std::filesystem::path(std::u8string(
       reinterpret_cast<const char8_t*>(path.data()), path.size()));
+}
+
+/**
+ * @brief   Releases memory the security APIs allocated on the local heap
+ */
+struct LocalGuard {
+  void operator()(void* mem) const noexcept { LocalFree(mem); }
+};
+
+/**
+ * @brief   Closes a kernel handle
+ */
+struct HandleGuard {
+  void operator()(HANDLE handle) const noexcept { CloseHandle(handle); }
+};
+
+/**
+ * @brief   Owning handles for the three allocations an owner-only security
+ * descriptor is built out of
+ */
+using SdPtr = std::unique_ptr<void, LocalGuard>;
+using SidPtr = std::unique_ptr<wchar_t, LocalGuard>;
+using TokenPtr = std::unique_ptr<void, HandleGuard>;
+
+/**
+ * @brief   Build a security descriptor that grants the account this process
+ * runs as everything, and nobody else anything
+ * @param   sd  Receives the descriptor on success, left as it was on failure
+ * @return  kSuccess on success, kFailure on failure
+ */
+Result MakeOwnerOnlyDescriptor(SdPtr& sd) {
+  HANDLE raw_token = nullptr;
+
+  if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &raw_token)) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  const TokenPtr token(raw_token);
+
+  /* Ask for the size of the TokenUser answer first */
+
+  DWORD len = 0;
+
+  if (GetTokenInformation(token.get(), TokenUser, nullptr, 0, &len) ||
+      len < sizeof(TOKEN_USER)) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  /* operator new aligns the buffer for reading a TOKEN_USER out of it */
+
+  std::vector<uint8_t> buff(len);
+
+  if (!GetTokenInformation(token.get(), TokenUser, buff.data(), len, &len)) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  wchar_t* raw_sid = nullptr;
+
+  if (!ConvertSidToStringSidW(
+          reinterpret_cast<const TOKEN_USER*>(buff.data())->User.Sid,
+          &raw_sid)) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  const SidPtr sid(raw_sid);
+
+  /* Protected DACL with one ACE granting full access to that SID alone */
+
+  const std::wstring sddl = std::wstring(L"D:P(A;;FA;;;") + sid.get() + L")";
+
+  PSECURITY_DESCRIPTOR raw_sd = nullptr;
+
+  if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(
+          sddl.c_str(), SDDL_REVISION_1, &raw_sd, nullptr)) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  sd.reset(raw_sd);
+
+  return Result::kSuccess;
 }
 
 }  // namespace
@@ -203,10 +286,21 @@ Result OpenSourceFile(FILE** file, const std::string& path) {
 Result OpenNewFile(FILE** file, const std::string& path) {
   *file = nullptr;
 
+  /* Build the owner-only descriptor before the file exists */
+
+  SdPtr sd;
+
+  if (MakeOwnerOnlyDescriptor(sd) == Result::kFailure) {
+    return Result::kFailure;  // LCOV_EXCL_LINE
+  }
+
+  SECURITY_ATTRIBUTES attrs{ static_cast<DWORD>(sizeof(SECURITY_ATTRIBUTES)),
+                             sd.get(), FALSE };
+
   std::filesystem::path fs_path = ToPath(path);
 
   HANDLE handle = CreateFileW(
-      fs_path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW,
+      fs_path.c_str(), GENERIC_WRITE, 0, &attrs, CREATE_NEW,
       FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
 
   if (handle == INVALID_HANDLE_VALUE) {

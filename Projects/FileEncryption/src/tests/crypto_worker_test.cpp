@@ -20,6 +20,10 @@
 #include <utility>
 #include <vector>
 
+#ifdef _WIN32
+#include "tests/win32_dacl.h"
+#endif
+
 #include "common/constants.h"
 #include "core/aes_gcm.h"
 #include "core/file_header.h"
@@ -38,6 +42,10 @@ class CryptoWorkerTest : public ::testing::Test {
   std::string enc_path_ = "worker_enc.tmp";
   std::string dec_path_ = "worker_dec.tmp";
 
+#ifdef _WIN32
+  std::string dir_ = "worker_inherit_dir";
+#endif
+
   /**
    * @brief   Clean up temporary files after each test
    */
@@ -47,6 +55,14 @@ class CryptoWorkerTest : public ::testing::Test {
     RemoveFile(dec_path_);
     RemoveFile(enc_path_ + ".tmp");
     RemoveFile(dec_path_ + ".tmp");
+
+#ifdef _WIN32
+    /* Last, since a case may have put the paths above inside it. Removed here
+     * rather than at the end of that case, which a failed assertion never
+     * reaches, and a directory left behind would fail the next run's create */
+
+    static_cast<void>(RemoveDirectoryW(ToWidePath(dir_).c_str()));
+#endif
   }
 
   /**
@@ -761,3 +777,47 @@ TEST_F(CryptoWorkerTest, DestinationAppearingMidRunIsRefused) {
   EXPECT_EQ(kept, ToBytes("Don't overwrite this"));
   EXPECT_FALSE(FileExists(enc_path_ + ".tmp"));
 }
+
+#ifdef _WIN32
+
+/**
+ * @brief   Verify a published output is reachable by the account that wrote it
+ * and by nobody else
+ *
+ * The layer a user would feel the OpenNewFile guarantee at. A directory that
+ * offers Everyone an inheritable full-access ACE would hand that ACE to
+ * anything created in it with a default security descriptor. Every output this
+ * program writes is created by OpenNewFile as a temporary and published by a
+ * rename within that same directory, and a rename carries the file's own
+ * descriptor rather than taking one from where it lands, so the explicit DACL
+ * the temporary was created under is the DACL of the published file. Both
+ * directions are checked, because the decrypted output is plaintext.
+ */
+TEST_F(CryptoWorkerTest, PublishedOutputIsOwnerOnly) {
+  const std::vector<uint8_t> orig = ToBytes("Hello, world!");
+  std::vector<uint8_t> copy;
+
+  ASSERT_TRUE(MakeWorldAccessibleDir(dir_));
+
+  enc_path_ = dir_ + "/worker_enc.tmp";
+  dec_path_ = dir_ + "/worker_dec.tmp";
+
+  Create(src_path_, orig);
+
+  EXPECT_NE(RunWorker(src_path_, enc_path_, "password", CryptoMode::kEncrypt)
+                .find("complete"),
+            std::string::npos);
+  EXPECT_TRUE(CheckOwnerOnlyDacl(enc_path_));
+  EXPECT_NE(RunWorker(enc_path_, dec_path_, "password", CryptoMode::kDecrypt)
+                .find("complete"),
+            std::string::npos);
+  EXPECT_TRUE(CheckOwnerOnlyDacl(dec_path_));
+
+  /* The files those permissions belong to still round-trip */
+
+  Read(dec_path_, copy);
+
+  EXPECT_EQ(orig, copy);
+}
+
+#endif  // _WIN32
